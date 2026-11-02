@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-DECODE
+
 package decode
 
 // Oracle cross-checks of the infrared remote decoders against sigrok's
@@ -175,7 +176,7 @@ func TestOracleIRRC6(t *testing.T) {
 			rest := ""
 			var restSb176 strings.Builder
 			for _, v := range frame[1:] {
-				restSb176.WriteString(fmt.Sprintf("%02X", v))
+				fmt.Fprintf(&restSb176, "%02X", v)
 			}
 			rest += restSb176.String()
 			repo = append(repo, fmt.Sprintf("A%02X", frame[0]), "D"+strings.TrimLeft(rest, "0"))

@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-DECODE
+
 package decode
 
 import (
@@ -99,6 +100,7 @@ func modeCfg(rnd *rand.Rand, sampleRising, msb bool) SPICfg {
 
 // TRLC-LINKS: REQ-SDS-018
 func safeDecodeSPI(t *testing.T, tag string, clk, data []uint8, ct float64, cfg SPICfg) (r Result) {
+	t.Helper()
 	defer func() {
 		if e := recover(); e != nil {
 			t.Errorf("PANIC in %s: %v", tag, e)

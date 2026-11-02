@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-DECODE
+
 package decode
 
 // Generators of 125 kHz RFID (proto_gen_test.go): an EM4100 tag's frames

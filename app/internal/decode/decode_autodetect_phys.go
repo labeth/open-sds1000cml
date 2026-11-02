@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-DECODE
+
 package decode
 
 import (
@@ -89,23 +90,23 @@ func considerPhysPairs(x, y []uint8, colTimeS float64, format string, tx lineTim
 
 // scorePhys scores the protocols beyond the first thirty (scoreProto).
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-256
-func scorePhys(r Result) float64 {
+func scorePhys(r Result) float64 { //nolint:gocyclo,funlen // one self-contained rule per protocol, kept together in the order they apply
 	n := len(r.Bytes)
-	c := r.count("sof", "frame-error", "parity-error", "data")
+	c := r.count(kindSOF, kindFrameError, kindParityError, kindData)
 	frames, errs, data := c[0], c[1]+c[2], c[3]
 	// errors between the first and the last good unit: a record cuts a
 	// frame at either end (a PDI instruction's first characters, a DSI
 	// frame's last bits), which is no evidence against the bus
 	inner := innerErrs(r)
 	switch r.Proto {
-	case "quad":
+	case protoQuad:
 		// steps without a glitch (a phase jump of two: lines that change
 		// together are no encoder)
 		if errs > 0 || n < 8 || r.Cover < 0.8 {
 			return -1e9
 		}
 		return float64(30 * min(n, 40))
-	case "stepper":
+	case protoStepper:
 		// short STEP pulses and a DIR that changes seldom, and both ways
 		turns, ups := 0, 0
 		for i, v := range r.Bytes {
@@ -122,7 +123,7 @@ func scorePhys(r Result) float64 {
 			return -1e9
 		}
 		return float64(25 * min(n, 40))
-	case "pwm":
+	case protoPWM:
 		// a steady period, a duty cycle that moves: a clock's does not
 		// (a sample's jitter of the edges moves a duty cycle by 256/SPB)
 		lo, hi := 255, 0
@@ -135,16 +136,16 @@ func scorePhys(r Result) float64 {
 			return -1e9
 		}
 		return float64(60 + min(n, 20))
-	case "rcencode":
+	case protoRCEncode:
 		good := 0
 		cur := true
 		for _, s := range r.Spans {
 			switch s.Kind {
-			case "sof":
+			case kindSOF:
 				cur = true
-			case "frame-error":
+			case kindFrameError:
 				cur = false
-			case "stop":
+			case kindStop:
 				if cur {
 					good++
 				}
@@ -154,35 +155,35 @@ func scorePhys(r Result) float64 {
 			return -1e9
 		}
 		return float64(good * 250)
-	case "ook", "qi", "pjdl", "maple":
+	case protoOOK, protoQi, protoPJDL, protoMaple:
 		// bursts, packets and frames whose checksum or CRC checks; an
 		// Oregon burst the record cut after its sync and eight nibbles (a
 		// 100 ms message at 5 ms/div) stands on the sync alone
 		bad := c[1]
 		good := frames - bad
-		if good <= 0 && r.Proto == "ook" && r.Cover > 0 && n >= 8 {
+		if good <= 0 && r.Proto == protoOOK && r.Cover > 0 && n >= 8 {
 			return 300
 		}
 		if good <= 0 {
 			return -1e9
 		}
 		return float64(good*400 + n*2)
-	case "miller":
+	case protoMiller:
 		// modified Miller's pauses, or a classic line's bit-and-a-half
 		// spacings (Manchester and NRZ have none)
 		if frames < 2 || inner > 0 || (!r.Inverted && r.Cover < 0.15) || periodicBits(r.Bytes) {
 			return -1e9
 		}
 		return float64(frames*100 + n*4)
-	case "morse":
+	case protoMorse:
 		// dots and dashes of one and three units, letters of several; both
 		// seen, or the unit is not known (a record of dashes alone reads
 		// them as dots of a unit three times too long)
 		long := 0
 		dot, dash := false, false
 		for _, s := range r.Spans {
-			if s.Kind == "data" {
-				code := MorseOf(byte(s.Val))
+			if s.Kind == kindData {
+				code := MorseOf(byte(s.Val)) //nolint:gosec // a Morse unit is a character code 0..255
 				dot = dot || strings.Contains(code, ".")
 				dash = dash || strings.Contains(code, "-")
 				if len(code) > 1 {
@@ -196,21 +197,22 @@ func scorePhys(r Result) float64 {
 			return -1e9
 		}
 		return float64(15 * min(data, 40))
-	case "dcf77":
+	case protoDCF77:
 		if data == 0 {
 			return -1e9
 		}
 		return float64(data*200 - errs*100)
-	case "em4100", "em4305":
+	case protoEM4100, protoEM4305:
 		good := 0
 		cur, open := true, false
 		for _, s := range r.Spans {
-			if s.Kind == "sof" {
+			switch s.Kind {
+			case kindSOF:
 				if open && cur {
 					good++
 				}
 				cur, open = true, true
-			} else if s.Kind == "frame-error" || s.Kind == "parity-error" {
+			case kindFrameError, kindParityError:
 				cur = false
 			}
 		}
@@ -221,12 +223,12 @@ func scorePhys(r Result) float64 {
 			return -1e9
 		}
 		return float64(good*500 + n*2)
-	case "t55xx":
+	case protoT55xx:
 		if r.FrameBits != 70 && r.FrameBits != 38 {
 			return -1e9
 		}
 		return float64(frames*250 + n*2)
-	case "swim":
+	case protoSWIM:
 		// a whole transaction: a read or write on the fly, its count, the
 		// three address bytes and a byte, each acknowledged with its parity;
 		// at a SWIM rate (high speed at 16 MHz is 1.6 Mbit/s: a 10 MHz SPI
@@ -235,25 +237,25 @@ func scorePhys(r Result) float64 {
 			return -1e9
 		}
 		return float64(data*60 - errs*40)
-	case "sdq":
+	case protoSDQ:
 		// bytes all ones (or zeros) are a pulse train, not a device's reply:
-		// an RFID reader's carrier read "SDQ FF FF FF ..."
+		// an RFID reader's carrier read as SDQ byte FF after byte FF
 		if frames == 0 || n < 2 || inner > 0 || pulseBytes(r.Bytes) {
 			return -1e9
 		}
 		return float64(50 + 5*min(n, 20))
-	case "dsi":
+	case protoDSI:
 		if data < 2 || inner > 0 {
 			return -1e9
 		}
 		return float64(60 * min(data, 10))
-	case "sdcard":
+	case protoSDCard:
 		good := frames - c[1]
 		if good < 2 || c[1]*2 > frames {
 			return -1e9
 		}
 		return float64(good*400 + n*3)
-	case "pdi":
+	case protoPDI:
 		// instructions in a row, a record's misframed characters (one that
 		// opens inside an instruction) few beside the good ones; those
 		// before the first instruction that checks are where the record
@@ -267,10 +269,10 @@ func scorePhys(r Result) float64 {
 			return -1e9
 		}
 		return float64(frames*40 + n*20) // characters with parity and two stops: more than SPI reads of them
-	case "cjtag":
+	case protoCJTAG:
 		scans := 0
 		for _, s := range r.Spans {
-			if s.Kind == "data" {
+			if s.Kind == kindData {
 				scans++
 			}
 		}
@@ -290,10 +292,10 @@ func scorePhys(r Result) float64 {
 		// an escape (six data edges within one clock high) is no I2C
 		// transaction nor any other bus: its STOPs and STARTs read as one
 		return float64(1000 + scans*300)
-	case "caliper":
+	case protoCaliper:
 		good := 0
 		for i, s := range r.Spans {
-			if s.Kind == "sof" && i+3 < len(r.Spans) && r.Spans[i+3].Val&0x6F == 0 {
+			if s.Kind == kindSOF && i+3 < len(r.Spans) && r.Spans[i+3].Val&0x6F == 0 {
 				good++
 			}
 		}
@@ -306,10 +308,10 @@ func scorePhys(r Result) float64 {
 			return 60
 		}
 		return float64(good * 150)
-	case "irmp":
+	case protoIRMP:
 		good := 0
 		for _, s := range r.Spans {
-			if s.Kind == "data" && strings.HasPrefix(s.Text, "C") {
+			if s.Kind == kindData && strings.HasPrefix(s.Text, "C") {
 				good++
 			}
 		}
@@ -330,7 +332,7 @@ func swimTransaction(r Result) bool {
 	at := 0 // address bytes in a row
 	for _, s := range r.Spans {
 		switch {
-		case s.Kind != "data":
+		case s.Kind != kindData:
 		case s.Text[0] == '@':
 			at++
 		case at >= 3 && (s.Text[0] == 'R' || s.Text[0] == 'W'):
@@ -342,9 +344,9 @@ func swimTransaction(r Result) bool {
 	step := 0
 	for _, s := range r.Spans {
 		switch {
-		case s.Kind == "sof":
+		case s.Kind == kindSOF:
 			step = 0
-		case s.Kind != "data":
+		case s.Kind != kindData:
 			step = -9
 		case step == 0 && (s.Text == "ROTF" || s.Text == "WOTF"):
 			step = 1
@@ -369,7 +371,7 @@ func swimTransaction(r Result) bool {
 func pwmFillsRecord(r Result, n int) bool {
 	first, last := -1, -1
 	for _, s := range r.Spans {
-		if s.Kind == "data" {
+		if s.Kind == kindData {
 			if first < 0 {
 				first = s.I0
 			}
@@ -387,7 +389,7 @@ func pwmFillsRecord(r Result, n int) bool {
 func pwmSteady(r Result) bool {
 	per := make([]float64, 0, len(r.Spans))
 	for _, s := range r.Spans {
-		if s.Kind == "data" {
+		if s.Kind == kindData {
 			per = append(per, float64(s.I1-s.I0))
 		}
 	}
@@ -409,7 +411,7 @@ func pwmSteady(r Result) bool {
 func innerErrs(r Result) int {
 	first, last := -1, -1
 	for i, s := range r.Spans {
-		if s.Kind == "data" {
+		if s.Kind == kindData {
 			if first < 0 {
 				first = i
 			}
@@ -418,7 +420,7 @@ func innerErrs(r Result) int {
 	}
 	n := 0
 	for i := first + 1; first >= 0 && i < last; i++ {
-		if k := r.Spans[i].Kind; k == "frame-error" || k == "parity-error" {
+		if k := r.Spans[i].Kind; k == kindFrameError || k == kindParityError {
 			n++
 		}
 	}
@@ -458,7 +460,7 @@ func pwmTwoLevel(duty []int, tol float64) bool {
 func pdiErrorsFromFirstGood(spans []Span) int {
 	from := -1
 	for i, s := range spans {
-		if s.Kind == "sof" && i+1 < len(spans) && spans[i+1].Kind == "data" {
+		if s.Kind == kindSOF && i+1 < len(spans) && spans[i+1].Kind == kindData {
 			from = i
 			break
 		}
@@ -468,7 +470,7 @@ func pdiErrorsFromFirstGood(spans []Span) int {
 	}
 	errs := 0
 	for _, s := range spans[from:] {
-		if s.Kind == "frame-error" || s.Kind == "parity-error" {
+		if s.Kind == kindFrameError || s.Kind == kindParityError {
 			errs++
 		}
 	}

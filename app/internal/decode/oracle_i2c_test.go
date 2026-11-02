@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-DECODE
+
 package decode
 
 // I2C vs the sigrok `i2c` decoder. Cases cover the clean path plus the edge
@@ -250,10 +251,12 @@ func TestOracleI2C(t *testing.T) {
 	const sr = 1_000_000
 
 	run := func(t *testing.T, scl, sda []byte, class string) []ann {
+		t.Helper()
 		return sigrokDecode(t, sr, []string{"SCL", "SDA"}, [][]byte{scl, sda},
 			"i2c:scl=SCL:sda=SDA", "i2c="+class)
 	}
 	decode := func(t *testing.T, scl, sda []byte) Result {
+		t.Helper()
 		res := DecodeI2C(bitsToCodes(scl), bitsToCodes(sda), 1.0/sr, I2CCfg{})
 		if !res.OK {
 			t.Fatalf("repo decode failed: %s", res.Error)

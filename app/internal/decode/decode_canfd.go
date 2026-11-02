@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-DECODE
+
 package decode
 
 import (
@@ -194,24 +195,24 @@ type canFrame struct {
 func DecodeCANFD(codes []uint8, colTimeS float64, cfg CANFDCfg) Result {
 	S := sliceChannel(codes, cfg.Threshold, cfg.HaveThr)
 	if !S.ok {
-		return Result{Proto: "canfd", Error: S.reason}
+		return Result{Proto: protoCANFD, Error: S.reason}
 	}
 
 	var spb float64
 	if cfg.NominalBaud > 0 {
 		if colTimeS <= 0 {
-			return Result{Proto: "canfd", Error: "invalid colTimeS for explicit baud"}
+			return Result{Proto: protoCANFD, Error: "invalid colTimeS for explicit baud"}
 		}
 		spb = (1.0 / float64(cfg.NominalBaud)) / colTimeS
 	} else {
 		s, reason := inferCANspb(S)
 		if reason != "" {
-			return Result{Proto: "canfd", Error: reason}
+			return Result{Proto: protoCANFD, Error: reason}
 		}
 		spb = snapCANBaud(s, colTimeS)
 	}
 	if !(spb >= 3) {
-		return Result{Proto: "canfd", Error: fmt.Sprintf("%.1f samples/bit; need >= 3", spb)}
+		return Result{Proto: protoCANFD, Error: fmt.Sprintf("%.1f samples/bit; need >= 3", spb)}
 	}
 	dataSpb := spb
 	if cfg.DataBaud > 0 && colTimeS > 0 {
@@ -254,7 +255,7 @@ func DecodeCANFD(codes []uint8, colTimeS float64, cfg CANFDCfg) Result {
 		nextAllowed = fr.endI + 1
 	}
 	if frames == 0 {
-		return Result{Proto: "canfd", Error: "no CAN frame found"}
+		return Result{Proto: protoCANFD, Error: "no CAN frame found"}
 	}
 	// The nominal rate it decoded at: BUS's lock keeps it, so the bus is
 	// decoded at it afterwards (without it the panel keeps its 115200 default
@@ -264,7 +265,7 @@ func DecodeCANFD(codes []uint8, colTimeS float64, cfg CANFDCfg) Result {
 		baud = int(math.Round(1 / (spb * colTimeS)))
 	}
 	return Result{
-		OK: true, Proto: "canfd", Spans: spans, Text: strings.Join(toks, " "),
+		OK: true, Proto: protoCANFD, Spans: spans, Text: strings.Join(toks, " "),
 		Bytes: allBytes, Baud: baud, SPB: spb, Thr: S.threshold,
 	}
 }
@@ -283,28 +284,17 @@ func DecodeCANFD(codes []uint8, colTimeS float64, cfg CANFDCfg) Result {
 // Gaps beyond ~16 candidate bits are idle/interframe spacing, not bit-timing
 // evidence, and are excluded from refine and validation.
 // TRLC-LINKS: REQ-SDS-018
-func inferCANspb(S sliced) (float64, string) {
-	gaps := make([]float64, 0, len(S.edges))
-	for k := 1; k < len(S.edges); k++ {
-		if g := float64(S.edges[k].i - S.edges[k-1].i); g >= 2 {
+func inferCANspb(sl sliced) (float64, string) {
+	gaps := make([]float64, 0, len(sl.edges))
+	for k := 1; k < len(sl.edges); k++ {
+		if g := float64(sl.edges[k].i - sl.edges[k-1].i); g >= 2 {
 			gaps = append(gaps, g)
 		}
 	}
 	if len(gaps) < 3 {
 		return 0, "too few edges / cannot infer baud"
 	}
-	sort.Float64s(gaps)
-	var cands []float64
-	for i := 0; i < len(gaps); {
-		seed := gaps[i]
-		sum, j := 0.0, i
-		for j < len(gaps) && gaps[j] <= 1.5*seed {
-			sum += gaps[j]
-			j++
-		}
-		cands = append(cands, sum/float64(j-i))
-		i = j
-	}
+	cands := gapClusters(gaps)
 	best, bestFrac := 0.0, -1.0
 	kg := make([]float64, 0, len(gaps)) // one candidate's gaps, reused
 	for _, cand := range cands {
@@ -376,33 +366,33 @@ func snapCANBaud(spb, colTimeS float64) float64 {
 // ACK delimiter, end of frame and intermission).
 const canSOFIdleBits = 5.5
 
-// canIdleBefore reports whether edge k of S follows a recessive run of at
+// canIdleBefore reports whether edge k of sl follows a recessive run of at
 // least canSOFIdleBits. A record that opens recessive less than that before
 // its first edge may have opened idle or inside a frame: a frame read from
 // there stands only when its CRC checks.
 // TRLC-LINKS: REQ-SDS-018
-func canIdleBefore(S sliced, k int, spb float64) bool {
+func canIdleBefore(sl sliced, k int, spb float64) bool {
 	from := 0.0
 	if k > 0 {
-		from = S.edges[k-1].x
+		from = sl.edges[k-1].x
 	}
-	return S.edges[k].x-from >= canSOFIdleBits*spb
+	return sl.edges[k].x-from >= canSOFIdleBits*spb
 }
 
 // decodeCANOneFrame decodes a single frame starting at sofStart (the SOF bit
 // cell start, in fractional samples). Returns ok=false on any truncation/form
 // problem so the caller can skip a false SOF candidate.
 // TRLC-LINKS: REQ-SDS-018
-func decodeCANOneFrame(S sliced, cfg CANFDCfg, sofStart, spb, dataSpb float64) canFrame {
+func decodeCANOneFrame(sl sliced, cfg CANFDCfg, sofStart, spb, dataSpb float64) canFrame {
 	r := &canReader{
-		S: S, dominantLow: cfg.DominantLow, pos: sofStart, spb: spb,
+		S: sl, dominantLow: cfg.DominantLow, pos: sofStart, spb: spb,
 		runVal: -1, runLen: 0, stuffOn: true, record: true,
 	}
 	// The resync walks the edges from the first one at a sample a bit before
 	// the start of frame: an edge lies at or before its sample, so none
 	// before that one is near enough to snap to. From the record's first
 	// edge, each of a busy record's frames walked all the frames before it.
-	r.ei = sort.Search(len(S.edges), func(k int) bool { return float64(S.edges[k].i) >= sofStart-spb })
+	r.ei = sort.Search(len(sl.edges), func(k int) bool { return float64(sl.edges[k].i) >= sofStart-spb })
 	var fr canFrame
 	var spans []Span
 	var toks []string
@@ -412,7 +402,7 @@ func decodeCANOneFrame(S sliced, cfg CANFDCfg, sofStart, spb, dataSpb float64) c
 	if !ok || sof != 0 {
 		return fr
 	}
-	spans = append(spans, Span{s0, s1, "SOF", "sof", 0})
+	spans = append(spans, Span{s0, s1, "SOF", kindSOF, 0})
 
 	// 11-bit base identifier (MSB first).
 	baseID, idI0, baseI1, ok := r.readField(11)
@@ -437,7 +427,7 @@ func decodeCANOneFrame(S sliced, cfg CANFDCfg, sofStart, spb, dataSpb float64) c
 	id := baseID
 	idEnd := baseI1
 
-	if !extended {
+	if !extended { //nolint:nestif // a protocol state machine kept step for step with its decode_*.js twin (parity tests)
 		// Standard frame. b1 was RTR. Next bit is r0 (classic) or FDF/EDL (FD).
 		rtr := b1
 		fdf, _, _, ok2 := r.readField(1)
@@ -530,12 +520,12 @@ func decodeCANOneFrame(S sliced, cfg CANFDCfg, sofStart, spb, dataSpb float64) c
 
 	// Data field.
 	var bytes []int
-	for k := 0; k < nBytes; k++ {
+	for range nBytes {
 		bval, bi0, bi1, ok2 := r.readField(8)
 		if !ok2 {
 			return fr
 		}
-		spans = append(spans, Span{bi0, bi1, FmtByte(bval, "hex"), "data", bval})
+		spans = append(spans, Span{bi0, bi1, FmtByte(bval, "hex"), kindData, bval})
 		toks = append(toks, FmtByte(bval, "hex"))
 		bytes = append(bytes, bval)
 	}
@@ -561,8 +551,8 @@ func decodeCANOneFrame(S sliced, cfg CANFDCfg, sofStart, spb, dataSpb float64) c
 	crcTxt := fmt.Sprintf("%04X", crc)
 	crcKind := "crc"
 	if crc != want || r.stuffErr {
-		crcTxt = "!" + crcTxt   // CRC mismatch OR a bit-stuff violation (6 identical
-		crcKind = "frame-error" // bits — e.g. an all-dominant/aliased "bus") — flag it,
+		crcTxt = "!" + crcTxt    // CRC mismatch OR a bit-stuff violation (6 identical
+		crcKind = kindFrameError // bits — e.g. an all-dominant/aliased "bus") — flag it,
 	} // never pass such garbage off as a clean CAN frame
 	spans = append(spans, Span{c0, c1, "CRC:" + crcTxt, crcKind, crc})
 	toks = append(toks, "CRC:"+crcTxt)

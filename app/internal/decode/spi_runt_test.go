@@ -18,7 +18,7 @@ func loadSPIRunt(t *testing.T) (c1, c2 []uint8) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }() // opened to read: closing loses nothing
 	z, err := gzip.NewReader(f)
 	if err != nil {
 		t.Fatal(err)

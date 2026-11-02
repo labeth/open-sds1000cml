@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-DECODE
+
 package decode
 
 import (
@@ -8,7 +9,7 @@ import (
 	"strings"
 )
 
-// I2CCfg / SPICfg configure those decoders.
+// I2CCfg configures the I2C decode.
 // TRLC-LINKS: REQ-SDS-018
 type I2CCfg struct {
 	Inverted  bool
@@ -22,6 +23,8 @@ type I2CCfg struct {
 	Deglitch bool
 }
 
+// SPICfg configures the SPI decode: the clock's polarity and phase, the bit
+// order and where the data line is taken against the clock.
 // TRLC-LINKS: REQ-SDS-018
 type SPICfg struct {
 	Inverted   bool
@@ -87,9 +90,10 @@ func i2cDeglitch(level []int8, g int) {
 	}
 }
 
-// DecodeI2C decodes I2C given SCL + SDA codes (decode.js decodeI2C).
+// DecodeI2C decodes I2C given SCL + SDA codes (decode.js decodeI2C). SCL
+// clocks the bits: the sample time takes no part.
 // TRLC-LINKS: REQ-SDS-018
-func DecodeI2C(scl, sda []uint8, colTimeS float64, cfg I2CCfg) Result {
+func DecodeI2C(scl, sda []uint8, _ float64, cfg I2CCfg) Result { //nolint:gocyclo // a protocol state machine kept step for step with its decode_*.js twin (parity tests)
 	if cfg.Inverted {
 		scl, sda = invertLogic(scl), invertLogic(sda)
 		if cfg.HaveThr {
@@ -99,10 +103,10 @@ func DecodeI2C(scl, sda []uint8, colTimeS float64, cfg I2CCfg) Result {
 	CL := sliceChannel(scl, cfg.Threshold, cfg.HaveThr)
 	DA := sliceChannel(sda, cfg.Threshold, cfg.HaveThr)
 	if !CL.ok {
-		return Result{Proto: "i2c", Error: "SCL " + CL.reason}
+		return Result{Proto: protoI2C, Error: "SCL " + CL.reason}
 	}
 	if !DA.ok {
-		return Result{Proto: "i2c", Error: "SDA " + DA.reason}
+		return Result{Proto: protoI2C, Error: "SDA " + DA.reason}
 	}
 	n := min(DA.n, CL.n)
 	risings := 0
@@ -112,7 +116,7 @@ func DecodeI2C(scl, sda []uint8, colTimeS float64, cfg I2CCfg) Result {
 		}
 	}
 	if risings < 2 {
-		return Result{Proto: "i2c", Error: "no SCL clock edges"}
+		return Result{Proto: protoI2C, Error: "no SCL clock edges"}
 	}
 	clEdges := make([]edge, 0, len(CL.edges))
 	for _, e := range CL.edges {
@@ -122,7 +126,7 @@ func DecodeI2C(scl, sda []uint8, colTimeS float64, cfg I2CCfg) Result {
 	}
 	colsPerClock := minEdgeGap(clEdges, func(d int) bool { return d > 0 })
 	if colsPerClock < 3 {
-		return Result{Proto: "i2c", Error: fmt.Sprintf("%.1f cols/clock; too few samples/bit", colsPerClock)}
+		return Result{Proto: protoI2C, Error: fmt.Sprintf("%.1f cols/clock; too few samples/bit", colsPerClock)}
 	}
 	var spans []Span
 	var bytes []int
@@ -133,18 +137,18 @@ func DecodeI2C(scl, sda []uint8, colTimeS float64, cfg I2CCfg) Result {
 	// step reads sample i, where the lines go from levels pcl, pda to cl, da.
 	step := func(i, pcl, pda int) {
 		if cl == 1 && pda == 1 && da == 0 { // START
-			spans = append(spans, Span{i, i, "S", "start", 0})
+			spans = append(spans, Span{i, i, "S", kindStart, 0})
 			toks = append(toks, "START")
 			inTxn, expectAddr, bitCount, val = true, true, 0, 0
 			return
 		}
 		if cl == 1 && pda == 0 && da == 1 { // STOP
-			spans = append(spans, Span{i, i, "P", "stop", 0})
+			spans = append(spans, Span{i, i, "P", kindStop, 0})
 			toks = append(toks, "STOP")
 			inTxn, bitCount = false, 0
 			return
 		}
-		if pcl == 0 && cl == 1 && inTxn { // sample on SCL rising
+		if pcl == 0 && cl == 1 && inTxn { //nolint:nestif // a protocol state machine kept step for step with its decode_*.js twin (parity tests); sample on SCL rising
 			bit := logicAt(&DA, float64(i))
 			if bit < 0 {
 				return
@@ -158,16 +162,16 @@ func DecodeI2C(scl, sda []uint8, colTimeS float64, cfg I2CCfg) Result {
 				if bitCount == 8 {
 					if expectAddr {
 						addr := val >> 1
-						spans = append(spans, Span{bitStart, i, hex2(addr), "addr", addr})
+						spans = append(spans, Span{bitStart, i, hex2(addr), kindAddr, addr})
 						rw := "W"
 						if val&1 != 0 {
 							rw = "R"
 						}
-						spans = append(spans, Span{i, i, rw, "rw", 0})
+						spans = append(spans, Span{i, i, rw, kindRW, 0})
 						toks = append(toks, hex2(addr), rw)
 						expectAddr = false
 					} else {
-						spans = append(spans, Span{bitStart, i, FmtByte(val, cfg.Format), "data", val})
+						spans = append(spans, Span{bitStart, i, FmtByte(val, cfg.Format), kindData, val})
 						toks = append(toks, FmtByte(val, cfg.Format))
 						bytes = append(bytes, val)
 					}
@@ -187,7 +191,7 @@ func DecodeI2C(scl, sda []uint8, colTimeS float64, cfg I2CCfg) Result {
 			}
 		}
 	}
-	if cfg.Deglitch {
+	if cfg.Deglitch { //nolint:nestif // a protocol state machine kept step for step with its decode_*.js twin (parity tests)
 		clLevel, daLevel := CL.levels(), DA.levels()
 		g := i2cGlitch(clEdges)
 		i2cDeglitch(clLevel, g)
@@ -227,17 +231,17 @@ func DecodeI2C(scl, sda []uint8, colTimeS float64, cfg I2CCfg) Result {
 		}
 	}
 	if inTxn {
-		spans = append(spans, Span{n - 1, n - 1, "(no STOP)", "frame-error", 0})
+		spans = append(spans, Span{n - 1, n - 1, "(no STOP)", kindFrameError, 0})
 	}
 	return Result{
-		OK: true, Proto: "i2c", Spans: spans, Text: strings.Join(toks, " "),
+		OK: true, Proto: protoI2C, Spans: spans, Text: strings.Join(toks, " "),
 		Bytes: bytes, SPB: colsPerClock, Thr: CL.threshold,
 	}
 }
 
 // DecodeSPI decodes SPI given CLK + DATA codes, no chip-select (decode.js decodeSPI).
 // TRLC-LINKS: REQ-SDS-018
-func DecodeSPI(clk, data []uint8, colTimeS float64, cfg SPICfg) Result {
+func DecodeSPI(clk, data []uint8, colTimeS float64, cfg SPICfg) Result { //nolint:gocyclo // a protocol state machine kept step for step with its decode_*.js twin (parity tests)
 	if cfg.Inverted {
 		clk, data = invertLogic(clk), invertLogic(data)
 		if cfg.HaveThr {
@@ -247,10 +251,10 @@ func DecodeSPI(clk, data []uint8, colTimeS float64, cfg SPICfg) Result {
 	CK := sliceChannel(clk, cfg.Threshold, cfg.HaveThr)
 	DA := sliceChannel(data, cfg.Threshold, cfg.HaveThr)
 	if !CK.ok {
-		return Result{Proto: "spi", Error: "CLK " + CK.reason}
+		return Result{Proto: protoSPI, Error: "CLK " + CK.reason}
 	}
 	if !DA.ok {
-		return Result{Proto: "spi", Error: "DATA " + DA.reason}
+		return Result{Proto: protoSPI, Error: "DATA " + DA.reason}
 	}
 	n := min(DA.n, CK.n)
 	eIn := make([]edge, 0, len(CK.edges))
@@ -260,7 +264,7 @@ func DecodeSPI(clk, data []uint8, colTimeS float64, cfg SPICfg) Result {
 		}
 	}
 	if len(eIn) < 2 {
-		return Result{Proto: "spi", Error: "no CLK edges"}
+		return Result{Proto: protoSPI, Error: "no CLK edges"}
 	}
 	cpol, cpha := 0, 0
 	if cfg.CPOL {
@@ -295,7 +299,7 @@ func DecodeSPI(clk, data []uint8, colTimeS float64, cfg SPICfg) Result {
 		prevI = e.i
 	}
 	if len(sgaps) == 0 {
-		return Result{Proto: "spi", Error: "no CLK sampling edges"}
+		return Result{Proto: protoSPI, Error: "no CLK sampling edges"}
 	}
 	sort.Float64s(sgaps)
 	period := sgaps[int(float64(len(sgaps))*0.1)]
@@ -318,7 +322,7 @@ func DecodeSPI(clk, data []uint8, colTimeS float64, cfg SPICfg) Result {
 	// at the full rate reads the bus.
 	fine := period < 6 && colTimeS <= 2.05e-9
 	if period < 6 && !fine || period < 3.5 {
-		return Result{Proto: "spi", Error: fmt.Sprintf("%.1f cols/clock; too few samples/bit", period)}
+		return Result{Proto: protoSPI, Error: fmt.Sprintf("%.1f cols/clock; too few samples/bit", period)}
 	}
 	gapReset := 1.5 * period
 	var spans []Span
@@ -367,7 +371,7 @@ func DecodeSPI(clk, data []uint8, colTimeS float64, cfg SPICfg) Result {
 		}
 		bitCount++
 		if bitCount == 8 {
-			spans = append(spans, Span{bitStart, i, FmtByte(val, cfg.Format), "data", val & 0xff})
+			spans = append(spans, Span{bitStart, i, FmtByte(val, cfg.Format), kindData, val & 0xff})
 			toks = append(toks, FmtByte(val, cfg.Format))
 			bytes = append(bytes, val&0xff)
 			bitCount, val = 0, 0
@@ -399,7 +403,7 @@ func DecodeSPI(clk, data []uint8, colTimeS float64, cfg SPICfg) Result {
 		margin = mSum / float64(mN)
 	}
 	return Result{
-		OK: true, Proto: "spi", Spans: spans, Text: strings.Join(toks, " "),
+		OK: true, Proto: protoSPI, Spans: spans, Text: strings.Join(toks, " "),
 		Bytes: bytes, SPB: period, Thr: CK.threshold, Margin: margin,
 	}
 }

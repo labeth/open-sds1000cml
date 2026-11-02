@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-DECODE
+
 package decode
 
 import (
@@ -32,7 +33,7 @@ func usbWave(packets []usbPkt, spb int) []uint8 {
 		if level == 1 {
 			v = hi
 		}
-		for j := 0; j < cells*spb; j++ {
+		for range cells * spb {
 			w = append(w, v)
 		}
 	}
@@ -215,7 +216,7 @@ func TestUSBObservedStuffViolationIsFrameError(t *testing.T) {
 		if level != 0 {
 			v = 210
 		}
-		for i := 0; i < cells*spb; i++ {
+		for range cells * spb {
 			w = append(w, v)
 		}
 	}

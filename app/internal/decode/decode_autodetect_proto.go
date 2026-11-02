@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-DECODE
+
 package decode
 
 import (
@@ -24,9 +25,9 @@ type lineTiming struct {
 // timingOf measures a sliced line's runs (the record's open first and last
 // runs count for the longest only).
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-238
-func timingOf(S sliced, colTimeS float64) lineTiming {
-	t := lineTiming{minRun: math.Inf(1), edges: len(S.edges)}
-	for _, r := range levelRuns(S) {
+func timingOf(sl sliced, colTimeS float64) lineTiming {
+	t := lineTiming{minRun: math.Inf(1), edges: len(sl.edges)}
+	for _, r := range levelRuns(sl) {
 		d := r.us(colTimeS)
 		if !r.open {
 			t.minRun = math.Min(t.minRun, d)
@@ -47,14 +48,14 @@ func near(v, want, frac float64) bool { return math.Abs(v-want) <= frac*want }
 
 // considerLines tries the single-line protocols beyond the first ten on
 // line k, those its timing allows. uartBaud is a UART decode's rate on the
-// line (0 none): MIDI is named only on a line at its 31250 Bd. S is the
+// line (0 none): MIDI is named only on a line at its 31250 Bd. sl is the
 // line's slicing at the automatic threshold.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-238
-func considerLines(codes []uint8, S *sliced, colTimeS float64, format string, uartBaud float64, consider func(Result)) {
-	if !S.ok || len(S.edges) < 4 || !(colTimeS > 0) {
+func considerLines(codes []uint8, sl *sliced, colTimeS float64, format string, uartBaud float64, consider func(Result)) {
+	if !sl.ok || len(sl.edges) < 4 || !(colTimeS > 0) {
 		return
 	}
-	t := timingOf(*S, colTimeS)
+	t := timingOf(*sl, colTimeS)
 	ir := IRCfg{Format: format}
 	if t.maxLow >= 500 && t.minRun >= 30 {
 		consider(DecodeLIN(codes, colTimeS, LINCfg{Format: format}))
@@ -85,14 +86,14 @@ func considerLines(codes []uint8, S *sliced, colTimeS float64, format string, ua
 		consider(DecodeJ1850(codes, colTimeS, J1850Cfg{Format: format}))
 	}
 	if t.maxRun >= 8000 && t.minRun >= 250 {
-		consider(loneFrameOnLine(DecodeIRNEC(codes, colTimeS, ir), S))
+		consider(loneFrameOnLine(DecodeIRNEC(codes, colTimeS, ir), sl))
 	}
 	if t.maxRun >= 2000 && t.minRun >= 300 {
-		consider(loneFrameOnLine(DecodeIRSIRC(codes, colTimeS, ir), S))
-		consider(loneFrameOnLine(DecodeIRRC5(codes, colTimeS, ir), S))
+		consider(loneFrameOnLine(DecodeIRSIRC(codes, colTimeS, ir), sl))
+		consider(loneFrameOnLine(DecodeIRRC5(codes, colTimeS, ir), sl))
 	}
 	if t.maxRun >= 2000 && t.minRun >= 250 {
-		consider(loneFrameOnLine(DecodeIRRC6(codes, colTimeS, ir), S))
+		consider(loneFrameOnLine(DecodeIRRC6(codes, colTimeS, ir), sl))
 	}
 	if t.maxRun >= 1500 && t.minRun >= 300 && t.minRun <= 520 {
 		consider(DecodeDALI(codes, colTimeS, DALICfg{Format: format}))
@@ -160,9 +161,9 @@ func swdStands(r Result, clk, dio []uint8, colTimeS float64, cfg ClockedCfg, d *
 	frames, resets := 0, 0
 	for _, s := range r.Spans {
 		switch {
-		case s.Kind == "sof":
+		case s.Kind == kindSOF:
 			frames++
-		case s.Kind == "rw" && s.Text == "LINERESET":
+		case s.Kind == kindRW && s.Text == "LINERESET":
 			resets++
 		}
 	}
@@ -172,7 +173,7 @@ func swdStands(r Result, clk, dio []uint8, colTimeS float64, cfg ClockedCfg, d *
 	head := func(x Result) string { // the requests and their acknowledges
 		var f []string
 		for _, s := range x.Spans {
-			if s.Kind == "data" && (s.Text == "OK" || s.Text == "WAIT" || s.Text == "FAULT" || strings.HasPrefix(s.Text, "R") || strings.HasPrefix(s.Text, "W")) {
+			if s.Kind == kindData && (s.Text == "OK" || s.Text == "WAIT" || s.Text == "FAULT" || strings.HasPrefix(s.Text, "R") || strings.HasPrefix(s.Text, "W")) {
 				f = append(f, s.Text)
 			}
 		}
@@ -206,41 +207,41 @@ func (r Result) count(kinds ...string) []int {
 // needs the evidence its own check gives, and scores above the generic
 // decoders' reading of the same line.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-238
-func scoreProto(r Result) float64 {
+func scoreProto(r Result) float64 { //nolint:gocyclo // one self-contained rule per protocol, kept together in the order they apply
 	n := len(r.Bytes)
-	c := r.count("sof", "frame-error", "parity-error", "data")
+	c := r.count(kindSOF, kindFrameError, kindParityError, kindData)
 	frames, errs, data := c[0], c[1]+c[2], c[3]
 	switch r.Proto {
-	case "lin":
+	case protoLIN:
 		// frames whose identifier's parity and checksum check
 		good, hdr := linFrames(r)
 		if good == 0 && hdr < 2 {
 			return -1e9
 		}
 		return float64(good*300+hdr*80) - float64(errs*60)
-	case "dmx512":
+	case protoDMX512:
 		// a break of 88 us and clean slots at 250 kbit/s; the slots read as a
 		// UART too, at 10 a byte
 		if errs*10 > n || data < 3 {
 			return -1e9
 		}
 		return float64(frames*400 + data*12 - errs*40)
-	case "midi":
+	case protoMIDI:
 		if c[1]*10 > n || n < 3 {
 			return -1e9
 		}
 		return float64(n*12 + 60 - c[1]*40)
-	case "modbus":
+	case protoModbus:
 		good := modbusResultFrames(r)
 		if good == 0 {
 			return -1e9
 		}
 		return float64(good*400 + n*2 - errs*50)
-	case "onewire":
+	case protoOneWire:
 		// a reset, its presence pulse and a ROM command after it
 		good := 0
 		for i, s := range r.Spans {
-			if s.Kind == "ack" && i+1 < len(r.Spans) && r.Spans[i+1].Kind == "data" {
+			if s.Kind == "ack" && i+1 < len(r.Spans) && r.Spans[i+1].Kind == kindData {
 				if _, named := oneWireROM[r.Spans[i+1].Val]; named {
 					good++
 				}
@@ -250,25 +251,25 @@ func scoreProto(r Result) float64 {
 			return -1e9
 		}
 		return float64(good*200 + n*10 - errs*80)
-	case "ws281x":
+	case protoWS281x:
 		// at an LED chain's rate: 800 kHz, or 400 kHz for a WS2811's slow
 		// mode (a 125 kHz RFID carrier beside a square read as its bits)
 		if r.Baud < 250e3 || r.Baud > 1.2e6 {
 			return -1e9
 		}
 		return float64(frames*100 + n*20)
-	case "dht":
+	case protoDHT:
 		good := data / 5
 		if good == 0 {
 			return -1e9
 		}
 		return float64(good*500 - errs*100)
-	case "cec":
+	case protoCEC:
 		return float64(frames*150 + n*30 - errs*60)
-	case "j1850":
+	case protoJ1850:
 		good := 0
 		for i, s := range r.Spans {
-			if s.Kind == "data" && (i+1 == len(r.Spans) || r.Spans[i+1].Kind == "sof" || r.Spans[i+1].Kind == "rw") {
+			if s.Kind == kindData && (i+1 == len(r.Spans) || r.Spans[i+1].Kind == kindSOF || r.Spans[i+1].Kind == kindRW) {
 				good++ // a frame's last byte, its CRC, checked
 			}
 		}
@@ -276,12 +277,12 @@ func scoreProto(r Result) float64 {
 			return -1e9
 		}
 		return float64(good*300 + n*4 - errs*80)
-	case "irnec":
+	case protoIRNEC:
 		return float64(data/4*400 + frames*20 - errs*100)
-	case "irsirc", "irrc5", "irrc6":
+	case protoIRSIRC, protoIRRC5, protoIRRC6:
 		good := 0
 		for _, s := range r.Spans {
-			if s.Kind == "sof" {
+			if s.Kind == kindSOF {
 				good++
 			}
 		}
@@ -290,23 +291,23 @@ func scoreProto(r Result) float64 {
 			return -1e9
 		}
 		return float64(good*150 + n*10 - errs*60)
-	case "dali":
+	case protoDALI:
 		if frames-errs <= 0 {
 			return -1e9
 		}
 		return float64((frames-errs)*150 + n*10 - errs*60)
-	case "usbpd":
+	case protoUSBPD:
 		if errs > 0 && frames <= 1 {
 			return -1e9
 		}
 		return float64(frames*600 + n*2 - errs*100)
-	case "spdif":
+	case protoSPDIF:
 		// subframes whose parity checks, framed by their preambles
 		if data < 4 || errs*4 > data {
 			return -1e9
 		}
 		return float64(data*20 - errs*40)
-	case "ps2":
+	case protoPS2:
 		// One whole frame is evidence SPI lacks: 11 clocks, a start 0, odd
 		// parity and a stop 1, the clock idle high either side (a record at
 		// 500us/div holds one or two of a keyboard's frames, and the SPI
@@ -315,7 +316,7 @@ func scoreProto(r Result) float64 {
 			return -1e9
 		}
 		return float64(data*150 - errs*60)
-	case "swd":
+	case protoSWD:
 		// no debug probe clocks SWD past 60 MHz: a 104 MHz SPI flash's
 		// data reads as a request and an OK now and then
 		if r.Cover < 0.8 || r.Baud > 60e6 {
@@ -326,7 +327,7 @@ func scoreProto(r Result) float64 {
 		// parity now and then, and outscored the SPI reading of every byte
 		resets := 0
 		for _, s := range r.Spans {
-			if s.Kind == "rw" && s.Text == "LINERESET" {
+			if s.Kind == kindRW && s.Text == "LINERESET" {
 				resets++
 			}
 		}
@@ -334,7 +335,7 @@ func scoreProto(r Result) float64 {
 			return float64(frames*40 + n*2 - errs*80)
 		}
 		return float64(frames*300 + n*4 - errs*80)
-	case "mdio":
+	case protoMDIO:
 		if r.Cover < 0.8 {
 			return -1e9
 		}
@@ -342,7 +343,7 @@ func scoreProto(r Result) float64 {
 		// PHY's: an SWD line idling high reads as a preamble, its requests
 		// as "ADDR 00.00"
 		for i, s := range r.Spans {
-			if s.Kind == "sof" && i+1 < len(r.Spans) && r.Spans[i+1].Val>>12&3 == 0 && r.Spans[i+1].Val&0x1f == 0 {
+			if s.Kind == kindSOF && i+1 < len(r.Spans) && r.Spans[i+1].Val>>12&3 == 0 && r.Spans[i+1].Val&0x1f == 0 {
 				frames--
 			}
 		}
@@ -350,18 +351,18 @@ func scoreProto(r Result) float64 {
 			return -1e9
 		}
 		return float64(frames*300 - errs*100)
-	case "wiegand":
+	case protoWiegand:
 		// 26- and 34-bit frames whose parities check
 		good, cur := 0, 0
 		for _, s := range r.Spans {
-			switch {
-			case s.Kind == "rw":
+			switch s.Kind {
+			case kindRW:
 				good += cur
 				cur = 0
 				if s.Val == 26 || s.Val == 34 {
 					cur = 1
 				}
-			case s.Kind == "parity-error":
+			case kindParityError:
 				cur = 0
 			}
 		}
@@ -391,13 +392,13 @@ func linFrames(r Result) (good, hdr int) {
 	}
 	for _, s := range r.Spans {
 		switch {
-		case s.Kind == "sof":
+		case s.Kind == kindSOF:
 			flush()
 		case len(s.Text) > 2 && s.Text[:2] == "ID":
-			idOK = s.Kind == "data"
-		case s.Kind == "data":
+			idOK = s.Kind == kindData
+		case s.Kind == kindData:
 			resp++
-		case s.Kind == "frame-error" || s.Kind == "parity-error":
+		case s.Kind == kindFrameError || s.Kind == kindParityError:
 			bad = true
 		}
 	}
@@ -412,12 +413,12 @@ func modbusResultFrames(r Result) int {
 	good, open, bad := 0, false, false
 	for _, s := range r.Spans {
 		switch s.Kind {
-		case "sof":
+		case kindSOF:
 			if open && !bad {
 				good++
 			}
 			open, bad = true, false
-		case "frame-error", "parity-error":
+		case kindFrameError, kindParityError:
 			bad = true
 		}
 	}

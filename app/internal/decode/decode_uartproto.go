@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-DECODE
+
 package decode
 
 import (
@@ -29,16 +30,16 @@ type uchar struct {
 // as receivers do). A zero character with its stop bit low whose low run
 // lasts breakBits or more is a break (breakBits 0: none).
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-232
-func uartChars(S sliced, spb float64, parity string, stops int, breakBits float64) []uchar {
-	out := scratchSlice[uchar](S.sc, len(S.edges)/4+1) // a character takes two edges or more
-	lv := levelCursor{s: &S}                           // logicAt, walking the edges forward
+func uartChars(sl sliced, spb float64, parity string, stops int, breakBits float64) []uchar {
+	out := scratchSlice[uchar](sl.sc, len(sl.edges)/4+1) // a character takes two edges or more
+	lv := levelCursor{s: &sl}                            // logicAt, walking the edges forward
 	pc := 0
-	if parity != "none" {
+	if parity != parityNone {
 		pc = 1
 	}
 	next := math.Inf(-1)
-	for k := 0; k < len(S.edges); k++ {
-		e := S.edges[k]
+	for k := range len(sl.edges) {
+		e := sl.edges[k]
 		if e.dir >= 0 || e.x < next {
 			continue
 		}
@@ -58,18 +59,18 @@ func uartChars(S sliced, spb float64, parity string, stops int, breakBits float6
 		if off {
 			break
 		}
-		kind := "data"
+		kind := kindData
 		if pc == 1 {
 			pb := lv.at(x0 + 9.5*spb)
 			if pb < 0 {
 				break
 			}
 			want := popcount(val) & 1
-			if parity == "odd" {
+			if parity == parityOdd {
 				want = 1 - want
 			}
 			if pb != want {
-				kind = "parity-error"
+				kind = kindParityError
 			}
 		}
 		sb := lv.at(x0 + (9.5+float64(pc))*spb)
@@ -78,24 +79,24 @@ func uartChars(S sliced, spb float64, parity string, stops int, breakBits float6
 		}
 		x1 := x0 + float64(9+pc+stops)*spb
 		ch := uchar{x0: x0, x1: x1, val: val, kind: kind}
-		if sb != 1 {
-			ch.kind = "frame-error"
+		if sb != 1 { //nolint:nestif // a protocol state machine kept step for step with its decode_*.js twin (parity tests)
+			ch.kind = kindFrameError
 			if val == 0 && breakBits > 0 {
-				rise := float64(S.n)
-				if k+1 < len(S.edges) {
-					rise = S.edges[k+1].x
+				rise := float64(sl.n)
+				if k+1 < len(sl.edges) {
+					rise = sl.edges[k+1].x
 				}
 				if low := (rise - x0) / spb; low >= breakBits {
-					if k+1 >= len(S.edges) {
+					if k+1 >= len(sl.edges) {
 						break // the record ends inside the break
 					}
-					ch.kind, ch.low, ch.x1 = "break", low, rise
+					ch.kind, ch.low, ch.x1 = kindBreak, low, rise
 				}
 			}
 		}
 		out = append(out, ch)
 		next = ch.x1 - 0.5*spb
-		if ch.kind == "break" {
+		if ch.kind == kindBreak {
 			next = ch.x1
 		}
 	}
@@ -163,9 +164,9 @@ func linChecksum(pid int, data []int, enhanced bool) int {
 // break (a low run) then, after the delimiter, 0x55's ten evenly spaced
 // edges. The median over the record's sync fields; 0 when none is seen.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-232
-func linSyncSPB(S sliced) float64 {
+func linSyncSPB(sl sliced) float64 {
 	var cands []float64
-	E := S.edges
+	E := sl.edges
 	for k := 0; k+11 < len(E); k++ {
 		if E[k].dir >= 0 {
 			continue
@@ -233,7 +234,7 @@ func DecodeLINEdges(codes *EdgeLine, colTimeS float64, cfg LINCfg) Result {
 func decodeLIN(codes lineIn, colTimeS float64, cfg LINCfg) Result {
 	S := codes.slice(cfg.Threshold, cfg.HaveThr)
 	if !S.ok {
-		return Result{Proto: "lin", Error: S.reason}
+		return Result{Proto: protoLIN, Error: S.reason}
 	}
 	var spb float64
 	if cfg.Baud > 0 && colTimeS > 0 {
@@ -242,16 +243,16 @@ func decodeLIN(codes lineIn, colTimeS float64, cfg LINCfg) Result {
 		spb = snapSPB(linSyncSPB(S), colTimeS, linRates, 0.02)
 	}
 	if !(spb >= 3) {
-		return Result{Proto: "lin", Error: "no LIN break and sync field"}
+		return Result{Proto: protoLIN, Error: "no LIN break and sync field"}
 	}
-	chars := uartChars(S, spb, "none", 1, linBreakBits)
+	chars := uartChars(S, spb, parityNone, 1, linBreakBits)
 	n := S.n
 	var spans []Span
 	var toks []string
 	var units []int
 	good := false
 	unit := func(c uchar, v int, txt, kind string) {
-		if kind != "data" {
+		if kind != kindData {
 			txt = "!" + txt
 		}
 		spans = append(spans, Span{ui(c.x0, n), ui(c.x1, n), txt, kind, v})
@@ -259,44 +260,44 @@ func decodeLIN(codes lineIn, colTimeS float64, cfg LINCfg) Result {
 		units = append(units, v)
 	}
 	for k := 0; k < len(chars); k++ {
-		if chars[k].kind != "break" {
+		if chars[k].kind != kindBreak {
 			continue
 		}
 		b := chars[k]
-		spans = append(spans, Span{ui(b.x0, n), ui(b.x1, n), "BRK", "sof", 0})
+		spans = append(spans, Span{ui(b.x0, n), ui(b.x1, n), "BRK", kindSOF, 0})
 		toks = append(toks, "BRK")
-		if k+1 >= len(chars) || chars[k+1].kind == "break" {
+		if k+1 >= len(chars) || chars[k+1].kind == kindBreak {
 			continue
 		}
 		s := chars[k+1]
-		if s.kind != "data" || s.val != 0x55 {
-			spans = append(spans, Span{ui(s.x0, n), ui(s.x1, n), "!SYNC", "frame-error", s.val})
+		if s.kind != kindData || s.val != 0x55 {
+			spans = append(spans, Span{ui(s.x0, n), ui(s.x1, n), "!SYNC", kindFrameError, s.val})
 			toks = append(toks, "!SYNC")
 			continue
 		}
-		spans = append(spans, Span{ui(s.x0, n), ui(s.x1, n), "SYNC", "rw", 0x55})
+		spans = append(spans, Span{ui(s.x0, n), ui(s.x1, n), "SYNC", kindRW, 0x55})
 		toks = append(toks, "SYNC")
 		k++
-		if k+1 >= len(chars) || chars[k+1].kind == "break" || chars[k+1].x0-s.x1 > 20*spb {
+		if k+1 >= len(chars) || chars[k+1].kind == kindBreak || chars[k+1].x0-s.x1 > 20*spb {
 			continue
 		}
 		k++
 		p := chars[k]
 		pidKind := p.kind
-		if pidKind == "data" && linPIDParity(p.val&0x3f) != p.val {
-			pidKind = "parity-error"
+		if pidKind == kindData && linPIDParity(p.val&0x3f) != p.val {
+			pidKind = kindParityError
 		}
 		unit(p, p.val, fmt.Sprintf("ID%02X", p.val&0x3f), pidKind)
 		// the response: characters each within two characters of the last
 		var resp []uchar
 		last := p.x1
-		for k+1 < len(chars) && chars[k+1].kind != "break" && chars[k+1].x0-last <= 20*spb {
+		for k+1 < len(chars) && chars[k+1].kind != kindBreak && chars[k+1].x0-last <= 20*spb {
 			k++
 			resp = append(resp, chars[k])
 			last = chars[k].x1
 		}
 		if len(resp) == 0 {
-			good = good || pidKind == "data" // a header no node answered
+			good = good || pidKind == kindData // a header no node answered
 			continue
 		}
 		var data []int
@@ -306,21 +307,21 @@ func decodeLIN(codes lineIn, colTimeS float64, cfg LINCfg) Result {
 		}
 		ck := resp[len(resp)-1]
 		kind := ck.kind
-		if kind == "data" {
+		if kind == kindData {
 			id := p.val & 0x3f
 			enh := id != 0x3c && id != 0x3d && linChecksum(p.val, data, true) == ck.val
 			if !enh && linChecksum(p.val, data, false) != ck.val {
-				kind = "frame-error"
+				kind = kindFrameError
 			}
 		}
 		unit(ck, ck.val, "CK"+hex2(ck.val), kind)
-		good = good || pidKind == "data" && kind == "data"
+		good = good || pidKind == kindData && kind == kindData
 	}
 	if len(spans) == 0 {
-		return Result{Proto: "lin", Error: "no LIN break"}
+		return Result{Proto: protoLIN, Error: "no LIN break"}
 	}
 	res := Result{
-		OK: good, Proto: "lin", Spans: spans, Text: strings.Join(toks, " "), Bytes: units,
+		OK: good, Proto: protoLIN, Spans: spans, Text: strings.Join(toks, " "), Bytes: units,
 		Baud: int(math.Round(1 / (spb * colTimeS))), SPB: spb, Thr: S.threshold,
 	}
 	if !good {
@@ -361,20 +362,20 @@ func DecodeDMX512Edges(codes *EdgeLine, colTimeS float64, cfg DMXCfg) Result {
 func decodeDMX512(codes lineIn, colTimeS float64, cfg DMXCfg) Result {
 	S := codes.slice(cfg.Threshold, cfg.HaveThr)
 	if !S.ok {
-		return Result{Proto: "dmx512", Error: S.reason}
+		return Result{Proto: protoDMX512, Error: S.reason}
 	}
 	baud := cfg.Baud
 	if baud <= 0 {
 		baud = 250000
 	}
 	if !(colTimeS > 0) {
-		return Result{Proto: "dmx512", Error: "no sample time"}
+		return Result{Proto: protoDMX512, Error: msgNoSampleTime}
 	}
 	spb := 1 / (float64(baud) * colTimeS)
 	if !(spb >= 3) {
-		return Result{Proto: "dmx512", Error: fmt.Sprintf("%.1f samples/bit; need >= 3", spb)}
+		return Result{Proto: protoDMX512, Error: fmt.Sprintf("%.1f samples/bit; need >= 3", spb)}
 	}
-	chars := uartChars(S, spb, "none", 2, dmxBreakBits)
+	chars := uartChars(S, spb, parityNone, 2, dmxBreakBits)
 	n := S.n
 	// Sized for the characters: a DMX512 packet is hundreds of them.
 	spans := make([]Span, 0, len(chars)+len(chars)/8+2)
@@ -382,31 +383,31 @@ func decodeDMX512(codes lineIn, colTimeS float64, cfg DMXCfg) Result {
 	units := make([]int, 0, len(chars))
 	good := false
 	for k := 0; k < len(chars); k++ {
-		if chars[k].kind != "break" {
+		if chars[k].kind != kindBreak {
 			continue
 		}
 		b := chars[k]
-		spans = append(spans, Span{ui(b.x0, n), ui(b.x1, n), "BRK", "sof", 0})
+		spans = append(spans, Span{ui(b.x0, n), ui(b.x1, n), "BRK", kindSOF, 0})
 		toks = append(toks, "BRK")
-		if k+1 >= len(chars) || chars[k+1].kind == "break" {
+		if k+1 >= len(chars) || chars[k+1].kind == kindBreak {
 			continue
 		}
 		if mab := chars[k+1].x0 - b.x1; mab >= 1.5*spb {
-			spans = append(spans, Span{ui(b.x1, n), ui(chars[k+1].x0, n), "MAB", "rw", 0})
+			spans = append(spans, Span{ui(b.x1, n), ui(chars[k+1].x0, n), "MAB", kindRW, 0})
 			toks = append(toks, "MAB")
 		}
 		slot, clean := 0, true
 		last := b.x1
-		for k+1 < len(chars) && chars[k+1].kind != "break" && chars[k+1].x0-last <= 44*spb && slot <= 512 {
+		for k+1 < len(chars) && chars[k+1].kind != kindBreak && chars[k+1].x0-last <= 44*spb && slot <= 512 {
 			k++
 			c := chars[k]
 			var txt string
 			switch {
-			case slot == 0 && c.kind != "data":
+			case slot == 0 && c.kind != kindData:
 				txt, clean = hexBangSC[c.val&0xff], false
 			case slot == 0:
 				txt = hexSC[c.val&0xff]
-			case c.kind != "data":
+			case c.kind != kindData:
 				txt, clean = "!"+FmtByte(c.val, cfg.Format), false
 			default:
 				txt = FmtByte(c.val, cfg.Format)
@@ -422,13 +423,13 @@ func decodeDMX512(codes lineIn, colTimeS float64, cfg DMXCfg) Result {
 		}
 	}
 	if len(spans) == 0 {
-		return Result{Proto: "dmx512", Error: "no DMX512 break"}
+		return Result{Proto: protoDMX512, Error: "no DMX512 break"}
 	}
 	if len(units) == 0 {
 		units = nil // as a decode with no slot has always read
 	}
 	res := Result{
-		OK: good, Proto: "dmx512", Spans: spans, Text: strings.Join(toks, " "), Bytes: units,
+		OK: good, Proto: protoDMX512, Spans: spans, Text: strings.Join(toks, " "), Bytes: units,
 		Baud: baud, SPB: spb, Thr: S.threshold,
 	}
 	if !good {
@@ -493,20 +494,20 @@ func midiName(st int) string {
 func DecodeMIDI(codes []uint8, colTimeS float64, cfg MIDICfg) Result {
 	S := sliceChannel(codes, cfg.Threshold, cfg.HaveThr)
 	if !S.ok {
-		return Result{Proto: "midi", Error: S.reason}
+		return Result{Proto: protoMIDI, Error: S.reason}
 	}
 	baud := cfg.Baud
 	if baud <= 0 {
 		baud = 31250
 	}
 	if !(colTimeS > 0) {
-		return Result{Proto: "midi", Error: "no sample time"}
+		return Result{Proto: protoMIDI, Error: msgNoSampleTime}
 	}
 	spb := 1 / (float64(baud) * colTimeS)
 	if !(spb >= 3) {
-		return Result{Proto: "midi", Error: fmt.Sprintf("%.1f samples/bit; need >= 3", spb)}
+		return Result{Proto: protoMIDI, Error: fmt.Sprintf("%.1f samples/bit; need >= 3", spb)}
 	}
-	chars := uartChars(S, spb, "none", 1, 0)
+	chars := uartChars(S, spb, parityNone, 1, 0)
 	n := S.n
 	var spans []Span
 	var toks []string
@@ -515,8 +516,8 @@ func DecodeMIDI(codes []uint8, colTimeS float64, cfg MIDICfg) Result {
 	complete := 0
 	for _, c := range chars {
 		i0, i1 := ui(c.x0, n), ui(c.x1, n)
-		if c.kind != "data" {
-			spans = append(spans, Span{i0, i1, "!" + hex2(c.val), "frame-error", c.val})
+		if c.kind != kindData {
+			spans = append(spans, Span{i0, i1, "!" + hex2(c.val), kindFrameError, c.val})
 			toks = append(toks, "!"+hex2(c.val))
 			units = append(units, c.val)
 			run, need, got = 0, 0, 0
@@ -525,15 +526,15 @@ func DecodeMIDI(codes []uint8, colTimeS float64, cfg MIDICfg) Result {
 		v := c.val
 		switch {
 		case v >= 0xF8: // real time: between any bytes
-			spans = append(spans, Span{i0, i1, midiName(v), "data", v})
+			spans = append(spans, Span{i0, i1, midiName(v), kindData, v})
 			toks = append(toks, midiName(v))
 			units = append(units, v)
 			complete++
 			continue
 		case v >= 0x80:
 			wasSyx := run == 0xF0
-			spans = append(spans, Span{i0, i0, "", "sof", 0})
-			spans = append(spans, Span{i0, i1, midiName(v), "data", v})
+			spans = append(spans, Span{i0, i0, "", kindSOF, 0})
+			spans = append(spans, Span{i0, i1, midiName(v), kindData, v})
 			toks = append(toks, midiName(v))
 			units = append(units, v)
 			need, got = midiDataLen(v), 0
@@ -550,12 +551,12 @@ func DecodeMIDI(codes []uint8, colTimeS float64, cfg MIDICfg) Result {
 		}
 		units = append(units, v)
 		if run == 0 || (need == 0 && run != 0xF0) {
-			spans = append(spans, Span{i0, i1, "!" + hex2(v), "frame-error", v})
+			spans = append(spans, Span{i0, i1, "!" + hex2(v), kindFrameError, v})
 			toks = append(toks, "!"+hex2(v))
 			continue
 		}
 		txt := FmtByte(v, cfg.Format)
-		spans = append(spans, Span{i0, i1, txt, "data", v})
+		spans = append(spans, Span{i0, i1, txt, kindData, v})
 		toks = append(toks, txt)
 		if need > 0 {
 			got++
@@ -569,10 +570,10 @@ func DecodeMIDI(codes []uint8, colTimeS float64, cfg MIDICfg) Result {
 		}
 	}
 	if len(spans) == 0 {
-		return Result{Proto: "midi", Error: "no MIDI bytes"}
+		return Result{Proto: protoMIDI, Error: "no MIDI bytes"}
 	}
 	res := Result{
-		OK: complete > 0, Proto: "midi", Spans: spans, Text: strings.Join(toks, " "), Bytes: units,
+		OK: complete > 0, Proto: protoMIDI, Spans: spans, Text: strings.Join(toks, " "), Bytes: units,
 		Baud: baud, SPB: spb, Thr: S.threshold,
 	}
 	if complete == 0 {
@@ -639,7 +640,7 @@ func modbusGood(frames [][]uchar) (good, bad int) {
 		vals := make([]int, len(f))
 		for i, c := range f {
 			vals[i] = c.val
-			if c.kind != "data" {
+			if c.kind != kindData {
 				bad++
 				ok = false
 			}
@@ -671,7 +672,7 @@ func DecodeModbusEdges(codes *EdgeLine, colTimeS float64, cfg ModbusCfg) Result 
 func decodeModbus(codes lineIn, colTimeS float64, cfg ModbusCfg) Result {
 	S := codes.slice(cfg.Threshold, cfg.HaveThr)
 	if !S.ok {
-		return Result{Proto: "modbus", Error: S.reason}
+		return Result{Proto: protoModbus, Error: S.reason}
 	}
 	var spb float64
 	if cfg.Baud > 0 && colTimeS > 0 {
@@ -679,23 +680,23 @@ func decodeModbus(codes lineIn, colTimeS float64, cfg ModbusCfg) Result {
 	} else {
 		var reason string
 		if spb, reason = inferUARTspb(S); reason != "" {
-			return Result{Proto: "modbus", Error: reason}
+			return Result{Proto: protoModbus, Error: reason}
 		}
 		spb = snapStandardBaud(spb, colTimeS)
 	}
 	if !(spb >= 3) {
-		return Result{Proto: "modbus", Error: fmt.Sprintf("%.1f samples/bit; need >= 3", spb)}
+		return Result{Proto: protoModbus, Error: fmt.Sprintf("%.1f samples/bit; need >= 3", spb)}
 	}
 	type framing struct {
 		parity string
 		stops  int
 	}
-	tries := []framing{{"even", 1}, {"none", 2}, {"odd", 1}, {"none", 1}}
+	tries := []framing{{parityEven, 1}, {parityNone, 2}, {parityOdd, 1}, {parityNone, 1}}
 	switch cfg.Parity {
-	case "even", "odd":
+	case parityEven, parityOdd:
 		tries = []framing{{cfg.Parity, 1}}
-	case "none":
-		tries = []framing{{"none", 2}}
+	case parityNone:
+		tries = []framing{{parityNone, 2}}
 	}
 	var frames [][]uchar
 	parity, bestGood, bestBad := "", -1, 0
@@ -711,12 +712,12 @@ func decodeModbus(codes lineIn, colTimeS float64, cfg ModbusCfg) Result {
 	var toks []string
 	var units []int
 	for _, f := range frames {
-		spans = append(spans, Span{ui(f[0].x0, n), ui(f[0].x0, n), "", "sof", 0})
+		spans = append(spans, Span{ui(f[0].x0, n), ui(f[0].x0, n), "", kindSOF, 0})
 		vals := make([]int, len(f))
 		clean := len(f) >= 4
 		for i, c := range f {
 			vals[i] = c.val
-			clean = clean && c.kind == "data"
+			clean = clean && c.kind == kindData
 		}
 		crcOK := clean && modbusCRC(vals[:len(f)-2]) == vals[len(f)-2]|vals[len(f)-1]<<8
 		for i, c := range f {
@@ -731,11 +732,11 @@ func decodeModbus(codes lineIn, colTimeS float64, cfg ModbusCfg) Result {
 				}
 			case i >= len(f)-2 && len(f) >= 4:
 				txt = hex2(c.val)
-				if kind == "data" && !crcOK {
-					kind = "frame-error"
+				if kind == kindData && !crcOK {
+					kind = kindFrameError
 				}
 			}
-			if kind != "data" {
+			if kind != kindData {
 				txt = "!" + txt
 			}
 			spans = append(spans, Span{ui(c.x0, n), ui(c.x1, n), txt, kind, c.val})
@@ -744,10 +745,10 @@ func decodeModbus(codes lineIn, colTimeS float64, cfg ModbusCfg) Result {
 		}
 	}
 	if len(spans) == 0 {
-		return Result{Proto: "modbus", Error: "no characters"}
+		return Result{Proto: protoModbus, Error: "no characters"}
 	}
 	res := Result{
-		OK: bestGood > 0, Proto: "modbus", Spans: spans, Text: strings.Join(toks, " "), Bytes: units,
+		OK: bestGood > 0, Proto: protoModbus, Spans: spans, Text: strings.Join(toks, " "), Bytes: units,
 		Baud: int(math.Round(1 / (spb * colTimeS))), SPB: spb, Thr: S.threshold, Parity: parity,
 	}
 	if bestGood <= 0 {

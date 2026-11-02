@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-DECODE
+
 package decode
 
 // parityAdd records one Go decode as a parity vector (TestJSDecoderParity).
@@ -233,7 +234,7 @@ func protoParityVectors(add parityAdd, add2 parityAdd2, corrupt func([]uint8) []
 		add2("wiegand", ls.a.codes(), ls.b.codes(), 1e-5, cfg{}, DecodeWiegand(ls.a.codes(), ls.b.codes(), 1e-5, ClockedCfg{}))
 		for _, b := range b2 {
 			add2(b.proto, b.c1, b.c2, b.colT, cfg{}, b.dec(b.c1, b.c2))
-			for it := 0; it < 12*parityMult(); it++ {
+			for it := range 12 * parityMult() {
 				c1, c2 := b.c1, b.c2
 				if it%2 == 0 {
 					c1 = corrupt(c1)
@@ -251,7 +252,7 @@ func protoParityVectors(add parityAdd, add2 parityAdd2, corrupt func([]uint8) []
 
 	for _, b := range bases {
 		add(b.proto, b.w, b.colT, b.cfg, b.dec(b.w))
-		for it := 0; it < 16*parityMult(); it++ {
+		for range 16 * parityMult() {
 			w := corrupt(b.w)
 			add(b.proto, w, b.colT, b.cfg, b.dec(w))
 		}

@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-DECODE
+
 package decode
 
 import (
@@ -139,20 +140,10 @@ func canRender(wire []int, spb int, dominantLow bool, lead, trail int) []uint8 {
 	lo, hi := uint8(40), uint8(210)
 	var codes []uint8
 	push := func(bit, count int) {
+		// recessive (1) is the high level when dominantLow, dominant the other
 		v := lo
-		recessiveHigh := dominantLow
-		if bit == 1 { // recessive
-			if recessiveHigh {
-				v = hi
-			} else {
-				v = lo
-			}
-		} else { // dominant
-			if recessiveHigh {
-				v = lo
-			} else {
-				v = hi
-			}
+		if (bit == 1) == dominantLow {
+			v = hi
 		}
 		for range count {
 			codes = append(codes, v)
@@ -254,7 +245,7 @@ func TestDecodeCANFDStandardRoundTrip(t *testing.T) {
 
 // TRLC-LINKS: REQ-SDS-018
 func hasBang(s string) bool {
-	for i := 0; i < len(s); i++ {
+	for i := range len(s) {
 		if s[i] == '!' {
 			return true
 		}

@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-DECODE
+
 package decode
 
 import (
@@ -40,7 +41,7 @@ func i2cConditionsOnEdges(r Result, scl *sliced, colTimeS float64) bool {
 	}
 	on, all := 0, 0
 	for _, s := range r.Spans {
-		if s.Kind != "start" && s.Kind != "stop" {
+		if s.Kind != kindStart && s.Kind != kindStop {
 			continue
 		}
 		all++
@@ -71,10 +72,10 @@ func sentDistinctFrames(spans []Span) int {
 		switch s.Kind {
 		case "sync":
 			frame = frame[:0]
-		case "data", "frame-error":
-			frame = append(frame, byte(s.Val))
+		case kindData, kindFrameError:
+			frame = append(frame, byte(s.Val)) //nolint:gosec // a SENT nibble is 0..15
 		case "crc":
-			seen[string(append(frame, byte(s.Val)))] = true
+			seen[string(append(frame, byte(s.Val)))] = true //nolint:gosec // a SENT CRC is 0..15
 		}
 	}
 	return len(seen)
@@ -124,7 +125,7 @@ func loneFrameOnLine(r Result, s *sliced) Result {
 	}
 	frames, from, to := 0, -1, -1
 	for _, sp := range r.Spans {
-		if sp.Kind == "sof" {
+		if sp.Kind == kindSOF {
 			frames++
 			if from < 0 {
 				from = sp.I0
@@ -140,7 +141,7 @@ func loneFrameOnLine(r Result, s *sliced) Result {
 }
 
 // TRLC-LINKS: REQ-SDS-018
-func scoreResult(r Result) float64 {
+func scoreResult(r Result) float64 { //nolint:gocyclo // one self-contained rule per protocol, kept together in the order they apply
 	if !r.OK {
 		return -1e9
 	}
@@ -156,8 +157,8 @@ func scoreResult(r Result) float64 {
 		return out
 	}
 	switch r.Proto {
-	case "i2c":
-		c := kinds("addr", "ack", "nak", "data", "start")
+	case protoI2C:
+		c := kinds(kindAddr, "ack", "nak", kindData, kindStart)
 		addrs, acks, datas, starts := c[0], c[1]+c[2], c[3], c[4]
 		if addrs == 0 { // no addressed device -> a channel-swap mis-read, not real I2C
 			return -1e9
@@ -200,7 +201,7 @@ func scoreResult(r Result) float64 {
 			return -1e9
 		}
 		return float64(addrs*100 + acks*30 + datas*20 + starts*5)
-	case "uart":
+	case protoUART:
 		// One byte is no UART: its stop bit checks on half of random lines - a
 		// MIL-1553 bus at 1us/div (part of a word on screen) read as "UART
 		// 2000000 8N1, 1 byte" on 3 screens of 8. Show more of the signal.
@@ -228,7 +229,7 @@ func scoreResult(r Result) float64 {
 		if pulseBytes(r.Bytes) || clockOrPulseBytes(r.Bytes) {
 			return -1e9
 		}
-		c := kinds("frame-error", "parity-error")
+		c := kinds(kindFrameError, kindParityError)
 		// A UART at a rate none uses frames clean (an ESP8266's 74880 Bd boot
 		// log does): misframed bytes there are another line's (an IR remote's
 		// pulses read "UART 1777 Bd", one byte in twelve misframed)
@@ -244,12 +245,12 @@ func scoreResult(r Result) float64 {
 		score := float64(len(r.Bytes)*10 - c[0]*35 - c[1]*18 + 15)
 		// Clean at a rate UARTs use: every byte's stop bit checked. S.BUS's
 		// framing (considerSBUS) is tried only on a line its frames prove.
-		sbus := r.Inverted && r.Parity == "even" && r.Baud == sbusBaud
+		sbus := r.Inverted && r.Parity == parityEven && r.Baud == sbusBaud
 		if (std || sbus) && c[0] == 0 && c[1] == 0 && len(r.Bytes) >= 8 {
 			score += 100
 		}
 		return score
-	case "spi":
+	case protoSPI:
 		if len(r.Bytes) == 0 {
 			return -1e9
 		}
@@ -268,7 +269,7 @@ func scoreResult(r Result) float64 {
 			text = 6
 		}
 		return float64(len(r.Bytes)*2) + r.Margin*10 + text
-	case "manchester":
+	case protoManchester:
 		// Heuristic (no CRC): must clear real UART/SPI on their own signals, so
 		// it is weighted between them; coding violations pull it down hard. One
 		// byte is no evidence (part of a MIL-1553 word at 1us/div read as
@@ -276,11 +277,11 @@ func scoreResult(r Result) float64 {
 		if len(r.Bytes) < 2 {
 			return -1e9
 		}
-		c := kinds("start", "frame-error")
+		c := kinds(kindStart, kindFrameError)
 		return float64(len(r.Bytes)*8 + c[0]*10 - c[1]*30)
-	case "sent":
+	case protoSENT:
 		// OK already gates on >=1 CRC-4-valid frame; score by validated frames.
-		c := kinds("crc", "data", "frame-error", "sync")
+		c := kinds("crc", kindData, kindFrameError, "sync")
 		// CRC-4 passes one random frame in 16: a lone valid frame among many
 		// syncs is chance, as a UART at under two samples a bit reads as
 		// "SENT, 1 of 17 frames". A quarter of the
@@ -301,10 +302,10 @@ func scoreResult(r Result) float64 {
 			return float64(150 + c[1]*4 - c[2]*20)
 		}
 		return float64(c[0]*300 + c[1]*4 - c[2]*20)
-	case "canfd":
+	case protoCANFD:
 		// Require a CRC-15-validated classic frame (FD trailers are best-effort
 		// and carry no verified CRC here — never auto-claim CAN on those alone).
-		c := kinds("crc", "frame-error")
+		c := kinds("crc", kindFrameError)
 		if c[0] == 0 {
 			return -1e9
 		}
@@ -314,15 +315,15 @@ func scoreResult(r Result) float64 {
 			return -1e9
 		}
 		return float64(c[0]*500 + len(r.Bytes)*2 - c[1]*60)
-	case "mil1553":
+	case protoMIL1553:
 		// One "data" span per word; a parity-failed word adds one frame-error.
-		c := kinds("data", "frame-error")
+		c := kinds(kindData, kindFrameError)
 		good := c[0] - c[1]
 		if good <= 0 {
 			return -1e9
 		}
 		return float64(good*150 + c[0]*10 - c[1]*40)
-	case "arinc429":
+	case protoARINC429:
 		// ARINC 429 runs at 100 kbit/s or 12-14.5 kbit/s: words read at
 		// another rate are another bus's pulses (a MIL-1553 bus at 500us/div
 		// read as "ARINC 35.9kb/s").
@@ -330,7 +331,7 @@ func scoreResult(r Result) float64 {
 			return -1e9
 		}
 		// One "addr" (label) span per word; a parity-failed word adds "!P".
-		c := kinds("addr", "frame-error")
+		c := kinds(kindAddr, kindFrameError)
 		good := c[0] - c[1]
 		if good <= 0 {
 			return -1e9
@@ -339,16 +340,16 @@ func scoreResult(r Result) float64 {
 		// pulses. Keep that framing evidence: partial boundary words can
 		// otherwise add enough false UART bytes to outscore valid ARINC.
 		return float64(good*150 + c[0]*50 - c[1]*40)
-	case "usbls":
+	case protoUSBLS:
 		// A valid PID (nibble + matching complement) spans "addr"; bad -> error.
-		c := kinds("addr", "frame-error")
+		c := kinds(kindAddr, kindFrameError)
 		if c[0] == 0 {
 			return -1e9
 		}
 		return float64(c[0]*120 + len(r.Bytes)*4 - c[1]*30)
-	case "flexray":
+	case protoFlexRay:
 		// The header note span is "addr" only when the header CRC-11 verified.
-		c := kinds("addr", "frame-error")
+		c := kinds(kindAddr, kindFrameError)
 		if c[0] == 0 {
 			return -1e9
 		}
@@ -585,22 +586,8 @@ func idleLevel(s *sliced) int {
 	}
 	median := 0
 	if len(s.edges) >= 3 {
-		runs := make([]int, 0, len(s.edges)+1)
-		longest, at, prev := 0, 0, 0
-		for k := 0; k <= len(s.edges); k++ { // the runs between edges and the record's ends
-			end := s.n
-			if k < len(s.edges) {
-				end = s.edges[k].i
-			}
-			r := end - prev
-			runs = append(runs, r)
-			if r > longest {
-				longest, at = r, prev
-			}
-			prev = end
-		}
-		sort.Ints(runs)
-		median = runs[len(runs)/2]
+		var longest, at int
+		median, longest, at = levelRunStats(s)
 		if longest > 2*median {
 			if l := s.levels()[min(at+longest/2, s.n-1)]; l == 0 || l == 1 {
 				return int(l)
@@ -609,9 +596,10 @@ func idleLevel(s *sliced) int {
 	}
 	hi, lo := 0, 0
 	for _, l := range s.levels() {
-		if l == 1 {
+		switch l {
+		case 1:
 			hi++
-		} else if l == 0 {
+		case 0:
 			lo++
 		}
 	}
@@ -621,11 +609,33 @@ func idleLevel(s *sliced) int {
 	return 0
 }
 
+// levelRunStats is the median of a line's runs between edges and the
+// record's ends, its longest run and where that starts.
+// TRLC-LINKS: REQ-SDS-018
+func levelRunStats(s *sliced) (median, longest, at int) {
+	runs := make([]int, 0, len(s.edges)+1)
+	prev := 0
+	for k := 0; k <= len(s.edges); k++ {
+		end := s.n
+		if k < len(s.edges) {
+			end = s.edges[k].i
+		}
+		r := end - prev
+		runs = append(runs, r)
+		if r > longest {
+			longest, at = r, prev
+		}
+		prev = end
+	}
+	sort.Ints(runs)
+	return runs[len(runs)/2], longest, at
+}
+
 // Autodetect tries every plausible protocol / channel-role / sub-setting against
 // the two channels (c1=index 0, c2=index 1) and returns the best-scoring decoded
 // Result, formatted per `format`. A Result with Proto=="off" means nothing matched.
 // TRLC-LINKS: REQ-SDS-018
-func Autodetect(c1, c2 []uint8, colTimeS float64, format string) Result {
+func Autodetect(c1, c2 []uint8, colTimeS float64, format string) Result { //nolint:gocyclo // Autodetect's stages run in order on its shared state and closures
 	chans := [2][]uint8{c1, c2}
 	// The helpers below take the channels' figures by address: copies of
 	// them as arguments were merged by the compiler (go1.26) into the stack
@@ -661,13 +671,13 @@ func Autodetect(c1, c2 []uint8, colTimeS float64, format string) Result {
 	// in a few hundred places. Neither is named; a longer record shows more
 	// transfers or a line reset.
 	settle := func() Result {
-		if best.Proto == "swd" && spiBytes >= 8 && swdWholeReads(best) < 2 && !strings.Contains(best.Text, "LINERESET") {
+		if best.Proto == protoSWD && spiBytes >= 8 && swdWholeReads(best) < 2 && !strings.Contains(best.Text, "LINERESET") {
 			return Result{Proto: "off", Error: "one SWD transfer or SPI bytes: show more of the signal"}
 		}
 		return best
 	}
 	consider := func(r Result, src string, roles Roles) {
-		if r.Proto == "spi" && r.OK {
+		if r.Proto == protoSPI && r.OK {
 			spiBytes = max(spiBytes, len(r.Bytes))
 		}
 		if sc := scoreResult(r); sc > bestScore {
@@ -705,11 +715,12 @@ func Autodetect(c1, c2 []uint8, colTimeS float64, format string) Result {
 
 	// UART — async single-wire. Skip on a clocked pair (that's SPI) or a lone clock
 	// (else auto-baud invents bogus 0x55s from the square wave).
-	var uartBaud [2]float64 // each line's UART rate, as read: MIDI's evidence
-	if !locked {
+	// each line's UART rate, as read: MIDI's evidence
+	var uartBaud [2]float64
+	if !locked { //nolint:nestif // Autodetect's stages run in order on its shared state and closures
 		for _, k := range active {
 			if !isClocky(k) {
-				ru := DecodeUART(chans[k], colTimeS, UARTCfg{Bits: 8, Parity: "none", Format: format})
+				ru := DecodeUART(chans[k], colTimeS, UARTCfg{Bits: 8, Parity: parityNone, Format: format})
 				if ru.OK {
 					uartBaud[k] = float64(ru.Baud)
 				}
@@ -725,8 +736,8 @@ func Autodetect(c1, c2 []uint8, colTimeS float64, format string) Result {
 		if u1 < u0 {
 			k = 1
 		}
-		if ru := DecodeUART(chans[k], colTimeS, UARTCfg{Bits: 8, Parity: "none", Format: format}); ru.OK && len(ru.Bytes) >= 8 &&
-			nearStandardBaud(float64(ru.Baud), 0.03) && ru.count("frame-error")[0] == 0 {
+		if ru := DecodeUART(chans[k], colTimeS, UARTCfg{Bits: 8, Parity: parityNone, Format: format}); ru.OK && len(ru.Bytes) >= 8 &&
+			nearStandardBaud(float64(ru.Baud), 0.03) && ru.count(kindFrameError)[0] == 0 {
 			uartBaud[k] = float64(ru.Baud)
 			consider(ru, chName(k), line(k))
 		}
@@ -756,13 +767,14 @@ func Autodetect(c1, c2 []uint8, colTimeS float64, format string) Result {
 			// the line that clocks the other is a clock, its duty moved
 			// by noise and slow edges: no PWM, and its bursts no Miller
 			// line code (an MDIO bus's MDC, cut to a frame)
-			if (r.Proto == "pwm" || r.Proto == "miller") && locked && clk[k].clockLike() > clk[1-k].clockLike() {
+			if (r.Proto == protoPWM || r.Proto == protoMiller) && locked && clk[k].clockLike() > clk[1-k].clockLike() {
 				return
 			}
 			consider(r, chName(k), line(k))
 		})
 	}
-	if len(active) >= 2 && !freeClock { // PS/2, SWD, MDIO, Wiegand: clock (D0) and data (D1) either way round
+	// PS/2, SWD, MDIO, Wiegand: clock (D0) and data (D1) either way round
+	if len(active) >= 2 && !freeClock { //nolint:nestif // Autodetect's stages run in order on its shared state and closures
 		clockLine := -1 // a clocked pair's clock: PS/2, SWD and MDIO are clocked by it, not by its data
 		if clockedPair {
 			clockLine = 0
@@ -774,7 +786,7 @@ func Autodetect(c1, c2 []uint8, colTimeS float64, format string) Result {
 			// MDIO moves at MDC's rise, the station's bits and the PHY's
 			// alike: a line that keeps that place no better than now and
 			// then (an IR code beside a square) carries no MDIO frame
-			if r.Proto == "mdio" {
+			if r.Proto == protoMDIO {
 				if share, n := phaseLock(&clk[a], &clk[1-a].s); n >= 12 && share < 0.8 {
 					return
 				}
@@ -787,13 +799,13 @@ func Autodetect(c1, c2 []uint8, colTimeS float64, format string) Result {
 			}
 			// PDI_CLK runs on from the programmer, one period throughout:
 			// a line of random edges or a line code's two widths clocks none
-			if r.Proto == "pdi" && clk[a].clockLike() < 0.7 {
+			if r.Proto == protoPDI && clk[a].clockLike() < 0.7 {
 				return
 			}
 			// near half duty, its data moving at one place in the cycle:
 			// an SPI clock's short pulses, or a square beside a carrier,
 			// clocks no PDI
-			if r.Proto == "pdi" {
+			if r.Proto == protoPDI {
 				if share, n := phaseLock(&clk[a], &clk[1-a].s); clk[a].pulseClock() || (n >= 12 && share < 0.6) {
 					return
 				}
@@ -801,7 +813,7 @@ func Autodetect(c1, c2 []uint8, colTimeS float64, format string) Result {
 			// a driver's STEP pulses are one width, its timer's, however
 			// the rate ramps: a line code's highs of several widths (a
 			// Miller line read as STEP) are no steps
-			if r.Proto == "stepper" {
+			if r.Proto == protoStepper {
 				if st := runStats(clk[a].s); st.highs >= 4 && st.highUniform < 0.7 {
 					return
 				}
@@ -809,7 +821,7 @@ func Autodetect(c1, c2 []uint8, colTimeS float64, format string) Result {
 			// D0 and D1 idle and pulse briefly (some 50 us a bit of a
 			// millisecond or two): lines whose runs are alike either way
 			// (a random line, I2C's SCL and SDA) carry no Wiegand bits
-			if r.Proto == "wiegand" {
+			if r.Proto == protoWiegand {
 				for _, k := range []int{a, 1 - a} {
 					if st := runStats(clk[k].s); st.lows >= 3 && st.highs >= 3 && 4*min(st.medLow, st.medHigh) > max(st.medLow, st.medHigh) {
 						return
@@ -819,7 +831,7 @@ func Autodetect(c1, c2 []uint8, colTimeS float64, format string) Result {
 			consider(r, "CLK "+chName(a)+" DATA "+chName(1-a), Roles{ChA: a, ChB: 1 - a})
 		})
 	}
-	if len(active) >= 2 && !freeClock {
+	if len(active) >= 2 && !freeClock { //nolint:nestif // Autodetect's stages run in order on its shared state and closures
 		var i2cRead [2]Result                          // each line read as SCL
 		for _, ord := range [][2]int{{0, 1}, {1, 0}} { // I2C: scoring resolves SCL/SDA order
 			r := DecodeI2C(chans[ord[0]], chans[ord[1]], colTimeS, I2CCfg{Format: format, Deglitch: true})
@@ -941,9 +953,9 @@ type lineRuns struct {
 
 // runStats measures a sliced line's closed runs (lineRuns).
 // TRLC-LINKS: REQ-SDS-018
-func runStats(S sliced) lineRuns {
+func runStats(sl sliced) lineRuns {
 	var lo, hi []float64
-	for _, r := range levelRuns(S) {
+	for _, r := range levelRuns(sl) {
 		if r.open {
 			continue
 		}
@@ -977,7 +989,7 @@ func runStats(S sliced) lineRuns {
 func swdWholeReads(r Result) int {
 	n := 0
 	for _, s := range r.Spans {
-		if s.Kind == "data" && len(s.Text) == 8 {
+		if s.Kind == kindData && len(s.Text) == 8 {
 			n++
 		}
 	}
@@ -990,7 +1002,7 @@ func swdWholeReads(r Result) int {
 func i2cAddressesMove(r Result) bool {
 	seen := false
 	for _, s := range r.Spans {
-		if s.Kind != "addr" {
+		if s.Kind != kindAddr {
 			continue
 		}
 		if s.Val != 0 && s.Val != 0x7f {
@@ -1012,10 +1024,10 @@ func i2cAckedTransfers(r Result) int {
 	open, datas, nak := false, 0, false
 	for k, s := range r.Spans {
 		switch s.Kind {
-		case "addr":
+		case kindAddr:
 			addrs++
 			open, datas, nak = k+2 < len(r.Spans) && r.Spans[k+2].Kind == "ack", 0, false
-		case "data":
+		case kindData:
 			if nak { // a byte after a NAK: no master's
 				open = false
 			}
@@ -1024,10 +1036,10 @@ func i2cAckedTransfers(r Result) int {
 			if datas > 0 {
 				nak = true
 			}
-		case "start":
+		case kindStart:
 			starts++
 			open = false
-		case "stop":
+		case kindStop:
 			if open && datas > 0 {
 				n++
 			}
@@ -1192,12 +1204,12 @@ func i2cDataPastNak(r Result) int {
 		switch s.Kind {
 		case "nak":
 			nak = true
-		case "data":
+		case kindData:
 			if nak {
 				n++
 			}
 			nak = false
-		case "start", "stop", "addr":
+		case kindStart, kindStop, kindAddr:
 			nak = false
 		}
 	}
@@ -1211,19 +1223,19 @@ func i2cDataPastAddrNak(r Result) bool {
 	addr, nak := false, false
 	for _, s := range r.Spans {
 		switch s.Kind {
-		case "addr":
+		case kindAddr:
 			addr, nak = true, false
-		case "rw":
+		case kindRW:
 		case "nak":
 			nak = addr
 			addr = false
 		case "ack":
 			addr = false
-		case "data":
+		case kindData:
 			if nak {
 				return true
 			}
-		case "start", "stop":
+		case kindStart, kindStop:
 			addr, nak = false, false
 		}
 	}
@@ -1237,20 +1249,20 @@ func i2cReadEndsAcked(r Result) bool {
 	read, last := false, ""
 	for _, s := range r.Spans {
 		switch s.Kind {
-		case "rw":
+		case kindRW:
 			read, last = s.Text == "R", ""
-		case "data":
-			last = "data"
+		case kindData:
+			last = kindData
 		case "ack", "nak":
-			if last == "data" {
+			if last == kindData {
 				last = "data-" + s.Kind
 			}
-		case "stop":
+		case kindStop:
 			if read && last == "data-ack" {
 				return true
 			}
 			read, last = false, ""
-		case "start":
+		case kindStart:
 			read, last = false, ""
 		}
 	}
@@ -1264,9 +1276,9 @@ func i2cEscape(r Result) bool {
 	run, last := 0, ""
 	for _, s := range r.Spans {
 		switch {
-		case (s.Kind == "start" || s.Kind == "stop") && s.Kind != last:
+		case (s.Kind == kindStart || s.Kind == kindStop) && s.Kind != last:
 			run++
-		case s.Kind == "start" || s.Kind == "stop":
+		case s.Kind == kindStart || s.Kind == kindStop:
 			run = 1
 		default:
 			run = 0

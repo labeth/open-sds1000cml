@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-DECODE
+
 package decode
 
 import (
@@ -24,20 +25,20 @@ type lrun struct {
 
 // levelRuns is the sliced line as its runs.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-233
-func levelRuns(S sliced) []lrun {
-	E := S.edges
+func levelRuns(sl sliced) []lrun {
+	E := sl.edges
 	if len(E) == 0 {
-		return []lrun{{lvl: logicAt(&S, 0), x0: 0, x1: float64(S.n), open: true}}
+		return []lrun{{lvl: logicAt(&sl, 0), x0: 0, x1: float64(sl.n), open: true}}
 	}
 	first := 1
 	if E[0].dir > 0 {
 		first = 0
 	}
-	out := scratchSlice[lrun](S.sc, len(E)+1)[:len(E)+1]
+	out := scratchSlice[lrun](sl.sc, len(E)+1)[:len(E)+1]
 	out[0] = lrun{lvl: first, x0: 0, x1: E[0].x, open: true}
 	for k := range E {
 		r := &out[k+1] // set field by field: no struct copied in
-		r.lvl, r.x0, r.x1, r.open = 0, E[k].x, float64(S.n), true
+		r.lvl, r.x0, r.x1, r.open = 0, E[k].x, float64(sl.n), true
 		if E[k].dir > 0 {
 			r.lvl = 1
 		}
@@ -138,10 +139,10 @@ func DecodeOneWireEdges(codes *EdgeLine, colTimeS float64, cfg OneWireCfg) Resul
 func decodeOneWire(codes lineIn, colTimeS float64, cfg OneWireCfg) Result {
 	S := codes.slice(cfg.Threshold, cfg.HaveThr)
 	if !S.ok {
-		return Result{Proto: "onewire", Error: S.reason}
+		return Result{Proto: protoOneWire, Error: S.reason}
 	}
 	if !(colTimeS > 0) {
-		return Result{Proto: "onewire", Error: "no sample time"}
+		return Result{Proto: protoOneWire, Error: msgNoSampleTime}
 	}
 	runs := levelRuns(S)
 	n := S.n
@@ -167,7 +168,7 @@ func decodeOneWire(codes lineIn, colTimeS float64, cfg OneWireCfg) Result {
 				v |= x.v << i
 			}
 			bits = bits[8:]
-			txt, kind := FmtByte(v, cfg.Format), "data"
+			txt, kind := FmtByte(v, cfg.Format), kindData
 			switch phase {
 			case 0:
 				if name, ok := oneWireROM[v]; ok {
@@ -190,7 +191,7 @@ func decodeOneWire(codes lineIn, colTimeS float64, cfg OneWireCfg) Result {
 				txt = hex2(v)
 				if romLeft--; romLeft == 0 {
 					if crc8Maxim(rom[:7]) != v {
-						txt, kind = "!"+txt, "frame-error"
+						txt, kind = "!"+txt, kindFrameError
 					}
 					phase = 3
 				}
@@ -203,7 +204,7 @@ func decodeOneWire(codes lineIn, colTimeS float64, cfg OneWireCfg) Result {
 			for i := range 8 {
 				v |= bits[3*i+2].v << i
 			}
-			flushByte(bits[:24], v, hex2(v), "data")
+			flushByte(bits[:24], v, hex2(v), kindData)
 			bits = bits[24:]
 			if romLeft++; romLeft == 8 {
 				phase, romLeft = 3, 0
@@ -234,7 +235,7 @@ func decodeOneWire(codes lineIn, colTimeS float64, cfg OneWireCfg) Result {
 				od = false
 				pdh = 60
 			}
-			spans = append(spans, pspan(r.x0, r.x1, n, "RST", "sof", 0))
+			spans = append(spans, pspan(r.x0, r.x1, n, "RST", kindSOF, 0))
 			toks = append(toks, "RST")
 			phase, romLeft, inTx = 0, 0, false
 			// the presence pulse: a low within pdh after the release
@@ -264,10 +265,10 @@ func decodeOneWire(codes lineIn, colTimeS float64, cfg OneWireCfg) Result {
 	}
 	endTx()
 	if len(spans) == 0 {
-		return Result{Proto: "onewire", Error: "no 1-Wire reset or slot"}
+		return Result{Proto: protoOneWire, Error: "no 1-Wire reset or slot"}
 	}
 	res := Result{
-		OK: good, Proto: "onewire", Spans: spans, Text: strings.Join(toks, " "), Bytes: units,
+		OK: good, Proto: protoOneWire, Spans: spans, Text: strings.Join(toks, " "), Bytes: units,
 		Thr: S.threshold, SPB: 1e-6 / colTimeS,
 	}
 	if od {
@@ -289,6 +290,10 @@ type WS281xCfg struct {
 	Format    string
 }
 
+// wsEdgeLatchUs is the low, in microseconds, that latches a WS281x frame
+// at the record's ends: eight bits of the slow 400 kbit/s rate.
+const wsEdgeLatchUs = 20
+
 // DecodeWS281x decodes WS281x LED strips: each bit a high pulse and its low
 // rest (800 or 400 kbit/s), a 1 the long high of the two the frame holds
 // (one length only: high over half the period), bytes most significant bit
@@ -298,10 +303,6 @@ type WS281xCfg struct {
 // latches: 10us/div held 44 us of each); each frame opens with a zero-width
 // "sof".
 // OK needs a frame of whole LEDs at a steady bit rate.
-// wsEdgeLatchUs is the low, in microseconds, that latches a WS281x frame
-// at the record's ends: eight bits of the slow 400 kbit/s rate.
-const wsEdgeLatchUs = 20
-
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-233
 func DecodeWS281x(codes []uint8, colTimeS float64, cfg WS281xCfg) Result {
 	return decodeWS281x(samplesIn(codes), colTimeS, cfg)
@@ -315,13 +316,13 @@ func DecodeWS281xEdges(codes *EdgeLine, colTimeS float64, cfg WS281xCfg) Result 
 
 // decodeWS281x is DecodeWS281x over samples or edges.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-233
-func decodeWS281x(codes lineIn, colTimeS float64, cfg WS281xCfg) Result {
+func decodeWS281x(codes lineIn, colTimeS float64, cfg WS281xCfg) Result { //nolint:gocyclo,funlen // a protocol state machine kept step for step with its decode_*.js twin (parity tests)
 	S := codes.slice(cfg.Threshold, cfg.HaveThr)
 	if !S.ok {
-		return Result{Proto: "ws281x", Error: S.reason}
+		return Result{Proto: protoWS281x, Error: S.reason}
 	}
 	if !(colTimeS > 0) {
-		return Result{Proto: "ws281x", Error: "no sample time"}
+		return Result{Proto: protoWS281x, Error: msgNoSampleTime}
 	}
 	runs := levelRuns(S)
 	o := newWireOut(S.n, S.sc)
@@ -414,7 +415,7 @@ func decodeWS281x(codes lineIn, colTimeS float64, cfg WS281xCfg) Result {
 				break
 			}
 		}
-		o.add(frame[0].x0, frame[0].x0, "", "sof", 0, false)
+		o.add(frame[0].x0, frame[0].x0, "", kindSOF, 0, false)
 		nb := len(frame) / 8
 		both, mid := hi > 1.5*lo, (lo+hi)/2
 		for b := range nb {
@@ -435,13 +436,13 @@ func decodeWS281x(codes lineIn, colTimeS float64, cfg WS281xCfg) Result {
 					v |= 1 << (7 - i)
 				}
 			}
-			o.add(frame[8*b].x0, frame[8*b+7].x0+med, FmtByte(v, cfg.Format), "data", v, true)
+			o.add(frame[8*b].x0, frame[8*b+7].x0+med, FmtByte(v, cfg.Format), kindData, v, true)
 		}
 		if rest := len(frame) % 8; rest != 0 {
 			o.add(frame[8*nb].x0, frame[len(frame)-1].x0+med, "?", "gap", 0, false)
 		}
 		if !latch.open || latch.x1 > latch.x0 {
-			o.add(latch.x0, latch.x1, "RST", "rw", 0, false)
+			o.add(latch.x0, latch.x1, "RST", kindRW, 0, false)
 		}
 		if steady && nb >= 3 && nb%3 == 0 && len(frame)%8 == 0 && latched(lk) {
 			good = true
@@ -491,9 +492,9 @@ func decodeWS281x(codes lineIn, colTimeS float64, cfg WS281xCfg) Result {
 	}
 	frame = nil
 	if len(o.spans) == 0 {
-		return Result{Proto: "ws281x", Error: "no WS281x frame"}
+		return Result{Proto: protoWS281x, Error: "no WS281x frame"}
 	}
-	res := Result{OK: good, Proto: "ws281x", Spans: o.spans, Text: strings.Join(o.toks, " "), Bytes: o.units, Thr: S.threshold}
+	res := Result{OK: good, Proto: protoWS281x, Spans: o.spans, Text: strings.Join(o.toks, " "), Bytes: o.units, Thr: S.threshold}
 	if len(periods) > 0 {
 		res.SPB = periods[0]
 		res.Baud = snapRate(int(math.Round(1/(periods[0]*colTimeS))), 400e3, 800e3)
@@ -534,10 +535,10 @@ func DecodeDHTEdges(codes *EdgeLine, colTimeS float64, cfg DHTCfg) Result {
 func decodeDHT(codes lineIn, colTimeS float64, cfg DHTCfg) Result {
 	S := codes.slice(cfg.Threshold, cfg.HaveThr)
 	if !S.ok {
-		return Result{Proto: "dht", Error: S.reason}
+		return Result{Proto: protoDHT, Error: S.reason}
 	}
 	if !(colTimeS > 0) {
-		return Result{Proto: "dht", Error: "no sample time"}
+		return Result{Proto: protoDHT, Error: msgNoSampleTime}
 	}
 	runs := levelRuns(S)
 	n := S.n
@@ -558,7 +559,7 @@ func decodeDHT(codes lineIn, colTimeS float64, cfg DHTCfg) Result {
 		if !in(runs[k+1], 5, 250) || !in(runs[k+2], 40, 120) || !in(runs[k+3], 40, 120) {
 			continue
 		}
-		spans = append(spans, pspan(st.x0, st.x1, n, "START", "sof", 0))
+		spans = append(spans, pspan(st.x0, st.x1, n, "START", kindSOF, 0))
 		spans = append(spans, pspan(runs[k+2].x0, runs[k+3].x1, n, "RESP", "ack", 0))
 		toks = append(toks, "START", "RESP")
 		j := k + 4
@@ -583,11 +584,11 @@ func decodeDHT(codes lineIn, colTimeS float64, cfg DHTCfg) Result {
 			xs = append(xs, [2]float64{x0, runs[j-1].x1})
 		}
 		for i, v := range vals {
-			txt, kind := FmtByte(v, cfg.Format), "data"
+			txt, kind := FmtByte(v, cfg.Format), kindData
 			if i == 4 {
 				txt = hex2(v)
 				if (vals[0]+vals[1]+vals[2]+vals[3])&0xff != v {
-					txt, kind = "!"+txt, "frame-error"
+					txt, kind = "!"+txt, kindFrameError
 				} else {
 					good = true
 				}
@@ -604,10 +605,10 @@ func decodeDHT(codes lineIn, colTimeS float64, cfg DHTCfg) Result {
 		k = j - 1
 	}
 	if len(spans) == 0 {
-		return Result{Proto: "dht", Error: "no DHT start and response"}
+		return Result{Proto: protoDHT, Error: "no DHT start and response"}
 	}
 	res := Result{
-		OK: good, Proto: "dht", Spans: spans, Text: strings.Join(toks, " "), Bytes: units,
+		OK: good, Proto: protoDHT, Spans: spans, Text: strings.Join(toks, " "), Bytes: units,
 		Thr: S.threshold, SPB: 1e-6 / colTimeS, Baud: 10000,
 	}
 	if !good {
@@ -648,10 +649,10 @@ func DecodeCECEdges(codes *EdgeLine, colTimeS float64, cfg CECCfg) Result {
 func decodeCEC(codes lineIn, colTimeS float64, cfg CECCfg) Result {
 	S := codes.slice(cfg.Threshold, cfg.HaveThr)
 	if !S.ok {
-		return Result{Proto: "cec", Error: S.reason}
+		return Result{Proto: protoCEC, Error: S.reason}
 	}
 	if !(colTimeS > 0) {
-		return Result{Proto: "cec", Error: "no sample time"}
+		return Result{Proto: protoCEC, Error: msgNoSampleTime}
 	}
 	runs := levelRuns(S)
 	n := S.n
@@ -692,7 +693,7 @@ func decodeCEC(codes lineIn, colTimeS float64, cfg CECCfg) Result {
 		if per := ms(st) + ms(runs[k+1]); per < 4.3 || per > 4.7 {
 			continue
 		}
-		spans = append(spans, pspan(st.x0, runs[k+1].x1, n, "START", "sof", 0))
+		spans = append(spans, pspan(st.x0, runs[k+1].x1, n, "START", kindSOF, 0))
 		toks = append(toks, "START")
 		j := k + 2
 		dest := -1
@@ -712,7 +713,7 @@ func decodeCEC(codes lineIn, colTimeS float64, cfg CECCfg) Result {
 			}
 			if got < 10 { // a block cut short, or the message ended with no EOM
 				clean = false
-				spans = append(spans, pspan(x0, x0, n, "!", "frame-error", 0))
+				spans = append(spans, pspan(x0, x0, n, "!", kindFrameError, 0))
 				toks = append(toks, "!")
 				break
 			}
@@ -725,11 +726,11 @@ func decodeCEC(codes lineIn, colTimeS float64, cfg CECCfg) Result {
 				dest = v & 0xf
 				txt = fmt.Sprintf("%X>%X", v>>4, v&0xf)
 			}
-			spans = append(spans, pspan(x0, ends[7], n, txt, "data", v))
+			spans = append(spans, pspan(x0, ends[7], n, txt, kindData, v))
 			toks = append(toks, txt)
 			units = append(units, v)
 			if bs[8] == 1 {
-				spans = append(spans, pspan(ends[7], ends[8], n, "EOM", "rw", 1))
+				spans = append(spans, pspan(ends[7], ends[8], n, "EOM", kindRW, 1))
 				toks = append(toks, "EOM")
 			}
 			acked := bs[9] == 0
@@ -753,10 +754,10 @@ func decodeCEC(codes lineIn, colTimeS float64, cfg CECCfg) Result {
 		k = j - 1
 	}
 	if len(spans) == 0 {
-		return Result{Proto: "cec", Error: "no CEC start bit"}
+		return Result{Proto: protoCEC, Error: "no CEC start bit"}
 	}
 	res := Result{
-		OK: good, Proto: "cec", Spans: spans, Text: strings.Join(toks, " "), Bytes: units,
+		OK: good, Proto: protoCEC, Spans: spans, Text: strings.Join(toks, " "), Bytes: units,
 		Thr: S.threshold, SPB: 2.4e-3 / colTimeS, Baud: 417,
 	}
 	if !good {
@@ -814,10 +815,10 @@ func DecodeJ1850Edges(codes *EdgeLine, colTimeS float64, cfg J1850Cfg) Result {
 func decodeJ1850(codes lineIn, colTimeS float64, cfg J1850Cfg) Result {
 	S := codes.slice(cfg.Threshold, cfg.HaveThr)
 	if !S.ok {
-		return Result{Proto: "j1850", Error: S.reason}
+		return Result{Proto: protoJ1850, Error: S.reason}
 	}
 	if !(colTimeS > 0) {
-		return Result{Proto: "j1850", Error: "no sample time"}
+		return Result{Proto: protoJ1850, Error: msgNoSampleTime}
 	}
 	runs := levelRuns(S)
 	n := S.n
@@ -827,11 +828,11 @@ func decodeJ1850(codes lineIn, colTimeS float64, cfg J1850Cfg) Result {
 	good := false
 	emit := func(vals []int, xs [][2]float64, crc bool) {
 		for i, v := range vals {
-			txt, kind := FmtByte(v, cfg.Format), "data"
+			txt, kind := FmtByte(v, cfg.Format), kindData
 			if crc && i == len(vals)-1 {
 				txt = hex2(v)
 				if len(vals) < 2 || j1850CRC(vals[:len(vals)-1]) != v {
-					txt, kind = "!"+txt, "frame-error"
+					txt, kind = "!"+txt, kindFrameError
 				} else {
 					good = true
 				}
@@ -847,7 +848,7 @@ func decodeJ1850(codes lineIn, colTimeS float64, cfg J1850Cfg) Result {
 		if r.lvl != 1 || r.open || w < 163 || w > 239 {
 			continue
 		}
-		spans = append(spans, pspan(r.x0, r.x1, n, "SOF", "sof", 0))
+		spans = append(spans, pspan(r.x0, r.x1, n, "SOF", kindSOF, 0))
 		toks = append(toks, "SOF")
 		var vals []int
 		var xs [][2]float64
@@ -872,7 +873,7 @@ func decodeJ1850(codes lineIn, colTimeS float64, cfg J1850Cfg) Result {
 				if runs[j+1].lvl != 1 || runs[j+1].open || nbw < 34 || nbw > 163 {
 					break
 				}
-				spans = append(spans, pspan(q.x0, q.x1, n, "EOD", "rw", 0))
+				spans = append(spans, pspan(q.x0, q.x1, n, "EOD", kindRW, 0))
 				toks = append(toks, "EOD")
 				inIFR = true
 				j++
@@ -901,16 +902,16 @@ func decodeJ1850(codes lineIn, colTimeS float64, cfg J1850Cfg) Result {
 			if len(vals) > 0 {
 				emit(vals, xs, false)
 			}
-			spans = append(spans, pspan(runs[min(j, len(runs)-1)].x0, runs[min(j, len(runs)-1)].x0, n, "!", "frame-error", 0))
+			spans = append(spans, pspan(runs[min(j, len(runs)-1)].x0, runs[min(j, len(runs)-1)].x0, n, "!", kindFrameError, 0))
 			toks = append(toks, "!")
 		}
 		k = j
 	}
 	if len(spans) == 0 {
-		return Result{Proto: "j1850", Error: "no J1850 start of frame"}
+		return Result{Proto: protoJ1850, Error: "no J1850 start of frame"}
 	}
 	res := Result{
-		OK: good, Proto: "j1850", Spans: spans, Text: strings.Join(toks, " "), Bytes: units,
+		OK: good, Proto: protoJ1850, Spans: spans, Text: strings.Join(toks, " "), Bytes: units,
 		Thr: S.threshold, SPB: 64e-6 / colTimeS, Baud: 10400,
 	}
 	if !good {

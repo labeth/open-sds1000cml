@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-DECODE
+
 package decode
 
 import (
@@ -227,7 +228,7 @@ func TestJSDecoderParity(t *testing.T) {
 			if p%2 == 1 {
 				n = 17
 			}
-			for j := 0; j < n; j++ {
+			for range n {
 				amb = append(amb, lv)
 			}
 			lv = 250 - lv
@@ -334,7 +335,7 @@ func TestJSDecoderParity(t *testing.T) {
 	rng := rand.New(rand.NewSource(int64(0xDEC0DE + fuzzKnob("PARITY_SEED", 0))))
 	corrupt := func(base []uint8) []uint8 {
 		w := append([]uint8{}, base...)
-		for r := 0; r < 1+rng.Intn(3); r++ {
+		for r := 0; r < 1+rng.Intn(3); r++ { //nolint:intrange // the bound draws from rng at every pass, and the recorded test data follow those draws
 			if len(w) == 0 {
 				break
 			}
@@ -434,7 +435,7 @@ func TestJSDecoderParity(t *testing.T) {
 		},
 	}
 	for _, bc := range bases {
-		for it := 0; it < 24*parityMult(); it++ {
+		for range 24 * parityMult() {
 			w := corrupt(bc.w)
 			add(bc.proto, w, bc.colT, bc.cfg, bc.dec(w))
 		}
@@ -461,7 +462,7 @@ func TestJSDecoderParity(t *testing.T) {
 			cs = append(cs, detectCase{"spi", l.a.codes(), l.b.codes(), 1 / sr, "spi", 0})
 		}
 		for _, c := range cs {
-			for it := 0; it < 6*parityMult(); it++ {
+			for range 6 * parityMult() {
 				mc, _ := fuzzMutate(rng, c)
 				for _, o := range [][2][]uint8{{mc.c1, mc.c2}, {mc.c2, mc.c1}} {
 					add2("swd", o[0], o[1], mc.colT, jsCfg{}, DecodeSWD(o[0], o[1], mc.colT, ClockedCfg{}))
@@ -476,7 +477,7 @@ func TestJSDecoderParity(t *testing.T) {
 			sr := 50 * hz
 			l := fuzzI2C(rng, hz, sr, 6)
 			c := detectCase{"i2c", l.a.codes(), l.b.codes(), 1 / sr, "i2c", 0}
-			for it := 0; it < 8*parityMult(); it++ {
+			for range 8 * parityMult() {
 				mc, _ := fuzzMutate(rng, c)
 				for _, o := range [][2][]uint8{{mc.c1, mc.c2}, {mc.c2, mc.c1}} {
 					add2("i2c", o[0], o[1], mc.colT, jsCfg{}, DecodeI2C(o[0], o[1], mc.colT, I2CCfg{}))
@@ -494,7 +495,7 @@ func TestJSDecoderParity(t *testing.T) {
 	if err := os.WriteFile(jf, blob, 0o644); err != nil {
 		t.Fatalf("write vectors: %v", err)
 	}
-	out, err := exec.Command(node, "../web/decparity_check.mjs", jf).CombinedOutput()
+	out, err := exec.CommandContext(t.Context(), node, "../web/decparity_check.mjs", jf).CombinedOutput()
 	t.Logf("parity (%d vectors):\n%s", len(vecs), out)
 	if err != nil {
 		t.Fatalf("Go<->JS decoder parity failed: %v", err)

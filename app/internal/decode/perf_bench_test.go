@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-DECODE
+
 package decode
 
 import (
@@ -15,6 +16,7 @@ import (
 // benchCase is the first detection case of proto.
 // TRLC-LINKS: REQ-SDS-018
 func benchCase(b *testing.B, proto string) detectCase {
+	b.Helper()
 	for _, c := range append(physDetectCases(), protoDetectCases()...) {
 		if c.proto == proto && c.chA == 0 {
 			return c
@@ -176,14 +178,14 @@ func BenchmarkAutodetect(b *testing.B) {
 		}
 	})
 	b.Run("fast-scope", func(b *testing.B) {
-		type cap struct {
+		type capture struct {
 			c1, c2 []uint8
 			ss     float64
 		}
-		var caps []cap
+		var caps []capture
 		for _, sc := range scopeCaptures {
 			c1, c2, ss := loadGzJSON(b, "testdata/"+sc.file)
-			caps = append(caps, cap{c1, c2, ss})
+			caps = append(caps, capture{c1, c2, ss})
 		}
 		for b.Loop() {
 			for _, c := range caps {

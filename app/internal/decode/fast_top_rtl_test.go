@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-DECODE
+
 package decode
 
 import (
@@ -56,7 +57,7 @@ func runFastTop(t *testing.T, dir, image string, wide []uint64, regs [][2]uint32
 		image, "+input=" + words, fmt.Sprintf("+length=%d", 2*len(wide)), "+regs=" + rp, fmt.Sprintf("+nregs=%d", len(regs)),
 		pre, post,
 	}, extra...)
-	out, err := exec.Command("vvp", args...).CombinedOutput()
+	out, err := exec.CommandContext(t.Context(), "vvp", args...).CombinedOutput()
 	if err != nil || !strings.Contains(string(out), "PASS fast top") {
 		t.Fatalf("simulate: %v\n%s", err, out)
 	}
@@ -67,7 +68,7 @@ func runFastTop(t *testing.T, dir, image string, wide []uint64, regs [][2]uint32
 		if _, err := fmt.Sscanf(line, "E %d %d %x %d %d", &e.Protocol, &e.Kind, &e.Value, &e.Meta, &n); err == nil {
 			events, eventWords = append(events, e), append(eventWords, n)
 		}
-		fmt.Sscanf(line, "T %d", &trigger)
+		_, _ = fmt.Sscanf(line, "T %d", &trigger) // only the T line sets it
 	}
 	return events, eventWords, trigger
 }
@@ -280,7 +281,7 @@ func compileWordsTop(t *testing.T, dir, name, defines string, decoders ...string
 	}, decoders...) {
 		args = append(args, filepath.Join(rtl, f))
 	}
-	if out, err := exec.Command("iverilog", args...).CombinedOutput(); err != nil {
+	if out, err := exec.CommandContext(t.Context(), "iverilog", args...).CombinedOutput(); err != nil {
 		t.Fatalf("compile: %v\n%s", err, out)
 	}
 	return image

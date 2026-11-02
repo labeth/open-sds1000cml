@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-DECODE
+
 package decode
 
 import (
@@ -107,7 +108,7 @@ func flash104Records(t *testing.T) (r []struct {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }() // opened to read: closing loses nothing
 	z, err := gzip.NewReader(f)
 	if err != nil {
 		t.Fatal(err)

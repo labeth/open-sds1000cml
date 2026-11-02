@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-DECODE
+
 package decode
 
 import (
@@ -14,37 +15,37 @@ var protoDecoders = []struct {
 	name string
 	dec  func(a, b []uint8, ct float64, rng *rand.Rand) Result
 }{
-	{"lin", func(a, b []uint8, ct float64, rng *rand.Rand) Result {
+	{"lin", func(a, _ []uint8, ct float64, rng *rand.Rand) Result {
 		return DecodeLIN(a, ct, LINCfg{Baud: []int{0, -5, 1, 19200, 1 << 30}[rng.Intn(5)]})
 	}},
-	{"dmx512", func(a, b []uint8, ct float64, rng *rand.Rand) Result {
+	{"dmx512", func(a, _ []uint8, ct float64, rng *rand.Rand) Result {
 		return DecodeDMX512(a, ct, DMXCfg{Baud: []int{0, -1, 250000, 1 << 30}[rng.Intn(4)]})
 	}},
-	{"midi", func(a, b []uint8, ct float64, rng *rand.Rand) Result {
+	{"midi", func(a, _ []uint8, ct float64, rng *rand.Rand) Result {
 		return DecodeMIDI(a, ct, MIDICfg{Baud: []int{0, 31250, 7}[rng.Intn(3)]})
 	}},
-	{"modbus", func(a, b []uint8, ct float64, rng *rand.Rand) Result {
+	{"modbus", func(a, _ []uint8, ct float64, rng *rand.Rand) Result {
 		return DecodeModbus(a, ct, ModbusCfg{Baud: []int{0, 9600, 3}[rng.Intn(3)], Parity: []string{"", "even", "odd", "none", "x"}[rng.Intn(5)]})
 	}},
-	{"onewire", func(a, b []uint8, ct float64, rng *rand.Rand) Result {
+	{"onewire", func(a, _ []uint8, ct float64, rng *rand.Rand) Result {
 		return DecodeOneWire(a, ct, OneWireCfg{Overdrive: rng.Intn(2) == 0})
 	}},
-	{"ws281x", func(a, b []uint8, ct float64, rng *rand.Rand) Result { return DecodeWS281x(a, ct, WS281xCfg{}) }},
-	{"dht", func(a, b []uint8, ct float64, rng *rand.Rand) Result { return DecodeDHT(a, ct, DHTCfg{}) }},
-	{"cec", func(a, b []uint8, ct float64, rng *rand.Rand) Result { return DecodeCEC(a, ct, CECCfg{}) }},
-	{"j1850", func(a, b []uint8, ct float64, rng *rand.Rand) Result { return DecodeJ1850(a, ct, J1850Cfg{}) }},
-	{"irnec", func(a, b []uint8, ct float64, rng *rand.Rand) Result { return DecodeIRNEC(a, ct, IRCfg{}) }},
-	{"irsirc", func(a, b []uint8, ct float64, rng *rand.Rand) Result { return DecodeIRSIRC(a, ct, IRCfg{}) }},
-	{"irrc5", func(a, b []uint8, ct float64, rng *rand.Rand) Result { return DecodeIRRC5(a, ct, IRCfg{}) }},
-	{"irrc6", func(a, b []uint8, ct float64, rng *rand.Rand) Result { return DecodeIRRC6(a, ct, IRCfg{}) }},
-	{"dali", func(a, b []uint8, ct float64, rng *rand.Rand) Result { return DecodeDALI(a, ct, DALICfg{}) }},
-	{"usbpd", func(a, b []uint8, ct float64, rng *rand.Rand) Result {
+	{"ws281x", func(a, _ []uint8, ct float64, _ *rand.Rand) Result { return DecodeWS281x(a, ct, WS281xCfg{}) }},
+	{"dht", func(a, _ []uint8, ct float64, _ *rand.Rand) Result { return DecodeDHT(a, ct, DHTCfg{}) }},
+	{"cec", func(a, _ []uint8, ct float64, _ *rand.Rand) Result { return DecodeCEC(a, ct, CECCfg{}) }},
+	{"j1850", func(a, _ []uint8, ct float64, _ *rand.Rand) Result { return DecodeJ1850(a, ct, J1850Cfg{}) }},
+	{"irnec", func(a, _ []uint8, ct float64, _ *rand.Rand) Result { return DecodeIRNEC(a, ct, IRCfg{}) }},
+	{"irsirc", func(a, _ []uint8, ct float64, _ *rand.Rand) Result { return DecodeIRSIRC(a, ct, IRCfg{}) }},
+	{"irrc5", func(a, _ []uint8, ct float64, _ *rand.Rand) Result { return DecodeIRRC5(a, ct, IRCfg{}) }},
+	{"irrc6", func(a, _ []uint8, ct float64, _ *rand.Rand) Result { return DecodeIRRC6(a, ct, IRCfg{}) }},
+	{"dali", func(a, _ []uint8, ct float64, _ *rand.Rand) Result { return DecodeDALI(a, ct, DALICfg{}) }},
+	{"usbpd", func(a, _ []uint8, ct float64, rng *rand.Rand) Result {
 		return DecodeUSBPD(a, ct, USBPDCfg{Baud: []int{0, 300000, -1, 1 << 30}[rng.Intn(4)]})
 	}},
-	{"spdif", func(a, b []uint8, ct float64, rng *rand.Rand) Result { return DecodeSPDIF(a, ct, SPDIFCfg{}) }},
-	{"ps2", func(a, b []uint8, ct float64, rng *rand.Rand) Result { return DecodePS2(a, b, ct, ClockedCfg{}) }},
-	{"swd", func(a, b []uint8, ct float64, rng *rand.Rand) Result { return DecodeSWD(a, b, ct, ClockedCfg{}) }},
-	{"mdio", func(a, b []uint8, ct float64, rng *rand.Rand) Result { return DecodeMDIO(a, b, ct, ClockedCfg{}) }},
+	{"spdif", func(a, _ []uint8, ct float64, _ *rand.Rand) Result { return DecodeSPDIF(a, ct, SPDIFCfg{}) }},
+	{"ps2", func(a, b []uint8, ct float64, _ *rand.Rand) Result { return DecodePS2(a, b, ct, ClockedCfg{}) }},
+	{"swd", func(a, b []uint8, ct float64, _ *rand.Rand) Result { return DecodeSWD(a, b, ct, ClockedCfg{}) }},
+	{"mdio", func(a, b []uint8, ct float64, _ *rand.Rand) Result { return DecodeMDIO(a, b, ct, ClockedCfg{}) }},
 	{"wiegand", func(a, b []uint8, ct float64, rng *rand.Rand) Result {
 		return DecodeWiegand(a, b, ct, ClockedCfg{Threshold: rng.Float64() * 300, HaveThr: rng.Intn(3) == 0})
 	}},
@@ -94,7 +95,7 @@ func TestDecodeFuzzBeyondTen(t *testing.T) {
 		return s
 	}
 	cts := []float64{0, -1, 1e-12, 2e-9, 1e-6, 1e-4, 1}
-	for i := 0; i < 400*fuzzKnob("DECODE_FUZZ_MULT", 1); i++ {
+	for i := range 400 * fuzzKnob("DECODE_FUZZ_MULT", 1) {
 		n := rng.Intn(20000)
 		a := sig(n, rng.Intn(7))
 		b := sig(len(a), rng.Intn(7))

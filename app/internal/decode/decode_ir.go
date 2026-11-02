@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-DECODE
+
 package decode
 
 import (
@@ -31,8 +32,8 @@ type IRCfg struct {
 
 // irMarks finds the line's marks and whether they are its high level.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-234
-func irMarks(S sliced, colTimeS float64) ([]irMark, bool) {
-	runs := levelRuns(S)
+func irMarks(sl sliced, colTimeS float64) ([]irMark, bool) {
+	runs := levelRuns(sl)
 	longest, idle := -1.0, 1
 	for _, r := range runs {
 		if d := r.x1 - r.x0; d > longest {
@@ -65,7 +66,7 @@ func irDecode(proto string, codes []uint8, colTimeS float64, cfg IRCfg,
 		return Result{Proto: proto, Error: S.reason}
 	}
 	if !(colTimeS > 0) {
-		return Result{Proto: proto, Error: "no sample time"}
+		return Result{Proto: proto, Error: msgNoSampleTime}
 	}
 	marks, high := irMarks(S, colTimeS)
 	// about a span a mark (a bit, or a frame's leader)
@@ -88,7 +89,7 @@ func irDecode(proto string, codes []uint8, colTimeS float64, cfg IRCfg,
 }
 
 // irNames name the infrared protocols in messages.
-var irNames = map[string]string{"irnec": "NEC", "irsirc": "SIRC", "irrc5": "RC-5", "irrc6": "RC-6"}
+var irNames = map[string]string{protoIRNEC: "NEC", protoIRSIRC: "SIRC", protoIRRC5: "RC-5", protoIRRC6: "RC-6"}
 
 // irOut collects a decode's spans, transcript and units.
 type irOut struct {
@@ -120,7 +121,7 @@ func (o *irOut) add(x0, x1 float64, n int, text, kind string, val int, unit bool
 // ("sof" REP). OK needs a frame whose command checks.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-234
 func DecodeIRNEC(codes []uint8, colTimeS float64, cfg IRCfg) Result {
-	return irDecode("irnec", codes, colTimeS, cfg, func(m []irMark, us func(float64) float64, n int, o *irOut) {
+	return irDecode(protoIRNEC, codes, colTimeS, cfg, func(m []irMark, us func(float64) float64, n int, o *irOut) {
 		o.unitUs = 1125
 		for i := 0; i+1 < len(m); i++ {
 			lead := us(m[i].x1 - m[i].x0)
@@ -130,7 +131,7 @@ func DecodeIRNEC(codes []uint8, colTimeS float64, cfg IRCfg) Result {
 			space := us(m[i+1].x0 - m[i].x1)
 			if space >= 1800 && space <= 2800 {
 				if stop := us(m[i+1].x1 - m[i+1].x0); stop >= 300 && stop <= 800 {
-					o.add(m[i].x0, m[i+1].x1, n, "REP", "sof", 0, false)
+					o.add(m[i].x0, m[i+1].x1, n, "REP", kindSOF, 0, false)
 					i++
 				}
 				continue
@@ -138,7 +139,7 @@ func DecodeIRNEC(codes []uint8, colTimeS float64, cfg IRCfg) Result {
 			if space < 3500 || space > 5500 {
 				continue
 			}
-			o.add(m[i].x0, m[i+1].x0, n, "LDR", "sof", 0, false)
+			o.add(m[i].x0, m[i+1].x0, n, "LDR", kindSOF, 0, false)
 			var vals [4]int
 			ok := true
 			j := i + 1
@@ -164,13 +165,13 @@ func DecodeIRNEC(codes []uint8, colTimeS float64, cfg IRCfg) Result {
 				j++
 			}
 			if !ok {
-				o.add(m[j].x0, m[j].x0, n, "!", "frame-error", 0, false)
+				o.add(m[j].x0, m[j].x0, n, "!", kindFrameError, 0, false)
 				i = j - 1
 				continue
 			}
 			for k := range 4 {
 				x0, x1 := m[i+1+8*k].x0, m[i+9+8*k].x0
-				txt, kind := hex2(vals[k]), "data"
+				txt, kind := hex2(vals[k]), kindData
 				switch k {
 				case 0:
 					txt = "A" + txt
@@ -178,7 +179,7 @@ func DecodeIRNEC(codes []uint8, colTimeS float64, cfg IRCfg) Result {
 					txt = "C" + txt
 				case 3:
 					if vals[2]^vals[3] != 0xff {
-						txt, kind = "!"+txt, "frame-error"
+						txt, kind = "!"+txt, kindFrameError
 					}
 				}
 				o.add(x0, x1, n, txt, kind, vals[k], true)
@@ -199,7 +200,7 @@ func DecodeIRNEC(codes []uint8, colTimeS float64, cfg IRCfg) Result {
 // of a valid length.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-234
 func DecodeIRSIRC(codes []uint8, colTimeS float64, cfg IRCfg) Result {
-	return irDecode("irsirc", codes, colTimeS, cfg, func(m []irMark, us func(float64) float64, n int, o *irOut) {
+	return irDecode(protoIRSIRC, codes, colTimeS, cfg, func(m []irMark, us func(float64) float64, n int, o *irOut) {
 		o.unitUs = 600
 		for i := 0; i < len(m); i++ {
 			// (RC-6's leader is a 2.67 ms mark and its spaces 444 or 889 us)
@@ -227,14 +228,14 @@ func DecodeIRSIRC(codes []uint8, colTimeS float64, cfg IRCfg) Result {
 				}
 			}
 			if j < 0 {
-				o.add(m[i].x0, m[i].x1, n, "SIRC", "sof", 0, false)
-				o.add(m[i].x1, m[i].x1, n, "!", "frame-error", 0, false)
+				o.add(m[i].x0, m[i].x1, n, "SIRC", kindSOF, 0, false)
+				o.add(m[i].x1, m[i].x1, n, "!", kindFrameError, 0, false)
 				continue
 			}
-			o.add(m[i].x0, m[i].x1, n, "SIRC", "sof", 0, false)
+			o.add(m[i].x0, m[i].x1, n, "SIRC", kindSOF, 0, false)
 			nb := len(bits)
 			if nb != 12 && nb != 15 && nb != 20 {
-				o.add(m[i].x1, m[j-1].x1, n, fmt.Sprintf("!%dbits", nb), "frame-error", 0, false)
+				o.add(m[i].x1, m[j-1].x1, n, fmt.Sprintf("!%dbits", nb), kindFrameError, 0, false)
 				i = j - 1
 				continue
 			}
@@ -243,7 +244,7 @@ func DecodeIRSIRC(codes []uint8, colTimeS float64, cfg IRCfg) Result {
 				for k := range cnt {
 					v |= bits[from+k] << k
 				}
-				o.add(m[i+1+from].x0, m[i+from+cnt].x1, n, pfx+hex2(v), "data", v, true)
+				o.add(m[i+1+from].x0, m[i+from+cnt].x1, n, pfx+hex2(v), kindData, v, true)
 			}
 			if o.frameBits == 0 {
 				o.frameBits = nb
@@ -278,7 +279,7 @@ func irHalves(m []irMark, from int, unit float64, maxUnits int, us func(float64)
 			break
 		}
 		step := (m[j].x1 - m[j].x0) / float64(k)
-		for q := 0; q < k; q++ {
+		for q := range k {
 			lv, xs = append(lv, 1), append(xs, m[j].x0+float64(q)*step)
 		}
 		if j+1 >= len(m) {
@@ -289,7 +290,7 @@ func irHalves(m []irMark, from int, unit float64, maxUnits int, us func(float64)
 			break
 		}
 		step = (m[j+1].x0 - m[j].x1) / float64(k)
-		for q := 0; q < k; q++ {
+		for q := range k {
 			lv, xs = append(lv, 0), append(xs, m[j].x1+float64(q)*step)
 		}
 	}
@@ -304,7 +305,7 @@ func irHalves(m []irMark, from int, unit float64, maxUnits int, us func(float64)
 // frame.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-234
 func DecodeIRRC5(codes []uint8, colTimeS float64, cfg IRCfg) Result {
-	return irDecode("irrc5", codes, colTimeS, cfg, func(m []irMark, us func(float64) float64, n int, o *irOut) {
+	return irDecode(protoIRRC5, codes, colTimeS, cfg, func(m []irMark, us func(float64) float64, n int, o *irOut) {
 		const half = 889.0
 		o.unitUs = 2 * half
 		for i := range m {
@@ -333,13 +334,13 @@ func DecodeIRRC5(codes []uint8, colTimeS float64, cfg IRCfg) Result {
 					ok = false
 				}
 			}
-			o.add(xs[0], xs[0]+2*hx, n, "RC5", "sof", 0, false)
+			o.add(xs[0], xs[0]+2*hx, n, "RC5", kindSOF, 0, false)
 			if !ok || bits[0] != 1 {
-				o.add(xs[0], xs[0], n, "!", "frame-error", 0, false)
+				o.add(xs[0], xs[0], n, "!", kindFrameError, 0, false)
 				continue
 			}
 			bx := func(b int) float64 { return xs[2*b] }
-			o.add(bx(2), bx(3), n, fmt.Sprintf("T%d", bits[2]), "rw", bits[2], false)
+			o.add(bx(2), bx(3), n, fmt.Sprintf("T%d", bits[2]), kindRW, bits[2], false)
 			a, c := 0, 0
 			for k := range 5 {
 				a = a<<1 | bits[3+k]
@@ -348,8 +349,8 @@ func DecodeIRRC5(codes []uint8, colTimeS float64, cfg IRCfg) Result {
 				c = c<<1 | bits[8+k]
 			}
 			c |= (1 - bits[1]) << 6
-			o.add(bx(3), bx(8), n, "A"+hex2(a), "data", a, true)
-			o.add(bx(8), bx(13)+2*hx, n, "C"+hex2(c), "data", c, true)
+			o.add(bx(3), bx(8), n, "A"+hex2(a), kindData, a, true)
+			o.add(bx(8), bx(13)+2*hx, n, "C"+hex2(c), kindData, c, true)
 			o.good = true
 		}
 	})
@@ -363,7 +364,7 @@ func DecodeIRRC5(codes []uint8, colTimeS float64, cfg IRCfg) Result {
 // OK needs a frame with a whole payload.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-234
 func DecodeIRRC6(codes []uint8, colTimeS float64, cfg IRCfg) Result {
-	return irDecode("irrc6", codes, colTimeS, cfg, func(m []irMark, us func(float64) float64, n int, o *irOut) {
+	return irDecode(protoIRRC6, codes, colTimeS, cfg, func(m []irMark, us func(float64) float64, n int, o *irOut) {
 		const t = 444.0
 		o.unitUs = 2 * t
 		for i := 0; i+1 < len(m); i++ {
@@ -371,7 +372,7 @@ func DecodeIRRC6(codes []uint8, colTimeS float64, cfg IRCfg) Result {
 			if lead < 2200 || lead > 3100 || sp < 650 || sp > 1150 {
 				continue
 			}
-			o.add(m[i].x0, m[i+1].x0, n, "RC6", "sof", 0, false)
+			o.add(m[i].x0, m[i+1].x0, n, "RC6", kindSOF, 0, false)
 			lv, xs := irHalves(m, i+1, t, 3, us)
 			ux := t / us(1) // samples
 			// manchester reads a pair of units, a 1 a mark then a space
@@ -414,11 +415,11 @@ func DecodeIRRC6(codes []uint8, colTimeS float64, cfg IRCfg) Result {
 				ok = toggle >= 0
 			}
 			if !ok {
-				o.add(m[i+1].x0, m[i+1].x0, n, "!", "frame-error", 0, false)
+				o.add(m[i+1].x0, m[i+1].x0, n, "!", kindFrameError, 0, false)
 				continue
 			}
-			o.add(xs[2], xs[8], n, fmt.Sprintf("M%d", mode), "rw", mode, false)
-			o.add(xs[8], xs[11]+ux, n, fmt.Sprintf("T%d", toggle), "rw", toggle, false)
+			o.add(xs[2], xs[8], n, fmt.Sprintf("M%d", mode), kindRW, mode, false)
+			o.add(xs[8], xs[11]+ux, n, fmt.Sprintf("T%d", toggle), kindRW, toggle, false)
 			var bits []int
 			for u := 12; ; u += 2 {
 				v := pair(u)
@@ -431,19 +432,19 @@ func DecodeIRRC6(codes []uint8, colTimeS float64, cfg IRCfg) Result {
 				bits = append(bits, v)
 			}
 			if mode == 0 && len(bits) != 16 || len(bits) == 0 || len(bits)%8 != 0 {
-				o.add(xs[11]+ux, xs[11]+ux, n, "!", "frame-error", 0, false)
+				o.add(xs[11]+ux, xs[11]+ux, n, "!", kindFrameError, 0, false)
 				continue
 			}
-			for b := 0; b < len(bits)/8; b++ {
+			for b := range len(bits) / 8 {
 				v := 0
 				for k := range 8 {
 					v = v<<1 | bits[8*b+k]
 				}
 				txt := hex2(v)
 				if mode == 0 {
-					txt = []string{"A", "C"}[b] + txt
+					txt = []string{"A", "C"}[b] + txt //nolint:gosec // mode 0 holds exactly 16 bits (checked above): b is 0 or 1
 				}
-				o.add(xs[12+16*b], xs[12+16*b+15]+ux, n, txt, "data", v, true)
+				o.add(xs[12+16*b], xs[12+16*b+15]+ux, n, txt, kindData, v, true)
 			}
 			o.good = true
 		}

@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-DECODE
+
 package decode
 
 import (
@@ -53,7 +54,7 @@ func TestRunningMedianIsMedianOf(t *testing.T) {
 		if m.value() != 0 {
 			t.Fatal("empty median not 0")
 		}
-		for i := 0; i < 1+rng.Intn(300); i++ {
+		for i := 0; i < 1+rng.Intn(300); i++ { //nolint:intrange // the bound draws from rng at every pass, and the recorded test data follow those draws
 			x := float64(rng.Intn(20)) + rng.Float64()*float64(trial%2)
 			v = append(v, x)
 			m.add(x)

@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-DECODE
+
 package decode
 
 // Oracle cross-checks of the 125 kHz RFID decoders against sigrok's
@@ -100,7 +101,9 @@ func TestOracleEM4305(t *testing.T) {
 			orc = append(orc, "A"+strings.TrimPrefix(a.Text, "Addr: "))
 		case strings.HasPrefix(a.Text, "Data: "):
 			v := 0
-			fmt.Sscanf(strings.TrimPrefix(a.Text, "Data: "), "%X", &v)
+			if _, err := fmt.Sscanf(strings.TrimPrefix(a.Text, "Data: "), "%X", &v); err != nil {
+				t.Fatalf("sigrok data %q: %v", a.Text, err)
+			}
 			orc = append(orc, hex2(v))
 		case a.Text == "Row parity failed":
 			orc = append(orc, "BAD")

@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-DECODE
+
 package decode
 
 import "math/bits"
@@ -72,17 +73,6 @@ func SymbolIndex(level bool, count uint32) int {
 	return idx
 }
 
-// SymbolCount is the prescaled ticks the block counts for a run of w clocks
-// (edges w clocks apart).
-// TRLC-LINKS: REQ-SDS-013
-func SymbolCount(w, prescale int) uint32 {
-	if w < 1 {
-		return 0
-	}
-	c := min(uint32((w-1)>>prescale), SymbolMaxCount)
-	return c
-}
-
 // SymbolTrigger is the block's state.
 type SymbolTrigger struct {
 	c SymbolCfg
@@ -126,7 +116,7 @@ func NewSymbolTrigger(c SymbolCfg) *SymbolTrigger {
 // Step advances one receiver clock with the sliced lines a and b (before
 // inversion) and reset; it returns the match output after the clock.
 // TRLC-LINKS: REQ-SDS-013
-func (s *SymbolTrigger) Step(a, b, reset bool) bool {
+func (s *SymbolTrigger) Step(a, b, reset bool) bool { //nolint:gocyclo // one clock of the symbol-trigger RTL, statement for statement with the Verilog
 	c := &s.c
 	pmask := uint32(1)<<c.Prescale - 1
 	half := int64(c.UnitQ8 >> 1)
@@ -141,8 +131,10 @@ func (s *SymbolTrigger) Step(a, b, reset bool) bool {
 	nd0 := lb
 
 	// run lengths
-	nprimed, nrp, npc, ncnt := s.primed, s.rp, s.pc, s.cnt
-	if reset {
+	var nprimed, nrp bool
+	var npc uint32
+	ncnt := s.cnt
+	if reset { //nolint:nestif // one clock of the symbol-trigger RTL, statement for statement with the Verilog
 		nprimed, npc, ncnt, nrp = false, 0, 0, s.r0
 	} else {
 		nprimed, nrp = true, s.r0
@@ -182,7 +174,7 @@ func (s *SymbolTrigger) Step(a, b, reset bool) bool {
 	// frame state (combinational on this clock's v4/q4 and delayed bit)
 	bv, bbit := s.dv[3], s.dbit[3]
 	fIn, fGot, fOpen, fBitV, fBit := s.inFrame, s.got, false, false, false
-	if s.v5 {
+	if s.v5 { //nolint:nestif // one clock of the symbol-trigger RTL, statement for statement with the Verilog
 		if s.inFrame {
 			switch {
 			case s.dEnd:
@@ -203,17 +195,18 @@ func (s *SymbolTrigger) Step(a, b, reset bool) bool {
 				}
 			}
 		} else {
-			if s.got < c.LeadLen && s.lStep[s.got&3] {
+			switch {
+			case s.got < c.LeadLen && s.lStep[s.got&3]:
 				fGot = s.got + 1
 				if s.got+1 == c.LeadLen {
 					fOpen = true
 				}
-			} else if s.lStep[0] {
+			case s.lStep[0]:
 				fGot = 1
 				if c.LeadLen == 1 {
 					fOpen = true
 				}
-			} else if !s.lSep {
+			case !s.lSep:
 				fGot = 0
 			}
 		}
@@ -228,14 +221,15 @@ func (s *SymbolTrigger) Step(a, b, reset bool) bool {
 
 	// unit sampler / clocked bits
 	nrr, nact, nef, nfu, nsbV, nsb := s.rr, s.act, s.ef, s.fu, false, s.sb
-	if reset {
+	switch {
+	case reset:
 		nrr, nact, nef, nfu = 0, false, false, 0
-	} else if c.Mode == SymbolClocked {
+	case c.Mode == SymbolClocked:
 		nsbV = edgeNow && (s.r0 != c.ClockFall)
 		nsb = s.d0
-	} else {
+	default:
 		rrDue := s.rr>>8 == 0
-		if edgeNow {
+		if edgeNow { //nolint:nestif // one clock of the symbol-trigger RTL, statement for statement with the Verilog
 			nrr, nef = half, true
 			if !s.act {
 				nact, nfu = true, 0
@@ -277,9 +271,11 @@ func (s *SymbolTrigger) Step(a, b, reset bool) bool {
 	if phNext == c.Period {
 		phNext = 0
 	}
-	ninFrame, ngot, nn, nph, nsh := s.inFrame, s.got, s.n, s.ph, s.sh
+	var ninFrame bool
+	var ngot int
+	nn, nph, nsh := s.n, s.ph, s.sh
 	nhitA, nopenA := false, false
-	if reset {
+	if reset { //nolint:nestif // one clock of the symbol-trigger RTL, statement for statement with the Verilog
 		ninFrame, ngot, nn, nph, nsh = c.LeadLen == 0, 0, 0, c.Phase0, 0
 	} else {
 		ninFrame, ngot = fIn, fGot

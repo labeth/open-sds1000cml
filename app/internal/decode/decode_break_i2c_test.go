@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-DECODE
+
 package decode
 
 import (
@@ -259,10 +260,7 @@ func TestBreakI2c(t *testing.T) {
 				if noiseMax > 0 {
 					nz = rng.Intn(2*noiseMax+1) - noiseMax
 				}
-				c := max(base+nz, 0)
-				if c > 255 {
-					c = 255
-				}
+				c := min(max(base+nz, 0), 255)
 				out[i] = uint8(c)
 			}
 			return out

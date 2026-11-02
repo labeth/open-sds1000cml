@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-DECODE
+
 package decode
 
 import (
@@ -54,7 +55,7 @@ const irDenonRepeatUS = 70000
 // repeat to the screen's end).
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-255
 func MessageMaxS(r Result) float64 {
-	if r.Proto == "irmp" && r.FrameBits == IRDenon {
+	if r.Proto == protoIRMP && r.FrameBits == IRDenon {
 		tm := irmpTimings[IRDenon]
 		return (2*15*(tm.pulse+tm.one) + irDenonRepeatUS) * 1e-6
 	}
@@ -70,9 +71,9 @@ func irWithin(d, want, frac float64) bool { return d >= want*(1-frac) && d <= wa
 // it stops at the first mark or pause that is neither, at most max bits. It
 // returns the bits and the index of the mark after the last bit's pulse.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-255
-func irmpBits(m []irMark, i int, tm irmpTiming, max int, us func(float64) float64) ([]int, int) {
-	bits := make([]int, 0, max)
-	for ; i+1 < len(m) && len(bits) < max; i++ {
+func irmpBits(m []irMark, i int, tm irmpTiming, maxBits int, us func(float64) float64) ([]int, int) {
+	bits := make([]int, 0, maxBits)
+	for ; i+1 < len(m) && len(bits) < maxBits; i++ {
 		if !irWithin(us(m[i].x1-m[i].x0), tm.pulse, 0.4) {
 			break
 		}
@@ -114,13 +115,13 @@ func lsbOf(b []int, at, n int) int {
 // (FrameBits) is the first frame's protocol, IRMP's number. OK needs a
 // frame whose checks hold.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-255
-func DecodeIRMP(codes []uint8, colTimeS float64, cfg LineCfg) Result {
+func DecodeIRMP(codes []uint8, colTimeS float64, cfg LineCfg) Result { //nolint:gocyclo // a protocol state machine kept step for step with its decode_*.js twin (parity tests)
 	S := sliceChannel(codes, cfg.Threshold, cfg.HaveThr)
 	if !S.ok {
-		return Result{Proto: "irmp", Error: S.reason}
+		return Result{Proto: protoIRMP, Error: S.reason}
 	}
 	if !(colTimeS > 0) {
-		return Result{Proto: "irmp", Error: "no sample time"}
+		return Result{Proto: protoIRMP, Error: msgNoSampleTime}
 	}
 	m, high := irMarks(S, colTimeS)
 	us := func(d float64) float64 { return d * colTimeS * 1e6 }
@@ -128,10 +129,10 @@ func DecodeIRMP(codes []uint8, colTimeS float64, cfg LineCfg) Result {
 	good, first, unit := false, 0, 0.0
 	lastJVC := -1.0 // where the last JVC frame ended, for its repeats
 	frame := func(proto int, x0, x1 float64, addr, cmd int, ok bool, name string) {
-		o.add(x0, x0, name, "sof", proto, false)
-		kind, ka, kc := "data", "A", "C"
+		o.add(x0, x0, name, kindSOF, proto, false)
+		kind, ka, kc := kindData, "A", "C"
 		if !ok {
-			kind, ka, kc = "frame-error", "!A", "!C"
+			kind, ka, kc = kindFrameError, "!A", "!C"
 		} else {
 			good = true
 		}
@@ -237,10 +238,10 @@ func DecodeIRMP(codes []uint8, colTimeS float64, cfg LineCfg) Result {
 		}
 	}
 	if len(o.spans) == 0 {
-		return Result{Proto: "irmp", Error: "no IR multi frame"}
+		return Result{Proto: protoIRMP, Error: "no IR multi frame"}
 	}
 	res := Result{
-		OK: good, Proto: "irmp", Spans: o.spans, Text: strings.Join(o.toks, " "), Bytes: o.units,
+		OK: good, Proto: protoIRMP, Spans: o.spans, Text: strings.Join(o.toks, " "), Bytes: o.units,
 		Thr: S.threshold, Inverted: high, FrameBits: first,
 	}
 	if unit > 0 {

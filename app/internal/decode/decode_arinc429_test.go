@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-DECODE
+
 package decode
 
 import (
@@ -63,7 +64,7 @@ func arincExpect(bits []int) (labelOct, dataHex, ssmTxt string, bytesLE []int) {
 // return to NULL. NULL=128, HI=210, LO=40.
 // TRLC-LINKS: REQ-SDS-018
 func arincAppendWord(w *[]uint8, bits []int, spb int) {
-	const null_, hi, lo = uint8(128), uint8(210), uint8(40)
+	const nul, hi, lo = uint8(128), uint8(210), uint8(40)
 	half := spb / 2
 	for _, b := range bits {
 		pv := lo
@@ -73,8 +74,8 @@ func arincAppendWord(w *[]uint8, bits []int, spb int) {
 		for range half {
 			*w = append(*w, pv)
 		}
-		for j := 0; j < spb-half; j++ {
-			*w = append(*w, null_)
+		for range spb - half {
+			*w = append(*w, nul)
 		}
 	}
 }

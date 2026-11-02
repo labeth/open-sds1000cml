@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-DECODE
+
 package decode
 
 // Oracle cross-check harness: the Go decoders are validated against
@@ -77,7 +78,7 @@ func newTimeline(sampleRate float64) *timeline { return &timeline{sr: sampleRate
 // TRLC-LINKS: REQ-SDS-018
 func (w *timeline) add(level byte, dur float64) {
 	w.t += dur
-	for int(len(w.bits)) < int(w.t*w.sr) {
+	for len(w.bits) < int(w.t*w.sr) {
 		w.bits = append(w.bits, level)
 	}
 }
@@ -134,7 +135,7 @@ func sigrokDecode(t *testing.T, sampleRate int, names []string, chans [][]byte, 
 		"-A", annSpec,
 		"--protocol-decoder-samplenum",
 	}
-	out, err := exec.Command("sigrok-cli", args...).CombinedOutput()
+	out, err := exec.CommandContext(t.Context(), "sigrok-cli", args...).CombinedOutput()
 	if err != nil {
 		t.Fatalf("sigrok-cli %v failed: %v\n%s", args, err, out)
 	}

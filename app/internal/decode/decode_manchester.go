@@ -1,10 +1,10 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-DECODE
+
 package decode
 
 import (
 	"fmt"
 	"math"
-	"sort"
 	"strings"
 )
 
@@ -47,17 +47,17 @@ type mCell struct {
 // (trailing idle), so the stream ends where the signal does. Returns the cells
 // plus good/violation counts so a caller can score competing phase hypotheses.
 // TRLC-LINKS: REQ-SDS-018
-func recoverManchester(S sliced, s0, T float64, ieee bool, lastEdgeX float64) (cells []mCell, good, viol int) {
-	if !(T >= 2) || S.n == 0 {
+func recoverManchester(sl sliced, s0, T float64, ieee bool, lastEdgeX float64) (cells []mCell, good, viol int) { //nolint:gocritic // T is the bit period in samples, the name the decoder's comments use
+	if !(T >= 2) || sl.n == 0 {
 		return cells, good, viol
 	}
-	limit := lastEdgeX + 0.25*T         // stop once cells fall into trailing idle
-	maxCells := int(float64(S.n)/T) + 4 // safety cap; the limit/gap breaks normally
-	consecViol := 0                     // a valid cell always has a mid transition, so a
-	//                                     run of missing ones is an inter-frame IDLE gap:
-	//                                     stop there (real captures hold several frames whose
-	//                                     gaps are non-integer T apart, so one phase cannot
-	//                                     align them all — decode the first frame cleanly).
+	limit := lastEdgeX + 0.25*T          // stop once cells fall into trailing idle
+	maxCells := int(float64(sl.n)/T) + 4 // safety cap; the limit/gap breaks normally
+	consecViol := 0                      // a valid cell always has a mid transition, so a
+	//                                      run of missing ones is an inter-frame IDLE gap:
+	//                                      stop there (real captures hold several frames whose
+	//                                      gaps are non-integer T apart, so one phase cannot
+	//                                      align them all — decode the first frame cleanly).
 	for k := range maxCells {
 		centre := s0 + (float64(k)+0.5)*T
 		if centre > limit {
@@ -65,8 +65,8 @@ func recoverManchester(S sliced, s0, T float64, ieee bool, lastEdgeX float64) (c
 		}
 		// Sample the first and third quarter of the cell: they straddle the
 		// mid-cell transition, so their levels give its direction.
-		l1 := logicAt(&S, s0+(float64(k)+0.25)*T)
-		l2 := logicAt(&S, s0+(float64(k)+0.75)*T)
+		l1 := logicAt(&sl, s0+(float64(k)+0.25)*T)
+		l2 := logicAt(&sl, s0+(float64(k)+0.75)*T)
 		if l1 < 0 || l2 < 0 { // ran off the captured region
 			break
 		}
@@ -75,8 +75,8 @@ func recoverManchester(S sliced, s0, T float64, ieee bool, lastEdgeX float64) (c
 		if i0 < 0 {
 			i0 = 0
 		}
-		if i1 >= S.n {
-			i1 = S.n - 1
+		if i1 >= sl.n {
+			i1 = sl.n - 1
 		}
 		if i1 < i0 {
 			i1 = i0
@@ -114,7 +114,7 @@ func DecodeManchester(codes []uint8, colTimeS float64, cfg ManchesterCfg) Result
 		bits = 8
 	}
 	if bits < 1 || bits > 16 { // bound the shift/mask math
-		return Result{Proto: "manchester", Error: "data bits out of range (1..16)"}
+		return Result{Proto: protoManchester, Error: "data bits out of range (1..16)"}
 	}
 	// three samples a bit at the least: box-averaged records of 3.1 decode
 	// every message (TestLineCodesDecodeAtThreeSamplesABit), so a slow
@@ -122,10 +122,10 @@ func DecodeManchester(codes []uint8, colTimeS float64, cfg ManchesterCfg) Result
 	const minSPB = 3.0
 	S := sliceChannel(codes, cfg.Threshold, cfg.HaveThr)
 	if !S.ok {
-		return Result{Proto: "manchester", Error: S.reason}
+		return Result{Proto: protoManchester, Error: S.reason}
 	}
 	if len(S.edges) < 2 {
-		return Result{Proto: "manchester", Error: "too few edges"}
+		return Result{Proto: protoManchester, Error: msgTooFewEdges}
 	}
 
 	// Bit period T in samples. cfg.Bitrate pins it; otherwise infer it from the edge
@@ -151,28 +151,16 @@ func DecodeManchester(codes []uint8, colTimeS float64, cfg ManchesterCfg) Result
 			}
 		}
 		if len(gaps) < 3 {
-			return Result{Proto: "manchester", Error: "too few edges / cannot infer bitrate"}
+			return Result{Proto: protoManchester, Error: "too few edges / cannot infer bitrate"}
 		}
-		sort.Float64s(gaps)
-		hp := gaps[int(float64(len(gaps))*0.1)]
 		// Average the shortest-gap cluster with a ±0.5 window (not ±0.35): at small
 		// periods the half-gap quantizes across two integers (T/2=2.5 -> {2,3}), and
 		// a tighter window would keep only the 2s and bias it low. The next cluster
 		// (T) sits a full factor of 2 away, so ±0.5 never bleeds in.
-		sum, cnt := 0.0, 0
-		for _, g := range gaps {
-			if math.Abs(g-hp) <= 0.5*hp {
-				sum += g
-				cnt++
-			}
-		}
-		if cnt > 0 {
-			hp = sum / float64(cnt)
-		}
-		T = 2 * hp
+		T = 2 * shortGapCluster(gaps, 0.5)
 	}
 	if math.IsInf(T, 0) || math.IsNaN(T) || !(T >= minSPB) {
-		return Result{Proto: "manchester", Error: fmt.Sprintf("%.1f samples/bit; need >= %g", T, minSPB)}
+		return Result{Proto: protoManchester, Error: fmt.Sprintf("%.1f samples/bit; need >= %g", T, minSPB)}
 	}
 	res, _, _ := decodeManchesterAt(S, T, cfg, bits, colTimeS)
 	return res
@@ -182,7 +170,7 @@ func DecodeManchester(codes []uint8, colTimeS float64, cfg ManchesterCfg) Result
 // period T, returning the Result plus (frames, total good cells) so the caller
 // can score competing T hypotheses. Split logic + per-frame phase lock as before.
 // TRLC-LINKS: REQ-SDS-018
-func decodeManchesterAt(S sliced, T float64, cfg ManchesterCfg, bits int, colTimeS float64) (Result, int, int) {
+func decodeManchesterAt(sl sliced, T float64, cfg ManchesterCfg, bits int, colTimeS float64) (Result, int, int) { //nolint:gocritic // T is the bit period in samples, the name the decoder's comments use
 	// Segment the edges into FRAMES: a captured record holds several frames
 	// separated by idle gaps, and a free-running scope starts at a random phase,
 	// so the leading frame is usually partial. Split where consecutive edges are
@@ -191,19 +179,19 @@ func decodeManchesterAt(S sliced, T float64, cfg ManchesterCfg, bits int, colTim
 	// non-integer number of bit periods.
 	var segs [][2]int // inclusive edge-index ranges
 	segStart := 0
-	for k := 1; k < len(S.edges); k++ {
+	for k := 1; k < len(sl.edges); k++ {
 		// Split on an inter-frame idle. Use a 2.5·T threshold, not 1.5·T: a single
 		// flattened cell (a coding violation) deletes one mid transition, opening a
 		// ~2·T gap. At 1.5·T that gap split the frame, orphaning the corrupted tail
 		// as a dropped partial — so the violation went unreported. Keeping it in the
 		// frame lets recoverManchester see l1==l2 and emit a frame-error cell. A real
 		// inter-frame idle is many bit-times, comfortably above 2.5·T.
-		if float64(S.edges[k].i-S.edges[k-1].i) > 2.5*T {
+		if float64(sl.edges[k].i-sl.edges[k-1].i) > 2.5*T {
 			segs = append(segs, [2]int{segStart, k - 1})
 			segStart = k
 		}
 	}
-	segs = append(segs, [2]int{segStart, len(S.edges) - 1})
+	segs = append(segs, [2]int{segStart, len(sl.edges) - 1})
 
 	var spans []Span
 	var bytesOut []int
@@ -216,12 +204,12 @@ func decodeManchesterAt(S sliced, T float64, cfg ManchesterCfg, bits int, colTim
 		// Phase lock this frame: the segment's first edge is a cell boundary or a
 		// mid-cell transition (cell began half a period earlier). Try both, keep
 		// the phase with more clean mid transitions and fewer coding violations.
-		s0e, lastE := S.edges[sg[0]].x, S.edges[sg[1]].x
+		s0e, lastE := sl.edges[sg[0]].x, sl.edges[sg[1]].x
 		// Phase-lock: the segment's first edge is a cell boundary (phase A, s0=s0e)
 		// or a mid-cell transition (phase B, boundary half a period earlier). Score
 		// each on clean cells minus violations and take the winner.
-		cA, goodA, violA := recoverManchester(S, s0e, T, cfg.IEEE, lastE)
-		cB, goodB, violB := recoverManchester(S, s0e-0.5*T, T, cfg.IEEE, lastE)
+		cA, goodA, violA := recoverManchester(sl, s0e, T, cfg.IEEE, lastE)
+		cB, goodB, violB := recoverManchester(sl, s0e-0.5*T, T, cfg.IEEE, lastE)
 		scA, scB := goodA-4*violA, goodB-4*violB
 		var cells []mCell
 		var bestGood int
@@ -241,11 +229,11 @@ func decodeManchesterAt(S sliced, T float64, cfg ManchesterCfg, bits int, colTim
 			// — pick phase B there; otherwise the first edge is a true boundary (A).
 			leadRun := s0e
 			if sg[0] > 0 {
-				leadRun = s0e - S.edges[sg[0]-1].x
+				leadRun = s0e - sl.edges[sg[0]-1].x
 			}
-			trailRun := float64(S.n) - lastE
-			if sg[1] < len(S.edges)-1 {
-				trailRun = S.edges[sg[1]+1].x - lastE
+			trailRun := float64(sl.n) - lastE
+			if sg[1] < len(sl.edges)-1 {
+				trailRun = sl.edges[sg[1]+1].x - lastE
 			}
 			if leadRun > trailRun {
 				cells, bestGood = cB, goodB
@@ -265,7 +253,7 @@ func decodeManchesterAt(S sliced, T float64, cfg ManchesterCfg, bits int, colTim
 				run++
 			}
 		}
-		atEdge := len(segs) > 1 && ((sgIdx == 0 && s0e < 2.5*T) || (sgIdx == len(segs)-1 && float64(S.n)-lastE < 2.5*T))
+		atEdge := len(segs) > 1 && ((sgIdx == 0 && s0e < 2.5*T) || (sgIdx == len(segs)-1 && float64(sl.n)-lastE < 2.5*T))
 		if run < 3 && atEdge {
 			continue
 		}
@@ -283,12 +271,12 @@ func decodeManchesterAt(S sliced, T float64, cfg ManchesterCfg, bits int, colTim
 		if run > 0 {
 			runEnd = cells[run-1].I1
 		}
-		spans = append(spans, Span{cells[0].I0, runEnd, "SYNC", "start", 0})
+		spans = append(spans, Span{cells[0].I0, runEnd, "SYNC", kindStart, 0})
 		// Pack this frame's cells into words; a coding violation flushes the word.
 		curVal, curBits, byteStart, lastI1 := 0, 0, 0, 0
 		for _, c := range cells {
 			if c.Bit < 0 {
-				spans = append(spans, Span{c.I0, c.I1, "!", "frame-error", 0})
+				spans = append(spans, Span{c.I0, c.I1, "!", kindFrameError, 0})
 				curVal, curBits = 0, 0
 				continue
 			}
@@ -302,7 +290,7 @@ func decodeManchesterAt(S sliced, T float64, cfg ManchesterCfg, bits int, colTim
 				curVal |= c.Bit << curBits
 			}
 			if curBits++; curBits == bits {
-				spans = append(spans, Span{byteStart, c.I1, FmtWord(curVal, bits, cfg.Format), "data", curVal})
+				spans = append(spans, Span{byteStart, c.I1, FmtWord(curVal, bits, cfg.Format), kindData, curVal})
 				toks = append(toks, FmtWord(curVal, bits, cfg.Format))
 				bytesOut = append(bytesOut, curVal)
 				curVal, curBits = 0, 0
@@ -314,12 +302,12 @@ func decodeManchesterAt(S sliced, T float64, cfg ManchesterCfg, bits int, colTim
 		// cell fell just outside recoverManchester's window and was never marked).
 		// Flag the stub instead of silently dropping it — it is the corruption signal.
 		if curBits > 0 {
-			spans = append(spans, Span{byteStart, lastI1, "!", "frame-error", 0})
+			spans = append(spans, Span{byteStart, lastI1, "!", kindFrameError, 0})
 			toks = append(toks, "!")
 		}
 	}
 	if frames == 0 {
-		return Result{Proto: "manchester", Error: "no Manchester frame (preamble) found"}, 0, 0
+		return Result{Proto: protoManchester, Error: "no Manchester frame (preamble) found"}, 0, 0
 	}
 
 	baud := cfg.Bitrate
@@ -327,7 +315,7 @@ func decodeManchesterAt(S sliced, T float64, cfg ManchesterCfg, bits int, colTim
 		baud = int(math.Round(1.0 / (T * colTimeS)))
 	}
 	return Result{
-		OK: true, Proto: "manchester", Spans: spans, Text: strings.Join(toks, " "),
-		Bytes: bytesOut, Baud: baud, SPB: T, Thr: S.threshold,
+		OK: true, Proto: protoManchester, Spans: spans, Text: strings.Join(toks, " "),
+		Bytes: bytesOut, Baud: baud, SPB: T, Thr: sl.threshold,
 	}, frames, totalGood
 }

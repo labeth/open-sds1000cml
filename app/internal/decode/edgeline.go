@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-DECODE
+
 package decode
 
 import (
@@ -317,7 +318,7 @@ func (l *EdgeLine) slice(thr float64, haveThr bool) sliced {
 	}
 	return sliced{
 		ok: true, n: n, threshold: threshold, lowRail: lowRail, highRail: highRail, amp: amp,
-		thHi: thHi, thLo: thLo, first: int8(l.First), edges: edges, sc: l.sc,
+		thHi: thHi, thLo: thLo, first: int8(l.First), edges: edges, sc: l.sc, //nolint:gosec // First is 0 or 1
 	}
 }
 

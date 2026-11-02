@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-DECODE
+
 package decode
 
 import (
@@ -49,7 +50,7 @@ func brkWave(bitLists [][]int, spb, lead, gap, trail int) []uint8 {
 		if level == 1 {
 			v = hi
 		}
-		for j := 0; j < cells*spb; j++ {
+		for range cells * spb {
 			w = append(w, v)
 		}
 	}

@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-DECODE
+
 package decode
 
 import "math"
@@ -28,11 +29,11 @@ func considerSBUS(codes []uint8, colTimeS float64, t lineTiming, format string, 
 	if !near(t.minRun, sbusBitUs, 0.2) || t.maxLow < 1000 || t.maxLow < 4*t.maxHigh {
 		return
 	}
-	r := DecodeUART(codes, colTimeS, UARTCfg{Baud: sbusBaud, Bits: 8, Parity: "even", Inverted: true, Format: format})
+	r := DecodeUART(codes, colTimeS, UARTCfg{Baud: sbusBaud, Bits: 8, Parity: parityEven, Inverted: true, Format: format})
 	if !r.OK || sbusFrames(r, colTimeS) < 2 {
 		return
 	}
-	r.Baud, r.Parity, r.Inverted = sbusBaud, "even", true
+	r.Baud, r.Parity, r.Inverted = sbusBaud, parityEven, true
 	consider(r)
 }
 
@@ -67,11 +68,11 @@ func sbusFrames(r Result, colTimeS float64) int {
 		if n := len(bursts); n > 0 {
 			b := &bursts[n-1]
 			if float64(s.I0-b.last.I0) <= 40*bit { // bytes 12 bits apart; frames over 100
-				b.last, b.n, b.data = s, b.n+1, b.data && s.Kind == "data"
+				b.last, b.n, b.data = s, b.n+1, b.data && s.Kind == kindData
 				continue
 			}
 		}
-		bursts = append(bursts, burst{s, s, 1, s.Kind == "data"})
+		bursts = append(bursts, burst{s, s, 1, s.Kind == kindData})
 	}
 	starts := make([]float64, 0, len(bursts))
 	for k, b := range bursts {

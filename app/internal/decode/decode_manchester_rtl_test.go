@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-DECODE
+
 package decode
 
 import (
@@ -27,7 +28,7 @@ func TestManchesterReceiveRTL(t *testing.T) {
 	dir := t.TempDir()
 	rtl := testenv.RTLDir(t)
 	image := filepath.Join(dir, "receiver.vvp")
-	if out, err := exec.Command("iverilog", "-g2012", "-s", "tb_manchester_receive", "-o", image, filepath.Join(rtl, "manchester_receive.v"), filepath.Join(rtl, "sim", "tb_manchester_receive.v")).CombinedOutput(); err != nil {
+	if out, err := exec.CommandContext(t.Context(), "iverilog", "-g2012", "-s", "tb_manchester_receive", "-o", image, filepath.Join(rtl, "manchester_receive.v"), filepath.Join(rtl, "sim", "tb_manchester_receive.v")).CombinedOutput(); err != nil {
 		t.Fatalf("compile: %v\n%s", err, out)
 	}
 	for _, period := range []int{8, 9, 12, 21, 40} {
@@ -77,7 +78,7 @@ func TestManchesterReceiveRTL(t *testing.T) {
 							if period == 9 {
 								args = append(args, "+stall=1")
 							}
-							output, err := exec.Command("vvp", args...).CombinedOutput()
+							output, err := exec.CommandContext(t.Context(), "vvp", args...).CombinedOutput()
 							if err != nil {
 								t.Fatalf("simulate: %v\n%s", err, output)
 							}
@@ -85,19 +86,20 @@ func TestManchesterReceiveRTL(t *testing.T) {
 							var scores, goods [2]int
 							seenScore := false
 							for line := range strings.SplitSeq(strings.TrimSpace(string(output)), "\n") {
-								if strings.HasPrefix(line, "E ") {
+								switch {
+								case strings.HasPrefix(line, "E "):
 									var phase int
 									var e manchesterCandidate
 									if _, err := fmt.Sscanf(line, "E %d %d %d %d", &phase, &e.Error, &e.Value, &e.Cell); err != nil {
 										t.Fatal(err)
 									}
 									actual[phase] = append(actual[phase], e)
-								} else if strings.HasPrefix(line, "S ") {
+								case strings.HasPrefix(line, "S "):
 									if _, err := fmt.Sscanf(line, "S %d %d %d %d", &scores[0], &scores[1], &goods[0], &goods[1]); err != nil {
 										t.Fatal(err)
 									}
 									seenScore = true
-								} else {
+								default:
 									t.Fatalf("unexpected simulator output %q", line)
 								}
 							}
@@ -151,10 +153,10 @@ func TestManchesterReceiveRTLBoundaries(t *testing.T) {
 	}
 	rtl := testenv.RTLDir(t)
 	image := filepath.Join(t.TempDir(), "boundaries.vvp")
-	if out, err := exec.Command("iverilog", "-g2012", "-s", "tb_manchester_boundaries", "-o", image, filepath.Join(rtl, "manchester_receive.v"), filepath.Join(rtl, "sim", "tb_manchester_boundaries.v")).CombinedOutput(); err != nil {
+	if out, err := exec.CommandContext(t.Context(), "iverilog", "-g2012", "-s", "tb_manchester_boundaries", "-o", image, filepath.Join(rtl, "manchester_receive.v"), filepath.Join(rtl, "sim", "tb_manchester_boundaries.v")).CombinedOutput(); err != nil {
 		t.Fatalf("compile: %v\n%s", err, out)
 	}
-	if out, err := exec.Command("vvp", image).CombinedOutput(); err != nil {
+	if out, err := exec.CommandContext(t.Context(), "vvp", image).CombinedOutput(); err != nil {
 		t.Fatalf("boundaries: %v\n%s", err, out)
 	}
 }

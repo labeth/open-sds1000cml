@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-DECODE
+
 package decode
 
 import (
@@ -50,7 +51,7 @@ func TestUARTSyncInKeepsBreakAfterIdleStart(t *testing.T) {
 	const spb = 10
 	var line []uint8
 	level := func(b, bits int) {
-		for k := 0; k < bits*spb; k++ {
+		for range bits * spb {
 			line = append(line, uint8(40+160*b))
 		}
 	}
@@ -81,7 +82,7 @@ func benchUARTLine(spb, messages int) ([]uint8, []int) {
 	msg := []int{0x48, 0x69, 0x20, 0x55, 0xAA, 0x0F, 0xF0, 0x0A}
 	var line []uint8
 	level := func(b, bits int) {
-		for k := 0; k < bits*spb; k++ {
+		for range bits * spb {
 			line = append(line, uint8(40+160*b))
 		}
 	}

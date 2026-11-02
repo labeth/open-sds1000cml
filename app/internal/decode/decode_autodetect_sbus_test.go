@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-DECODE
+
 package decode
 
 import (
@@ -55,7 +56,7 @@ func sbusLine(o sbusLineOpts) []uint8 {
 	rng := rand.New(rand.NewSource(o.seed))
 	w := newTimeline(o.sampleRate)
 	w.idle(o.leadS)
-	for f := 0; f < o.frames; f++ {
+	for range o.frames {
 		t0 := w.t
 		var ch [16]int
 		for i := range ch {

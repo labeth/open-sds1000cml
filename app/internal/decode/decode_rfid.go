@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-DECODE
+
 package decode
 
 import (
@@ -25,8 +26,8 @@ type gap struct{ x0, x1 float64 }
 // clocks or more, on an envelope every low run. fc is the field clock in
 // samples.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-252
-func rfidGaps(S sliced, fc float64) ([]gap, bool) {
-	runs := levelRuns(S)
+func rfidGaps(sl sliced, fc float64) ([]gap, bool) {
+	runs := levelRuns(sl)
 	lens := make([]float64, 0, len(runs))
 	for _, r := range runs {
 		if !r.open {
@@ -108,7 +109,7 @@ var em4305Cmds = []string{"CMD0", "LOGIN", "WRITE", "CMD3", "READ", "DISABLE", "
 // hold.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-252
 func DecodeEM4305(codes []uint8, colTimeS float64, cfg LineCfg) Result {
-	return rfidWrites("em4305", codes, colTimeS, cfg)
+	return rfidWrites(protoEM4305, codes, colTimeS, cfg)
 }
 
 // DecodeT55xx decodes a reader's commands to a T55xx tag (sigrok's t55xx): a
@@ -122,7 +123,7 @@ func DecodeEM4305(codes []uint8, colTimeS float64, cfg LineCfg) Result {
 // is the field's frequency. OK needs a whole command.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-252
 func DecodeT55xx(codes []uint8, colTimeS float64, cfg LineCfg) Result {
-	return rfidWrites("t55xx", codes, colTimeS, cfg)
+	return rfidWrites(protoT55xx, codes, colTimeS, cfg)
 }
 
 // rfidWrites is DecodeEM4305 and DecodeT55xx.
@@ -133,7 +134,7 @@ func rfidWrites(proto string, codes []uint8, colTimeS float64, cfg LineCfg) Resu
 		return Result{Proto: proto, Error: S.reason}
 	}
 	if !(colTimeS > 0) {
-		return Result{Proto: proto, Error: "no sample time"}
+		return Result{Proto: proto, Error: msgNoSampleTime}
 	}
 	coil := rfidCoilHz
 	if cfg.Baud > 0 {
@@ -141,7 +142,7 @@ func rfidWrites(proto string, codes []uint8, colTimeS float64, cfg LineCfg) Resu
 	}
 	fc := 1 / (coil * colTimeS)
 	gaps, carrier := rfidGaps(S, fc)
-	em := proto == "em4305"
+	em := proto == protoEM4305
 	start, wgap, end := 20.0, 20.0, 64.0
 	if em {
 		start, wgap, end = 40, 12, 300
@@ -170,7 +171,7 @@ func rfidWrites(proto string, codes []uint8, colTimeS float64, cfg LineCfg) Resu
 		}
 		if !ok && cut {
 			for i := fromSpan; i < len(o.spans); i++ {
-				if o.spans[i].Kind == "frame-error" {
+				if o.spans[i].Kind == kindFrameError {
 					o.spans[i].Kind, o.spans[i].Text = "gap", "?"
 				}
 			}
@@ -192,7 +193,7 @@ func rfidWrites(proto string, codes []uint8, colTimeS float64, cfg LineCfg) Resu
 			if glen > start*fc {
 				inCmd, last = true, g.x1
 				cut, fromSpan, fromTok = g.x0 < end*fc, len(o.spans), len(o.toks)
-				o.add(g.x0, g.x1, "", "sof", 0, false)
+				o.add(g.x0, g.x1, "", kindSOF, 0, false)
 			}
 			continue
 		}
@@ -246,18 +247,18 @@ func rfidWrites(proto string, codes []uint8, colTimeS float64, cfg LineCfg) Resu
 func em4305Fields(o *rfidOut, b []rbit) bool {
 	if len(b) != 50 && len(b) != 57 {
 		for _, x := range b {
-			o.add(x.x0, x.x1, strconv.Itoa(x.v), "rw", x.v, false)
+			o.add(x.x0, x.x1, strconv.Itoa(x.v), kindRW, x.v, false)
 		}
 		if len(b) > 0 {
-			o.add(b[len(b)-1].x1, b[len(b)-1].x1, "!", "frame-error", 0, false)
+			o.add(b[len(b)-1].x1, b[len(b)-1].x1, "!", kindFrameError, 0, false)
 		}
 		return false
 	}
 	ok := true
 	unit := func(at, n int, txt string, v int, good bool) {
-		kind := "data"
+		kind := kindData
 		if !good {
-			txt, kind = "!"+txt, "parity-error"
+			txt, kind = "!"+txt, kindParityError
 			ok = false
 		}
 		o.add(b[at].x0, b[at+n-1].x1, txt, kind, v, true)
@@ -277,7 +278,7 @@ func em4305Fields(o *rfidOut, b []rbit) bool {
 		unit(at+9*k, 9, hex2(v), v, evenOK(b, at+9*k, 8))
 	}
 	if bitsMSB(b, at+36, 8) != col || b[at+44].v != 0 {
-		o.add(b[at+36].x0, b[at+44].x1, "!COL", "frame-error", 0, false)
+		o.add(b[at+36].x0, b[at+44].x1, "!COL", kindFrameError, 0, false)
 		ok = false
 	}
 	return ok
@@ -290,15 +291,15 @@ func t55xxFields(o *rfidOut, b []rbit) bool {
 	n := len(b)
 	if n != 70 && n != 38 && n != 2 {
 		for _, x := range b {
-			o.add(x.x0, x.x1, strconv.Itoa(x.v), "rw", x.v, false)
+			o.add(x.x0, x.x1, strconv.Itoa(x.v), kindRW, x.v, false)
 		}
 		if n > 0 {
-			o.add(b[n-1].x1, b[n-1].x1, "!", "frame-error", 0, false)
+			o.add(b[n-1].x1, b[n-1].x1, "!", kindFrameError, 0, false)
 		}
 		return false
 	}
 	op := bitsMSB(b, 0, 2)
-	o.add(b[0].x0, b[1].x1, fmt.Sprintf("OP%d%d", op>>1, op&1), "data", op, true)
+	o.add(b[0].x0, b[1].x1, fmt.Sprintf("OP%d%d", op>>1, op&1), kindData, op, true)
 	if n == 2 {
 		return true
 	}
@@ -306,18 +307,18 @@ func t55xxFields(o *rfidOut, b []rbit) bool {
 	word := func(prefix string) {
 		for k := range 4 {
 			v := bitsMSB(b, at+8*k, 8)
-			o.add(b[at+8*k].x0, b[at+8*k+7].x1, prefix+hex2(v), "data", v, true)
+			o.add(b[at+8*k].x0, b[at+8*k+7].x1, prefix+hex2(v), kindData, v, true)
 		}
 		at += 32
 	}
 	if n == 70 {
 		word("P")
 	}
-	o.add(b[at].x0, b[at].x1, fmt.Sprintf("LK%d", b[at].v), "data", b[at].v, true)
+	o.add(b[at].x0, b[at].x1, fmt.Sprintf("LK%d", b[at].v), kindData, b[at].v, true)
 	at++
 	word("")
 	blk := bitsMSB(b, at, 3)
-	o.add(b[at].x0, b[at+2].x1, fmt.Sprintf("BL%d", blk), "data", blk, true)
+	o.add(b[at].x0, b[at+2].x1, fmt.Sprintf("BL%d", blk), kindData, blk, true)
 	return true
 }
 
@@ -347,7 +348,7 @@ func manchesterStream(runs []lrun, hp float64) []rbit {
 			}
 			continue
 		}
-		for j := 0; j < q; j++ {
+		for j := range q {
 			lv = append(lv, r.lvl)
 			xs = append(xs, r.x0+float64(j)*(r.x1-r.x0)/float64(q))
 		}
@@ -379,7 +380,7 @@ func manchesterStream(runs []lrun, hp float64) []rbit {
 func DecodeEM4100(codes []uint8, colTimeS float64, cfg LineCfg) Result {
 	S := sliceChannel(codes, cfg.Threshold, cfg.HaveThr)
 	if !S.ok {
-		return Result{Proto: "em4100", Error: S.reason}
+		return Result{Proto: protoEM4100, Error: S.reason}
 	}
 	runs := levelRuns(S)
 	hp := shortestRunCluster(runs)
@@ -387,7 +388,7 @@ func DecodeEM4100(codes []uint8, colTimeS float64, cfg LineCfg) Result {
 		hp = 1 / (2 * float64(cfg.Baud) * colTimeS)
 	}
 	if !(hp > 0) {
-		return Result{Proto: "em4100", Error: "no bits"}
+		return Result{Proto: protoEM4100, Error: "no bits"}
 	}
 	bits := manchesterStream(runs, hp)
 	o := &rfidOut{n: S.n}
@@ -412,31 +413,31 @@ func DecodeEM4100(codes []uint8, colTimeS float64, cfg LineCfg) Result {
 		if !whole {
 			continue
 		}
-		o.add(f[0].x0, f[0].x0, "", "sof", 0, false)
+		o.add(f[0].x0, f[0].x0, "", kindSOF, 0, false)
 		ok := true
 		col := 0
 		for by := range 5 {
 			r0, r1 := 9+10*by, 14+10*by
 			v := bitsMSB(f, r0, 4)<<4 | bitsMSB(f, r1, 4)
 			col ^= bitsMSB(f, r0, 4) ^ bitsMSB(f, r1, 4)
-			txt, kind := hex2(v), "data"
+			txt, kind := hex2(v), kindData
 			if !evenOK(f, r0, 4) || !evenOK(f, r1, 4) {
-				txt, kind, ok = "!"+txt, "parity-error", false
+				txt, kind, ok = "!"+txt, kindParityError, false
 			}
 			o.add(f[r0].x0, f[r1+4].x1, txt, kind, v, true)
 		}
 		if bitsMSB(f, 59, 4) != col || f[63].v != 0 {
-			o.add(f[59].x0, f[63].x1, "!COL", "frame-error", 0, false)
+			o.add(f[59].x0, f[63].x1, "!COL", kindFrameError, 0, false)
 			ok = false
 		}
 		good = good || ok
 		i += 63
 	}
 	if len(o.spans) == 0 {
-		return Result{Proto: "em4100", Error: "no EM4100 frame"}
+		return Result{Proto: protoEM4100, Error: "no EM4100 frame"}
 	}
 	res := Result{
-		OK: good, Proto: "em4100", Spans: o.spans, Text: strings.Join(o.toks, " "), Bytes: o.units,
+		OK: good, Proto: protoEM4100, Spans: o.spans, Text: strings.Join(o.toks, " "), Bytes: o.units,
 		Thr: S.threshold, SPB: 2 * hp,
 	}
 	if colTimeS > 0 {

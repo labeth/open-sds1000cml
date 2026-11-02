@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-DECODE
+
 package decode
 
 import (
@@ -30,7 +31,7 @@ func TestARINC429TriggerRTL(t *testing.T) {
 	dir := t.TempDir()
 	rtl := testenv.RTLDir(t)
 	image := filepath.Join(dir, "arinc.vvp")
-	if out, err := exec.Command("iverilog", "-g2012", "-s", "tb_arinc429_trigger", "-o", image,
+	if out, err := exec.CommandContext(t.Context(), "iverilog", "-g2012", "-s", "tb_arinc429_trigger", "-o", image,
 		filepath.Join(rtl, "arinc429_trigger.v"), filepath.Join(rtl, "sim", "tb_arinc429_trigger.v")).CombinedOutput(); err != nil {
 		t.Fatalf("compile: %v\n%s", err, out)
 	}
@@ -49,7 +50,7 @@ func TestARINC429TriggerRTL(t *testing.T) {
 			fmt.Sprintf("+pattern=%08x", pattern), fmt.Sprintf("+mask=%08x", mask),
 		}
 		argv = append(argv, args...)
-		output, err := exec.Command("vvp", argv...).CombinedOutput()
+		output, err := exec.CommandContext(t.Context(), "vvp", argv...).CombinedOutput()
 		if err != nil {
 			t.Fatalf("simulate: %v\n%s", err, output)
 		}
@@ -78,7 +79,7 @@ func TestARINC429TriggerRTL(t *testing.T) {
 				starts = append(starts, s.I0)
 			}
 		}
-		for w := 0; w < len(ref.Bytes)/4; w++ {
+		for w := range len(ref.Bytes) / 4 {
 			value := uint32(ref.Bytes[4*w]) | uint32(ref.Bytes[4*w+1])<<8 | uint32(ref.Bytes[4*w+2])<<16 | uint32(ref.Bytes[4*w+3])<<24
 			good := popcount(int(value))%2 == 1
 			kind, hit, endValue := 2, 0, uint32(0)
@@ -131,7 +132,7 @@ func TestARINC429TriggerRTL(t *testing.T) {
 							if mode == "dense" {
 								n = 3
 							}
-							for c := 0; c < n; c++ {
+							for c := range n {
 								wave[start+(c+4)*period+1] = 128
 							}
 						case "hysteresis":

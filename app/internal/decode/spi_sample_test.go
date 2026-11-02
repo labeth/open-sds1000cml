@@ -1,9 +1,11 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-DECODE
+
 package decode
 
 import (
 	"bytes"
 	"compress/gzip"
+	"context"
 	"encoding/binary"
 	"fmt"
 	"io"
@@ -99,7 +101,7 @@ func (p spiBus) words() []uint64 {
 			list, idle = clk, p.cpol
 		}
 		k := 0
-		for i := 0; i < n; i++ {
+		for i := range n {
 			at := float64(i) * 2e-9
 			if ch == 1 {
 				at += synthPhaseS
@@ -232,19 +234,20 @@ func TestSampleSPISynthetic(t *testing.T) {
 
 // readCapture loads a recorded record's SRAM words (gzip, little-endian).
 // TRLC-LINKS: REQ-SDS-229
-func readCapture(t testing.TB, name string) []uint64 {
+func readCapture(tb testing.TB, name string) []uint64 {
+	tb.Helper()
 	f, err := os.Open(filepath.Join("testdata", name))
 	if err != nil {
-		t.Fatal(err)
+		tb.Fatal(err)
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }() // opened to read: closing loses nothing
 	z, err := gzip.NewReader(f)
 	if err != nil {
-		t.Fatal(err)
+		tb.Fatal(err)
 	}
 	raw, err := io.ReadAll(z)
 	if err != nil {
-		t.Fatal(err)
+		tb.Fatal(err)
 	}
 	words := make([]uint32, len(raw)/4)
 	for i := range words {
@@ -404,7 +407,7 @@ func newRTLSim(t *testing.T, tb string, files ...string) rtlSim {
 		args = append(args, filepath.Join(rtl, f))
 	}
 	args = append(args, filepath.Join(rtl, "sim", tb+".v"))
-	if out, err := runCmd("iverilog", args...); err != nil {
+	if out, err := runCmd(t.Context(), "iverilog", args...); err != nil {
 		t.Fatalf("compile: %v\n%s", err, out)
 	}
 	return rtlSim{dir, image}
@@ -422,7 +425,7 @@ func (s rtlSim) run(t *testing.T, words []uint64, c SampleSPIConfig) ([]SampleSP
 		t.Fatal(err)
 	}
 	rising := (c.CPOL == c.CPHA) != c.Inverted
-	out, err := runCmd("vvp", "-N", s.image, "+input="+path, fmt.Sprintf("+n=%d", len(words)), fmt.Sprintf("+ch=%d", c.ClockCh),
+	out, err := runCmd(t.Context(), "vvp", "-N", s.image, "+input="+path, fmt.Sprintf("+n=%d", len(words)), fmt.Sprintf("+ch=%d", c.ClockCh),
 		fmt.Sprintf("+rising=%d", b2u8(rising)), fmt.Sprintf("+level=%d", c.Level), fmt.Sprintf("+low=%d", c.Low), fmt.Sprintf("+high=%d", c.High),
 		fmt.Sprintf("+level2=%d", c.DataLevel), fmt.Sprintf("+inverted=%d", b2u8(c.Inverted)), fmt.Sprintf("+msb=%d", b2u8(c.MSB)), fmt.Sprintf("+delay=%d", c.Delay&0xff),
 		fmt.Sprintf("+gap=%d", c.GapClocks), fmt.Sprintf("+pattern=%d", c.Pattern), fmt.Sprintf("+len=%d", c.Length))
@@ -469,11 +472,14 @@ func needIverilog(t *testing.T) {
 }
 
 // TRLC-LINKS: REQ-SDS-229
-func rtlDir(t *testing.T) string { return testenv.RTLDir(t) }
+func rtlDir(t *testing.T) string {
+	t.Helper()
+	return testenv.RTLDir(t)
+}
 
 // TRLC-LINKS: REQ-SDS-229
-func runCmd(name string, args ...string) (string, error) {
-	out, err := exec.Command(name, args...).CombinedOutput()
+func runCmd(ctx context.Context, name string, args ...string) (string, error) {
+	out, err := exec.CommandContext(ctx, name, args...).CombinedOutput()
 	return string(out), err
 }
 

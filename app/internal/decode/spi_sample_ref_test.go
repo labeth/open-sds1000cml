@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-DECODE
+
 package decode
 
 // SPIWideWords pairs SRAM record words ({C2,C1,C2,C1} bytes, the earlier

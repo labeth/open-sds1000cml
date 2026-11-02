@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-DECODE
+
 package decode
 
 import (
@@ -183,9 +184,9 @@ func exactBaudCfg(spb int, dominantLow bool) (float64, CANFDCfg) {
 
 // TRLC-LINKS: REQ-SDS-018
 func TestBreakCanfd(t *testing.T) {
-	t.Run("false_negative", func(t *testing.T) { breakCANFalseNeg(t) })
-	t.Run("false_positive", func(t *testing.T) { breakCANFalsePos(t) })
-	t.Run("edge", func(t *testing.T) { breakCANEdge(t) })
+	t.Run("false_negative", breakCANFalseNeg)
+	t.Run("false_positive", breakCANFalsePos)
+	t.Run("edge", breakCANEdge)
 }
 
 // 1. FALSE NEGATIVES: >= 50 fully valid frames must decode byte-exact.

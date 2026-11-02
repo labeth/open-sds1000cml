@@ -1,10 +1,10 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-DECODE
+
 package decode
 
 import (
 	"fmt"
 	"math"
-	"sort"
 	"strings"
 )
 
@@ -42,16 +42,16 @@ var usbPIDName = map[int]string{
 // optional data/CRC + EOP (~2 bit-times of SE0, which on the single D+ line
 // reads as an extended idle that, with the inter-packet idle, bounds the packet).
 // TRLC-LINKS: REQ-SDS-018
-func DecodeUSBLS(dp []uint8, colTimeS float64, cfg USBLSCfg) Result {
+func DecodeUSBLS(dp []uint8, colTimeS float64, cfg USBLSCfg) Result { //nolint:gocyclo // a protocol state machine kept step for step with its decode_*.js twin (parity tests)
 	const minSPB = 4.0  // samples per bit floor
 	const eopCells = 2  // EOP ~ 2 bit-times of SE0 trailing every packet
 	const splitK = 10.0 // inter-packet idle: a gap wider than this many bit periods
 	S := sliceChannel(dp, cfg.Threshold, cfg.HaveThr)
 	if !S.ok {
-		return Result{Proto: "usbls", Error: S.reason}
+		return Result{Proto: protoUSBLS, Error: S.reason}
 	}
 	if len(S.edges) < 8 { // SYNC alone carries 7 transitions
-		return Result{Proto: "usbls", Error: "too few edges"}
+		return Result{Proto: protoUSBLS, Error: msgTooFewEdges}
 	}
 
 	// Bit period T (samples/bit). cfg.Bitrate pins it; otherwise infer it: NRZI
@@ -71,72 +71,13 @@ func DecodeUSBLS(dp []uint8, colTimeS float64, cfg USBLSCfg) Result {
 	if cfg.Bitrate > 0 {
 		T = (1.0 / float64(cfg.Bitrate)) / colTimeS
 	} else {
-		var gaps []float64
-		for k := 1; k < len(S.edges); k++ {
-			if g := float64(S.edges[k].i - S.edges[k-1].i); g >= 1 {
-				gaps = append(gaps, g)
-			}
+		var why string
+		if T, why = usblsBitPeriod(S.edges); why != "" {
+			return Result{Proto: protoUSBLS, Error: why}
 		}
-		if len(gaps) < 3 {
-			return Result{Proto: "usbls", Error: "too few edges / cannot infer bitrate"}
-		}
-		sort.Float64s(gaps)
-		var cands []float64
-		for i := 0; i < len(gaps); {
-			seed := gaps[i]
-			sum, j := 0.0, i
-			for j < len(gaps) && gaps[j] <= 1.5*seed {
-				sum += gaps[j]
-				j++
-			}
-			cands = append(cands, sum/float64(j-i))
-			i = j
-		}
-		best, bestFrac := 0.0, -1.0
-		for _, cand := range cands {
-			if cand < 2.5 { // below the samples/bit floor: a spur cluster
-				continue
-			}
-			kg := make([]float64, 0, len(gaps))
-			for _, g := range gaps {
-				if g <= 16*cand {
-					kg = append(kg, g)
-				}
-			}
-			if len(kg) < 3 {
-				continue
-			}
-			ref := cand
-			for range 2 {
-				sum, cnt := 0.0, 0
-				for _, g := range kg {
-					if math.Abs(g-ref) <= 0.35*ref {
-						sum += g
-						cnt++
-					}
-				}
-				if cnt > 0 {
-					ref = sum / float64(cnt)
-				}
-			}
-			good := 0
-			for _, g := range kg {
-				if m := math.Round(g / ref); m >= 1 && math.Abs(g-m*ref) <= 0.35*ref {
-					good++
-				}
-			}
-			// >= keeps the LARGER candidate on an exact tie (candidates ascend).
-			if frac := float64(good) / float64(len(kg)); frac >= 0.7 && frac >= bestFrac {
-				best, bestFrac = ref, frac
-			}
-		}
-		if best <= 0 {
-			return Result{Proto: "usbls", Error: "bitrate ambiguous — set it explicitly"}
-		}
-		T = best
 	}
 	if math.IsInf(T, 0) || math.IsNaN(T) || !(T >= minSPB) {
-		return Result{Proto: "usbls", Error: fmt.Sprintf("%.1f samples/bit; need >= %g", T, minSPB)}
+		return Result{Proto: protoUSBLS, Error: fmt.Sprintf("%.1f samples/bit; need >= %g", T, minSPB)}
 	}
 
 	// Segment edges into PACKETS on the inter-packet idle. Within a packet bit
@@ -209,7 +150,7 @@ func DecodeUSBLS(dp []uint8, colTimeS float64, cfg USBLSCfg) Result {
 		// last cell starts before the last edge (rounding (x1-x0)/T dropped the
 		// final byte when T read a little long).
 		ax, ak, ei := x0, 0, sg[0]
-		for k := 0; k < nCells+eopCells; k++ {
+		for k := range nCells + eopCells {
 			xs := ax + float64(k-ak)*T
 			if xs > x1-0.5*T {
 				break
@@ -294,10 +235,10 @@ func DecodeUSBLS(dp []uint8, colTimeS float64, cfg USBLSCfg) Result {
 			toks = append(toks, "|")
 		}
 		packets++
-		spans = append(spans, Span{cellStart(x0, cellOf[0]), cellEnd(x0, cellOf[7]), "SYNC", "start", 0})
-		pidText, pidKind := name, "addr"
+		spans = append(spans, Span{cellStart(x0, cellOf[0]), cellEnd(x0, cellOf[7]), "SYNC", kindStart, 0})
+		pidText, pidKind := name, kindAddr
 		if pidBad {
-			pidText, pidKind = "!"+name, "frame-error"
+			pidText, pidKind = "!"+name, kindFrameError
 		}
 		spans = append(spans, Span{cellStart(x0, cellOf[8]), cellEnd(x0, cellOf[15]), pidText, pidKind, pid4})
 		toks = append(toks, pidText)
@@ -320,7 +261,7 @@ func DecodeUSBLS(dp []uint8, colTimeS float64, cfg USBLSCfg) Result {
 		}
 		for b, val := range payload {
 			base := 16 + b*8
-			text, kind := hex2(val), "data"
+			text, kind := hex2(val), kindData
 			if crcBad && b >= nBytes-2 {
 				text, kind = "!"+text, "crc-error"
 			}
@@ -329,12 +270,12 @@ func DecodeUSBLS(dp []uint8, colTimeS float64, cfg USBLSCfg) Result {
 			bytesOut = append(bytesOut, val)
 		}
 		if stuffCell >= 0 {
-			spans = append(spans, Span{cellStart(x0, stuffCell), cellEnd(x0, stuffCell), "STUFF!", "frame-error", 0})
+			spans = append(spans, Span{cellStart(x0, stuffCell), cellEnd(x0, stuffCell), "STUFF!", kindFrameError, 0})
 			toks = append(toks, "STUFF!")
 		}
 	}
 	if packets == 0 {
-		return Result{Proto: "usbls", Error: "no USB packet (SYNC+PID) found"}
+		return Result{Proto: protoUSBLS, Error: "no USB packet (SYNC+PID) found"}
 	}
 
 	baud := cfg.Bitrate
@@ -342,9 +283,67 @@ func DecodeUSBLS(dp []uint8, colTimeS float64, cfg USBLSCfg) Result {
 		baud = snapRate(int(math.Round(1.0/(T*colTimeS))), 1.5e6, 12e6)
 	}
 	return Result{
-		OK: true, Proto: "usbls", Spans: spans, Text: strings.Join(toks, " "),
+		OK: true, Proto: protoUSBLS, Spans: spans, Text: strings.Join(toks, " "),
 		Bytes: bytesOut, Baud: baud, SPB: T, Thr: S.threshold,
 	}
+}
+
+// usblsBitPeriod infers a USB low/full-speed line's bit period, in samples,
+// from its edges (DecodeUSBLS tells how), or why it cannot.
+// TRLC-LINKS: REQ-SDS-018
+func usblsBitPeriod(edges []edge) (float64, string) {
+	var gaps []float64
+	for k := 1; k < len(edges); k++ {
+		if g := float64(edges[k].i - edges[k-1].i); g >= 1 {
+			gaps = append(gaps, g)
+		}
+	}
+	if len(gaps) < 3 {
+		return 0, "too few edges / cannot infer bitrate"
+	}
+	cands := gapClusters(gaps)
+	best, bestFrac := 0.0, -1.0
+	for _, cand := range cands {
+		if cand < 2.5 { // below the samples/bit floor: a spur cluster
+			continue
+		}
+		kg := make([]float64, 0, len(gaps))
+		for _, g := range gaps {
+			if g <= 16*cand {
+				kg = append(kg, g)
+			}
+		}
+		if len(kg) < 3 {
+			continue
+		}
+		ref := cand
+		for range 2 {
+			sum, cnt := 0.0, 0
+			for _, g := range kg {
+				if math.Abs(g-ref) <= 0.35*ref {
+					sum += g
+					cnt++
+				}
+			}
+			if cnt > 0 {
+				ref = sum / float64(cnt)
+			}
+		}
+		good := 0
+		for _, g := range kg {
+			if m := math.Round(g / ref); m >= 1 && math.Abs(g-m*ref) <= 0.35*ref {
+				good++
+			}
+		}
+		// >= keeps the LARGER candidate on an exact tie (candidates ascend).
+		if frac := float64(good) / float64(len(kg)); frac >= 0.7 && frac >= bestFrac {
+			best, bestFrac = ref, frac
+		}
+	}
+	if best <= 0 {
+		return 0, "bitrate ambiguous — set it explicitly"
+	}
+	return best, ""
 }
 
 // usbIsToken reports a token PID (OUT, IN, SOF, SETUP, PING), whose 11

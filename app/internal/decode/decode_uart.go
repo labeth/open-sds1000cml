@@ -1,10 +1,10 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-DECODE
+
 package decode
 
 import (
 	"fmt"
 	"math"
-	"sort"
 	"strings"
 )
 
@@ -42,31 +42,19 @@ type UARTCfg struct {
 // validates the input is genuinely ambiguous and the caller must set the baud
 // — that honesty is preserved. Mirrors decode.js inferUARTspb step for step.
 // TRLC-LINKS: REQ-SDS-018
-func inferUARTspb(S sliced) (float64, string) {
+func inferUARTspb(sl sliced) (float64, string) {
 	var gaps []float64
-	for k := 1; k < len(S.edges); k++ {
-		if g := S.edges[k].x - S.edges[k-1].x; g >= 1 {
+	for k := 1; k < len(sl.edges); k++ {
+		if g := sl.edges[k].x - sl.edges[k-1].x; g >= 1 {
 			gaps = append(gaps, g)
 		}
 	}
 	if len(gaps) < 3 {
 		return 0, "too few edges / cannot infer baud"
 	}
-	sort.Float64s(gaps)
-	// Deterministic greedy clusters: each starts at the smallest unassigned gap
-	// and absorbs everything within 1.5x its seed (bit multiples sit a full
-	// factor of 2 up, so clusters never bleed into the next multiple).
-	var cands []float64
-	for i := 0; i < len(gaps); {
-		seed := gaps[i]
-		sum, j := 0.0, i
-		for j < len(gaps) && gaps[j] <= 1.5*seed {
-			sum += gaps[j]
-			j++
-		}
-		cands = append(cands, sum/float64(j-i))
-		i = j
-	}
+	// bit multiples sit a full factor of 2 up, so clusters never bleed into
+	// the next multiple
+	cands := gapClusters(gaps)
 	best, bestFrac := 0.0, -1.0
 	for _, cand := range cands {
 		if cand < 2.5 { // below the 3-samples/bit floor: a ring-spur cluster
@@ -83,11 +71,11 @@ func inferUARTspb(S sliced) (float64, string) {
 			win = 5
 		}
 		var kg []float64
-		prevX := S.edges[0].x
-		for k := 1; k < len(S.edges); k++ {
-			if g := S.edges[k].x - prevX; g >= win {
+		prevX := sl.edges[0].x
+		for k := 1; k < len(sl.edges); k++ {
+			if g := sl.edges[k].x - prevX; g >= win {
 				kg = append(kg, g)
-				prevX = S.edges[k].x
+				prevX = sl.edges[k].x
 			}
 		}
 		if len(kg) < 3 {
@@ -162,18 +150,18 @@ func DecodeUART(codes []uint8, colTimeS float64, cfg UARTCfg) Result {
 		bits = 8
 	}
 	if bits < 1 || bits > 16 { // physical UART is 5..9; bound the shift/mask math
-		return Result{Proto: "uart", Error: "data bits out of range (1..16)"}
+		return Result{Proto: protoUART, Error: "data bits out of range (1..16)"}
 	}
 	parity := cfg.Parity
 	if parity == "" {
-		parity = "none"
+		parity = parityNone
 	}
 	const idle = 1
 	const guard = 4
 	const minSPB = 3.0
 	S := sliceChannel(codes, cfg.Threshold, cfg.HaveThr)
 	if !S.ok {
-		return Result{Proto: "uart", Error: S.reason}
+		return Result{Proto: protoUART, Error: S.reason}
 	}
 	n := S.n
 	var spb, baud float64
@@ -187,22 +175,22 @@ func DecodeUART(codes []uint8, colTimeS float64, cfg UARTCfg) Result {
 			spb = snapStandardBaud(spb, colTimeS)
 		}
 		if reason != "" {
-			return Result{Proto: "uart", Error: reason}
+			return Result{Proto: protoUART, Error: reason}
 		}
 		baud = 1.0 / (spb * colTimeS)
 	}
 	if !(spb >= minSPB) {
-		return Result{Proto: "uart", Error: fmt.Sprintf("%.1f samples/bit; need >= 3", spb)}
+		return Result{Proto: protoUART, Error: fmt.Sprintf("%.1f samples/bit; need >= 3", spb)}
 	}
 	parityOf := func(v int) int {
 		p := popcount(v&((1<<bits)-1)) & 1
-		if parity == "even" {
+		if parity == parityEven {
 			return p
 		}
 		return 1 - p
 	}
 	pcNeed := 0 // the parity bit lengthens the frame — count it so a frame near the
-	if parity != "none" {
+	if parity != parityNone {
 		pcNeed = 1 // record end isn't started with its stop bit off the captured range
 	}
 	need := int(math.Ceil(float64(bits+2+pcNeed) * spb))
@@ -213,7 +201,7 @@ func DecodeUART(codes []uint8, colTimeS float64, cfg UARTCfg) Result {
 			return sp, 0, false
 		}
 		val, gap := 0, false
-		for c := 0; c < bits; c++ {
+		for c := range bits {
 			b := logicAt(&S, float64(start)+(1.5+float64(c))*spb)
 			if b < 0 {
 				gap = true
@@ -225,12 +213,12 @@ func DecodeUART(codes []uint8, colTimeS float64, cfg UARTCfg) Result {
 		if gap {
 			return Span{start, i1, "gap", "gap", 0}, start + 1, true
 		}
-		kind, pfx, pc := "data", "", 0
-		if parity != "none" {
+		kind, pfx, pc := kindData, "", 0
+		if parity != parityNone {
 			pc = 1
 			pb := logicAt(&S, float64(start)+(1.5+float64(bits))*spb)
 			if pb >= 0 && pb != parityOf(val) {
-				kind, pfx = "parity-error", "!"
+				kind, pfx = kindParityError, "!"
 			}
 		}
 		sb := logicAt(&S, float64(start)+(1.5+float64(bits)+float64(pc))*spb)
@@ -238,8 +226,8 @@ func DecodeUART(codes []uint8, colTimeS float64, cfg UARTCfg) Result {
 			return Span{start, i1, "gap", "gap", 0}, start + 1, true
 		}
 		if sb != idle { // wrong stop level = framing error
-			if kind == "data" {
-				kind = "frame-error"
+			if kind == kindData {
+				kind = kindFrameError
 			}
 			pfx = "!"
 		}
@@ -305,7 +293,7 @@ func DecodeUART(codes []uint8, colTimeS float64, cfg UARTCfg) Result {
 		}
 	}
 	return Result{
-		OK: true, Proto: "uart", Spans: spans, Text: strings.Join(toks, " "),
+		OK: true, Proto: protoUART, Spans: spans, Text: strings.Join(toks, " "),
 		Bytes: bytes, Baud: int(math.Round(baud)), SPB: spb, Thr: S.threshold,
 	}
 }
@@ -315,11 +303,11 @@ func DecodeUART(codes []uint8, colTimeS float64, cfg UARTCfg) Result {
 // bit at cfg.Anchor plus the data and parity bits) and the frames back to
 // back before it, each starting a frame length before the next, while each
 // reads clean. A record that opens inside back-to-back traffic otherwise has
-// no idle to frame by: the owner's AA match at 20 us/div read "A5 ER ER ER
-// ER" where the line carried 20 55 AA 0F. nil without an anchor or when the
+// no idle to frame by: the owner's AA match at 20 us/div read A5 and four
+// ER characters where the line carried 20 55 AA 0F. nil without an anchor or when the
 // matched frame does not read clean. dataBits counts the parity bit.
 // TRLC-LINKS: REQ-SDS-013, REQ-SDS-018
-func uartAnchorChain(S sliced, cfg UARTCfg, spb float64, dataBits, guard int, frameAt func(int) (Span, int, bool)) []Span {
+func uartAnchorChain(sl sliced, cfg UARTCfg, spb float64, dataBits, guard int, frameAt func(int) (Span, int, bool)) []Span {
 	if !cfg.HasAnchor || !(cfg.Anchor >= 0) || !(spb > 0) {
 		return nil
 	}
@@ -327,7 +315,7 @@ func uartAnchorChain(S sliced, cfg UARTCfg, spb float64, dataBits, guard int, fr
 	// [lo, hi]; two lie at least two bits apart, so a window under that
 	// holds one at most.
 	startNear := func(lo, hi float64) int {
-		for _, e := range S.edges {
+		for _, e := range sl.edges {
 			if e.dir < 0 && e.x >= lo && e.x <= hi {
 				return e.i
 			}
@@ -339,7 +327,7 @@ func uartAnchorChain(S sliced, cfg UARTCfg, spb float64, dataBits, guard int, fr
 			return Span{}, false
 		}
 		sp, _, ok := frameAt(start)
-		return sp, ok && sp.Kind == "data"
+		return sp, ok && sp.Kind == kindData
 	}
 	a := cfg.Anchor
 	first, ok := clean(startNear(a-(float64(dataBits)+2.1)*spb, a-(float64(dataBits)+0.9)*spb))
@@ -381,20 +369,20 @@ const uartSyncFrames = 8
 // of a cut one's last bits ("F8" for its 0A). Reports whether it changed
 // anything.
 // TRLC-LINKS: REQ-SDS-018
-func syncIn(spans []Span, S sliced, spb float64, frameBits int, confirm float64) bool {
+func syncIn(spans []Span, sl sliced, spb float64, frameBits int, confirm float64) bool {
 	if len(spans) == 0 {
 		return false
 	}
 	if run := int(math.Ceil(confirm * spb)); spans[0].I0 >= run {
 		idle := true
 		for j := spans[0].I0 - run; j < spans[0].I0 && idle; j++ {
-			idle = logicAt(&S, float64(j)) == 1
+			idle = logicAt(&sl, float64(j)) == 1
 		}
 		if idle {
 			return false // opened idle
 		}
 	}
-	clean := func(k int) bool { return spans[k].Kind == "data" }
+	clean := func(k int) bool { return spans[k].Kind == kindData }
 	end := 1 // the frames back to back with the first: [0, end)
 	for end < len(spans) && float64(spans[end].I0)-(float64(spans[end-1].I0)+float64(frameBits)*spb) < confirm*spb {
 		end++
@@ -415,7 +403,7 @@ func syncIn(spans []Span, S sliced, spb float64, frameBits int, confirm float64)
 	if sync > uartSyncFrames || sync >= len(spans) {
 		return false
 	}
-	for k := 0; k < sync; k++ {
+	for k := range sync {
 		spans[k].Kind, spans[k].Text = "gap", "gap"
 	}
 	return true

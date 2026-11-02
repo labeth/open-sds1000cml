@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-DECODE
+
 package decode
 
 import (
@@ -118,7 +119,7 @@ func TestBreakManchester(t *testing.T) {
 			// occasionally a second alternating word mid-stream (back-to-back cells)
 			if rng.Intn(2) == 0 {
 				want = append(want, bkAltWord(bits, msb))
-				for i := 0; i < 1+rng.Intn(4); i++ {
+				for i := 0; i < 1+rng.Intn(4); i++ { //nolint:intrange // the bound draws from rng at every pass, and the recorded test data follow those draws
 					want = append(want, rng.Intn(maxv))
 				}
 			}
@@ -162,7 +163,7 @@ func TestBreakManchester(t *testing.T) {
 			spb := 8 + rng.Intn(57)
 			bitrate := 100000
 			want := []int{bkAltWord(bits, msb)}
-			for i := 0; i < 4+rng.Intn(4); i++ {
+			for i := 0; i < 4+rng.Intn(4); i++ { //nolint:intrange // the bound draws from rng at every pass, and the recorded test data follow those draws
 				want = append(want, rng.Intn(256))
 			}
 			w, ct := bkBuild(want, ieee, msb, bits, spb, bitrate, rng.Intn(spb), rng.Intn(spb))
@@ -574,7 +575,7 @@ func TestBreakManchester(t *testing.T) {
 		fp := 0
 		for range 60 {
 			w2 := append([]uint8{}, w...)
-			for f := 0; f < 5+rng.Intn(4); f++ {
+			for f := 0; f < 5+rng.Intn(4); f++ { //nolint:intrange // the bound draws from rng at every pass, and the recorded test data follow those draws
 				cell := 8 + rng.Intn(len(want)*8-8)
 				start := 6*spb + cell*spb
 				lvl := uint8(210)

@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-DECODE
+
 package decode
 
 import (
@@ -17,8 +18,12 @@ var nthScratch = sync.Pool{New: func() any { return new([]float64) }}
 func nthValue(v []float64, k int) float64 {
 	// The copy is scratch: a pooled buffer, not an allocation the
 	// collector has to clear and sweep each call.
-	bp := nthScratch.Get().(*[]float64)
-	c := append((*bp)[:0], v...)
+	bp, ok := nthScratch.Get().(*[]float64)
+	if !ok { // the pool's New makes only *[]float64
+		bp = new([]float64)
+	}
+	c := (*bp)[:0]
+	c = append(c, v...)
 	defer func() { *bp = c; nthScratch.Put(bp) }()
 	nan := 0
 	for i, x := range c {
@@ -30,45 +35,7 @@ func nthValue(v []float64, k int) float64 {
 	if k < nan {
 		return math.NaN()
 	}
-	c, k = c[nan:], k-nan
-	lo, hi := 0, len(c)-1
-	for lo < hi {
-		// median of three as the pivot
-		mid := lo + (hi-lo)/2
-		if c[mid] < c[lo] {
-			c[mid], c[lo] = c[lo], c[mid]
-		}
-		if c[hi] < c[lo] {
-			c[hi], c[lo] = c[lo], c[hi]
-		}
-		if c[hi] < c[mid] {
-			c[hi], c[mid] = c[mid], c[hi]
-		}
-		p := c[mid]
-		i, j := lo, hi
-		for i <= j {
-			for c[i] < p {
-				i++
-			}
-			for c[j] > p {
-				j--
-			}
-			if i <= j {
-				c[i], c[j] = c[j], c[i]
-				i++
-				j--
-			}
-		}
-		switch {
-		case k <= j:
-			hi = j
-		case k >= i:
-			lo = i
-		default:
-			return c[k]
-		}
-	}
-	return c[k]
+	return quickSelect(c[nan:], k-nan)
 }
 
 // nearHist is the most integers nthNear counts in a histogram above the
@@ -121,7 +88,7 @@ func nthNear(v []float64, iv []int, k int, b *nearBuf) float64 {
 				}
 			}
 			b.rest = rest
-			d = nthInt(rest, k-less)
+			d = quickSelect(rest, k-less)
 			for _, x := range rest {
 				if x < d {
 					less++
@@ -176,12 +143,14 @@ func nearBufOf(sc *scratch) *nearBuf {
 	return &s[0]
 }
 
-// nthInt is the k-th smallest of c (0-based), c reordered: nthValue's
-// partitioning on integers.
-// TRLC-LINKS: REQ-SDS-018, REQ-SDS-236
-func nthInt(c []int, k int) int {
+// quickSelect is the k-th smallest of c (0-based), c reordered: Hoare
+// partitions around a median-of-three pivot until k is in place, linear on
+// average. c holds no NaN.
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-214, REQ-SDS-236
+func quickSelect[T int | float64](c []T, k int) T {
 	lo, hi := 0, len(c)-1
 	for lo < hi {
+		// median of three as the pivot
 		mid := lo + (hi-lo)/2
 		if c[mid] < c[lo] {
 			c[mid], c[lo] = c[lo], c[mid]
@@ -290,7 +259,7 @@ func (h *keyHeap) push(x uint64) {
 	v, j := h.v, len(h.v)-1
 	for {
 		i := (j - 1) / 2 // parent
-		if i == j || !(v[j] < v[i]) {
+		if i == j || v[j] >= v[i] {
 			break
 		}
 		v[i], v[j] = v[j], v[i]
@@ -314,7 +283,7 @@ func (h *keyHeap) pop() uint64 {
 		if j2 := j1 + 1; j2 < n && v[j2] < v[j1] {
 			j = j2 // right child
 		}
-		if !(v[j] < v[i]) {
+		if v[j] >= v[i] {
 			break
 		}
 		v[i], v[j] = v[j], v[i]

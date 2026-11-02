@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-DECODE
+
 package decode
 
 // FlexRay vs the sigrok `flexray` decoder. The two sides expose different
@@ -27,6 +28,7 @@ package decode
 import (
 	"fmt"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 	"testing"
@@ -64,7 +66,7 @@ func orFlexFrameFlags(sync, startup, frameID, cycle int, payload []int) []int {
 	plen := len(payload) / 2
 	hdr := brFlexHeaderBytes(sync, startup, frameID, plen, brFlexHeaderCRC11(sync, startup, frameID, plen), cycle)
 	hdr[0] |= 0x20 // NF=1 (bit 37): a data frame, not a null frame; outside the header CRC
-	body := append(hdr, payload...)
+	body := slices.Concat(hdr, payload)
 	c := orFlexCRC24(body)
 	return append(body, (c>>16)&0xFF, (c>>8)&0xFF, c&0xFF)
 }
@@ -243,9 +245,11 @@ func TestOracleFlexRay(t *testing.T) {
 	const pdSpec = "flexray:channel=CH:bitrate=10000000"
 
 	run := func(t *testing.T, bits []byte, class string) []ann {
+		t.Helper()
 		return sigrokDecode(t, sr, []string{"CH"}, [][]byte{bits}, pdSpec, "flexray="+class)
 	}
 	decode := func(t *testing.T, bits []byte) Result {
+		t.Helper()
 		r := DecodeFlexRay(bitsToCodes(bits), colTime, FlexRayCfg{Bitrate: br})
 		if r.Error != "" && !r.OK {
 			t.Logf("repo decode error: %s", r.Error)
@@ -624,6 +628,7 @@ func TestOracleFlexRay(t *testing.T) {
 		bits := orFlexBits(srF, br, [][]int{fb}, 8, 14)
 
 		runF := func(t *testing.T, class string) []ann {
+			t.Helper()
 			return sigrokDecode(t, srF, []string{"CH"}, [][]byte{bits}, pdSpec, "flexray="+class)
 		}
 		r := DecodeFlexRay(bitsToCodes(bits), 1.0/float64(srF), FlexRayCfg{Bitrate: br})

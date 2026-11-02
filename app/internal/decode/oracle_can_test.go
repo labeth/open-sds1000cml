@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-DECODE
+
 package decode
 
 // CAN vs the sigrok `can` decoder. Cases cover the clean path plus the edge
@@ -39,6 +40,7 @@ package decode
 import (
 	"fmt"
 	"regexp"
+	"slices"
 	"strconv"
 	"testing"
 )
@@ -95,7 +97,7 @@ func canOracleWire(f canOFrame) (wire []int, nStuff, txCRC int) {
 	if f.nack {
 		ackBit = 1 // nobody ACKed: the slot stays recessive
 	}
-	wire = append(stuffed, 1, ackBit, 1) // CRC delimiter, ACK slot, ACK delimiter
+	wire = slices.Concat(stuffed, []int{1, ackBit, 1}) // CRC delimiter, ACK slot, ACK delimiter
 	for range 7 + 3 {
 		wire = append(wire, 1) // EOF(7) + intermission(3): the legal minimum gap
 	}
@@ -164,10 +166,12 @@ func TestOracleCAN(t *testing.T) {
 	const sr = 1_000_000
 
 	run := func(t *testing.T, bits []byte, baud int, class string) []ann {
+		t.Helper()
 		return sigrokDecode(t, sr, []string{"CANRX"}, [][]byte{bits},
 			fmt.Sprintf("can:can_rx=CANRX:nominal_bitrate=%d", baud), "can="+class)
 	}
 	decode := func(t *testing.T, bits []byte, baud int) Result {
+		t.Helper()
 		res := DecodeCANFD(bitsToCodes(bits), 1.0/sr, CANFDCfg{NominalBaud: baud, DominantLow: true})
 		if !res.OK {
 			t.Fatalf("repo decode failed: %s", res.Error)
@@ -188,9 +192,9 @@ func TestOracleCAN(t *testing.T) {
 		const baud = 50_000 // spb 20 at 1 MHz
 		var wires [][]int
 		var wantIDs, wantDLCs, wantData []int
-		for dlc := 0; dlc <= 8; dlc++ {
+		for dlc := range 9 {
 			f := canOFrame{id: 0x0A0 + 0x10*dlc, dlc: dlc}
-			for k := 0; k < dlc; k++ {
+			for k := range dlc {
 				f.data = append(f.data, (0x11*dlc+0x2F*k+7)&0xff)
 			}
 			wire, _, _ := canOracleWire(f)

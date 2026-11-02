@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-DECODE
+
 package decode
 
 // Generators of the single-wire buses beyond the first thirty
@@ -10,7 +11,7 @@ package decode
 // their even parity (flipped by badPar) and the acknowledge ack; a 0 is low
 // for 20 of the bit's 22 SWIM clocks, a 1 for 2. Then gap seconds of idle.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-253
-func swimFrame(w *timeline, dir, nb, v int, T float64, ack int, badPar bool, gap float64) {
+func swimFrame(w *timeline, dir, nb, v int, period float64, ack int, badPar bool, gap float64) {
 	bits := []int{dir}
 	p := 0
 	for i := nb - 1; i >= 0; i-- {
@@ -26,8 +27,8 @@ func swimFrame(w *timeline, dir, nb, v int, T float64, ack int, badPar bool, gap
 		if b == 0 {
 			lo = 20
 		}
-		w.add(0, lo/22*T)
-		w.add(1, (22-lo)/22*T)
+		w.add(0, lo/22*period)
+		w.add(1, (22-lo)/22*period)
 	}
 	w.add(1, gap)
 }
@@ -35,29 +36,29 @@ func swimFrame(w *timeline, dir, nb, v int, T float64, ack int, badPar bool, gap
 // swimSync appends a SWIM synchronization frame: 128 SWIM clocks of low
 // at a bit of T (22 clocks), then idle.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-253
-func swimSync(w *timeline, T float64) {
-	w.add(0, 128.0/22*T)
-	w.add(1, 4*T)
+func swimSync(w *timeline, period float64) {
+	w.add(0, 128.0/22*period)
+	w.add(1, 4*period)
 }
 
 // sdqBreak appends an SDQ break (two bits low) and a bit of high.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-253
-func sdqBreak(w *timeline, T float64) {
-	w.add(0, 2*T)
-	w.add(1, T)
+func sdqBreak(w *timeline, period float64) {
+	w.add(0, 2*period)
+	w.add(1, period)
 }
 
 // sdqByte appends an SDQ byte, least significant bit first: a 1 low for a
 // quarter bit, a 0 for three quarters.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-253
-func sdqByte(w *timeline, v int, T float64) {
+func sdqByte(w *timeline, v int, period float64) {
 	for i := range 8 {
 		lo := 0.75
 		if v>>i&1 == 1 {
 			lo = 0.25
 		}
-		w.add(0, lo*T)
-		w.add(1, (1-lo)*T)
+		w.add(0, lo*period)
+		w.add(1, (1-lo)*period)
 	}
 }
 

@@ -1,10 +1,10 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-DECODE
+
 package decode
 
 import (
 	"fmt"
 	"math"
-	"sort"
 	"strings"
 )
 
@@ -26,7 +26,7 @@ type FlexRayCfg struct {
 // startup(1), frameID(11), payloadLen(7). A frame whose transmitted header-CRC
 // field disagrees with this is corrupt and must not be accepted as a valid frame.
 // TRLC-LINKS: REQ-SDS-018
-func flexHeaderCRC11(sync, startup, frameID, payloadLen int) int {
+func flexHeaderCRC11(sync, startup, frameID, payloadLen int) int { //nolint:dupl // the tests keep their own copy, an independent reference to build frames by
 	bits := make([]int, 0, 20)
 	bits = append(bits, sync&1, startup&1)
 	for b := 10; b >= 0; b-- {
@@ -84,7 +84,7 @@ func flexFrameCRC24(frameBytes []int) int {
 // over" (FES = low,high, or idle = high,high). Mirrors decode_flexray.js step
 // for step so the web overlay and the on-device LCD agree byte-for-byte.
 // TRLC-LINKS: REQ-SDS-018
-func DecodeFlexRay(codes []uint8, colTimeS float64, cfg FlexRayCfg) Result {
+func DecodeFlexRay(codes []uint8, colTimeS float64, cfg FlexRayCfg) Result { //nolint:gocyclo // a protocol state machine kept step for step with its decode_*.js twin (parity tests)
 	// three samples a bit at the least: box-averaged records of 3.1 decode
 	// every message (TestLineCodesDecodeAtThreeSamplesABit), so a slow
 	// timebase's own record still reads the bus
@@ -92,10 +92,10 @@ func DecodeFlexRay(codes []uint8, colTimeS float64, cfg FlexRayCfg) Result {
 	const tssMinLowBits = 4.0 // "~5 bit-times of LOW" — accept a little short for jitter
 	S := sliceChannel(codes, cfg.Threshold, cfg.HaveThr)
 	if !S.ok {
-		return Result{Proto: "flexray", Error: S.reason}
+		return Result{Proto: protoFlexRay, Error: S.reason}
 	}
 	if len(S.edges) < 2 {
-		return Result{Proto: "flexray", Error: "too few edges"}
+		return Result{Proto: protoFlexRay, Error: msgTooFewEdges}
 	}
 
 	// Bit period T in samples. cfg.Bitrate pins it; otherwise infer it from the
@@ -113,24 +113,12 @@ func DecodeFlexRay(codes []uint8, colTimeS float64, cfg FlexRayCfg) Result {
 			}
 		}
 		if len(gaps) < 3 {
-			return Result{Proto: "flexray", Error: "too few edges / cannot infer bitrate"}
+			return Result{Proto: protoFlexRay, Error: "too few edges / cannot infer bitrate"}
 		}
-		sort.Float64s(gaps)
-		bp := gaps[int(float64(len(gaps))*0.1)]
-		sum, cnt := 0.0, 0
-		for _, g := range gaps {
-			if math.Abs(g-bp) <= 0.35*bp {
-				sum += g
-				cnt++
-			}
-		}
-		if cnt > 0 {
-			bp = sum / float64(cnt)
-		}
-		T = bp
+		T = shortGapCluster(gaps, 0.35)
 	}
 	if math.IsInf(T, 0) || math.IsNaN(T) || !(T >= minSPB) {
-		return Result{Proto: "flexray", Error: fmt.Sprintf("%.1f samples/bit; need >= %g", T, minSPB)}
+		return Result{Proto: protoFlexRay, Error: fmt.Sprintf("%.1f samples/bit; need >= %g", T, minSPB)}
 	}
 	tol := 0.4 * T
 	maxBytes := int(float64(S.n)/(10*T)) + 4 // safety cap; BSS/FES/EOF break normally
@@ -190,7 +178,7 @@ func DecodeFlexRay(codes []uint8, colTimeS float64, cfg FlexRayCfg) Result {
 		// TSS found. The FSS (one HIGH bit) begins at this rising edge; the first
 		// BSS begins one bit later.
 		anchorFSS := e.x
-		frameSpans := []Span{{prev.i, e.i, "TSS", "start", 0}}
+		frameSpans := []Span{{prev.i, e.i, "TSS", kindStart, 0}}
 		var frameBytes []int
 		var frameToks []string
 		anchor := anchorFSS + T
@@ -225,7 +213,7 @@ func DecodeFlexRay(codes []uint8, colTimeS float64, cfg FlexRayCfg) Result {
 			if i1 < i0 {
 				i1 = i0
 			}
-			frameSpans = append(frameSpans, Span{i0, i1, hex2(val), "data", val})
+			frameSpans = append(frameSpans, Span{i0, i1, hex2(val), kindData, val})
 			frameToks = append(frameToks, hex2(val))
 			frameBytes = append(frameBytes, val)
 			lastByteEnd = i1
@@ -242,7 +230,7 @@ func DecodeFlexRay(codes []uint8, colTimeS float64, cfg FlexRayCfg) Result {
 		// MSB-first. Emit a note span (kind "addr") right after the TSS.
 		crcOK := false
 		fcrcOK := true
-		if len(frameBytes) >= 5 {
+		if len(frameBytes) >= 5 { //nolint:nestif // a protocol state machine kept step for step with its decode_*.js twin (parity tests)
 			var hdr uint64
 			for hb := range 5 {
 				hdr = (hdr << 8) | uint64(frameBytes[hb]&0xff)
@@ -270,12 +258,12 @@ func DecodeFlexRay(codes []uint8, colTimeS float64, cfg FlexRayCfg) Result {
 			}
 			// A bad CRC marks the frame corrupt: flag the header span and note
 			// so a consumer never treats the (still-extracted) bytes as trustworthy.
-			kind := "addr"
+			kind := kindAddr
 			if !crcOK {
-				kind = "frame-error"
+				kind = kindFrameError
 				note = "!CRC " + note
 			} else if !fcrcOK {
-				kind = "frame-error"
+				kind = kindFrameError
 				note = "!FCRC " + note
 			}
 			hdrSpan := Span{frameSpans[1].I0, frameSpans[5].I1, note, kind, frameID}
@@ -302,7 +290,7 @@ func DecodeFlexRay(codes []uint8, colTimeS float64, cfg FlexRayCfg) Result {
 	}
 
 	if frames == 0 {
-		return Result{Proto: "flexray", Error: "no FlexRay frame (TSS) found"}
+		return Result{Proto: protoFlexRay, Error: "no FlexRay frame (TSS) found"}
 	}
 	baud := cfg.Bitrate
 	if colTimeS > 0 {
@@ -314,7 +302,7 @@ func DecodeFlexRay(codes []uint8, colTimeS float64, cfg FlexRayCfg) Result {
 	// make OK true on their own — a corrupted frame must not read as a
 	// confident, valid FlexRay frame.
 	res := Result{
-		OK: goodFrames > 0, Proto: "flexray", Spans: spans, Text: strings.Join(toks, " "),
+		OK: goodFrames > 0, Proto: protoFlexRay, Spans: spans, Text: strings.Join(toks, " "),
 		Bytes: bytesOut, Baud: baud, SPB: T, Thr: S.threshold,
 	}
 	if goodFrames == 0 {

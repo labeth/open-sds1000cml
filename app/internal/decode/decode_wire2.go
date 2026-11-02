@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-DECODE
+
 package decode
 
 import (
@@ -100,7 +101,7 @@ func DecodeSDCardEdges(a, b *EdgeLine, colTimeS float64, cfg ClockedCfg) Result 
 func decodeSDCard(a, b lineIn, colTimeS float64, cfg ClockedCfg) Result {
 	B, per, C, why := risingBits(a, b, cfg)
 	if why != "" {
-		return Result{Proto: "sdcard", Error: why}
+		return Result{Proto: protoSDCard, Error: why}
 	}
 	o := newWireOut(C.n, C.sc)
 	var tokBits [136]int // a token's bits
@@ -134,7 +135,7 @@ tokens:
 		for k := range t {
 			bits[k] = t[k].v
 		}
-		o.add(t[0].x, t[0].x, "", "sof", 0, false)
+		o.add(t[0].x, t[0].x, "", kindSOF, 0, false)
 		idx := 0
 		for k := 2; k < 8; k++ {
 			idx = idx<<1 | bits[k]
@@ -167,14 +168,14 @@ tokens:
 			ckOK = crc7(bits[:40]) == bitsInt(bits[40:47])
 		}
 		ckOK = ckOK && bits[n-1] == 1
-		for k := 0; k < n/8; k++ {
+		for k := range n / 8 {
 			v := bitsInt(bits[8*k : 8*k+8])
-			txt, kind := hex2(v), "data"
+			txt, kind := hex2(v), kindData
 			if k == 0 {
 				txt = name
 			}
 			if k == n/8-1 && !ckOK {
-				txt, kind = "!"+txt, "frame-error"
+				txt, kind = "!"+txt, kindFrameError
 			}
 			x1 := t[8*k].x + 8*per
 			o.add(t[8*k].x, x1, txt, kind, v, true)
@@ -183,10 +184,10 @@ tokens:
 		i += n - 1
 	}
 	if len(o.spans) == 0 {
-		return Result{Proto: "sdcard", Error: "no SD token"}
+		return Result{Proto: protoSDCard, Error: "no SD token"}
 	}
 	res := Result{
-		OK: good, Proto: "sdcard", Spans: o.spans, Text: strings.Join(o.toks, " "), Bytes: o.units,
+		OK: good, Proto: protoSDCard, Spans: o.spans, Text: strings.Join(o.toks, " "), Bytes: o.units,
 		Thr: C.threshold, SPB: per,
 	}
 	if colTimeS > 0 && per > 0 {
@@ -201,25 +202,25 @@ tokens:
 // sdResyncs reports two tokens in a row whose CRCs check from bit j (the
 // second at the next start bit after the first).
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-254
-func sdResyncs(B []cbit, j, lastCmd int, acmd bool, bits []int) bool {
-	if j+1 >= len(B) {
+func sdResyncs(cb []cbit, j, lastCmd int, acmd bool, bits []int) bool {
+	if j+1 >= len(cb) {
 		return false
 	}
-	nj, ok, crc := sdCheck(B, j, lastCmd, acmd, bits)
+	nj, ok, crc := sdCheck(cb, j, lastCmd, acmd, bits)
 	if !ok || !crc {
 		return false
 	}
-	if B[j+1].v == 1 { // a command: the response after it follows it
+	if cb[j+1].v == 1 { // a command: the response after it follows it
 		lastCmd = bitsInt(bits[2:8])
 	}
 	k := j + nj
-	for k < len(B) && B[k].v != 0 {
+	for k < len(cb) && cb[k].v != 0 {
 		k++
 	}
-	if k+1 >= len(B) {
+	if k+1 >= len(cb) {
 		return false
 	}
-	_, ok, crc = sdCheck(B, k, lastCmd, acmd, bits)
+	_, ok, crc = sdCheck(cb, k, lastCmd, acmd, bits)
 	return ok && crc
 }
 
@@ -228,17 +229,17 @@ func sdResyncs(B []cbit, j, lastCmd int, acmd bool, bits []int) bool {
 // R3) and end bit check, and whether a CRC was checked. bits is scratch of
 // 136.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-254
-func sdCheck(B []cbit, i, lastCmd int, acmd bool, bits []int) (n int, ok, crc bool) {
-	host := B[i+1].v == 1
+func sdCheck(cb []cbit, i, lastCmd int, acmd bool, bits []int) (n int, ok, crc bool) {
+	host := cb[i+1].v == 1
 	n = 48
 	if !host && !acmd && (lastCmd == 2 || lastCmd == 9 || lastCmd == 10) {
 		n = 136
 	}
-	if i+n > len(B) {
+	if i+n > len(cb) {
 		return n, false, false
 	}
-	for k := 0; k < n; k++ {
-		bits[k] = B[i+k].v
+	for k := range n {
+		bits[k] = cb[i+k].v
 	}
 	ok, crc = true, true
 	switch {
@@ -290,7 +291,7 @@ func DecodePDIEdges(a, b *EdgeLine, colTimeS float64, cfg ClockedCfg) Result {
 func decodePDI(a, b lineIn, colTimeS float64, cfg ClockedCfg) Result {
 	B, per, C, why := risingBits(a, b, cfg)
 	if why != "" {
-		return Result{Proto: "pdi", Error: why}
+		return Result{Proto: protoPDI, Error: why}
 	}
 	o := newWireOut(C.n, C.sc)
 	good := false
@@ -307,7 +308,7 @@ func decodePDI(a, b lineIn, colTimeS float64, cfg ClockedCfg) Result {
 			run++
 		}
 		if run >= 11 {
-			o.add(B[i].x, B[i+run-1].x+per, "BRK", "rw", 0, false)
+			o.add(B[i].x, B[i+run-1].x+per, "BRK", kindRW, 0, false)
 			i += run - 1
 			groups, cur, rep = nil, nil, 0
 			continue
@@ -324,7 +325,7 @@ func decodePDI(a, b lineIn, colTimeS float64, cfg ClockedCfg) Result {
 		i += 10
 		x0, x1 := c[0].x, c[10].x+per
 		if p != c[9].v || c[10].v != 1 {
-			o.add(x0, x1, "!"+hex2(v), "parity-error", v, true)
+			o.add(x0, x1, "!"+hex2(v), kindParityError, v, true)
 			groups, cur = nil, nil
 			continue
 		}
@@ -348,12 +349,12 @@ func decodePDI(a, b lineIn, colTimeS float64, cfg ClockedCfg) Result {
 				groups = []int{8}
 			}
 			isRep = op == 5
-			o.add(x0, x0, "", "sof", 0, false)
-			o.add(x0, x1, pdiOps[op], "data", v, true)
+			o.add(x0, x0, "", kindSOF, 0, false)
+			o.add(x0, x1, pdiOps[op], kindData, v, true)
 			good = true
 			continue
 		}
-		o.add(x0, x1, hex2(v), "data", v, true)
+		o.add(x0, x1, hex2(v), kindData, v, true)
 		cur = append(cur, v)
 		if len(cur) == groups[0] {
 			if isRep {
@@ -368,10 +369,10 @@ func decodePDI(a, b lineIn, colTimeS float64, cfg ClockedCfg) Result {
 		}
 	}
 	if len(o.spans) == 0 {
-		return Result{Proto: "pdi", Error: "no PDI character"}
+		return Result{Proto: protoPDI, Error: "no PDI character"}
 	}
 	res := Result{
-		OK: good, Proto: "pdi", Spans: o.spans, Text: strings.Join(o.toks, " "), Bytes: o.units,
+		OK: good, Proto: protoPDI, Spans: o.spans, Text: strings.Join(o.toks, " "), Bytes: o.units,
 		Thr: C.threshold, SPB: per,
 	}
 	if colTimeS > 0 && per > 0 {
@@ -435,17 +436,17 @@ func DecodeCJTAGEdges(a, b *EdgeLine, colTimeS float64, cfg ClockedCfg) Result {
 
 // decodeCJTAG is DecodeCJTAG over samples or edges.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-254
-func decodeCJTAG(a, b lineIn, colTimeS float64, cfg ClockedCfg) Result {
+func decodeCJTAG(a, b lineIn, colTimeS float64, cfg ClockedCfg) Result { //nolint:gocyclo // a protocol state machine kept step for step with its decode_*.js twin (parity tests)
 	if b.none() {
-		return Result{Proto: "cjtag", Error: "needs both lines (TCKC and TMSC)"}
+		return Result{Proto: protoCJTAG, Error: "needs both lines (TCKC and TMSC)"}
 	}
 	K := a.slice(cfg.Threshold, cfg.HaveThr)
 	if !K.ok {
-		return Result{Proto: "cjtag", Error: K.reason}
+		return Result{Proto: protoCJTAG, Error: K.reason}
 	}
 	M := b.slice(cfg.ThresholdB, cfg.HaveThrB)
 	if !M.ok {
-		return Result{Proto: "cjtag", Error: M.reason}
+		return Result{Proto: protoCJTAG, Error: M.reason}
 	}
 	o := newWireOut(K.n, K.sc)
 	rises := scratchSlice[float64](K.sc, len(K.edges)/2+1)
@@ -496,12 +497,12 @@ func decodeCJTAG(a, b lineIn, colTimeS float64, cfg ClockedCfg) Result {
 		switch e := esc[i]; {
 		case e >= 8:
 			mode = fourWire
-			o.add(r, r, "", "sof", 0, false)
-			o.add(r, r, "ESC"+strconv.Itoa(e), "rw", e, false)
+			o.add(r, r, "", kindSOF, 0, false)
+			o.add(r, r, "ESC"+strconv.Itoa(e), kindRW, e, false)
 		case e == 6:
 			mode, oacp, oaclen = oac, 0, 12
-			o.add(r, r, "", "sof", 0, false)
-			o.add(r, r, "ESC6", "rw", 6, false)
+			o.add(r, r, "", kindSOF, 0, false)
+			o.add(r, r, "ESC6", kindRW, 6, false)
 		}
 		tmsc := lv.at(r)
 		if mode == oac {
@@ -548,14 +549,14 @@ func decodeCJTAG(a, b lineIn, colTimeS float64, cfg ClockedCfg) Result {
 				reg = "IR"
 			}
 			txt := hexText(reg, uint64(ti), 0) // fmt's "%s%X"
-			o.add(x0, r, txt, "data", ti, true)
-			o.add(x0, r, hexText("TDO", uint64(to), 0), "rw", to, false)
+			o.add(x0, r, txt, kindData, ti, true)
+			o.add(x0, r, hexText("TDO", uint64(to), 0), kindRW, to, false)
 			good = good || nb > 0
 			ti, to, nb = 0, 0, 0
 		}
 	}
 	if len(o.spans) == 0 {
-		return Result{Proto: "cjtag", Error: "no cJTAG escape"}
+		return Result{Proto: protoCJTAG, Error: "no cJTAG escape"}
 	}
 	var T float64
 	if _, _, ok := K.roundUps(); ok && len(per) > 0 {
@@ -570,7 +571,7 @@ func decodeCJTAG(a, b lineIn, colTimeS float64, cfg ClockedCfg) Result {
 		}
 	}
 	res := Result{
-		OK: good, Proto: "cjtag", Spans: o.spans, Text: strings.Join(o.toks, " "), Bytes: o.units,
+		OK: good, Proto: protoCJTAG, Spans: o.spans, Text: strings.Join(o.toks, " "), Bytes: o.units,
 		Thr: K.threshold, SPB: T,
 	}
 	if len(per) > 0 {
@@ -624,17 +625,17 @@ func DecodeMapleEdges(a, b *EdgeLine, colTimeS float64, cfg ClockedCfg) Result {
 
 // decodeMaple is DecodeMaple over samples or edges.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-254
-func decodeMaple(a, b lineIn, colTimeS float64, cfg ClockedCfg) Result {
+func decodeMaple(a, b lineIn, colTimeS float64, cfg ClockedCfg) Result { //nolint:gocyclo // a protocol state machine kept step for step with its decode_*.js twin (parity tests)
 	if b.none() {
-		return Result{Proto: "maple", Error: "needs both lines (SDCKA and SDCKB)"}
+		return Result{Proto: protoMaple, Error: "needs both lines (SDCKA and SDCKB)"}
 	}
 	A := a.slice(cfg.Threshold, cfg.HaveThr)
 	if !A.ok {
-		return Result{Proto: "maple", Error: A.reason}
+		return Result{Proto: protoMaple, Error: A.reason}
 	}
 	Bs := b.slice(cfg.ThresholdB, cfg.HaveThrB)
 	if !Bs.ok {
-		return Result{Proto: "maple", Error: Bs.reason}
+		return Result{Proto: protoMaple, Error: Bs.reason}
 	}
 	// both lines' edges in time order, with both lines' levels after each
 	type ev struct {
@@ -644,7 +645,7 @@ func decodeMaple(a, b lineIn, colTimeS float64, cfg ClockedCfg) Result {
 		la, lb int8
 	}
 	evs := scratchSlice[ev](a.scratch(), len(A.edges)+len(Bs.edges))
-	la, lb := int8(A.first), int8(Bs.first)
+	la, lb := A.first, Bs.first
 	ia, ib := 0, 0
 	// Edges sliced from digital lines lie at x = i-1+frac with frac within
 	// (0, 1): two edges at different samples i compare as their samples do.
@@ -664,12 +665,12 @@ func decodeMaple(a, b lineIn, colTimeS float64, cfg ClockedCfg) Result {
 		if takeA {
 			e := &A.edges[ia]
 			ia++
-			la = int8((e.dir + 1) / 2)
+			la = int8((e.dir + 1) / 2) //nolint:gosec // an edge's dir is -1 or +1: the level is 0 or 1
 			v.x, v.line, v.fall = e.x, 0, e.dir < 0
 		} else {
 			e := &Bs.edges[ib]
 			ib++
-			lb = int8((e.dir + 1) / 2)
+			lb = int8((e.dir + 1) / 2) //nolint:gosec // an edge's dir is -1 or +1: the level is 0 or 1
 			v.x, v.line, v.fall = e.x, 1, e.dir < 0
 		}
 		v.la, v.lb = la, lb
@@ -682,11 +683,11 @@ func decodeMaple(a, b lineIn, colTimeS float64, cfg ClockedCfg) Result {
 	for k := 0; k < len(evs); k++ {
 		// a start: SDCKA falls with SDCKB high, then SDCKB falls four
 		// times (six: with a CRC) before SDCKA rises
-		if !(evs[k].line == 0 && evs[k].fall && evs[k].lb == 1) {
+		if evs[k].line != 0 || !evs[k].fall || evs[k].lb != 1 {
 			continue
 		}
 		cnt, j := 0, k+1
-		for ; j < len(evs) && !(evs[j].line == 0 && !evs[j].fall); j++ {
+		for ; j < len(evs) && (evs[j].line != 0 || evs[j].fall); j++ {
 			if evs[j].line == 1 && evs[j].fall {
 				cnt++
 			}
@@ -694,7 +695,7 @@ func decodeMaple(a, b lineIn, colTimeS float64, cfg ClockedCfg) Result {
 		if j >= len(evs) || evs[j].lb != 1 || (cnt != 4 && cnt != 6) {
 			continue
 		}
-		o.add(evs[k].x, evs[j].x, "", "sof", 0, false)
+		o.add(evs[k].x, evs[j].x, "", kindSOF, 0, false)
 		bytes, bx = bytes[:0], bx[:0]
 		ended := false
 		var endX0, endX1 float64
@@ -709,7 +710,7 @@ func decodeMaple(a, b lineIn, colTimeS float64, cfg ClockedCfg) Result {
 				if !e.fall {
 					continue
 				}
-				if e.line == 0 {
+				if e.line == 0 { //nolint:nestif // a protocol state machine kept step for step with its decode_*.js twin (parity tests)
 					if ca == cb {
 						if ca == 0 {
 							x0 = e.x
@@ -758,14 +759,14 @@ func decodeMaple(a, b lineIn, colTimeS float64, cfg ClockedCfg) Result {
 		ck := 0
 		T := bitT.value()
 		for i, x := range bytes {
-			txt, kind := hex2(x), "data"
+			txt, kind := hex2(x), kindData
 			switch {
 			case i < 4:
 				txt = mapleHex[i][x&0xff]
 			case i == len(bytes)-1:
 				txt = mapleHex[4][x&0xff]
 				if x != ck || len(bytes) != want || !ended {
-					txt, kind = mapleHex[5][x&0xff], "frame-error"
+					txt, kind = mapleHex[5][x&0xff], kindFrameError
 				} else {
 					good = true
 				}
@@ -774,16 +775,16 @@ func decodeMaple(a, b lineIn, colTimeS float64, cfg ClockedCfg) Result {
 			o.add(bx[i], bx[i]+8*T, txt, kind, x, true)
 		}
 		if ended {
-			o.add(endX0, endX1, "END", "stop", 0, false)
+			o.add(endX0, endX1, "END", kindStop, 0, false)
 		}
 		k = j
 	}
 	if len(o.spans) == 0 {
-		return Result{Proto: "maple", Error: "no Maple frame"}
+		return Result{Proto: protoMaple, Error: "no Maple frame"}
 	}
 	T := bitT.value()
 	res := Result{
-		OK: good, Proto: "maple", Spans: o.spans, Text: strings.Join(o.toks, " "), Bytes: o.units,
+		OK: good, Proto: protoMaple, Spans: o.spans, Text: strings.Join(o.toks, " "), Bytes: o.units,
 		Thr: A.threshold, SPB: T,
 	}
 	if colTimeS > 0 && T > 0 {
@@ -817,10 +818,10 @@ func DecodeCaliperEdges(a, b *EdgeLine, colTimeS float64, cfg ClockedCfg) Result
 func decodeCaliper(a, b lineIn, colTimeS float64, cfg ClockedCfg) Result {
 	B, per, C, why := risingBits(a, b, cfg)
 	if why != "" {
-		return Result{Proto: "caliper", Error: why}
+		return Result{Proto: protoCaliper, Error: why}
 	}
 	if !(colTimeS > 0) {
-		return Result{Proto: "caliper", Error: "no sample time"}
+		return Result{Proto: protoCaliper, Error: msgNoSampleTime}
 	}
 	quiet := 10e-3 / colTimeS
 	o := newWireOut(C.n, C.sc)
@@ -839,7 +840,7 @@ func decodeCaliper(a, b lineIn, colTimeS float64, cfg ClockedCfg) Result {
 			i++
 			continue
 		}
-		o.add(f[0].x, f[0].x, "", "sof", 0, false)
+		o.add(f[0].x, f[0].x, "", kindSOF, 0, false)
 		num, flags := 0, 0
 		for k := range 16 {
 			num |= f[k].v << k
@@ -847,9 +848,9 @@ func decodeCaliper(a, b lineIn, colTimeS float64, cfg ClockedCfg) Result {
 		for k := range 8 {
 			flags |= f[16+k].v << k
 		}
-		o.add(f[0].x, f[7].x+per, hex2(num&0xff), "data", num&0xff, true)
-		o.add(f[8].x, f[15].x+per, hex2(num>>8), "data", num>>8, true)
-		o.add(f[16].x, f[23].x+per, hex2(flags), "data", flags, true)
+		o.add(f[0].x, f[7].x+per, hex2(num&0xff), kindData, num&0xff, true)
+		o.add(f[8].x, f[15].x+per, hex2(num>>8), kindData, num>>8, true)
+		o.add(f[16].x, f[23].x+per, hex2(flags), kindData, flags, true)
 		v := float64(num)
 		if flags>>4&1 == 1 && num != 0 {
 			v = -v
@@ -860,15 +861,15 @@ func decodeCaliper(a, b lineIn, colTimeS float64, cfg ClockedCfg) Result {
 		} else {
 			txt = strconv.FormatFloat(v/100, 'f', -1, 64) + "mm"
 		}
-		o.add(f[0].x, f[23].x+per, txt, "rw", num, false)
+		o.add(f[0].x, f[23].x+per, txt, kindRW, num, false)
 		good = true
 		i += 24
 	}
 	if len(o.spans) == 0 {
-		return Result{Proto: "caliper", Error: "no caliper frame"}
+		return Result{Proto: protoCaliper, Error: "no caliper frame"}
 	}
 	res := Result{
-		OK: good, Proto: "caliper", Spans: o.spans, Text: strings.Join(o.toks, " "), Bytes: o.units,
+		OK: good, Proto: protoCaliper, Spans: o.spans, Text: strings.Join(o.toks, " "), Bytes: o.units,
 		Thr: C.threshold, SPB: per,
 	}
 	if per > 0 {

@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-DECODE
+
 package decode
 
 import (
@@ -7,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 )
@@ -84,7 +86,7 @@ func runPacketTop(t *testing.T, dir, image string, entries []uint8, unit int, co
 		image, "+input=" + path, fmt.Sprintf("+length=%d", len(entries)), fmt.Sprintf("+unit=%d", unit),
 		fmt.Sprintf("+control=%x", control), fmt.Sprintf("+ticks=%d", ticks), fmt.Sprintf("+aux=%x", aux), fmt.Sprintf("+pattern=%x", pattern),
 	}, extra...)
-	out, err := exec.Command("vvp", argv...).CombinedOutput()
+	out, err := exec.CommandContext(t.Context(), "vvp", argv...).CombinedOutput()
 	if err != nil || !strings.Contains(string(out), "PASS packet top") {
 		t.Fatalf("simulate: %v\n%s", err, out)
 	}
@@ -94,7 +96,7 @@ func runPacketTop(t *testing.T, dir, image string, entries []uint8, unit int, co
 		if _, err := fmt.Sscanf(line, "E %d %d %x %d", &e[0], &e[1], &e[2], &e[3]); err == nil {
 			r.events = append(r.events, e)
 		}
-		fmt.Sscanf(line, "T %d", &r.trigger)
+		_, _ = fmt.Sscanf(line, "T %d", &r.trigger) // only the T line sets it
 	}
 	return r
 }
@@ -140,7 +142,7 @@ func TestPacketImageTopRTL(t *testing.T) {
 		}, decoders...) {
 			args = append(args, filepath.Join(rtl, f))
 		}
-		if out, err := exec.Command("iverilog", args...).CombinedOutput(); err != nil {
+		if out, err := exec.CommandContext(t.Context(), "iverilog", args...).CombinedOutput(); err != nil {
 			t.Fatalf("compile %s: %v\n%s", name, err, out)
 		}
 		return image
@@ -196,7 +198,7 @@ func TestPacketImageTopRTL(t *testing.T) {
 		// envelope and check each bucket's extremes against the SRAM words.
 		_, w := canStdFrame(0x123, 4, []int{0x55, 0xAA, 0x0F, 0xF0})
 		wire := append(append(ones(20), w...), ones(10)...)
-		out, err := exec.Command("vvp", []string{
+		out, err := exec.CommandContext(t.Context(), "vvp", []string{
 			image, "+input=" + writeEntries(t, dir, bitsEntries(wire, 210, 40)),
 			fmt.Sprintf("+length=%d", len(wire)), "+unit=500", "+control=601", "+ticks=32000", "+aux=7d00", "+pattern=0", "+envelope=256",
 		}...).CombinedOutput()
@@ -213,7 +215,7 @@ func TestPacketImageTopRTL(t *testing.T) {
 			if _, err := fmt.Sscanf(line, "B %x", &v); err == nil {
 				buffer = append(buffer, v)
 			}
-			fmt.Sscanf(line, "N %d", &received)
+			_, _ = fmt.Sscanf(line, "N %d", &received) // only the N line sets it
 		}
 		want := envelopeRef(sram, 16, 256)
 		if received != 32 || fmt.Sprint(buffer) != fmt.Sprint(want) {
@@ -271,7 +273,7 @@ func TestPacketImageTopRTL(t *testing.T) {
 		}
 		bad = append(bad, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1)
 		_, good := canStdFrame(0x100, 2, []int{0x11, 0x22})
-		lead := append(cutFrame[len(cutFrame)/2:], ones(20)...)
+		lead := slices.Concat(cutFrame[len(cutFrame)/2:], ones(20))
 		wire := append(append(append(append(lead, good...), good...), bad...), ones(10)...)
 		r := runPacketTop(t, dir, image, bitsEntries(wire, 210, 40), 500, 1|6<<8, 32000, 32000, 0,
 			append([]string{"+pre=20000"}, seqArgs("can-err-history", []seqElem{{4, 0, 0}}, false, false)...)...)
@@ -326,7 +328,7 @@ func TestPacketImageTopRTL(t *testing.T) {
 		// trigger is not live and does not fire; the transcript drops that
 		// error (decodedlines). A later bad stop bit fires it.
 		cut := append(append(ones(1), zeros(10)...), ones(12)...)
-		wire := append(cut, uart([]int{0x41, 0x42, 0x43, 0x44, 0x45, 0x46, 0x47, 0x48}, 6)...)
+		wire := slices.Concat(cut, uart([]int{0x41, 0x42, 0x43, 0x44, 0x45, 0x46, 0x47, 0x48}, 6))
 		r := runPacketTop(t, dir, generalImage, bitsEntries(wire, 210, 40), 500, 0, 0, 0, 0,
 			append([]string{"+serial", "+pre=20000"}, seqArgs("uart-err-history", []seqElem{{4, 0, 0}}, false, false, uartRegs...)...)...)
 		if len(r.events) == 0 || r.events[0][1] != 4 || r.events[0][3] > 20000*2 {

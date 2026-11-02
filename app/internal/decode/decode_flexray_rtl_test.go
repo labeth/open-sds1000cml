@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-DECODE
+
 package decode
 
 import (
@@ -87,7 +88,7 @@ func TestFlexRayTriggerRTL(t *testing.T) {
 	dir := t.TempDir()
 	rtl := testenv.RTLDir(t)
 	image := filepath.Join(dir, "flexray.vvp")
-	if out, err := exec.Command("iverilog", "-g2012", "-s", "tb_flexray_trigger", "-o", image,
+	if out, err := exec.CommandContext(t.Context(), "iverilog", "-g2012", "-s", "tb_flexray_trigger", "-o", image,
 		filepath.Join(rtl, "flexray_trigger.v"), filepath.Join(rtl, "sim", "tb_flexray_trigger.v")).CombinedOutput(); err != nil {
 		t.Fatalf("compile: %v\n%s", err, out)
 	}
@@ -114,7 +115,7 @@ func TestFlexRayTriggerRTL(t *testing.T) {
 			fmt.Sprintf("+nominal=%d", int(math.Round(256/(float64(bitrate)*canRTLTicks)))),
 			fmt.Sprintf("+pattern=%016x", p), fmt.Sprintf("+len=%d", len(pattern)),
 		}, args...)
-		out, err := exec.Command("vvp", argv...).CombinedOutput()
+		out, err := exec.CommandContext(t.Context(), "vvp", argv...).CombinedOutput()
 		if err != nil {
 			t.Fatalf("simulate: %v\n%s", err, out)
 		}

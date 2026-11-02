@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-DECODE
+
 package decode
 
 // SPI vs the sigrok `spi` decoder (clk + mosi, no chip-select). Cases cover
