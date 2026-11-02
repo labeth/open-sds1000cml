@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"math"
 	"os"
+
+	"open-sds/app/internal/dsp"
 )
 
 // InterleaveCalibration contains measured offset, gain and aperture corrections.
@@ -255,16 +257,18 @@ func correctPhases(x []uint8, q []uint16, tbl *[5][256]uint16, rot int) {
 		}
 	}
 	t0, t1, t2, t3, t4 := t[0], t[1], t[2], t[3], t[4]
-	for len(x) >= 5 && len(q) >= 5 {
-		a, b, c, d, e := t0[x[0]], t1[x[1]], t2[x[2]], t3[x[3]], t4[x[4]]
-		q[0], q[1], q[2], q[3], q[4] = a, b, c, d, e
-		x[0], x[1], x[2], x[3], x[4] = roundQ8(a), roundQ8(b), roundQ8(c), roundQ8(d), roundQ8(e)
-		x, q = x[5:], q[5:]
+	// the lookups first, then the codes rounded back in one vector pass
+	// (dsp.RoundQ8): a code is read before it is overwritten
+	n := min(len(x), len(q))
+	xs, qs := x[:n], q[:n]
+	for len(xs) >= 5 {
+		qs[0], qs[1], qs[2], qs[3], qs[4] = t0[xs[0]], t1[xs[1]], t2[xs[2]], t3[xs[3]], t4[xs[4]]
+		xs, qs = xs[5:], qs[5:]
 	}
-	for k := range x {
-		q[k] = t[k][x[k]]
-		x[k] = roundQ8(q[k])
+	for k := range xs {
+		qs[k] = t[k][xs[k]]
 	}
+	dsp.RoundQ8(x[:n], q[:n])
 }
 
 // supportsScale reports whether both channels sit at a measured scale. Offset
