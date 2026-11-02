@@ -2,7 +2,6 @@
 //
 //	<root>/A/app            slot A binary
 //	<root>/B/app            slot B binary
-//	<root>/emergency/app    optional known-good backstop
 //	<root>/active           pointer file: "A" or "B"
 //	<root>/confirmed        pointer file: last slot that ran stably
 //	<root>/staging/         upload staging area
@@ -27,10 +26,9 @@ import (
 )
 
 const (
-	SlotA         = "A"
-	SlotB         = "B"
-	SlotEmergency = "emergency"
-	BinName       = "app"
+	SlotA   = "A"
+	SlotB   = "B"
+	BinName = "app"
 )
 
 // TRLC-LINKS: REQ-SDS-087
@@ -142,7 +140,7 @@ func (s *Store) HasBinary(slot string) bool {
 // returns its sha256.
 // TRLC-LINKS: REQ-SDS-087
 func (s *Store) Install(slot, src string) (string, error) {
-	if slot != SlotA && slot != SlotB && slot != SlotEmergency {
+	if slot != SlotA && slot != SlotB {
 		return "", fmt.Errorf("slots: invalid slot %q", slot)
 	}
 	if err := os.MkdirAll(s.SlotDir(slot), 0o755); err != nil {
@@ -203,13 +201,12 @@ type Status struct {
 	Confirmed string            `json:"confirmed"`
 	Binaries  map[string]string `json:"binaries"` // slot -> sha256 ("" if missing)
 	Root      string            `json:"root"`
-	HasEmerg  bool              `json:"has_emergency"`
 }
 
 // TRLC-LINKS: REQ-SDS-087
 func (s *Store) Status() Status {
 	st := Status{Active: s.Active(), Confirmed: s.Confirmed(), Root: s.root, Binaries: map[string]string{}}
-	for _, slot := range []string{SlotA, SlotB, SlotEmergency} {
+	for _, slot := range []string{SlotA, SlotB} {
 		if s.HasBinary(slot) {
 			sum, err := s.cachedSHA256(s.BinPath(slot))
 			if err != nil {
@@ -218,7 +215,6 @@ func (s *Store) Status() Status {
 			st.Binaries[slot] = sum
 		}
 	}
-	st.HasEmerg = s.HasBinary(SlotEmergency)
 	return st
 }
 

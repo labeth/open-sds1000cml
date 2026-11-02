@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"open-sds/ota/internal/fdinherit"
-	"open-sds/ota/internal/slots"
 )
 
 // superviseLoop is the app lifecycle state machine. It only acts once the
@@ -22,7 +21,7 @@ import (
 //  2. launch the active slot binary as a direct child so it inherits the
 //     boot fds (spec 01 §2.3),
 //  3. classify the outcome; stable+healthy confirms the slot, repeated
-//     failure rolls back active→confirmed, then to the emergency binary.
+//     failure rolls back active→confirmed.
 //
 // TRLC-LINKS: REQ-SDS-028
 func (a *Agent) superviseLoop() {
@@ -59,7 +58,7 @@ func (a *Agent) superviseLoop() {
 			continue
 		}
 
-		slot, emergency := a.pickSlot()
+		slot := a.pickSlot()
 		if slot == "" {
 			a.setAppState(func(s *appState) {
 				*s = appState{Running: false, LastExit: "no app binary in any slot"}
@@ -67,7 +66,7 @@ func (a *Agent) superviseLoop() {
 			a.idleWait(2 * time.Second)
 			continue
 		}
-		a.runAppOnce(slot, emergency)
+		a.runAppOnce(slot)
 	}
 }
 
@@ -101,28 +100,18 @@ func (a *Agent) idleWait(d time.Duration) {
 	}
 }
 
-// pickSlot chooses what to run: the emergency binary if the ladder forced it,
-// else the active slot, else the confirmed slot, else emergency.
+// pickSlot chooses what to run: the active slot, else the confirmed slot.
 // TRLC-LINKS: REQ-SDS-028
-func (a *Agent) pickSlot() (slot string, emergency bool) {
-	a.appMu.Lock()
-	forced := a.useEmergency
-	a.appMu.Unlock()
-	if forced && a.store.HasBinary(slots.SlotEmergency) {
-		return slots.SlotEmergency, true
-	}
+func (a *Agent) pickSlot() string {
 	active := a.store.Active()
 	if a.store.HasBinary(active) {
-		return active, false
+		return active
 	}
 	if conf := a.store.Confirmed(); conf != active && a.store.HasBinary(conf) {
 		a.log.Printf("active slot %s has no binary; falling back to confirmed %s", active, conf)
-		return conf, false
+		return conf
 	}
-	if a.store.HasBinary(slots.SlotEmergency) {
-		return slots.SlotEmergency, true
-	}
-	return "", false
+	return ""
 }
 
 // orphanAppPid returns a live app pid from a previous agent generation.
@@ -197,7 +186,7 @@ func (a *Agent) superviseAdopted(pid int) {
 // runAppOnce launches one app generation and blocks until it ends, then
 // classifies the outcome (confirm / fail / rollback).
 // TRLC-LINKS: REQ-SDS-028
-func (a *Agent) runAppOnce(slot string, emergency bool) {
+func (a *Agent) runAppOnce(slot string) {
 	bin := a.store.BinPath(slot)
 	h := newHealthWatcher(a.cfg.HealthPath())
 	a.confirmedRun, a.confirmFailed = "", ""
@@ -212,8 +201,6 @@ func (a *Agent) runAppOnce(slot string, emergency bool) {
 	cmd.Env = append(os.Environ(),
 		"OTA_HEALTH_PATH="+a.cfg.HealthPath(),
 		"SCOPE_GPMC="+a.cfg.GpmcDev,
-		"SCOPE_LCD=/dev/fb0",
-		"SCOPE_MMAP_DRAIN=1",
 	)
 	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 
@@ -229,10 +216,10 @@ func (a *Agent) runAppOnce(slot string, emergency bool) {
 	a.log.Printf("app started slot=%s pid=%d bin=%s", slot, pid, bin)
 	a.appMu.Lock()
 	prevFails := a.app.Fails // carry the consecutive-failure count across launches
-	a.app = appState{Running: true, PID: pid, Slot: slot, Emergency: emergency,
+	a.app = appState{Running: true, PID: pid, Slot: slot,
 		StartedAt: time.Now().Format(time.RFC3339), Fails: prevFails}
 	a.appMu.Unlock()
-	a.event("app.start", map[string]any{"slot": slot, "pid": pid, "emergency": emergency})
+	a.event("app.start", map[string]any{"slot": slot, "pid": pid})
 
 	exit := make(chan error, 1)
 	go func() { exit <- cmd.Wait() }()
@@ -273,9 +260,9 @@ loop:
 			// still runs: an app normally runs until the next update restarts it,
 			// and that update overwrites the other slot. Confirming only at exit
 			// left the pointer on the slot the update was about to overwrite, so a
-			// crash-looping update fell to the emergency binary instead of the
-			// version that ran before it.
-			a.confirmIfStable(slot, emergency, hs, time.Since(start))
+			// crash-looping update could not roll back to the version that ran
+			// before it.
+			a.confirmIfStable(slot, hs, time.Since(start))
 		}
 	}
 
@@ -289,19 +276,19 @@ loop:
 	case strings.HasPrefix(reason, "ctl:"):
 		// Operator action, not a failure.
 		a.setAppState(func(s *appState) { *s = appState{LastExit: reason, Fails: 0} })
-	case hs.HealthyOnce && ran >= a.cfg.StableSecs && !emergency:
-		a.confirmIfStable(slot, emergency, hs, ran)
+	case hs.HealthyOnce && ran >= a.cfg.StableSecs:
+		a.confirmIfStable(slot, hs, ran)
 		a.setAppState(func(s *appState) { *s = appState{LastExit: reason, Fails: 0} })
 		a.idleWait(time.Second) // stable run that ended: relaunch after a beat
 	default:
 		a.bumpFail(fmt.Sprintf("%s (exit=%v, ran=%s)", reason, exitErr, ran.Round(time.Second)))
-		a.rollbackIfNeeded(slot, emergency)
+		a.rollbackIfNeeded(slot)
 		a.idleWait(2 * time.Second)
 	}
 }
 
 // confirmIfStable points the confirmed slot at slot once it has been healthy
-// for STABLE seconds (never the emergency binary).
+// for STABLE seconds.
 // TRLC-LINKS: REQ-SDS-028
 //
 // The slot found confirmed is remembered for the run (confirmedRun, set by
@@ -310,8 +297,8 @@ loop:
 // (the stick flipped read-only) is not remembered: the next tick tries again,
 // and the run's first failure is logged and sent once - a confirmed pointer
 // left on the old slot is the slot the next update overwrites.
-func (a *Agent) confirmIfStable(slot string, emergency bool, hs healthStatus, ran time.Duration) {
-	if emergency || !hs.HealthyOnce || ran < a.cfg.StableSecs || a.confirmedRun == slot {
+func (a *Agent) confirmIfStable(slot string, hs healthStatus, ran time.Duration) {
+	if !hs.HealthyOnce || ran < a.cfg.StableSecs || a.confirmedRun == slot {
 		return
 	}
 	if a.store.Confirmed() != slot {
@@ -370,12 +357,11 @@ func (a *Agent) bumpFail(why string) {
 }
 
 // rollbackIfNeeded applies the recovery ladder after MaxFails consecutive
-// failures: active→confirmed first; when the confirmed slot itself is the
-// failure, the emergency binary is next (pickSlot); past that the loop keeps
-// retrying with backoff — the agent itself stays up so the OTA path can push
-// a fix.
+// failures: active→confirmed; when the confirmed slot itself is the failure
+// the loop keeps retrying with backoff — the agent itself stays up so the OTA
+// path can push a fix.
 // TRLC-LINKS: REQ-SDS-028
-func (a *Agent) rollbackIfNeeded(slot string, emergency bool) {
+func (a *Agent) rollbackIfNeeded(slot string) {
 	a.appMu.Lock()
 	fails := a.app.Fails
 	a.appMu.Unlock()
@@ -383,7 +369,7 @@ func (a *Agent) rollbackIfNeeded(slot string, emergency bool) {
 		return
 	}
 	confirmed := a.store.Confirmed()
-	if !emergency && slot != confirmed && a.store.HasBinary(confirmed) {
+	if slot != confirmed && a.store.HasBinary(confirmed) {
 		a.log.Printf("rollback: %s failed %d times -> reverting to confirmed %s", slot, fails, confirmed)
 		_ = a.store.SetActive(confirmed)
 		a.event("app.rollback", map[string]any{"from": slot, "to": confirmed, "fails": fails})
@@ -392,26 +378,13 @@ func (a *Agent) rollbackIfNeeded(slot string, emergency bool) {
 		a.appMu.Unlock()
 		return
 	}
-	if !emergency && a.store.HasBinary(slots.SlotEmergency) {
-		// The confirmed slot itself is crash-looping: fall through to the
-		// known-good emergency binary. An app.update / app.activate RPC
-		// clears the flag.
-		a.log.Printf("crash-loop on confirmed slot %s: switching to emergency binary", slot)
-		a.event("app.emergency", map[string]any{"slot": slot, "fails": fails})
-		a.appMu.Lock()
-		a.useEmergency = true
-		a.app.Fails = 0
-		a.appMu.Unlock()
-		return
-	}
-	a.event("app.crash_loop", map[string]any{"slot": slot, "fails": fails, "emergency": emergency})
+	a.event("app.crash_loop", map[string]any{"slot": slot, "fails": fails})
 }
 
-// clearEmergency re-enables normal slot selection (after an OTA push).
+// clearFails starts the failure count over (after an OTA push).
 // TRLC-LINKS: REQ-SDS-028
-func (a *Agent) clearEmergency() {
+func (a *Agent) clearFails() {
 	a.appMu.Lock()
-	a.useEmergency = false
 	a.app.Fails = 0
 	a.appMu.Unlock()
 }

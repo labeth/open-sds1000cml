@@ -108,7 +108,6 @@ func TestFullCommandSurfaceRoundTrip(t *testing.T) {
 		`{"cmd":"app.restart"}`,
 		`{"cmd":"app.update","args":{"sha256":"deadbeef","src":"/stage/app.upload"}}`,
 		`{"cmd":"app.activate","args":{"slot":"B"}}`,
-		`{"cmd":"app.install-emergency","args":{"src":"/stage/app.upload"}}`,
 		`{"cmd":"agent.update","args":{"sha256":"deadbeef","src":"/stage/agent.upload"}}`,
 		`{"cmd":"agent.restart"}`,
 		`{"cmd":"takeover","args":{"dry_run":true,"force":false}}`,

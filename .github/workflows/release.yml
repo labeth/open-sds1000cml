@@ -44,7 +44,7 @@ jobs:
           (cd app && go vet ./... && go test -timeout 45m ./...)
           (cd ota && go vet ./... && go test ./...)
 
-      - name: Build the USB image zip (agent + app + emergency, ARMv7)
+      - name: Build the USB image zip (agent + app, ARMv7)
         run: |
           mkdir -p dist
           ota/mkstick.sh --zip "$GITHUB_WORKSPACE/dist/open-sds1000cml-${GITHUB_REF_NAME}-usb.zip"

@@ -79,7 +79,6 @@ type Agent struct {
 	appMu         sync.Mutex
 	app           appState
 	paused        bool
-	useEmergency  bool   // recovery ladder forced the emergency binary
 	confirmedRun  string // the slot this run found confirmed (supervisor only)
 	confirmFailed string // the slot whose confirm write last failed, reported once (supervisor only)
 
@@ -109,7 +108,6 @@ type appState struct {
 	StartedAt string `json:"started_at,omitempty"`
 	Fails     int    `json:"fails"`
 	LastExit  string `json:"last_exit,omitempty"`
-	Emergency bool   `json:"emergency"`
 	Health    any    `json:"health,omitempty"`
 }
 

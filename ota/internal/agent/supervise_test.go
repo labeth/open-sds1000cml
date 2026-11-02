@@ -47,8 +47,8 @@ func TestPickSlotNothingInstalled(t *testing.T) {
 	if err := a.store.Init(); err != nil {
 		t.Fatal(err)
 	}
-	if slot, em := a.pickSlot(); slot != "" || em {
-		t.Errorf("pickSlot = (%q, %v), want empty", slot, em)
+	if slot := a.pickSlot(); slot != "" {
+		t.Errorf("pickSlot = %q, want empty", slot)
 	}
 }
 
@@ -57,8 +57,8 @@ func TestPickSlotActive(t *testing.T) {
 	a := testAgent(t)
 	_ = a.store.Init()
 	writeSlotBinary(t, a, slots.SlotA, "exit 0")
-	if slot, em := a.pickSlot(); slot != slots.SlotA || em {
-		t.Errorf("pickSlot = (%q, %v), want (A, false)", slot, em)
+	if slot := a.pickSlot(); slot != slots.SlotA {
+		t.Errorf("pickSlot = %q, want A", slot)
 	}
 }
 
@@ -73,36 +73,8 @@ func TestPickSlotFallsBackToConfirmed(t *testing.T) {
 	if err := a.store.SetConfirmed(slots.SlotA); err != nil {
 		t.Fatal(err)
 	}
-	if slot, em := a.pickSlot(); slot != slots.SlotA || em {
-		t.Errorf("pickSlot = (%q, %v), want confirmed fallback (A, false)", slot, em)
-	}
-}
-
-// TRLC-LINKS: REQ-SDS-028
-func TestPickSlotEmergencyBackstop(t *testing.T) {
-	a := testAgent(t)
-	_ = a.store.Init()
-	writeSlotBinary(t, a, slots.SlotEmergency, "exit 0")
-	if slot, em := a.pickSlot(); slot != slots.SlotEmergency || !em {
-		t.Errorf("pickSlot = (%q, %v), want (emergency, true)", slot, em)
-	}
-}
-
-// TRLC-LINKS: REQ-SDS-028
-func TestPickSlotForcedEmergencyWinsOverActive(t *testing.T) {
-	a := testAgent(t)
-	_ = a.store.Init()
-	writeSlotBinary(t, a, slots.SlotA, "exit 0")
-	writeSlotBinary(t, a, slots.SlotEmergency, "exit 0")
-	a.appMu.Lock()
-	a.useEmergency = true
-	a.appMu.Unlock()
-	if slot, em := a.pickSlot(); slot != slots.SlotEmergency || !em {
-		t.Errorf("pickSlot = (%q, %v), want forced (emergency, true)", slot, em)
-	}
-	a.clearEmergency()
-	if slot, em := a.pickSlot(); slot != slots.SlotA || em {
-		t.Errorf("after clearEmergency pickSlot = (%q, %v), want (A, false)", slot, em)
+	if slot := a.pickSlot(); slot != slots.SlotA {
+		t.Errorf("pickSlot = %q, want the confirmed fallback A", slot)
 	}
 }
 
@@ -120,7 +92,7 @@ func TestRollbackBelowThresholdDoesNothing(t *testing.T) {
 	for i := 0; i < a.cfg.MaxFails-1; i++ {
 		a.bumpFail("crash")
 	}
-	a.rollbackIfNeeded(slots.SlotB, false)
+	a.rollbackIfNeeded(slots.SlotB)
 	if got := a.store.Active(); got != slots.SlotB {
 		t.Errorf("active flipped to %s below the fail threshold", got)
 	}
@@ -141,41 +113,12 @@ func TestRollbackToConfirmedAtThreshold(t *testing.T) {
 	for i := 0; i < a.cfg.MaxFails; i++ {
 		a.bumpFail("crash")
 	}
-	a.rollbackIfNeeded(slots.SlotB, false)
+	a.rollbackIfNeeded(slots.SlotB)
 	if got := a.store.Active(); got != slots.SlotA {
 		t.Errorf("active = %s, want rollback to confirmed A", got)
 	}
 	if f := appOf(a).Fails; f != 0 {
 		t.Errorf("Fails = %d, want reset to 0 after rollback", f)
-	}
-}
-
-// TRLC-LINKS: REQ-SDS-028
-func TestRollbackToEmergencyWhenConfirmedCrashLoops(t *testing.T) {
-	a := testAgent(t)
-	_ = a.store.Init()
-	writeSlotBinary(t, a, slots.SlotA, "exit 0") // active == confirmed == A
-	writeSlotBinary(t, a, slots.SlotEmergency, "exit 0")
-
-	for i := 0; i < a.cfg.MaxFails; i++ {
-		a.bumpFail("crash")
-	}
-	a.rollbackIfNeeded(slots.SlotA, false)
-	a.appMu.Lock()
-	forced, fails := a.useEmergency, a.app.Fails
-	a.appMu.Unlock()
-	if !forced {
-		t.Error("confirmed-slot crash loop must force the emergency binary")
-	}
-	if fails != 0 {
-		t.Errorf("Fails = %d, want reset to 0", fails)
-	}
-	if slot, em := a.pickSlot(); slot != slots.SlotEmergency || !em {
-		t.Errorf("pickSlot after ladder = (%q, %v), want emergency", slot, em)
-	}
-	// Active pointer is untouched — an OTA push clears the flag instead.
-	if got := a.store.Active(); got != slots.SlotA {
-		t.Errorf("active = %s, emergency fallback must not rewrite pointers", got)
 	}
 }
 
@@ -188,35 +131,15 @@ func TestRollbackExhaustedKeepsRetrying(t *testing.T) {
 	for i := 0; i < a.cfg.MaxFails; i++ {
 		a.bumpFail("crash")
 	}
-	a.rollbackIfNeeded(slots.SlotA, false)
+	a.rollbackIfNeeded(slots.SlotA)
 	a.appMu.Lock()
-	forced, fails := a.useEmergency, a.app.Fails
+	fails := a.app.Fails
 	a.appMu.Unlock()
-	if forced {
-		t.Error("no emergency binary exists — must not force it")
-	}
 	if fails != a.cfg.MaxFails {
 		t.Errorf("Fails = %d, want %d (nothing to roll back to; count stands)", fails, a.cfg.MaxFails)
 	}
 	if got := a.store.Active(); got != slots.SlotA {
 		t.Errorf("active = %s, want unchanged A", got)
-	}
-}
-
-// TRLC-LINKS: REQ-SDS-028
-func TestRollbackWhileOnEmergencyOnlyLogs(t *testing.T) {
-	a := testAgent(t)
-	_ = a.store.Init()
-	writeSlotBinary(t, a, slots.SlotEmergency, "exit 0")
-	for i := 0; i < a.cfg.MaxFails; i++ {
-		a.bumpFail("crash")
-	}
-	a.rollbackIfNeeded(slots.SlotEmergency, true)
-	a.appMu.Lock()
-	forced := a.useEmergency
-	a.appMu.Unlock()
-	if forced {
-		t.Error("emergency slot failing must not re-force emergency (would mask the crash loop)")
 	}
 }
 
@@ -385,7 +308,7 @@ done`)
 	_ = a.store.SetActive(slots.SlotB)
 	_ = a.store.SetConfirmed(slots.SlotA) // so the confirm transition is observable
 
-	a.runAppOnce(slots.SlotB, false)
+	a.runAppOnce(slots.SlotB)
 
 	if got := a.store.Confirmed(); got != slots.SlotB {
 		t.Errorf("confirmed = %s, want B after a stable healthy run", got)
@@ -401,7 +324,7 @@ done`)
 
 // An app runs until an operator restart (the next update); it must be confirmed
 // while it runs, or that update overwrites the confirmed slot and a crash-looping
-// update rolls back to the emergency binary instead of the previous version.
+// update cannot roll back to the previous version.
 // TRLC-LINKS: REQ-SDS-028
 func TestRunAppOnceConfirmsSlotWhileRunning(t *testing.T) {
 	t.Setenv("OTA_STABLE", "0.3")
@@ -418,7 +341,7 @@ done`)
 	_ = a.store.SetConfirmed(slots.SlotA)
 
 	done := make(chan struct{})
-	go func() { a.runAppOnce(slots.SlotB, false); close(done) }()
+	go func() { a.runAppOnce(slots.SlotB); close(done) }()
 	deadline := time.Now().Add(5 * time.Second)
 	for a.store.Confirmed() != slots.SlotB && time.Now().Before(deadline) {
 		time.Sleep(50 * time.Millisecond)
@@ -444,7 +367,7 @@ func TestRunAppOnceCrashCountsAsFailure(t *testing.T) {
 	_ = a.store.Init()
 	writeSlotBinary(t, a, slots.SlotA, "exit 3")
 
-	a.runAppOnce(slots.SlotA, false)
+	a.runAppOnce(slots.SlotA)
 
 	st := appOf(a)
 	if st.Fails != 1 {
@@ -472,7 +395,7 @@ func TestRunAppOnceStaleHealthGetsTerminated(t *testing.T) {
 sleep 30`)
 
 	start := time.Now()
-	a.runAppOnce(slots.SlotA, false)
+	a.runAppOnce(slots.SlotA)
 	if time.Since(start) > 15*time.Second {
 		t.Error("stale app was not terminated promptly")
 	}
@@ -503,14 +426,14 @@ func TestConfirmRetriesAfterAFailedWrite(t *testing.T) {
 	}
 	defer os.Chmod(root, 0o755)
 	hs := healthStatus{HealthyOnce: true}
-	a.confirmIfStable(slots.SlotB, false, hs, time.Hour)
+	a.confirmIfStable(slots.SlotB, hs, time.Hour)
 	if got := a.store.Confirmed(); got != slots.SlotA || a.confirmedRun == slots.SlotB {
 		t.Fatalf("a failed write taken as done: confirmed %s, run %q", got, a.confirmedRun)
 	}
 	if err := os.Chmod(root, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	a.confirmIfStable(slots.SlotB, false, hs, time.Hour)
+	a.confirmIfStable(slots.SlotB, hs, time.Hour)
 	if got := a.store.Confirmed(); got != slots.SlotB || a.confirmedRun != slots.SlotB {
 		t.Fatalf("not confirmed once writable: confirmed %s, run %q", got, a.confirmedRun)
 	}

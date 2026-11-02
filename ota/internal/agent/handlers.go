@@ -45,7 +45,6 @@ func init() {
 	register("app.restart", hAppRestart)
 	register("app.update", hAppUpdate)
 	register("app.activate", hAppActivate)
-	register("app.install-emergency", hAppInstallEmergency)
 
 	// agent lifecycle + OTA
 	register("agent.update", hAgentUpdate)
@@ -234,7 +233,7 @@ func hAppStart(a *Agent, _ json.RawMessage) (any, error) {
 	if !a.st.get().TakenOver {
 		return nil, fmt.Errorf("not taken over — the factory app owns the instrument; run takeover first")
 	}
-	a.clearEmergency()
+	a.clearFails()
 	return map[string]any{"ok": true}, a.ctlRequest("start", 5*time.Second)
 }
 
@@ -282,7 +281,7 @@ func hAppUpdate(a *Agent, args json.RawMessage) (any, error) {
 	if err := a.store.SetActive(target); err != nil {
 		return nil, err
 	}
-	a.clearEmergency()
+	a.clearFails()
 	a.event("app.update", map[string]any{"slot": target, "sha256": sum})
 	// Restart if running/taken over so the new slot launches now.
 	if a.st.get().TakenOver {
@@ -306,29 +305,11 @@ func hAppActivate(a *Agent, args json.RawMessage) (any, error) {
 	if err := a.store.SetActive(p.Slot); err != nil {
 		return nil, err
 	}
-	a.clearEmergency()
+	a.clearFails()
 	if a.st.get().TakenOver {
 		_ = a.ctlRequest("restart", 8*time.Second)
 	}
 	return map[string]any{"active": p.Slot}, nil
-}
-
-// TRLC-LINKS: REQ-SDS-118
-func hAppInstallEmergency(a *Agent, args json.RawMessage) (any, error) {
-	p, err := decodeArgs[struct {
-		Src string `json:"src"`
-	}](args)
-	if err != nil {
-		return nil, err
-	}
-	if p.Src == "" {
-		return nil, fmt.Errorf("app.install-emergency: src required")
-	}
-	sum, err := a.store.Install(slots.SlotEmergency, p.Src)
-	if err != nil {
-		return nil, err
-	}
-	return map[string]any{"sha256": sum}, nil
 }
 
 // ---- agent self-update -----------------------------------------------------
@@ -424,7 +405,7 @@ func hUntakeover(a *Agent, _ json.RawMessage) (any, error) {
 	if err := a.st.update(func(s *State) { s.TakenOver = false; s.AutoTakeover = false }); err != nil {
 		return nil, err
 	}
-	a.clearEmergency()
+	a.clearFails()
 	a.wd.Disarm()
 	a.event("untakeover", map[string]any{"note": "control released; reboot or restore-factory to bring the vendor app back"})
 	return map[string]any{"taken_over": false, "watchdog_disarmed": true}, nil

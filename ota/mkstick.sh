@@ -10,7 +10,7 @@
 #   * that partition is what comes up as /dev/sda1 on the instrument.
 #
 # This makes a USABLE stick, not just the OTA agent: it builds and pre-loads the
-# clean-room app into both app slots + a known-good emergency backstop, points
+# clean-room app into both app slots, points
 # the active slot at it, and ships agent.env with auto-takeover ON — so a new
 # user just boots the stick and gets the working scope + web UI, no network
 # deploy needed. (Update the app later over the network with `otactl update-app`.)
@@ -34,7 +34,6 @@
 #   startup.sh  commands
 #   ota/{agent.A,agent.B,agent.active,agent.confirmed,agent.env,logs/}
 #   agent-slots/A/app  B/app        <- the clean-room scope app (runnable)
-#   agent-slots/emergency/app       <- known-good backstop (stubapp)
 #   agent-slots/{active,confirmed}  <- point at A
 #   agent-slots/staging/            <- upload staging for future OTA
 set -eu
@@ -43,7 +42,6 @@ here=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)   # the ota/ dir
 repo=$(dirname -- "$here")                           # repo root
 tree="$here/dist/stick"
 appbin="$repo/app/dist/app-arm"                      # clean-room scope app
-stubbin="$here/dist/stubapp-arm"                     # emergency backstop
 
 die() { echo "mkstick: $*" >&2; exit 1; }
 
@@ -54,14 +52,11 @@ build() {
   echo ">> building the app with its FPGA images (make -C app app-release) ..."
   ( cd "$repo/app" && make app-release >/dev/null )
   [ -f "$appbin" ] || die "app build failed ($appbin)"
-  echo ">> building the emergency backstop (make -C ota stubapp) ..."
-  ( cd "$here" && make stubapp >/dev/null )
-  [ -f "$stubbin" ] || die "stubapp build failed ($stubbin)"
 }
 
 # Required entries every ready-to-run boot stick must have.
 REQUIRED="startup.sh commands ota/agent.A ota/agent.B ota/agent.active ota/agent.env \
-          agent-slots/A/app agent-slots/B/app agent-slots/emergency/app \
+          agent-slots/A/app agent-slots/B/app \
           agent-slots/active agent-slots/confirmed"
 
 verify() {
@@ -98,10 +93,9 @@ write_files() {
   [ -f "$repo/SAFETY.txt" ] && cp -a "$repo/SAFETY.txt" "$mnt/SAFETY.txt"
   [ -f "$repo/THIRD_PARTY_LICENSES.txt" ] && cp -a "$repo/THIRD_PARTY_LICENSES.txt" "$mnt/THIRD_PARTY_LICENSES.txt"
   mkdir -p "$mnt/ota"; cp -a "$tree/ota/." "$mnt/ota/"
-  for d in A B emergency staging; do mkdir -p "$mnt/agent-slots/$d"; done
+  for d in A B staging; do mkdir -p "$mnt/agent-slots/$d"; done
   cp -f "$appbin"  "$mnt/agent-slots/A/app"
   cp -f "$appbin"  "$mnt/agent-slots/B/app"
-  cp -f "$stubbin" "$mnt/agent-slots/emergency/app"
   printf 'A\n' > "$mnt/agent-slots/active"
   printf 'A\n' > "$mnt/agent-slots/confirmed"
 }
@@ -145,7 +139,7 @@ zip_stick() {
   echo ">> USB image zip: $out  ($(du -h "$out" | cut -f1))"
   echo "   Unzip its CONTENTS onto the ROOT of an MBR + FAT32 USB stick; the top"
   echo "   level of the stick must be startup.sh, ota/, agent-slots/."
-  echo "   Contents:"; unzip -l "$out" | awk 'NR>3 && $4 !~ /agent-slots\/(A|B|emergency)\/app$/ && $4!=""{print "     "$4}' | grep -E '^\s+(startup|commands|ota|agent-slots)' | head; echo "     ... (+ the app binaries in agent-slots/)"
+  echo "   Contents:"; unzip -l "$out" | awk 'NR>3 && $4 !~ /agent-slots\/(A|B)\/app$/ && $4!=""{print "     "$4}' | grep -E '^\s+(startup|commands|ota|agent-slots)' | head; echo "     ... (+ the app binaries in agent-slots/)"
 }
 
 format_stick() {

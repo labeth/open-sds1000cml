@@ -18,18 +18,13 @@ LDFLAGS := -s -w \
 
 DIST := dist
 
-.PHONY: all agent otactl stubapp test vet dist clean
+.PHONY: all agent otactl test vet dist clean
 
-all: agent otactl stubapp
+all: agent otactl
 
 agent:
 	CGO_ENABLED=0 GOOS=linux GOARCH=arm GOARM=7 \
 	  go build -trimpath -ldflags "$(LDFLAGS)" -o $(DIST)/agent-arm ./cmd/agent
-
-# stubapp: the reference clean-room app (ARMv7) — proves the app<->OTA contract.
-stubapp:
-	CGO_ENABLED=0 GOOS=linux GOARCH=arm GOARM=7 \
-	  go build -trimpath -ldflags "$(LDFLAGS)" -o $(DIST)/stubapp-arm ./cmd/stubapp
 
 otactl:
 	CGO_ENABLED=0 go build -trimpath -ldflags "$(LDFLAGS)" -o $(DIST)/otactl ./cmd/otactl
@@ -44,7 +39,7 @@ vet:
 dist: agent otactl
 	rm -rf $(DIST)/stick
 	mkdir -p $(DIST)/stick/ota/logs $(DIST)/stick/agent-slots/A $(DIST)/stick/agent-slots/B \
-	         $(DIST)/stick/agent-slots/emergency $(DIST)/stick/agent-slots/staging
+	         $(DIST)/stick/agent-slots/staging
 	cp boot/startup.sh $(DIST)/stick/startup.sh
 	cp boot/commands   $(DIST)/stick/commands
 	cp boot/agent.env.example $(DIST)/stick/ota/agent.env

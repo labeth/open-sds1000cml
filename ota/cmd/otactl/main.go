@@ -188,16 +188,6 @@ func main() {
 		}
 		fmt.Printf("uploading %s ...\n", rest[0])
 		printJSON(mustRaw(c.UpdateAgent(rest[0], *stageDir)))
-	case "install-emergency":
-		if len(rest) == 0 {
-			fatal(fmt.Errorf("install-emergency <local-app-binary>"))
-		}
-		if _, err := c.PutFile(rest[0], *stageDir+"/emergency.upload", 0o755, 0, progressBar("upload")); err != nil {
-			fmt.Println()
-			fatal(err)
-		}
-		fmt.Println()
-		printJSON(mustRaw(c.Call("app.install-emergency", map[string]any{"src": *stageDir + "/emergency.upload"}, timeout)))
 	default:
 		// Fall through: treat as a raw RPC cmd with no args.
 		printJSON(mustCall(c, cmd, nil, timeout))
@@ -518,7 +508,6 @@ COMMANDS
   activate <A|B>            set active app slot + restart
   update-app <bin>          OTA the app (upload -> inactive slot -> restart)
   update-agent <bin>        OTA the agent itself (A/B agent slot)
-  install-emergency <bin>   install the known-good backstop app
   put <local> <devpath>     upload a file
   get <devpath> <local>     download a file
   reboot [--confirm]        soft reboot (often a no-op on this unit)

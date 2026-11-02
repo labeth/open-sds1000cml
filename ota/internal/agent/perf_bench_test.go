@@ -232,6 +232,6 @@ func BenchmarkConfirmTick(b *testing.B) {
 	a.store.SetConfirmed("A")
 	hs := healthStatus{HealthyOnce: true}
 	for b.Loop() {
-		a.confirmIfStable("A", false, hs, time.Hour)
+		a.confirmIfStable("A", hs, time.Hour)
 	}
 }

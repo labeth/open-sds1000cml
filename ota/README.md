@@ -16,13 +16,14 @@ of last resort is the external mains power-cycle (`otactl power`, via the Shelly
 
 The OTA agent owns everything operational — takeover, the watchdog, A/B slots,
 health rollback, remote transport. The clean-room app is a plain binary that
-implements only this surface (see `cmd/stubapp`, the reference/validation app):
+implements only this surface:
 
 1. **It is `exec`'d by the agent as a direct child**, so it *inherits* the boot
    fds. Discover them by scanning `/proc/self/fd` for `/dev/Gpmc` and
    `/dev/fpga_key`; **never fresh-open them, never close them** (spec 01 §5).
 2. **Env the agent exports**: `OTA_HEALTH_PATH` (health token to write),
-   `SCOPE_GPMC` (`/dev/Gpmc`), `SCOPE_LCD` (`/dev/fb0`), `SCOPE_MMAP_DRAIN`.
+   `SCOPE_GPMC` (`/dev/Gpmc`) and, from `startup.sh`, `OTA_DIR` (the stick's
+   `ota/` directory, where the app keeps its settings).
 3. **Health = frame-advance liveness**: after ≥3 genuine coherent frames,
    re-write `OTA_HEALTH_PATH` whenever the engine advances (throttle ~500 ms).
    Do **not** write it before the first real capture. The agent marks the app
@@ -98,7 +99,7 @@ That is our entire entry point — `startup.sh` launches the agent, which then
 takes over the instrument. No firmware modification, no on-device login.
 
 `mkstick.sh` makes a **ready-to-run** stick: it pre-loads the clean-room app into
-both app slots plus a known-good emergency backstop, and ships `agent.env` with
+both app slots, and ships `agent.env` with
 auto-takeover ON — so a fresh stick boots **straight into the working scope + web
 UI**, no network deploy required. (You still update the app later over the network
 with `otactl update-app`.)
@@ -152,7 +153,6 @@ ota/checkdev.sh <ip>        # exits non-zero if any check fails
     logs/                 boot.log, agent.log (size-capped)
   agent-slots/
     A/app  B/app          A/B clean-room app binaries
-    emergency/app         known-good backstop
     active  confirmed      app slot pointers
     staging/              upload staging
 ```

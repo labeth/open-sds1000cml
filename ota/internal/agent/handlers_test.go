@@ -318,25 +318,6 @@ func TestAppActivate(t *testing.T) {
 	}
 }
 
-// TRLC-LINKS: REQ-SDS-118
-func TestAppInstallEmergency(t *testing.T) {
-	a := testAgent(t)
-	_ = a.store.Init()
-	resp := a.Dispatch([]byte(`{"cmd":"app.install-emergency","args":{}}`))
-	if resp.OK || !strings.Contains(resp.Err, "src required") {
-		t.Errorf("missing src: %+v", resp)
-	}
-	src := filepath.Join(t.TempDir(), "emerg")
-	os.WriteFile(src, []byte("#!/bin/sh\nexit 0\n"), 0o755)
-	resp = a.Dispatch([]byte(fmt.Sprintf(`{"cmd":"app.install-emergency","args":{"src":%q}}`, src)))
-	if !resp.OK {
-		t.Fatalf("install-emergency: %s", resp.Err)
-	}
-	if !a.store.HasBinary(slots.SlotEmergency) {
-		t.Error("emergency binary not installed")
-	}
-}
-
 // agent.update's happy path exits the process by design (startup.sh respawns
 // the new slot) — only its refusal gates are testable in-process.
 // TRLC-LINKS: REQ-SDS-119, REQ-SDS-029

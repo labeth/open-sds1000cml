@@ -10,7 +10,7 @@ import (
 
 // TestThirdPartyLicensesCoverLinkedModules checks that THIRD_PARTY_LICENSES.txt,
 // which ships with every release, carries the license of each module the
-// agent, otactl and the emergency backstop link: a dependency added or
+// agent and otactl link: a dependency added or
 // bumped must have its license added there.
 // TRLC-LINKS: REQ-SDS-178
 func TestThirdPartyLicensesCoverLinkedModules(t *testing.T) {
@@ -22,7 +22,7 @@ func TestThirdPartyLicensesCoverLinkedModules(t *testing.T) {
 		t.Fatalf("THIRD_PARTY_LICENSES.txt: %v", err)
 	}
 	cmd := exec.Command("go", "list", "-deps", "-f", "{{with .Module}}{{if not .Main}}{{.Path}}@{{.Version}}{{end}}{{end}}",
-		"./cmd/otactl", "./cmd/agent", "./cmd/stubapp")
+		"./cmd/otactl", "./cmd/agent")
 	cmd.Dir = filepath.Join("..", "..")
 	out, err := cmd.Output()
 	if err != nil {
