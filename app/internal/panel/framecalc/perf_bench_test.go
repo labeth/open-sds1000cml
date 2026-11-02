@@ -92,3 +92,61 @@ func BenchmarkFFT4096(b *testing.B) { benchFFT(b, FFT) }
 
 // TRLC-LINKS: REQ-SDS-070
 func BenchmarkFFT4096Ref(b *testing.B) { benchFFT(b, fftRef) }
+
+// Log10 is math.Log10 to a few units in the last place over the spectrum's
+// range of levels, and math.Log10 itself where it is not a positive normal.
+// TRLC-LINKS: REQ-SDS-070
+func TestLog10(t *testing.T) {
+	r := rand.New(rand.NewSource(10))
+	worst := 0.0
+	for k := 0; k < 200000; k++ {
+		x := math.Exp(r.Float64()*1400 - 700)
+		got, want := Log10(x), math.Log10(x)
+		err := math.Abs(got - want)
+		if a := math.Abs(want); a > 1 {
+			err /= a
+		}
+		worst = math.Max(worst, err)
+	}
+	if worst > 4e-16*8 {
+		t.Fatalf("worst error %g", worst)
+	}
+	for _, x := range []float64{0, -1, math.Inf(1), math.Inf(-1), math.NaN(), 5e-324, 1e-310, 1, 10, 1e-15} {
+		got, want := Log10(x), math.Log10(x)
+		if !(got == want || math.IsNaN(got) && math.IsNaN(want)) && math.Abs(got-want) > 1e-15*math.Max(1, math.Abs(want)) {
+			t.Fatalf("Log10(%g) = %g, want %g", x, got, want)
+		}
+	}
+}
+
+// TRLC-LINKS: REQ-SDS-070
+func BenchmarkLog10(b *testing.B) {
+	x := make([]float64, 4096)
+	for i := range x {
+		x[i] = math.Exp(float64(i%997)*-0.03) + 1e-15
+	}
+	s := 0.0
+	for b.Loop() {
+		for _, v := range x {
+			s += Log10(v)
+		}
+	}
+	sinkLog = s
+}
+
+// TRLC-LINKS: REQ-SDS-070
+func BenchmarkMathLog10(b *testing.B) {
+	x := make([]float64, 4096)
+	for i := range x {
+		x[i] = math.Exp(float64(i%997)*-0.03) + 1e-15
+	}
+	s := 0.0
+	for b.Loop() {
+		for _, v := range x {
+			s += math.Log10(v)
+		}
+	}
+	sinkLog = s
+}
+
+var sinkLog float64

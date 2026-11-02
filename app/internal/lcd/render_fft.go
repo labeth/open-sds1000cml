@@ -185,7 +185,7 @@ func drawSpectrum(sf Surface, p plotArea, mags []float64, peak float64, col uint
 		if r < 0.99e-4 { // below -80.04 dB: the floor, without the logarithm
 			return p.bot
 		}
-		db := 20 * math.Log10(r)
+		db := 20 * framecalc.Log10(r)
 		if db < floorDb {
 			db = floorDb
 		}

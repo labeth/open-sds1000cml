@@ -52,7 +52,7 @@ func (c *Controller) specFrame(a *anaState, s *sv, f *engine.Frame) {
 	db := make([]float64, len(sp.Mags))
 	for k, m := range sp.Mags {
 		// a sine of amplitude A codes reads A*N/4 through the Hann window
-		db[k] = 20 * math.Log10(4*m/float64(sp.N)*vpc/math.Sqrt2+1e-15)
+		db[k] = 20 * framecalc.Log10(4*m/float64(sp.N)*vpc/math.Sqrt2+1e-15)
 	}
 	a.spec, a.specDBV = sp, db
 	// A marker set above this span (a slower timebase) goes back to the
