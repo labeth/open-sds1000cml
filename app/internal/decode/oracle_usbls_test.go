@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-DECODE
+
 package decode
 
 // USB low-speed vs the sigrok usb_signalling + usb_packet decoder stack.

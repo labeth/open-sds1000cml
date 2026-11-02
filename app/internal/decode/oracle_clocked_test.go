@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-DECODE
+
 package decode
 
 // Oracle cross-checks of PS/2, SWD, MDIO and Wiegand against sigrok's ps2,

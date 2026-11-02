@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-DECODE
+
 package decode
 
 // physParityVectors adds the Go<->JS parity vectors of the sigrok protocols
@@ -169,7 +170,7 @@ func physParityVectors(add parityAdd, add2 parityAdd2, corrupt func([]uint8) []u
 
 	for _, b := range bases {
 		add(b.proto, b.w, b.colT, b.cfg, b.dec(b.w))
-		for it := 0; it < 16*parityMult(); it++ {
+		for range 16 * parityMult() {
 			w := corrupt(b.w)
 			add(b.proto, w, b.colT, b.cfg, b.dec(w))
 		}
@@ -250,7 +251,7 @@ func physParityVectors(add parityAdd, add2 parityAdd2, corrupt func([]uint8) []u
 	}
 	for _, b := range b2 {
 		add2(b.proto, b.c1, b.c2, b.colT, cfg{}, b.dec(b.c1, b.c2))
-		for it := 0; it < 12*parityMult(); it++ {
+		for it := range 12 * parityMult() {
 			c1, c2 := b.c1, b.c2
 			if it%2 == 0 {
 				c1 = corrupt(c1)

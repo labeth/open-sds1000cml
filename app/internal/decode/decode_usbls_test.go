@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-DECODE
+
 package decode
 
 import (
@@ -32,7 +33,7 @@ func usbWave(packets []usbPkt, spb int) []uint8 {
 		if level == 1 {
 			v = hi
 		}
-		for j := 0; j < cells*spb; j++ {
+		for range cells * spb {
 			w = append(w, v)
 		}
 	}
@@ -142,13 +143,11 @@ func TestDecodeUSBLSRoundTrip(t *testing.T) {
 // usblsKinds concatenates span kinds for a containsWord check.
 // TRLC-LINKS: REQ-SDS-018
 func usblsKinds(spans []Span) string {
-	s := ""
-	var sSb145 strings.Builder
+	var sb strings.Builder
 	for _, sp := range spans {
-		sSb145.WriteString(sp.Kind + " ")
+		sb.WriteString(sp.Kind + " ")
 	}
-	s += sSb145.String()
-	return s
+	return sb.String()
 }
 
 // TestDecodeUSBLSNoPanic feeds degenerate/hostile inputs — a decoder must return
@@ -215,7 +214,7 @@ func TestUSBObservedStuffViolationIsFrameError(t *testing.T) {
 		if level != 0 {
 			v = 210
 		}
-		for i := 0; i < cells*spb; i++ {
+		for range cells * spb {
 			w = append(w, v)
 		}
 	}

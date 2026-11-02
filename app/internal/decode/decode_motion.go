@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-DECODE
+
 package decode
 
 import (
@@ -39,10 +40,10 @@ func medianOf(v []float64) float64 {
 
 // stepPeriod is a stepping line's median time between rising edges.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-250
-func stepPeriod(A sliced) float64 {
+func stepPeriod(sa sliced) float64 {
 	var per []float64
 	last := -1.0
-	for _, e := range A.edges {
+	for _, e := range sa.edges {
 		if e.dir > 0 {
 			if last >= 0 {
 				per = append(per, e.x-last)
@@ -74,7 +75,7 @@ func DecodeQuadratureEdges(a, b *EdgeLine, colTimeS float64, cfg ClockedCfg) Res
 // decodeQuadrature is DecodeQuadrature over samples or edges.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-250
 func decodeQuadrature(a, b lineIn, colTimeS float64, cfg ClockedCfg) Result {
-	return decodeSteps("quad", a, b, colTimeS, cfg, true)
+	return decodeSteps(protoQuad, a, b, colTimeS, cfg, true)
 }
 
 // DecodeStepper decodes a stepper driver's STEP (line a) and DIR (line b)
@@ -97,12 +98,12 @@ func DecodeStepperEdges(a, b *EdgeLine, colTimeS float64, cfg ClockedCfg) Result
 // decodeStepper is DecodeStepper over samples or edges.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-250
 func decodeStepper(a, b lineIn, colTimeS float64, cfg ClockedCfg) Result {
-	return decodeSteps("stepper", a, b, colTimeS, cfg, false)
+	return decodeSteps(protoStepper, a, b, colTimeS, cfg, false)
 }
 
 // decodeSteps is DecodeQuadrature (quad) and DecodeStepper.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-250
-func decodeSteps(proto string, a, b lineIn, colTimeS float64, cfg ClockedCfg, quad bool) Result {
+func decodeSteps(proto string, a, b lineIn, colTimeS float64, cfg ClockedCfg, quad bool) Result { //nolint:gocyclo // a protocol state machine kept step for step with its decode_*.js twin (parity tests)
 	if b.none() {
 		return Result{Proto: proto, Error: "needs both lines"}
 	}
@@ -149,7 +150,7 @@ func decodeSteps(proto string, a, b lineIn, colTimeS float64, cfg ClockedCfg, qu
 	steps := 0
 	for ia < len(A.edges) || (quad && ib < len(B.edges)) {
 		useA := ia < len(A.edges) && (!quad || ib >= len(B.edges) || A.edges[ia].x <= B.edges[ib].x)
-		if !useA {
+		if !useA { //nolint:nestif // a protocol state machine kept step for step with its decode_*.js twin (parity tests)
 			e := B.edges[ib]
 			ib++
 			lb = 0
@@ -166,7 +167,7 @@ func decodeSteps(proto string, a, b lineIn, colTimeS float64, cfg ClockedCfg, qu
 			d := ((np-ph+1)%4+4)%4 - 1
 			ph = np
 			if d == 2 {
-				spans = append(spans, pspan(e.x, e.x, n, "!", "frame-error", 0))
+				spans = append(spans, pspan(e.x, e.x, n, "!", kindFrameError, 0))
 				toks = append(toks, "!")
 				continue
 			}
@@ -194,7 +195,7 @@ func decodeSteps(proto string, a, b lineIn, colTimeS float64, cfg ClockedCfg, qu
 			d := ((np-ph+1)%4+4)%4 - 1
 			ph = np
 			if d == 2 {
-				spans = append(spans, pspan(e.x, e.x, n, "!", "frame-error", 0))
+				spans = append(spans, pspan(e.x, e.x, n, "!", kindFrameError, 0))
 				toks = append(toks, "!")
 				continue
 			}
@@ -218,7 +219,7 @@ func decodeSteps(proto string, a, b lineIn, colTimeS float64, cfg ClockedCfg, qu
 			}
 		}
 		if open {
-			spans = append(spans, pspan(e.x, e.x, n, "", "sof", 0))
+			spans = append(spans, pspan(e.x, e.x, n, "", kindSOF, 0))
 			open = false
 		}
 		v, txt := 0, "R"
@@ -226,7 +227,7 @@ func decodeSteps(proto string, a, b lineIn, colTimeS float64, cfg ClockedCfg, qu
 			v, txt = 1, "F"
 		}
 		txt += strconv.Itoa(count)
-		spans = append(spans, pspan(e.x, e.x+T, n, txt, "data", v))
+		spans = append(spans, pspan(e.x, e.x+T, n, txt, kindData, v))
 		toks = append(toks, txt)
 		units = append(units, v)
 		steps++
@@ -287,7 +288,7 @@ func DecodePWMEdges(codes *EdgeLine, colTimeS float64, cfg LineCfg) Result {
 func decodePWM(codes lineIn, colTimeS float64, cfg LineCfg) Result {
 	S := codes.slice(cfg.Threshold, cfg.HaveThr)
 	if !S.ok {
-		return Result{Proto: "pwm", Error: S.reason}
+		return Result{Proto: protoPWM, Error: S.reason}
 	}
 	n := S.n
 	E := S.edges
@@ -312,8 +313,8 @@ func decodePWM(codes lineIn, colTimeS float64, cfg LineCfg) Result {
 		} else {
 			txt = pwmDutyText(d10)
 		}
-		o.add(r0, r0, "", "sof", 0, false)
-		o.add(r0, r1, txt, "data", v, true)
+		o.add(r0, r0, "", kindSOF, 0, false)
+		o.add(r0, r1, txt, kindData, v, true)
 		pers = append(pers, per)
 		iper = append(iper, E[k+2].i-E[k].i)
 		// a high and a low are positive lengths: math.Min is the compares
@@ -325,7 +326,7 @@ func decodePWM(codes lineIn, colTimeS float64, cfg LineCfg) Result {
 		}
 	}
 	if len(o.units) < 2 {
-		return Result{Proto: "pwm", Error: "too few periods"}
+		return Result{Proto: protoPWM, Error: "too few periods"}
 	}
 	var T float64
 	if S.codes == nil {
@@ -336,7 +337,7 @@ func decodePWM(codes lineIn, colTimeS float64, cfg LineCfg) Result {
 		T = medianOf(pers)
 	}
 	return Result{
-		OK: true, Proto: "pwm", Spans: o.spans, Text: strings.Join(o.toks, " "), Bytes: o.units,
+		OK: true, Proto: protoPWM, Spans: o.spans, Text: strings.Join(o.toks, " "), Bytes: o.units,
 		Thr: S.threshold, SPB: T, Baud: int(math.Round(1 / (T * colTimeS))), Feature: narrow,
 	}
 }

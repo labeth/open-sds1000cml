@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-DECODE
+
 package decode
 
 import "math"
@@ -19,123 +20,123 @@ func StreamTiming(proto string, baud float64) (feature, longest, quiet float64, 
 		return 1 / def
 	}
 	switch proto {
-	case "lin": // break, sync, protected ID, up to 8 bytes and checksum; header and response 40 % slack
+	case protoLIN: // break, sync, protected ID, up to 8 bytes and checksum; header and response 40 % slack
 		b := bit(19200)
 		return b, 1.4 * 140 * b, 1.4 * 140 * b, true
-	case "dmx512": // break, mark, start code and 512 slots of 11 bits
+	case protoDMX512: // break, mark, start code and 512 slots of 11 bits
 		b := bit(250000)
 		return b, 1e-3 + 513*11*b, 2e-3, true
-	case "midi": // a running status byte stream: three bytes
+	case protoMIDI: // a running status byte stream: three bytes
 		b := bit(31250)
 		return b, 30 * b, 30 * b, true
-	case "modbus": // up to 256 characters of 11 bits; 3.5 characters of silence end a frame
+	case protoModbus: // up to 256 characters of 11 bits; 3.5 characters of silence end a frame
 		b := bit(19200)
 		return b, 256 * 11 * b, 2 * 256 * 11 * b, true
-	case "onewire": // a reset (480 us low, presence) and its bytes, slots of at least 60 us
+	case protoOneWire: // a reset (480 us low, presence) and its bytes, slots of at least 60 us
 		// The shortest stretch: a 1's low pulse (1 to 15 us, about 6) and
 		// the recovery between slots.
 		return 5e-6, 20e-3, 2e-3, true // a pause between bytes stays under 2 ms
-	case "ws281x": // a reset of 50 us or more ends a frame; a bit's short high is a third of it
+	case protoWS281x: // a reset of 50 us or more ends a frame; a bit's short high is a third of it
 		b := bit(800000)
 		return b / 3, 10e-3, 100e-6, true
-	case "dht": // the host's start (1 to 18 ms low), the response and 40 bits (26 us short high)
+	case protoDHT: // the host's start (1 to 18 ms low), the response and 40 bits (26 us short high)
 		return 26e-6, 25e-3, 25e-3, true
-	case "cec": // start and up to 16 blocks of 10 bits of 2.4 ms; a 0's high is 0.9 ms
+	case protoCEC: // start and up to 16 blocks of 10 bits of 2.4 ms; a 0's high is 0.9 ms
 		return 0.6e-3, 0.4, 0.4, true
-	case "j1850": // SOF and up to 12 bytes of 64/128 us symbols
+	case protoJ1850: // SOF and up to 12 bytes of 64/128 us symbols
 		return 64e-6, 15e-3, 15e-3, true
-	case "irnec", "irsirc", "irrc5", "irrc6":
+	case protoIRNEC, protoIRSIRC, protoIRRC5, protoIRRC6:
 		// A frame of at most 70 ms (NEC's 67.5). A modulated line's 38 kHz
 		// carrier needs no resolving: a bucket holds both its levels, the
 		// mark reads as runs the decoders merge, so the shortest stretch is
 		// a fraction of a mark (RC-6's 444 us half bit).
 		return 50e-6, 80e-3, 80e-3, true
-	case "dali": // 1200 Bd biphase, a backward frame 8 bits, a forward one up to 24
+	case protoDALI: // 1200 Bd biphase, a backward frame 8 bits, a forward one up to 24
 		b := bit(1200)
 		return b / 2, 30 * b, 30 * b, true
-	case "usbpd": // 300 kBd biphase mark: preamble, SOP, header and up to seven data objects
+	case protoUSBPD: // 300 kBd biphase mark: preamble, SOP, header and up to seven data objects
 		b := bit(300000)
 		return b / 2, 500 * b, 500 * b, true
-	case "spdif": // 32-bit subframes of biphase mark, a half cell the shortest
+	case protoSPDIF: // 32-bit subframes of biphase mark, a half cell the shortest
 		b := bit(3072000)
 		return b / 2, 64 * b, 64 * b, true
-	case "ps2": // 11 clocks a frame, a host request 12 and its acknowledge
+	case protoPS2: // 11 clocks a frame, a host request 12 and its acknowledge
 		b := bit(12500)
 		return b / 2, 14 * b, 14 * b, true
-	case "swd": // a request, turnaround, acknowledge, 33 data bits; a line reset 50 clocks
+	case protoSWD: // a request, turnaround, acknowledge, 33 data bits; a line reset 50 clocks
 		b := bit(1000000)
 		return b / 2, 64 * b, 64 * b, true
-	case "mdio": // 32 bits of preamble and a 32-bit frame
+	case protoMDIO: // 32 bits of preamble and a 32-bit frame
 		b := bit(2500000)
 		return b / 2, 64 * b, 64 * b, true
-	case "wiegand": // up to 64 pulses at the bit interval, each a twentieth of it
+	case protoWiegand: // up to 64 pulses at the bit interval, each a twentieth of it
 		b := bit(1000)
 		return b / 20, 64 * b, 64 * b, true
 	// The rate of the protocols past the thirtieth is their panel rate: an
 	// encoder's or a stepper's cycles a second, a PWM's frequency, an RC
 	// code's short pulse, a tag's or a line's bit, a reader's field, a
 	// clocked bus's clock, Morse units, DCF77's code bits a second.
-	case "quad", "stepper": // a step each cycle; two cycles of rest open a motion
+	case protoQuad, protoStepper: // a step each cycle; two cycles of rest open a motion
 		b := bit(1000)
 		return b / 4, 64 * b, 3 * b, true
-	case "pwm": // each period a frame; its duty read to a sixty-fourth
+	case protoPWM: // each period a frame; its duty read to a sixty-fourth
 		b := bit(1000)
 		return b / 64, 4 * b, 3 * b, true
-	case "rcencode": // 24 pulses of four short ones, then the sync of 32
+	case protoRCEncode: // 24 pulses of four short ones, then the sync of 32
 		b := bit(2857)
 		return b, 140 * b, 140 * b, true
-	case "ook": // Oregon bursts: preamble, sync and up to 80 nibbles of Manchester (2.1 at half the bit)
+	case protoOOK: // Oregon bursts: preamble, sync and up to 80 nibbles of Manchester (2.1 at half the bit)
 		b := bit(1024)
 		return b / 4, 400 * b, 400 * b, true
-	case "miller": // a modified Miller pause is a quarter bit; an idle of 2.5 bits ends a message
+	case protoMiller: // a modified Miller pause is a quarter bit; an idle of 2.5 bits ends a message
 		b := bit(106000)
 		return b / 4, 600 * b, 4 * b, true
-	case "morse": // a letter's marks come before its span: up to 16 units
+	case protoMorse: // a letter's marks come before its span: up to 16 units
 		b := bit(17)
 		return b, 120 * b, 20 * b, true
-	case "dcf77": // a minute's fields come at seconds 28, 35 and 58 of 60; pulses of 100 and 200 ms
+	case protoDCF77: // a minute's fields come at seconds 28, 35 and 58 of 60; pulses of 100 and 200 ms
 		b := bit(1)
 		return 0.1 * b, 61 * b, 32 * b, true
-	case "em4100": // 64 Manchester bits
+	case protoEM4100: // 64 Manchester bits
 		b := bit(1953)
 		return b / 2, 66 * b, 66 * b, true
-	case "em4305": // gaps of 12 field clocks; a Write of 57 bits of 32 clocks and 300 to end it
+	case protoEM4305: // gaps of 12 field clocks; a Write of 57 bits of 32 clocks and 300 to end it
 		b := bit(125000)
 		return 12 * b, 2400 * b, 2400 * b, true
-	case "t55xx": // gaps of 16 field clocks; 70 bits of up to 64 clocks
+	case protoT55xx: // gaps of 16 field clocks; 70 bits of up to 64 clocks
 		b := bit(125000)
 		return 16 * b, 4800 * b, 4800 * b, true
-	case "swim": // a 1's low is two of a bit's 22 SWIM clocks
+	case protoSWIM: // a 1's low is two of a bit's 22 SWIM clocks
 		b := bit(363636)
 		return b / 11, 300 * b, 20 * b, true // a frame's spans come at its end: 13 bits and a gap
-	case "sdq": // a 1's low pulse under an eighth of a bit
+	case protoSDQ: // a 1's low pulse under an eighth of a bit
 		b := bit(98425)
 		return b / 8, 100 * b, 50 * b, true
-	case "pjdl": // bytes of a sync pad and eight data times, frames of up to 30 bytes
+	case protoPJDL: // bytes of a sync pad and eight data times, frames of up to 30 bytes
 		b := bit(22727)
 		return b, 400 * b, 40 * b, true
-	case "dsi": // a start and eight Manchester bits
+	case protoDSI: // a start and eight Manchester bits
 		b := bit(600)
 		return b / 2, 12 * b, 12 * b, true
-	case "qi": // packets of up to 30 bytes of 11 biphase-mark bits
+	case protoQi: // packets of up to 30 bytes of 11 biphase-mark bits
 		b := bit(2000)
 		return b / 2, 360 * b, 360 * b, true
-	case "sdcard": // a token of 48 or 136 clocks
+	case protoSDCard: // a token of 48 or 136 clocks
 		b := bit(400000)
 		return b / 2, 150 * b, 150 * b, true
-	case "pdi": // an instruction of up to nine 12-clock characters
+	case protoPDI: // an instruction of up to nine 12-clock characters
 		b := bit(1000000)
 		return b / 2, 120 * b, 120 * b, true
-	case "cjtag": // three TCKC rises a TCK; a scan's bits come at its UPDATE
+	case protoCJTAG: // three TCKC rises a TCK; a scan's bits come at its UPDATE
 		b := bit(1000000)
 		return b / 2, 512 * b, 512 * b, true
-	case "maple": // frames of up to 255 words; bytes come as they end
+	case protoMaple: // frames of up to 255 words; bytes come as they end
 		b := bit(2000000)
 		return b / 2, 8192 * b, 64 * b, true
-	case "caliper": // 24 clocks after 10 ms of quiet
+	case protoCaliper: // 24 clocks after 10 ms of quiet
 		b := bit(12500)
 		return b / 2, 30 * b, 30 * b, true
-	case "irmp": // as the IR codes; Denon's frame comes twice, 65 ms apart
+	case protoIRMP: // as the IR codes; Denon's frame comes twice, 65 ms apart
 		return 50e-6, 0.2, 0.2, true
 	}
 	return 0, 0, 0, false
@@ -147,7 +148,7 @@ func StreamTiming(proto string, baud float64) (feature, longest, quiet float64, 
 // cut transfer looks like any other: its head is a whole transfer.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
 func StreamRecordHead(proto string, feature, longest float64) float64 {
-	if proto == "swd" {
+	if proto == protoSWD {
 		return longest
 	}
 	return 4 * feature
@@ -160,7 +161,7 @@ func StreamRecordHead(proto string, feature, longest float64) float64 {
 // operands as opcodes, and on a periodic bus stays out of step for good.
 // TRLC-LINKS: REQ-SDS-260
 func StreamRecordAfterIdle(proto string) bool {
-	return proto == "pdi"
+	return proto == protoPDI
 }
 
 // StreamEdgeFramed reports a protocol whose decoder finds a frame by its
@@ -171,7 +172,7 @@ func StreamRecordAfterIdle(proto string) bool {
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-260
 func StreamEdgeFramed(proto string) bool {
 	switch proto {
-	case "miller", "swim":
+	case protoMiller, protoSWIM:
 		return true
 	}
 	return false
@@ -184,12 +185,12 @@ func StreamEdgeFramed(proto string) bool {
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-260
 func StreamLead(proto string, baud float64) float64 {
 	switch proto {
-	case "dcf77":
+	case protoDCF77:
 		if baud <= 0 {
 			baud = 1
 		}
 		return 3 / baud
-	case "irmp":
+	case protoIRMP:
 		_, longest, _, _ := StreamTiming(proto, baud)
 		return longest
 	}
@@ -313,7 +314,7 @@ func StreamBitsPlan(feature, rate float64) (period int, ok bool) {
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
 func StreamBitsLine(proto string) bool {
 	switch proto {
-	case "irnec", "irsirc", "irrc5", "irrc6", "irmp", "em4100", "em4305", "t55xx":
+	case protoIRNEC, protoIRSIRC, protoIRRC5, protoIRRC6, protoIRMP, protoEM4100, protoEM4305, protoT55xx:
 		return false
 	}
 	return true

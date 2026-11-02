@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-DECODE
+
 package decode
 
 // Generators of the radio and timing line codes (proto_gen_test.go):
@@ -76,7 +77,7 @@ func oregonBurst(w *timeline, ver int, nibbles []int, hp float64, minus10 bool, 
 	if ver == 21 {
 		pre = 16
 	}
-	for i := 0; i < pre; i++ {
+	for range pre {
 		bits = append(bits, 1)
 	}
 	bits = append(bits, 0, 1, 0, 1)
@@ -101,16 +102,16 @@ func oregonBurst(w *timeline, ver int, nibbles []int, hp float64, minus10 bool, 
 // pause seconds on a high line (modified Miller), else a level change.
 // Then idle seconds of no transition.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-251
-func millerMessage(w *timeline, bits []int, T, pause, idle float64) {
+func millerMessage(w *timeline, bits []int, period, pause, idle float64) {
 	all := append([]int{0}, bits...)
 	// the transitions' times from the message's start
 	var at []float64
 	prev := 1
 	for i, b := range all {
-		t0 := float64(i) * T
+		t0 := float64(i) * period
 		switch {
 		case b == 1:
-			at = append(at, t0+T/2)
+			at = append(at, t0+period/2)
 		case prev == 0 || i == 0:
 			at = append(at, t0)
 		}
@@ -135,21 +136,21 @@ func millerMessage(w *timeline, bits []int, T, pause, idle float64) {
 	if pause > 0 {
 		level = 1
 	}
-	w.add(level, float64(len(all))*T-cur+idle)
+	w.add(level, float64(len(all))*period-cur+idle)
 }
 
 // morseText appends text keyed in Morse at a unit of u seconds (a word gap
 // for a space), then idle units of rest.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-251
 func morseText(w *timeline, text string, u, rest float64) {
-	for i := 0; i < len(text); i++ {
+	for i := range len(text) {
 		c := text[i]
 		if c == ' ' {
 			w.add(0, 4*u) // 3 already after the letter: 7 in all
 			continue
 		}
 		code := MorseOf(c)
-		for k := 0; k < len(code); k++ {
+		for k := range len(code) {
 			if code[k] == '.' {
 				w.add(1, u)
 			} else {
@@ -168,14 +169,14 @@ func morseText(w *timeline, text string, u, rest float64) {
 // with the fields given (BCD) and their parities; badPar flips the minute's
 // parity.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-251
-func dcf77Minute(w *timeline, min, hr, day, dow, mon, yr int, badPar bool) {
-	dcf77MinuteAt(w, 1, min, hr, day, dow, mon, yr, badPar)
+func dcf77Minute(w *timeline, minute, hr, day, dow, mon, yr int, badPar bool) {
+	dcf77MinuteAt(w, 1, minute, hr, day, dow, mon, yr, badPar)
 }
 
 // dcf77MinuteAt is dcf77Minute with a second of sec seconds (a test
 // source's code, faster than the broadcast's).
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-251
-func dcf77MinuteAt(w *timeline, sec float64, min, hr, day, dow, mon, yr int, badPar bool) {
+func dcf77MinuteAt(w *timeline, sec float64, minute, hr, day, dow, mon, yr int, badPar bool) {
 	var b [59]int
 	b[20] = 1
 	put := func(at, wd, v int) {
@@ -183,7 +184,7 @@ func dcf77MinuteAt(w *timeline, sec float64, min, hr, day, dow, mon, yr int, bad
 			b[at+q] = v >> q & 1
 		}
 	}
-	put(21, 7, min)
+	put(21, 7, minute)
 	put(29, 6, hr)
 	put(36, 6, day)
 	put(42, 3, dow)

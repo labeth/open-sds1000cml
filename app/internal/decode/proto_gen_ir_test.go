@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-DECODE
+
 package decode
 
 // Generators of the infrared remote protocols (proto_gen_test.go): marks

@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-DECODE
+
 package decode
 
 // AutodetectFast is Autodetect on a strided copy of long records: the
@@ -17,7 +18,7 @@ func AutodetectFast(c1, c2 []uint8, colTimeS float64, format string) (Result, fl
 		// the whole record. Nor PWM: an output runs on, with no idle to cut,
 		// so PWM read off the cut record is a burst's steady edges (a MIDI
 		// message's bits), judged on the whole record (pwmFillsRecord).
-		if res.OK && res.Proto != "" && res.Proto != "off" && res.Proto != "pwm" {
+		if res.OK && res.Proto != "" && res.Proto != "off" && res.Proto != protoPWM {
 			k := int(st/colTimeS + 0.5)
 			back := func(i int) int { return uncompact(i*k, keep) / k }
 			for j := range res.Spans {

@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-DECODE
+
 package decode
 
 // Oracle cross-checks of the radio and timing line codes against sigrok's
@@ -25,7 +26,7 @@ func sigrokOption(t *testing.T, pd, ch, opt string) bool {
 	if err := os.WriteFile(csv, []byte("D\n0\n0\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	err := exec.Command("sigrok-cli", "-i", csv, "-I", "csv:column_formats=1l:samplerate=1000000",
+	err := exec.CommandContext(t.Context(), "sigrok-cli", "-i", csv, "-I", "csv:column_formats=1l:samplerate=1000000",
 		"-P", pd+":"+ch+"=D:"+opt, "-A", pd).Run()
 	return err == nil
 }

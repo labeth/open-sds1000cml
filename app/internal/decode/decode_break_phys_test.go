@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-DECODE
+
 package decode
 
 import (
@@ -14,45 +15,45 @@ var physDecoders = []struct {
 	name string
 	dec  func(a, b []uint8, ct float64, rng *rand.Rand) Result
 }{
-	{"quad", func(a, b []uint8, ct float64, rng *rand.Rand) Result { return DecodeQuadrature(a, b, ct, ClockedCfg{}) }},
-	{"stepper", func(a, b []uint8, ct float64, rng *rand.Rand) Result { return DecodeStepper(a, b, ct, ClockedCfg{}) }},
-	{"pwm", func(a, b []uint8, ct float64, rng *rand.Rand) Result { return DecodePWM(a, ct, LineCfg{}) }},
-	{"rcencode", func(a, b []uint8, ct float64, rng *rand.Rand) Result {
+	{"quad", func(a, b []uint8, ct float64, _ *rand.Rand) Result { return DecodeQuadrature(a, b, ct, ClockedCfg{}) }},
+	{"stepper", func(a, b []uint8, ct float64, _ *rand.Rand) Result { return DecodeStepper(a, b, ct, ClockedCfg{}) }},
+	{"pwm", func(a, _ []uint8, ct float64, _ *rand.Rand) Result { return DecodePWM(a, ct, LineCfg{}) }},
+	{"rcencode", func(a, _ []uint8, ct float64, rng *rand.Rand) Result {
 		return DecodeRCEncode(a, ct, LineCfg{Variant: []int{0, 12, 24, -3}[rng.Intn(4)]})
 	}},
-	{"ook", func(a, b []uint8, ct float64, rng *rand.Rand) Result { return DecodeOOK(a, ct, LineCfg{}) }},
-	{"miller", func(a, b []uint8, ct float64, rng *rand.Rand) Result {
+	{"ook", func(a, _ []uint8, ct float64, _ *rand.Rand) Result { return DecodeOOK(a, ct, LineCfg{}) }},
+	{"miller", func(a, _ []uint8, ct float64, rng *rand.Rand) Result {
 		return DecodeMiller(a, ct, LineCfg{Baud: []int{0, 106000, -1, 1 << 30}[rng.Intn(4)]})
 	}},
-	{"morse", func(a, b []uint8, ct float64, rng *rand.Rand) Result {
+	{"morse", func(a, _ []uint8, ct float64, rng *rand.Rand) Result {
 		return DecodeMorse(a, ct, LineCfg{Baud: []int{0, 10, -1, 1 << 30}[rng.Intn(4)]})
 	}},
-	{"dcf77", func(a, b []uint8, ct float64, rng *rand.Rand) Result { return DecodeDCF77(a, ct, LineCfg{}) }},
-	{"em4100", func(a, b []uint8, ct float64, rng *rand.Rand) Result {
+	{"dcf77", func(a, _ []uint8, ct float64, _ *rand.Rand) Result { return DecodeDCF77(a, ct, LineCfg{}) }},
+	{"em4100", func(a, _ []uint8, ct float64, rng *rand.Rand) Result {
 		return DecodeEM4100(a, ct, LineCfg{Baud: []int{0, 1953, -5, 1 << 30}[rng.Intn(4)]})
 	}},
-	{"em4305", func(a, b []uint8, ct float64, rng *rand.Rand) Result {
+	{"em4305", func(a, _ []uint8, ct float64, rng *rand.Rand) Result {
 		return DecodeEM4305(a, ct, LineCfg{Baud: []int{0, 125000, -1, 1 << 30}[rng.Intn(4)]})
 	}},
-	{"t55xx", func(a, b []uint8, ct float64, rng *rand.Rand) Result {
+	{"t55xx", func(a, _ []uint8, ct float64, rng *rand.Rand) Result {
 		return DecodeT55xx(a, ct, LineCfg{Baud: []int{0, 125000, 1}[rng.Intn(3)]})
 	}},
-	{"swim", func(a, b []uint8, ct float64, rng *rand.Rand) Result {
+	{"swim", func(a, _ []uint8, ct float64, rng *rand.Rand) Result {
 		return DecodeSWIM(a, ct, LineCfg{Baud: []int{0, 181818, -1, 1 << 30}[rng.Intn(4)]})
 	}},
-	{"sdq", func(a, b []uint8, ct float64, rng *rand.Rand) Result {
+	{"sdq", func(a, _ []uint8, ct float64, rng *rand.Rand) Result {
 		return DecodeSDQ(a, ct, LineCfg{Baud: []int{0, 98425, 1, 1 << 30}[rng.Intn(4)]})
 	}},
-	{"pjdl", func(a, b []uint8, ct float64, rng *rand.Rand) Result {
+	{"pjdl", func(a, _ []uint8, ct float64, rng *rand.Rand) Result {
 		return DecodePJDL(a, ct, LineCfg{Variant: []int{0, 1, 4, 9}[rng.Intn(4)]})
 	}},
-	{"dsi", func(a, b []uint8, ct float64, rng *rand.Rand) Result { return DecodeDSI(a, ct, LineCfg{}) }},
-	{"qi", func(a, b []uint8, ct float64, rng *rand.Rand) Result { return DecodeQi(a, ct, LineCfg{}) }},
-	{"irmp", func(a, b []uint8, ct float64, rng *rand.Rand) Result { return DecodeIRMP(a, ct, LineCfg{}) }},
-	{"sdcard", func(a, b []uint8, ct float64, rng *rand.Rand) Result { return DecodeSDCard(a, b, ct, ClockedCfg{}) }},
-	{"pdi", func(a, b []uint8, ct float64, rng *rand.Rand) Result { return DecodePDI(a, b, ct, ClockedCfg{}) }},
-	{"cjtag", func(a, b []uint8, ct float64, rng *rand.Rand) Result { return DecodeCJTAG(a, b, ct, ClockedCfg{}) }},
-	{"maple", func(a, b []uint8, ct float64, rng *rand.Rand) Result { return DecodeMaple(a, b, ct, ClockedCfg{}) }},
+	{"dsi", func(a, _ []uint8, ct float64, _ *rand.Rand) Result { return DecodeDSI(a, ct, LineCfg{}) }},
+	{"qi", func(a, _ []uint8, ct float64, _ *rand.Rand) Result { return DecodeQi(a, ct, LineCfg{}) }},
+	{"irmp", func(a, _ []uint8, ct float64, _ *rand.Rand) Result { return DecodeIRMP(a, ct, LineCfg{}) }},
+	{"sdcard", func(a, b []uint8, ct float64, _ *rand.Rand) Result { return DecodeSDCard(a, b, ct, ClockedCfg{}) }},
+	{"pdi", func(a, b []uint8, ct float64, _ *rand.Rand) Result { return DecodePDI(a, b, ct, ClockedCfg{}) }},
+	{"cjtag", func(a, b []uint8, ct float64, _ *rand.Rand) Result { return DecodeCJTAG(a, b, ct, ClockedCfg{}) }},
+	{"maple", func(a, b []uint8, ct float64, _ *rand.Rand) Result { return DecodeMaple(a, b, ct, ClockedCfg{}) }},
 	{"caliper", func(a, b []uint8, ct float64, rng *rand.Rand) Result {
 		return DecodeCaliper(a, b, ct, ClockedCfg{Threshold: rng.Float64() * 300, HaveThr: rng.Intn(3) == 0})
 	}},
@@ -102,7 +103,7 @@ func TestDecodeFuzzPhys(t *testing.T) {
 		return s
 	}
 	cts := []float64{0, -1, 1e-12, 2e-9, 1e-6, 1e-4, 1}
-	for i := 0; i < 400*fuzzKnob("DECODE_FUZZ_MULT", 1); i++ {
+	for i := range 400 * fuzzKnob("DECODE_FUZZ_MULT", 1) {
 		n := rng.Intn(20000)
 		a := sig(n, rng.Intn(7))
 		b := sig(len(a), rng.Intn(7))

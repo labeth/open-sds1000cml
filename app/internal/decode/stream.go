@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-DECODE
+
 package decode
 
 import (
@@ -36,6 +37,9 @@ type StreamFrame struct {
 // is one such stretch), and Max the longest frame plus Close: a window that
 // grows past Max (a bus that never pauses) hands out its spans up to Close
 // before its end as they stand.
+//
+// A StreamDecoder holds one stream's window and the working arrays its
+// decodes reuse: one goroutine at a time pushes to it.
 type StreamDecoder struct {
 	decode     func(a, b []uint8) Result
 	closeN     int
@@ -99,11 +103,11 @@ func (d *StreamDecoder) CutStart(at uint64) {
 // after the index; either way the next frames are kept.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
 func (d *StreamDecoder) keepFirst(i0 int, sp Span) bool {
-	if !d.atStart || d.base+uint64(i0) < d.startAt {
+	if !d.atStart || d.base+uint64(i0) < d.startAt { //nolint:gosec // sample indices are never negative
 		return true
 	}
 	d.atStart = false
-	return d.isFrameStart(sp) && d.base+uint64(i0) >= d.startAt+uint64(d.closeN)
+	return d.isFrameStart(sp) && d.base+uint64(i0) >= d.startAt+uint64(d.closeN) //nolint:gosec // sample indices are never negative
 }
 
 // StreamRecord decodes one record of a stream of records (a, b its lines'
@@ -141,12 +145,12 @@ func StreamRecord(a, b []uint8, decode func(a, b []uint8) Result, closeN, head, 
 			f.Spans[k].I1 += uint64(from)
 		}
 	}
-	for len(frames) > 0 && frames[0].I0 < uint64(head) {
+	for len(frames) > 0 && frames[0].I0 < uint64(head) { //nolint:gosec // sample indices are never negative
 		frames = frames[1:]
 	}
 	// A frame cut by the record's start decodes without its start of frame
 	// (a 1-Wire transaction's bytes without their reset).
-	if len(frames) > 0 && len(frames[0].Spans) > 0 && frames[0].Spans[0].Kind != "sof" && frames[0].Spans[0].Kind != "break" {
+	if len(frames) > 0 && len(frames[0].Spans) > 0 && frames[0].Spans[0].Kind != kindSOF && frames[0].Spans[0].Kind != kindBreak {
 		frames = frames[1:]
 	}
 	return frames
@@ -231,7 +235,7 @@ func (d *StreamDecoder) SetSubframes(on bool) { d.subframes = on }
 // isFrameStart reports a span that opens a frame.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
 func (d *StreamDecoder) isFrameStart(s Span) bool {
-	return s.Kind == "sof" || s.Kind == "break" || (d.subframes && s.Kind == "rw")
+	return s.Kind == kindSOF || s.Kind == kindBreak || (d.subframes && s.Kind == kindRW)
 }
 
 // NewStreamDecoder makes a stream decoder over decode (a, b: the lines'
@@ -267,7 +271,7 @@ func (d *StreamDecoder) Held() int {
 
 // Next is the stream index of the next sample pushed.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
-func (d *StreamDecoder) Next() uint64 { return d.base + uint64(d.Held()) }
+func (d *StreamDecoder) Next() uint64 { return d.base + uint64(d.Held()) } //nolint:gosec // sample indices are never negative
 
 // PushEdges appends samples from..to-1 of an edge stream's lines (b nil,
 // or as long as a) and returns the frames they complete, oldest first.
@@ -306,7 +310,7 @@ func (d *StreamDecoder) Flush() []StreamFrame {
 // them.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
 func (d *StreamDecoder) Skip(n int) {
-	d.base += uint64(d.Held() + n)
+	d.base += uint64(d.Held() + n) //nolint:gosec // sample indices are never negative; n counts samples skipped
 	d.done = max(d.done, d.base)
 	d.a, d.b = d.a[:0], d.b[:0]
 	d.ea.Reset()
@@ -380,10 +384,11 @@ func (d *StreamDecoder) run() []StreamFrame {
 		at := len(all)
 		all = slices.Grow(all, g.to-g.from)[:at+g.to-g.from]
 		for k := g.from; k < g.to; k++ {
-			s, t := &sp[k], &all[at+k-g.from] // set field by field: no struct copied in
-			t.I0, t.I1, t.Text, t.Kind, t.Val = d.base+uint64(s.I0), d.base+uint64(s.I1), s.Text, s.Kind, s.Val
+			// set field by field: no struct copied in
+			s, t := &sp[k], &all[at+k-g.from]
+			t.I0, t.I1, t.Text, t.Kind, t.Val = d.base+uint64(s.I0), d.base+uint64(s.I1), s.Text, s.Kind, s.Val //nolint:gosec // sample indices are never negative
 		}
-		out = append(out, StreamFrame{I0: d.base + uint64(g.i0), I1: d.base + uint64(g.i1), Spans: all[at:len(all):len(all)]})
+		out = append(out, StreamFrame{I0: d.base + uint64(g.i0), I1: d.base + uint64(g.i1), Spans: all[at:len(all):len(all)]}) //nolint:gosec // sample indices are never negative
 		last = g.i1
 	}
 	k := 0
@@ -413,7 +418,8 @@ func (d *StreamDecoder) run() []StreamFrame {
 			}
 		}
 	}
-	if last >= 0 {
+	switch {
+	case last >= 0:
 		// Start the next window in the silence after the last frame handed
 		// out: half way to the next span, so the decoder meets the line idle.
 		next := n
@@ -427,10 +433,10 @@ func (d *StreamDecoder) run() []StreamFrame {
 		// last frame's spans that come again lie before done and are dropped.
 		cut = max(0, min(cut, next-d.leadN))
 		d.done = d.base + uint64(last) + 1
-	} else if k == len(groups) || groups[k].from >= groups[k].to {
+	case k == len(groups) || groups[k].from >= groups[k].to:
 		// Nothing decoded: keep only the Close samples a frame can open in.
 		cut = max(0, n-d.closeN-d.leadN)
-	} else {
+	default:
 		// A frame under way: what lies Close before it decoded to nothing.
 		cut = max(0, groups[k].i0-d.closeN-d.leadN)
 	}
@@ -441,22 +447,28 @@ func (d *StreamDecoder) run() []StreamFrame {
 	// whole session.
 	if limit := 2*d.maxN + d.leadN; n-cut > limit {
 		cut = n - limit
-		d.done = max(d.done, d.base+uint64(cut))
+		d.done = max(d.done, d.base+uint64(cut)) //nolint:gosec // sample indices are never negative
 	}
 	if cut > 0 {
-		cut = min(cut, n)
-		if d.edges {
-			d.ea.Drop(cut)
-			if d.eb.N == n {
-				d.eb.Drop(cut)
-			}
-		} else {
-			d.a = d.a[:copy(d.a, d.a[cut:])]
-			if len(d.b) == n {
-				d.b = d.b[:copy(d.b, d.b[cut:])]
-			}
-		}
-		d.base += uint64(cut)
+		d.drop(min(cut, n), n)
 	}
 	return out
+}
+
+// drop lets go of the first cut of the n samples held (both lines' when
+// the second holds as many), the window starting cut samples later.
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
+func (d *StreamDecoder) drop(cut, n int) {
+	if d.edges {
+		d.ea.Drop(cut)
+		if d.eb.N == n {
+			d.eb.Drop(cut)
+		}
+	} else {
+		d.a = d.a[:copy(d.a, d.a[cut:])]
+		if len(d.b) == n {
+			d.b = d.b[:copy(d.b, d.b[cut:])]
+		}
+	}
+	d.base += uint64(cut) //nolint:gosec // sample indices are never negative
 }

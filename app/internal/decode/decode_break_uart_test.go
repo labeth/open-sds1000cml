@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-DECODE
+
 package decode
 
 import (
@@ -73,7 +74,7 @@ func buRasterize(seq []int, spb float64, frontPad int) []uint8 {
 	const lo, hi = 40, 210
 	total := max(frontPad+int(math.Round(float64(len(seq))*spb)), 0)
 	w := make([]uint8, total)
-	for j := 0; j < total; j++ {
+	for j := range total {
 		b := 1
 		if j >= frontPad && len(seq) > 0 {
 			idx := max(int(math.Floor(float64(j-frontPad)/spb)), 0)
@@ -204,7 +205,7 @@ func TestBreakUartRingyEdges(t *testing.T) {
 			if p%2 == 1 {
 				n = 17
 			}
-			for j := 0; j < n; j++ {
+			for range n {
 				w = append(w, lv)
 			}
 			lv = 250 - lv // 210 <-> 40

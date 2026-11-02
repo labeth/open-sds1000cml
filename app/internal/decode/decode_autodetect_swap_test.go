@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-DECODE
+
 package decode
 
 import (
@@ -15,14 +16,14 @@ import (
 // same.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-238
 func TestAutodetectEitherChannel(t *testing.T) {
-	type cap struct {
+	type capture struct {
 		name   string
 		c1, c2 []uint8
 		colT   float64
 	}
-	var caps []cap
+	var caps []capture
 	for _, tc := range append(protoDetectCases(), physDetectCases()...) {
-		caps = append(caps, cap{tc.name, tc.c1, tc.c2, tc.colT})
+		caps = append(caps, capture{tc.name, tc.c1, tc.c2, tc.colT})
 	}
 	// I2C: a few transfers with idle between; SPI in its four modes
 	var scl, sda []uint8
@@ -33,14 +34,14 @@ func TestAutodetectEitherChannel(t *testing.T) {
 			scl, sda = append(scl, 210), append(sda, 210)
 		}
 	}
-	caps = append(caps, cap{"I2C", scl, sda, 1e-7})
+	caps = append(caps, capture{"I2C", scl, sda, 1e-7})
 	for mode := range 4 {
 		clk, dat := spiModeWave([]int{0x0F, 0xF0, 0x3C, 0xC3, 0x12, 0x34, 0x56, 0x78, 0x01, 0x80}, 8, 0, mode&2 != 0, mode&1 != 0, true)
-		caps = append(caps, cap{fmt.Sprintf("SPI mode %d", mode), clk, dat, 1e-7})
+		caps = append(caps, capture{fmt.Sprintf("SPI mode %d", mode), clk, dat, 1e-7})
 	}
 	for _, sc := range scopeCaptures {
 		c1, c2, s := loadGzJSON(t, "testdata/"+sc.file)
-		caps = append(caps, cap{sc.file, c1, c2, s})
+		caps = append(caps, capture{sc.file, c1, c2, s})
 	}
 	for _, c := range caps {
 		a, _ := AutodetectFast(c.c1, c.c2, c.colT, "hex")

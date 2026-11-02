@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-DECODE
+
 package decode
 
 import (
@@ -67,7 +68,7 @@ func physDetectCases() []detectCase {
 	{
 		w := newTimeline(2000)
 		w.add(0, 0.5)
-		morseText(w, "CQ CQ DE SM5ABC", 0.06, 10)
+		morseText(w, "CQ CQ DE SM5ABC", 0.06, 10) //nolint:dupword // CQ CQ is Morse's general call
 		one("Morse", "morse", 2000, w)
 	}
 	{
@@ -88,7 +89,7 @@ func physDetectCases() []detectCase {
 	{
 		w := newTimeline(125e3)
 		w.add(0, 20e-3)
-		morseText(w, "CQ CQ DE SM5", 2e-3, 10)
+		morseText(w, "CQ CQ DE SM5", 2e-3, 10) //nolint:dupword // CQ CQ is Morse's general call
 		one("Morse at 2 ms a unit", "morse", 125e3, w)
 	}
 	{

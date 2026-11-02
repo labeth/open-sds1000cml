@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-DECODE
+
 package decode
 
 import (
@@ -51,7 +52,7 @@ func (p lineSet) words() []uint64 {
 		}
 		wide := 6 * math.Max(sigma(true), sigma(false))
 		k := 0
-		for i := 0; i < n; i++ {
+		for i := range n {
 			at := float64(i) * 2e-9
 			if ch == 1 {
 				at += synthPhaseS
@@ -125,7 +126,7 @@ func (u uartBus) lines() lineSet {
 	for _, f := range u.frames {
 		bits := []bool{false}
 		ones := 0
-		for i := 0; i < u.bits; i++ {
+		for i := range u.bits {
 			b := f.value>>i&1 != 0
 			bits = append(bits, b)
 			if b {
@@ -139,7 +140,7 @@ func (u uartBus) lines() lineSet {
 			}
 			bits = append(bits, p != f.badParity)
 		}
-		for i := 0; i < u.stop; i++ {
+		for range u.stop {
 			bits = append(bits, !f.noStop)
 		}
 		for i, b := range bits {
@@ -545,7 +546,7 @@ func (s rtlSim) runRx(t *testing.T, words []uint64, args ...string) rxRun {
 	if err := os.WriteFile(path, []byte(in.String()), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	out, err := runCmd("vvp", append([]string{"-N", s.image, "+input=" + path, fmt.Sprintf("+n=%d", len(words))}, args...)...)
+	out, err := runCmd(t.Context(), "vvp", append([]string{"-N", s.image, "+input=" + path, fmt.Sprintf("+n=%d", len(words))}, args...)...)
 	if err != nil {
 		t.Fatalf("simulate: %v\n%s", err, out)
 	}
@@ -857,13 +858,13 @@ func TestSampleI2CCaptures(t *testing.T) {
 			// the expected stream from that transfer: the program's passes, the
 			// read's data giving n
 			off := 0
-			for off < len(pass) && !(pass[off] == "S" && pass[off+1] == got[at+1]) {
+			for off < len(pass) && (pass[off] != "S" || pass[off+1] != got[at+1]) {
 				off++
 			}
 			n := -1
 			for i := at; i < len(got); i++ {
 				if got[i] == "A1a" && i+1 < len(got) {
-					fmt.Sscanf(got[i+1], "%02X", &n)
+					_, _ = fmt.Sscanf(got[i+1], "%02X", &n) // not hex: n stays -1, a mismatch
 					break
 				}
 			}

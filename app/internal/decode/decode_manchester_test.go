@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-DECODE
+
 package decode
 
 import (
@@ -43,7 +44,7 @@ func manchesterWave(bitsSeq []int, ieee bool, spb int) []uint8 {
 		return lo
 	}
 	var w []uint8
-	for j := 0; j < spb*6; j++ { // lead idle (high)
+	for range spb * 6 { // lead idle (high)
 		w = append(w, hi)
 	}
 	half := spb / 2
@@ -55,11 +56,11 @@ func manchesterWave(bitsSeq []int, ieee bool, spb int) []uint8 {
 		for range half {
 			w = append(w, lvl(first))
 		}
-		for j := 0; j < spb-half; j++ {
+		for range spb - half {
 			w = append(w, lvl(second))
 		}
 	}
-	for j := 0; j < spb*6; j++ { // trail idle (high)
+	for range spb * 6 { // trail idle (high)
 		w = append(w, hi)
 	}
 	return w
@@ -100,16 +101,15 @@ func TestDecodeManchesterRoundTrip(t *testing.T) {
 	}
 
 	// a preamble/sync span must be flagged (kind "start") from the 0xAA run
-	var kinds string
 	sawSync := false
-	var kindsSb104 strings.Builder
+	var kindsBuf strings.Builder
 	for _, s := range r.Spans {
-		kindsSb104.WriteString(s.Kind + " ")
+		kindsBuf.WriteString(s.Kind + " ")
 		if s.Kind == "start" && s.Text == "SYNC" {
 			sawSync = true
 		}
 	}
-	kinds += kindsSb104.String()
+	kinds := kindsBuf.String()
 	if !sawSync {
 		t.Errorf("expected a SYNC/start span; got kinds: %s", kinds)
 	}

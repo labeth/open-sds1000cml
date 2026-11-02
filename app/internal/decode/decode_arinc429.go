@@ -1,10 +1,10 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-DECODE
+
 package decode
 
 import (
 	"fmt"
 	"math"
-	"sort"
 	"strings"
 )
 
@@ -45,7 +45,7 @@ type ARINC429Cfg struct {
 // dropped, since a free-running scope starts at a random phase.
 // TRLC-LINKS: REQ-SDS-018
 func DecodeARINC429(codes []uint8, colTimeS float64, cfg ARINC429Cfg) Result {
-	const proto = "arinc429"
+	const proto = protoARINC429
 	const minSPB = 4.0
 	n := len(codes)
 	if n < 8 {
@@ -112,19 +112,7 @@ func DecodeARINC429(codes []uint8, colTimeS float64, cfg ARINC429Cfg) Result {
 		if len(gaps) < 3 {
 			return Result{Proto: proto, Error: "too few pulses / cannot infer bitrate"}
 		}
-		sort.Float64s(gaps)
-		p := gaps[int(float64(len(gaps))*0.1)]
-		sum, cnt := 0.0, 0
-		for _, g := range gaps {
-			if math.Abs(g-p) <= 0.35*p {
-				sum += g
-				cnt++
-			}
-		}
-		if cnt > 0 {
-			p = sum / float64(cnt)
-		}
-		T = p
+		T = shortGapCluster(gaps, 0.35)
 	}
 	if math.IsInf(T, 0) || math.IsNaN(T) || !(T >= minSPB) {
 		return Result{Proto: proto, Error: fmt.Sprintf("%.1f samples/bit; need >= %g", T, minSPB)}
@@ -213,14 +201,14 @@ func DecodeARINC429(codes []uint8, colTimeS float64, cfg ARINC429Cfg) Result {
 		}
 		words++
 		lblTxt := fmt.Sprintf("%03o", labelRev&0xff)
-		spans = append(spans, Span{cellStart(0), cellEnd(7), lblTxt, "addr", labelRev})
+		spans = append(spans, Span{cellStart(0), cellEnd(7), lblTxt, kindAddr, labelRev})
 		dataTxt := fmt.Sprintf("%05X", dataVal&0x7ffff)
-		spans = append(spans, Span{cellStart(10), cellEnd(28), dataTxt, "data", dataVal})
+		spans = append(spans, Span{cellStart(10), cellEnd(28), dataTxt, kindData, dataVal})
 		ssmTxt := fmt.Sprintf("SSM%d", ssm)
-		spans = append(spans, Span{cellStart(29), cellEnd(30), ssmTxt, "rw", ssm})
+		spans = append(spans, Span{cellStart(29), cellEnd(30), ssmTxt, kindRW, ssm})
 		toks = append(toks, lblTxt, dataTxt, ssmTxt)
 		if !parityOdd {
-			spans = append(spans, Span{cellStart(31), cellEnd(31), "!P", "frame-error", 0})
+			spans = append(spans, Span{cellStart(31), cellEnd(31), "!P", kindFrameError, 0})
 			toks = append(toks, "!P")
 		}
 		// Result.Bytes = the 4 raw bytes of the 32-bit word (little-endian: byte 0

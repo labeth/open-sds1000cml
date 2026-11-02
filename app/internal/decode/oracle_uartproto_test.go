@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-DECODE
+
 package decode
 
 // Oracle cross-checks of the UART-framed protocols against sigrok's stacked
@@ -186,9 +187,9 @@ func TestOracleMIDI(t *testing.T) {
 	if fmt.Sprint(repo) != fmt.Sprint(orc) {
 		t.Fatalf("channel messages differ: repo %v sigrok %v", repo, orc)
 	}
-	real := sigrokDecode(t, sr, []string{"RX"}, [][]byte{w.bits}, "uart:rx=RX:baudrate=31250,midi", "midi=text-sysreal-verbose")
-	if len(real) != 1 {
-		t.Fatalf("sigrok real-time messages %d, want 1", len(real))
+	realTime := sigrokDecode(t, sr, []string{"RX"}, [][]byte{w.bits}, "uart:rx=RX:baudrate=31250,midi", "midi=text-sysreal-verbose")
+	if len(realTime) != 1 {
+		t.Fatalf("sigrok real-time messages %d, want 1", len(realTime))
 	}
 }
 

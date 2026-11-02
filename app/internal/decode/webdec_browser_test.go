@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-DECODE
+
 package decode
 
 import (
@@ -105,6 +106,17 @@ func webdecBenchInfo(tc streamCPUCase, ss float64, session int) map[string]any {
 // bytes each stream takes with and without the ring's quiet-line coding.
 // SDS_WEBDEC_SECS sets each stream's signal time (1 s; 0.2 s with -short),
 // SDS_WEBDEC_ONLY the protocols.
+// mapValue is m[key] as a T; the test fails when it holds another type.
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
+func mapValue[T any](t *testing.T, m map[string]any, key string) T {
+	t.Helper()
+	v, ok := m[key].(T)
+	if !ok {
+		t.Fatalf("%s holds %T, not %T", key, m[key], v)
+	}
+	return v
+}
+
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
 func TestWebDecBrowserThroughput(t *testing.T) {
 	testenv.NeedNode(t)
@@ -127,7 +139,7 @@ func TestWebDecBrowserThroughput(t *testing.T) {
 			la, lb := streamBitsLines(tc, 5, max(secs, 3*(tc.longest+tc.quiet)), ss, bursty)
 			raw := levelWords(la, lb)
 			info := webdecBenchInfo(tc, ss, len(cases)+1)
-			mask := info["mask"].(uint32)
+			mask := mapValue[uint32](t, info, "mask")
 			c := &webdecBenchCase{
 				name: fmt.Sprintf("%s %s", name, map[bool]string{false: "dense", true: "bursty"}[bursty]), info: info,
 				secs: float64(len(raw)/4*16) * ss,
@@ -151,9 +163,9 @@ func TestWebDecBrowserThroughput(t *testing.T) {
 	webDir, _ := filepath.Abs("../web")
 	files := http.FileServer(http.Dir(webDir))
 	mux := http.NewServeMux()
-	mux.HandleFunc("/bench.html", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/bench.html", func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "text/html")
-		io.WriteString(w, `<!doctype html><title>webdec bench</title><script>
+		_, _ = io.WriteString(w, `<!doctype html><title>webdec bench</title><script>
 window.benchStats = {}; window.benchErrors = [];
 const w = new Worker("webdec_worker.js");
 w.onmessage = (ev) => { const s = ev.data; if (s && s.type === "status" && s.session) window.benchStats[s.session] = s; };
@@ -161,14 +173,14 @@ w.onerror = (e) => window.benchErrors.push(e.message);
 w.postMessage({ cmd: "start" });
 </script>`)
 	})
-	mux.HandleFunc("/bench/state", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/bench/state", func(w http.ResponseWriter, _ *http.Request) {
 		mu.Lock()
 		defer mu.Unlock()
 		if cur >= len(cases) {
-			io.WriteString(w, "done")
+			_, _ = io.WriteString(w, "done")
 			return
 		}
-		io.WriteString(w, "running")
+		_, _ = io.WriteString(w, "running")
 	})
 	mux.HandleFunc("/api/stream/words.bin", func(w http.ResponseWriter, r *http.Request) {
 		from, _ := strconv.ParseUint(r.URL.Query().Get("from"), 10, 64)
@@ -223,7 +235,7 @@ w.postMessage({ cmd: "start" });
 		out = append(out, hj...)
 		out = append(out, heads...)
 		w.Header().Set("Content-Type", "application/octet-stream")
-		w.Write(append(out, body...))
+		_, _ = w.Write(append(out, body...)) // the page reads what arrives; a broken connection ends the run
 	})
 	mux.HandleFunc("/api/stream/frames.bin", func(w http.ResponseWriter, r *http.Request) {
 		b, _ := io.ReadAll(r.Body)
@@ -257,7 +269,7 @@ w.postMessage({ cmd: "start" });
 	srv := httptest.NewServer(mux)
 	defer srv.Close()
 
-	out, err := exec.Command("node", "../web/webdec_browser.mjs", srv.URL).CombinedOutput()
+	out, err := exec.CommandContext(t.Context(), "node", "../web/webdec_browser.mjs", srv.URL).CombinedOutput()
 	if strings.Contains(string(out), "SKIP:") {
 		testenv.SkipBrowser(t, "browser driver skipped: %s", strings.SplitN(string(out), "\n", 2)[0])
 	}
@@ -269,7 +281,7 @@ w.postMessage({ cmd: "start" });
 		if s, ok := strings.CutPrefix(line, "STAT "); ok {
 			var m map[string]any
 			if json.Unmarshal([]byte(s), &m) == nil {
-				stats[int(m["session"].(float64))] = m
+				stats[int(mapValue[float64](t, m, "session"))] = m
 			}
 		}
 	}
@@ -284,11 +296,11 @@ w.postMessage({ cmd: "start" });
 			words += c.words[k]
 			coded += len(c.chunks[k])
 		}
-		period := c.info["periodS"].(float64)
+		period := mapValue[float64](t, c.info, "periodS")
 		st := stats[i+1]
 		busy := 0.0
 		if st != nil {
-			busy = st["busyMs"].(float64) / 1e3
+			busy = mapValue[float64](t, st, "busyMs") / 1e3
 		}
 		wall := c.end.Sub(c.start).Seconds()
 		if c.end.IsZero() || busy <= 0 {
@@ -299,7 +311,7 @@ w.postMessage({ cmd: "start" });
 			float64(c.edges)/c.secs, float64(4*words)/c.secs, float64(coded)/c.secs, float64(words)/busy/1e6, float64(c.edges)/busy/1e6,
 			c.secs/busy, c.frames, c.losses)
 		_ = wall
-		pushS := float64(c.info["pushN"].(int)+c.info["closeN"].(int)) * period
+		pushS := float64(mapValue[int](t, c.info, "pushN")+mapValue[int](t, c.info, "closeN")) * period
 		if c.frames == 0 && c.secs > 2*pushS {
 			t.Errorf("%s: the worker posted no frames", c.name)
 		}

@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-DECODE
+
 package decode
 
 import (
@@ -282,23 +283,23 @@ func TestAutodetectARINCOnlyAtItsRates(t *testing.T) {
 
 // loadGzJSON reads a recorded two-channel capture (sample_s, c1, c2).
 // TRLC-LINKS: REQ-SDS-018
-func loadGzJSON(t testing.TB, path string) (c1, c2 []uint8, sampleS float64) {
-	t.Helper()
+func loadGzJSON(tb testing.TB, path string) (c1, c2 []uint8, sampleS float64) {
+	tb.Helper()
 	f, err := os.Open(path)
 	if err != nil {
-		t.Fatal(err)
+		tb.Fatal(err)
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }() // opened to read: closing loses nothing
 	z, err := gzip.NewReader(f)
 	if err != nil {
-		t.Fatal(err)
+		tb.Fatal(err)
 	}
 	var v struct {
 		SampleS float64 `json:"sample_s"`
 		C1, C2  []int
 	}
 	if err := json.NewDecoder(z).Decode(&v); err != nil {
-		t.Fatal(err)
+		tb.Fatal(err)
 	}
 	c1, c2 = make([]uint8, len(v.C1)), make([]uint8, len(v.C2))
 	for i := range v.C1 {

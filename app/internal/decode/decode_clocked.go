@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-DECODE
+
 package decode
 
 import (
@@ -57,7 +58,7 @@ func clockedLinesD(a, b lineIn, cfg ClockedCfg) ([]clkEdge, float64, sliced, sli
 	gaps := scratchSlice[float64](sc, len(C.edges)/2+1)
 	lastFall := -1.0
 	lv := levelCursor{s: &D}
-	if fallUp, riseUp, ok := C.roundUps(); ok {
+	if fallUp, riseUp, ok := C.roundUps(); ok { //nolint:nestif // the edge-sliced fast path; the loop after it must read the same
 		// A clock sliced from its edges: each edge's sample is its own (no
 		// rounding of its crossing), and the gaps between falls lie within
 		// a hair of their samples (nthNear).
@@ -139,7 +140,7 @@ func DecodePS2Edges(clk, data *EdgeLine, colTimeS float64, cfg ClockedCfg) Resul
 func decodePS2(clk, data lineIn, colTimeS float64, cfg ClockedCfg) Result {
 	E, per, C, why := clockedLines(clk, data, cfg)
 	if why != "" {
-		return Result{Proto: "ps2", Error: why}
+		return Result{Proto: protoPS2, Error: why}
 	}
 	var F []clkEdge
 	for _, e := range E {
@@ -157,7 +158,7 @@ func decodePS2(clk, data lineIn, colTimeS float64, cfg ClockedCfg) Result {
 	free := false           // the last frame just ended: the next may follow at once
 	for i := 0; i < len(F); i++ {
 		quiet := (i == 0 && F[0].x >= 1.4*per) || (i > 0 && F[i].x-F[i-1].x >= 1.4*per)
-		if F[i].d != 0 || !(quiet || free) || i+10 >= len(F) {
+		if F[i].d != 0 || (!quiet && !free) || i+10 >= len(F) {
 			free = false
 			continue
 		}
@@ -179,19 +180,19 @@ func decodePS2(clk, data lineIn, colTimeS float64, cfg ClockedCfg) Result {
 		}
 		par, stop := F[i+9].d, F[i+10].d
 		host := i+11 < len(F) && F[i+11].x-F[i+10].x <= 1.4*per && F[i+11].d == 0
-		spans = append(spans, pspan(F[i].x, F[i].x, n, "", "sof", 0))
+		spans = append(spans, pspan(F[i].x, F[i].x, n, "", kindSOF, 0))
 		txt := FmtByte(v, cfg.Format)
 		if host {
 			txt = "H" + hex2(v)
 		}
-		kind := "data"
+		kind := kindData
 		switch {
 		case (ones+par)%2 != 1:
-			kind = "parity-error"
+			kind = kindParityError
 		case stop != 1:
-			kind = "frame-error"
+			kind = kindFrameError
 		}
-		if kind != "data" {
+		if kind != kindData {
 			txt = "!" + txt
 		} else {
 			good = true
@@ -215,7 +216,7 @@ func decodePS2(clk, data lineIn, colTimeS float64, cfg ClockedCfg) Result {
 		free = true
 	}
 	if len(spans) == 0 {
-		return Result{Proto: "ps2", Error: "no PS/2 frame"}
+		return Result{Proto: protoPS2, Error: "no PS/2 frame"}
 	}
 	// The record's ends cut a frame as often as not: the falls before the
 	// first frame and after the last, up to a frame's each, are its rest,
@@ -223,7 +224,7 @@ func decodePS2(clk, data lineIn, colTimeS float64, cfg ClockedCfg) Result {
 	// cut by the record's start, fell to half and the pair read as SPI).
 	cut := min(firstF, 12) + min(len(F)-1-lastF, 12)
 	res := Result{
-		OK: good, Proto: "ps2", Spans: spans, Text: strings.Join(toks, " "), Bytes: units,
+		OK: good, Proto: protoPS2, Spans: spans, Text: strings.Join(toks, " "), Bytes: units,
 		Thr: C.threshold, SPB: per, Cover: min(1, float64(explained)/float64(max(1, len(F)-cut))),
 	}
 	if colTimeS > 0 {
@@ -265,10 +266,10 @@ func DecodeSWDEdges(clk, dio *EdgeLine, colTimeS float64, cfg ClockedCfg) Result
 
 // decodeSWD is DecodeSWD over samples or edges.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-236
-func decodeSWD(clk, dio lineIn, colTimeS float64, cfg ClockedCfg) Result {
+func decodeSWD(clk, dio lineIn, colTimeS float64, cfg ClockedCfg) Result { //nolint:gocyclo // a protocol state machine kept step for step with its decode_*.js twin (parity tests)
 	E, per, C, D, why := clockedLinesD(clk, dio, cfg)
 	if why != "" {
-		return Result{Proto: "swd", Error: why}
+		return Result{Proto: protoSWD, Error: why}
 	}
 	// cycles: a fall and the rise after it
 	cy := scratchSlice[swdCycle](clk.scratch(), len(E)/2+1)
@@ -295,7 +296,7 @@ func decodeSWD(clk, dio lineIn, colTimeS float64, cfg ClockedCfg) Result {
 	// line resets: fifty or more rises with SWDIO high, ended by a low one
 	var resets [][2]int
 	ones := 0
-	for c := 0; c < len(cy); c++ {
+	for c := range cy {
 		if cy[c].dr == 1 {
 			ones++
 			continue
@@ -308,7 +309,7 @@ func decodeSWD(clk, dio lineIn, colTimeS float64, cfg ClockedCfg) Result {
 	ri := 0
 	flushResets := func(upTo int) {
 		for ; ri < len(resets) && resets[ri][1] <= upTo; ri++ {
-			o.add(cy[resets[ri][0]].xr, cy[resets[ri][1]].xr, "LINERESET", "rw", 0, false)
+			o.add(cy[resets[ri][0]].xr, cy[resets[ri][1]].xr, "LINERESET", kindRW, 0, false)
 		}
 	}
 	// cycles explained: the transfers', the resets' and idle ones (low)
@@ -347,9 +348,9 @@ func decodeSWD(clk, dio lineIn, colTimeS float64, cfg ClockedCfg) Result {
 		if swdRequestRaces(&D, cy[c:c+8], per, &dj, byI) {
 			continue // its bits read where they change: no host's
 		}
-		o.add(cy[c].xr, cy[c].xr, "", "sof", 0, false)
-		o.add(cy[c].xf, cy[c+7].xr+per/2, swdRequestText[rnw][apdp][a2|a3<<1], "data", req, true)
-		o.add(cy[c+9].xf, cy[c+11].xr+per/2, swdAckText(ack), "data", ack, true)
+		o.add(cy[c].xr, cy[c].xr, "", kindSOF, 0, false)
+		o.add(cy[c].xf, cy[c+7].xr+per/2, swdRequestText[rnw][apdp][a2|a3<<1], kindData, req, true)
+		o.add(cy[c+9].xf, cy[c+11].xr+per/2, swdAckText(ack), kindData, ack, true)
 		firstC = min(firstC, c)
 		if ack != 1 {
 			explained += swdUnexplained(cy[c : c+12])
@@ -378,9 +379,9 @@ func decodeSWD(clk, dio lineIn, colTimeS float64, cfg ClockedCfg) Result {
 		if rnw == 0 {
 			p = cy[first+32].dr
 		}
-		dtxt, kind := hexText("", uint64(uint32(v)), 8), "data"
+		dtxt, kind := hexText("", uint64(uint32(v)), 8), kindData
 		if cnt%2 != p {
-			dtxt, kind = hexText("!", uint64(uint32(v)), 8), "parity-error"
+			dtxt, kind = hexText("!", uint64(uint32(v)), 8), kindParityError
 		} else {
 			good = true
 		}
@@ -392,7 +393,7 @@ func decodeSWD(clk, dio lineIn, colTimeS float64, cfg ClockedCfg) Result {
 	}
 	flushResets(len(cy))
 	if len(o.spans) == 0 {
-		return Result{Proto: "swd", Error: "no SWD request"}
+		return Result{Proto: protoSWD, Error: "no SWD request"}
 	}
 	// The record's ends cut a transfer as often as not: the busy cycles
 	// before the first transfer and after the last, up to a transfer's
@@ -419,7 +420,7 @@ func decodeSWD(clk, dio lineIn, colTimeS float64, cfg ClockedCfg) Result {
 	_, _, near := C.roundUps()
 	good = good && cover >= 0.5 && swdSteady(cy, per, near)
 	res := Result{
-		OK: good, Proto: "swd", Spans: o.spans, Text: strings.Join(o.toks, " "), Bytes: o.units,
+		OK: good, Proto: protoSWD, Spans: o.spans, Text: strings.Join(o.toks, " "), Bytes: o.units,
 		Thr: C.threshold, SPB: per, Cover: cover,
 	}
 	if colTimeS > 0 {
@@ -562,12 +563,12 @@ const swdTransferCycles = 46
 // host moves SWDIO at the fall, half a period from the rise; data that moves
 // at the rise is a bus launching it there (SPI with its clock at 80% duty),
 // read now as one bit and now as the other, and its "requests" come and go
-// with a millivolt of noise. at keeps its place in D's edges from request
+// with a millivolt of noise. at keeps its place in sd's edges from request
 // to request; byI: both lines' edges lie within a sample of their own,
 // and an edge and a rise samples apart lie that much apart less one.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-236
-func swdRequestRaces(D *sliced, cy []swdCycle, per float64, at *int, byI bool) bool {
-	if !D.ok || len(cy) == 0 || !(per > 0) {
+func swdRequestRaces(sd *sliced, cy []swdCycle, per float64, at *int, byI bool) bool {
+	if !sd.ok || len(cy) == 0 || !(per > 0) {
 		return false
 	}
 	near := per / 8
@@ -575,10 +576,10 @@ func swdRequestRaces(D *sliced, cy []swdCycle, per float64, at *int, byI bool) b
 	// the first of D's edges at or past lo: on from the last request's
 	// (requests come in order), or searched for when it lies before
 	j := *at
-	if j > len(D.edges) || (j > 0 && D.edges[j-1].x >= lo) {
-		j = sort.Search(len(D.edges), func(k int) bool { return D.edges[k].x >= lo })
+	if j > len(sd.edges) || (j > 0 && sd.edges[j-1].x >= lo) {
+		j = sort.Search(len(sd.edges), func(k int) bool { return sd.edges[k].x >= lo })
 	}
-	for j < len(D.edges) && D.edges[j].x < lo {
+	for j < len(sd.edges) && sd.edges[j].x < lo {
 		j++
 	}
 	*at = j
@@ -586,8 +587,8 @@ func swdRequestRaces(D *sliced, cy []swdCycle, per float64, at *int, byI bool) b
 	if byI && near < 1<<30 {
 		far = int(math.Ceil(near)) + 2
 	}
-	for ; j < len(D.edges) && D.edges[j].x <= hi; j++ {
-		x, i := D.edges[j].x, D.edges[j].i
+	for ; j < len(sd.edges) && sd.edges[j].x <= hi; j++ {
+		x, i := sd.edges[j].x, sd.edges[j].i
 		for c := range cy {
 			if di := i - cy[c].ri; di >= far || -di >= far {
 				continue
@@ -648,7 +649,7 @@ func DecodeMDIOEdges(mdc, mdio *EdgeLine, colTimeS float64, cfg ClockedCfg) Resu
 func decodeMDIO(mdc, mdio lineIn, colTimeS float64, cfg ClockedCfg) Result {
 	E, per, C, why := clockedLines(mdc, mdio, cfg)
 	if why != "" {
-		return Result{Proto: "mdio", Error: why}
+		return Result{Proto: protoMDIO, Error: why}
 	}
 	// the rises: where each lies and the data there
 	type rise struct {
@@ -700,11 +701,11 @@ func decodeMDIO(mdc, mdio lineIn, colTimeS float64, cfg ClockedCfg) Result {
 			continue
 		}
 		head := st<<12 | op<<10 | phy<<5 | reg
-		o.add(R[i].x, R[i].x, "", "sof", 0, false)
-		o.add(R[i].x, R[i+14].x, name+" "+hex2(phy)+"."+hex2(reg), "data", head, true)
-		dtxt, kind := hexText("", uint64(data), 4), "data"
+		o.add(R[i].x, R[i].x, "", kindSOF, 0, false)
+		o.add(R[i].x, R[i+14].x, name+" "+hex2(phy)+"."+hex2(reg), kindData, head, true)
+		dtxt, kind := hexText("", uint64(data), 4), kindData //nolint:gosec // an MDIO data field is 16 bits
 		if ta&1 != 0 {
-			dtxt, kind = hexText("!", uint64(data), 4), "frame-error"
+			dtxt, kind = hexText("!", uint64(data), 4), kindFrameError //nolint:gosec // an MDIO data field is 16 bits
 		} else {
 			good = true
 		}
@@ -718,10 +719,10 @@ func decodeMDIO(mdc, mdio lineIn, colTimeS float64, cfg ClockedCfg) Result {
 	}
 	explained += ones // the idle after the last frame
 	if len(o.spans) == 0 {
-		return Result{Proto: "mdio", Error: "no MDIO frame"}
+		return Result{Proto: protoMDIO, Error: "no MDIO frame"}
 	}
 	res := Result{
-		OK: good, Proto: "mdio", Spans: o.spans, Text: strings.Join(o.toks, " "), Bytes: o.units,
+		OK: good, Proto: protoMDIO, Spans: o.spans, Text: strings.Join(o.toks, " "), Bytes: o.units,
 		Thr: C.threshold, SPB: per, Cover: min(1, float64(explained)/float64(max(1, len(R)-mdioCut(firstR, lastR, len(R))))),
 	}
 	if colTimeS > 0 {
@@ -782,15 +783,15 @@ func DecodeWiegandEdges(d0, d1 *EdgeLine, colTimeS float64, cfg ClockedCfg) Resu
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-236
 func decodeWiegand(d0, d1 lineIn, colTimeS float64, cfg ClockedCfg) Result {
 	if d1.none() {
-		return Result{Proto: "wiegand", Error: "needs both lines (D0 and D1)"}
+		return Result{Proto: protoWiegand, Error: "needs both lines (D0 and D1)"}
 	}
 	A := d0.slice(cfg.Threshold, cfg.HaveThr)
 	B := d1.slice(cfg.ThresholdB, cfg.HaveThrB)
 	if !A.ok && !B.ok {
-		return Result{Proto: "wiegand", Error: A.reason}
+		return Result{Proto: protoWiegand, Error: A.reason}
 	}
 	if !(colTimeS > 0) {
-		return Result{Proto: "wiegand", Error: "no sample time"}
+		return Result{Proto: protoWiegand, Error: msgNoSampleTime}
 	}
 	type pulse struct {
 		x0, x1 float64
@@ -811,7 +812,7 @@ func decodeWiegand(d0, d1 lineIn, colTimeS float64, cfg ClockedCfg) Result {
 	}
 	sort.Slice(ps, func(i, j int) bool { return ps[i].x0 < ps[j].x0 || ps[i].x0 == ps[j].x0 && ps[i].v < ps[j].v })
 	if len(ps) < 4 {
-		return Result{Proto: "wiegand", Error: "too few Wiegand pulses"}
+		return Result{Proto: protoWiegand, Error: "too few Wiegand pulses"}
 	}
 	var gaps []float64
 	for k := 1; k < len(ps); k++ {
@@ -831,9 +832,9 @@ func decodeWiegand(d0, d1 lineIn, colTimeS float64, cfg ClockedCfg) Result {
 		if frameBits == 0 || (frameBits != 26 && frameBits != 34 && (nb == 26 || nb == 34)) {
 			frameBits = nb
 		}
-		spans = append(spans, pspan(fr[0].x0, fr[0].x0, n, "", "sof", 0))
+		spans = append(spans, pspan(fr[0].x0, fr[0].x0, n, "", kindSOF, 0))
 		lbl := fmt.Sprintf("%db", nb)
-		spans = append(spans, pspan(fr[0].x0, fr[nb-1].x1, n, lbl, "rw", nb))
+		spans = append(spans, pspan(fr[0].x0, fr[nb-1].x1, n, lbl, kindRW, nb))
 		toks = append(toks, lbl)
 		bits := func(from, cnt int) (v, ones int) {
 			for k := range cnt {
@@ -844,9 +845,9 @@ func decodeWiegand(d0, d1 lineIn, colTimeS float64, cfg ClockedCfg) Result {
 		}
 		field := func(from, cnt int, pfx string, bad bool) {
 			v, _ := bits(from, cnt)
-			txt, kind := fmt.Sprintf("%s%d", pfx, v), "data"
+			txt, kind := fmt.Sprintf("%s%d", pfx, v), kindData
 			if bad {
-				txt, kind = "!"+txt, "parity-error"
+				txt, kind = "!"+txt, kindParityError
 			}
 			spans = append(spans, pspan(fr[from].x0, fr[from+cnt-1].x1, n, txt, kind, v))
 			toks = append(toks, txt)
@@ -869,7 +870,7 @@ func decodeWiegand(d0, d1 lineIn, colTimeS float64, cfg ClockedCfg) Result {
 			cnt := min(8, nb-k)
 			v, _ := bits(k, cnt)
 			txt := hex2(v)
-			spans = append(spans, pspan(fr[k].x0, fr[k+cnt-1].x1, n, txt, "data", v))
+			spans = append(spans, pspan(fr[k].x0, fr[k+cnt-1].x1, n, txt, kindData, v))
 			toks = append(toks, txt)
 			units = append(units, v)
 		}
@@ -887,14 +888,14 @@ func decodeWiegand(d0, d1 lineIn, colTimeS float64, cfg ClockedCfg) Result {
 		}
 	}
 	if len(spans) == 0 {
-		return Result{Proto: "wiegand", Error: "no Wiegand frame"}
+		return Result{Proto: protoWiegand, Error: "no Wiegand frame"}
 	}
 	thr := A.threshold
 	if !A.ok {
 		thr = B.threshold
 	}
 	res := Result{
-		OK: good, Proto: "wiegand", Spans: spans, Text: strings.Join(toks, " "), Bytes: units,
+		OK: good, Proto: protoWiegand, Spans: spans, Text: strings.Join(toks, " "), Bytes: units,
 		Thr: thr, SPB: interval, FrameBits: frameBits,
 	}
 	if interval > 0 {

@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-DECODE
+
 package decode
 
 import (
@@ -43,7 +44,7 @@ func TestFmtByteTables(t *testing.T) {
 			}
 		}
 	}
-	for d := 0; d <= 1000; d++ {
+	for d := range 1001 {
 		if got, want := pwmDutyTexts()[d], strconv.Itoa(d/10)+"."+strconv.Itoa(d%10)+"%"; got != want {
 			t.Fatalf("duty %d: %q, want %q", d, got, want)
 		}

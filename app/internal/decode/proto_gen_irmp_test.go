@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-DECODE
+
 package decode
 
 // Generators of the IR multi decoder's protocols (proto_gen_ir_test.go's

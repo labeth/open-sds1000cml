@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-DECODE
+
 package decode
 
 import (
@@ -138,7 +139,7 @@ func TestDecodeSENTMultiFramePause(t *testing.T) {
 }
 
 // TRLC-LINKS: REQ-SDS-018
-func TestDecodeSENTNoPanic(t *testing.T) {
+func TestDecodeSENTNoPanic(_ *testing.T) {
 	// Empty, flat, and pseudo-random inputs (with degenerate configs) must never
 	// panic and must never loop unbounded.
 	_ = DecodeSENT(nil, 1e-6, SENTCfg{})

@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-DECODE
+
 package decode
 
 import (
@@ -8,6 +9,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 )
@@ -103,7 +105,7 @@ func canRemoteFrame(id, dlc int) []int {
 	if rl == 5 {
 		stuffed = append(stuffed, 1-rv)
 	}
-	wire := append(stuffed, 1, 0, 1)
+	wire := slices.Concat(stuffed, []int{1, 0, 1})
 	for range 10 {
 		wire = append(wire, 1)
 	}
@@ -179,7 +181,7 @@ func TestCANTriggerRTL(t *testing.T) {
 	dir := t.TempDir()
 	rtl := testenv.RTLDir(t)
 	image := filepath.Join(dir, "can.vvp")
-	if out, err := exec.Command("iverilog", "-g2012", "-s", "tb_can_trigger", "-o", image,
+	if out, err := exec.CommandContext(t.Context(), "iverilog", "-g2012", "-s", "tb_can_trigger", "-o", image,
 		filepath.Join(rtl, "can_trigger.v"), filepath.Join(rtl, "sim", "tb_can_trigger.v")).CombinedOutput(); err != nil {
 		t.Fatalf("compile: %v\n%s", err, out)
 	}
@@ -207,7 +209,7 @@ func TestCANTriggerRTL(t *testing.T) {
 			fmt.Sprintf("+nominal=%d", q8(nominal)), fmt.Sprintf("+data=%d", q8(data)),
 			fmt.Sprintf("+pattern=%016x", p), fmt.Sprintf("+len=%d", len(pattern)),
 		}, args...)
-		out, err := exec.Command("vvp", argv...).CombinedOutput()
+		out, err := exec.CommandContext(t.Context(), "vvp", argv...).CombinedOutput()
 		if err != nil {
 			t.Fatalf("simulate: %v\n%s", err, out)
 		}
@@ -313,7 +315,7 @@ func TestCANTriggerRTL(t *testing.T) {
 		if rl == 5 {
 			stuffed = append(stuffed, 1-rv)
 		}
-		wire := append(stuffed, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1)
+		wire := slices.Concat(stuffed, []int{1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1})
 		_, good := canStdFrame(0x124, 4, msg[3:7])
 		wire = append(wire, good...)
 		events := check(t, canRenderRates(wire, 125, 125, len(wire), 12, 12), 1000000, 1000000, []int{0xAA})

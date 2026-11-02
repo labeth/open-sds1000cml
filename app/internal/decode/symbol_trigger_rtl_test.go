@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-DECODE
+
 package decode
 
 import (
@@ -48,7 +49,7 @@ func symbolRTL(t *testing.T, image, dir string, c SymbolCfg, a, b []bool, resets
 		}
 		return 0
 	}
-	out, err := exec.Command("vvp", "-N", image, "+input="+inPath, "+table="+tblPath, fmt.Sprintf("+length=%d", len(a)), fmt.Sprintf("+resets=%d", resets),
+	out, err := exec.CommandContext(t.Context(), "vvp", "-N", image, "+input="+inPath, "+table="+tblPath, fmt.Sprintf("+length=%d", len(a)), fmt.Sprintf("+resets=%d", resets),
 		fmt.Sprintf("+inv_a=%d", bi(c.InvA)), fmt.Sprintf("+inv_b=%d", bi(c.InvB)), fmt.Sprintf("+and_ab=%d", bi(c.AndAB)), fmt.Sprintf("+clk_fall=%d", bi(c.ClockFall)),
 		fmt.Sprintf("+mode=%d", c.Mode), fmt.Sprintf("+lead_len=%d", c.LeadLen), fmt.Sprintf("+prescale=%d", c.Prescale), fmt.Sprintf("+unit_q8=%d", c.UnitQ8),
 		fmt.Sprintf("+frame_units=%d", c.FrameUnits), fmt.Sprintf("+period=%d", c.Period), fmt.Sprintf("+phase0=%d", c.Phase0), fmt.Sprintf("+k=%d", c.K),
@@ -62,7 +63,9 @@ func symbolRTL(t *testing.T, image, dir string, c SymbolCfg, a, b []bool, resets
 		var v int
 		switch {
 		case strings.HasPrefix(line, "M "):
-			fmt.Sscanf(line, "M %d", &v)
+			if _, err := fmt.Sscanf(line, "M %d", &v); err != nil {
+				t.Fatalf("model line %q: %v", line, err)
+			}
 			got = append(got, v)
 		case strings.HasPrefix(line, "F "):
 			done = true
@@ -90,7 +93,7 @@ func symbolRTLImage(t *testing.T) (string, string) {
 	rtl := testenv.RTLDir(t)
 	image := filepath.Join(dir, "symbol.vvp")
 	args := []string{"-g2012", "-s", "tb_symbol_trigger", "-o", image, filepath.Join(rtl, "symbol_trigger.v"), filepath.Join(rtl, "sim", "tb_symbol_trigger.v")}
-	if out, err := exec.Command("iverilog", args...).CombinedOutput(); err != nil {
+	if out, err := exec.CommandContext(t.Context(), "iverilog", args...).CombinedOutput(); err != nil {
 		t.Fatalf("compile %v\n%s", err, out)
 	}
 	return image, dir
@@ -175,7 +178,7 @@ func TestSymbolTriggerRTL(t *testing.T) {
 				default:
 					w = 400 + rng.Intn(4000)
 				}
-				for i := 0; i < w; i++ {
+				for range w {
 					a = append(a, la)
 					b = append(b, lb)
 					if rng.Intn(30) == 0 {

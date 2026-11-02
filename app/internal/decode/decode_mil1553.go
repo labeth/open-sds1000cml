@@ -1,10 +1,10 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-DECODE
+
 package decode
 
 import (
 	"fmt"
 	"math"
-	"sort"
 	"strings"
 )
 
@@ -46,10 +46,10 @@ func DecodeMIL1553(codes []uint8, colTimeS float64, cfg MIL1553Cfg) Result {
 	const minSPB = 3.0
 	S := sliceChannel(codes, cfg.Threshold, cfg.HaveThr)
 	if !S.ok {
-		return Result{Proto: "mil1553", Error: S.reason}
+		return Result{Proto: protoMIL1553, Error: S.reason}
 	}
 	if len(S.edges) < 2 {
-		return Result{Proto: "mil1553", Error: "too few edges"}
+		return Result{Proto: protoMIL1553, Error: msgTooFewEdges}
 	}
 
 	// Bit period T in samples. cfg.Bitrate pins it; otherwise infer it from the edge
@@ -71,45 +71,42 @@ func DecodeMIL1553(codes []uint8, colTimeS float64, cfg MIL1553Cfg) Result {
 			}
 		}
 		if len(gaps) < 3 {
-			return Result{Proto: "mil1553", Error: "too few edges / cannot infer bitrate"}
+			return Result{Proto: protoMIL1553, Error: "too few edges / cannot infer bitrate"}
 		}
-		sort.Float64s(gaps)
-		base := gaps[int(float64(len(gaps))*0.1)]
-		sum, cnt := 0.0, 0
-		for _, g := range gaps {
-			if math.Abs(g-base) <= 0.5*base { // ±0.5: absorb the {2,3} quantization spread
-				sum += g
-				cnt++
-			}
-		}
-		if cnt > 0 {
-			base = sum / float64(cnt)
-		}
-		var nBase, n2 int
-		for _, g := range gaps {
-			if math.Abs(g-base) <= 0.5*base {
-				nBase++
-			} else if math.Abs(g-2*base) <= 0.5*base {
-				n2++
-			}
-		}
-		if n2 > 0 && n2*8 >= nBase { // a real T cluster => base is T/2
-			T = 2 * base
-		} else {
-			T = base
-		}
+		T = mil1553Period(gaps)
 	}
 	if math.IsInf(T, 0) || math.IsNaN(T) || !(T >= minSPB) {
-		return Result{Proto: "mil1553", Error: fmt.Sprintf("%.1f samples/bit; need >= %g", T, minSPB)}
+		return Result{Proto: protoMIL1553, Error: fmt.Sprintf("%.1f samples/bit; need >= %g", T, minSPB)}
 	}
 	r, _ := decodeMIL1553At(S, T, colTimeS)
 	return r
 }
 
+// mil1553Period is the bit period of a Manchester line's edge gaps: the
+// shortest gaps' cluster is half a bit when a cluster at twice it holds an
+// eighth as many gaps or more, else a whole bit (alternating data).
+// TRLC-LINKS: REQ-SDS-018
+func mil1553Period(gaps []float64) float64 {
+	base := shortGapCluster(gaps, 0.5) // ±0.5: absorb the {2,3} quantization spread
+	var nBase, n2 int
+	for _, g := range gaps {
+		switch {
+		case math.Abs(g-base) <= 0.5*base:
+			nBase++
+		case math.Abs(g-2*base) <= 0.5*base:
+			n2++
+		}
+	}
+	if n2 > 0 && n2*8 >= nBase { // a real T cluster => base is T/2
+		return 2 * base
+	}
+	return base
+}
+
 // decodeMIL1553At finds each word's SYNC and decodes it at bit period T, returning
 // the Result plus the word count so the caller can score competing T hypotheses.
 // TRLC-LINKS: REQ-SDS-018
-func decodeMIL1553At(S sliced, T, colTimeS float64) (Result, int) {
+func decodeMIL1553At(sl sliced, T, colTimeS float64) (Result, int) { //nolint:gocritic // T is the bit period in samples, the name the decoder's comments use
 	var spans []Span
 	var bytesOut []int
 	var toks []string
@@ -123,19 +120,19 @@ func decodeMIL1553At(S sliced, T, colTimeS float64) (Result, int) {
 	// rejects both ordinary data edges (gaps <=T) and the sync-start edge after
 	// an inter-message idle (a huge hold on one side only). Words repeat, so we
 	// simply scan every interior edge; each real SYNC-mid is matched exactly once.
-	for k := 1; k < len(S.edges)-1; k++ {
-		gapBefore := S.edges[k].x - S.edges[k-1].x
-		gapAfter := S.edges[k+1].x - S.edges[k].x
+	for k := 1; k < len(sl.edges)-1; k++ {
+		gapBefore := sl.edges[k].x - sl.edges[k-1].x
+		gapAfter := sl.edges[k+1].x - sl.edges[k].x
 		if gapBefore < 1.25*T || gapBefore > 2.5*T {
 			continue
 		}
 		if gapAfter < 1.25*T || gapAfter > 2.5*T {
 			continue
 		}
-		syncMid := S.edges[k].x
+		syncMid := sl.edges[k].x
 		syncStart := syncMid - 1.5*T
 		syncEnd := syncMid + 1.5*T
-		firstHalf := logicAt(&S, syncMid-0.75*T) // level of the sync's first 1.5T hold
+		firstHalf := logicAt(&sl, syncMid-0.75*T) // level of the sync's first 1.5T hold
 		if firstHalf < 0 {
 			continue // sync clipped by the record start
 		}
@@ -145,7 +142,7 @@ func decodeMIL1553At(S sliced, T, colTimeS float64) (Result, int) {
 		// parity). ieee=false is the 1553 mapping (rising mid = 0, falling = 1).
 		// Cap the sampler just past cell 17 so it can never wander into the next
 		// word's sync while still yielding the full parity cell.
-		cells, _, _ := recoverManchester(S, syncEnd, T, false, syncEnd+17.2*T)
+		cells, _, _ := recoverManchester(sl, syncEnd, T, false, syncEnd+17.2*T)
 		if len(cells) < 17 {
 			continue // word truncated by the record end — drop the partial
 		}
@@ -172,19 +169,19 @@ func decodeMIL1553At(S sliced, T, colTimeS float64) (Result, int) {
 		}
 		syncI0 := max(int(math.Round(syncStart)), 0)
 		syncI1 := int(math.Round(syncEnd)) - 1
-		if syncI1 >= S.n {
-			syncI1 = S.n - 1
+		if syncI1 >= sl.n {
+			syncI1 = sl.n - 1
 		}
 		if syncI1 < syncI0 {
 			syncI1 = syncI0
 		}
-		spans = append(spans, Span{syncI0, syncI1, label, "start", 0})
+		spans = append(spans, Span{syncI0, syncI1, label, kindStart, 0})
 		hexw := fmt.Sprintf("%04X", word)
-		spans = append(spans, Span{cells[0].I0, cells[15].I1, hexw, "data", word})
+		spans = append(spans, Span{cells[0].I0, cells[15].I1, hexw, kindData, word})
 		pfx := ""
 		if !parityOK {
 			pfx = "!"
-			spans = append(spans, Span{cells[16].I0, cells[16].I1, "!par", "frame-error", 0})
+			spans = append(spans, Span{cells[16].I0, cells[16].I1, "!par", kindFrameError, 0})
 		}
 		toks = append(toks, label, pfx+hexw)
 		bytesOut = append(bytesOut, word)
@@ -192,7 +189,7 @@ func decodeMIL1553At(S sliced, T, colTimeS float64) (Result, int) {
 	}
 
 	if words == 0 {
-		return Result{Proto: "mil1553", Error: "no MIL-STD-1553 sync found"}, 0
+		return Result{Proto: protoMIL1553, Error: "no MIL-STD-1553 sync found"}, 0
 	}
 
 	baud := 0
@@ -200,7 +197,7 @@ func decodeMIL1553At(S sliced, T, colTimeS float64) (Result, int) {
 		baud = snapRate(int(math.Round(1.0/(T*colTimeS))), 1e6)
 	}
 	return Result{
-		OK: true, Proto: "mil1553", Spans: spans, Text: strings.Join(toks, " "),
-		Bytes: bytesOut, Baud: baud, SPB: T, Thr: S.threshold,
+		OK: true, Proto: protoMIL1553, Spans: spans, Text: strings.Join(toks, " "),
+		Bytes: bytesOut, Baud: baud, SPB: T, Thr: sl.threshold,
 	}, words
 }

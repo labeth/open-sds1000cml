@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-DECODE
+
 package decode
 
 import (
@@ -35,10 +36,10 @@ func uartBackToBack(msg []int, repeats, gap, spb int) []uint8 {
 }
 
 // A record that opens inside back-to-back characters has no idle to frame
-// them by; the owner's serial trigger on AA at 20 us/div read "A5 ER ER ER"
-// on a line carrying 20 55 AA 0F. The hardware's match fixes the framing:
-// with its point (inside the matched character's stop bit) as the anchor,
-// every character back to back with it reads as sent.
+// them by; the owner's serial trigger on AA at 20 us/div read A5 and three
+// ER characters on a line carrying 20 55 AA 0F. The hardware's match fixes
+// the framing: with its point (inside the matched character's stop bit) as
+// the anchor, every character back to back with it reads as sent.
 // TRLC-LINKS: REQ-SDS-013, REQ-SDS-018
 func TestUARTAnchorFramesBackToBackTraffic(t *testing.T) {
 	msg := []int{0x48, 0x69, 0x20, 0x55, 0xAA, 0x0F, 0xF0, 0x0A}

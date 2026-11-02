@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-DECODE
+
 package decode
 
 import (
@@ -25,7 +26,7 @@ func TestManchesterTriggerRTL(t *testing.T) {
 	rtl := testenv.RTLDir(t)
 	image := filepath.Join(dir, "trigger.vvp")
 	args := []string{"-g2012", "-s", "tb_manchester_trigger", "-o", image, filepath.Join(rtl, "manchester_receive.v"), filepath.Join(rtl, "manchester_trigger.v"), filepath.Join(rtl, "protocol_scratch.v"), filepath.Join(rtl, "sim", "tb_manchester_trigger.v")}
-	if out, err := exec.Command("iverilog", args...).CombinedOutput(); err != nil {
+	if out, err := exec.CommandContext(t.Context(), "iverilog", args...).CombinedOutput(); err != nil {
 		t.Fatalf("compile %v\n%s", err, out)
 	}
 	for _, period := range []int{8, 9, 20, 21} {
@@ -81,7 +82,7 @@ func TestManchesterTriggerRTL(t *testing.T) {
 							wave = append(wave, payload...)
 						}
 						// The final idle is long enough to resolve ties without another frame.
-						for i := 0; i < 20*period; i++ {
+						for range 20 * period {
 							wave = append(wave, 210)
 						}
 						cfg := ManchesterCfg{Bitrate: 1000000 / period, IEEE: ieee, MSB: msb, Bits: width, Threshold: 125, HaveThr: true}
@@ -142,7 +143,7 @@ func TestManchesterTriggerRTL(t *testing.T) {
 							}
 							return 0
 						}
-						out, err := exec.Command("vvp", image, "+input="+path, fmt.Sprintf("+length=%d", len(wave)), fmt.Sprintf("+period=%d", period), fmt.Sprintf("+width=%d", width), fmt.Sprintf("+ieee=%d", b(ieee)), fmt.Sprintf("+msb=%d", b(msb)), fmt.Sprintf("+invert=%d", b(!msb)), fmt.Sprintf("+pattern=%x", uint64(frames[0][0])<<16|uint64(frames[0][1]))).CombinedOutput()
+						out, err := exec.CommandContext(t.Context(), "vvp", image, "+input="+path, fmt.Sprintf("+length=%d", len(wave)), fmt.Sprintf("+period=%d", period), fmt.Sprintf("+width=%d", width), fmt.Sprintf("+ieee=%d", b(ieee)), fmt.Sprintf("+msb=%d", b(msb)), fmt.Sprintf("+invert=%d", b(!msb)), fmt.Sprintf("+pattern=%x", uint64(frames[0][0])<<16|uint64(frames[0][1]))).CombinedOutput()
 						if err != nil {
 							t.Fatalf("simulation %v\n%s", err, out)
 						}
@@ -150,7 +151,8 @@ func TestManchesterTriggerRTL(t *testing.T) {
 						hits, starts, ends := 0, 0, 0
 						complete := false
 						for line := range strings.SplitSeq(strings.TrimSpace(string(out)), "\n") {
-							if strings.HasPrefix(line, "E ") {
+							switch {
+							case strings.HasPrefix(line, "E "):
 								var e event
 								if _, err := fmt.Sscanf(line, "E %d %d %d %d", &e.kind, &e.value, &e.sample, &e.hit); err != nil {
 									t.Fatal(err)
@@ -166,9 +168,9 @@ func TestManchesterTriggerRTL(t *testing.T) {
 								default:
 									t.Fatalf("unexpected event %v", e)
 								}
-							} else if line == "F 0" {
+							case line == "F 0":
 								complete = true
-							} else {
+							default:
 								t.Fatalf("unexpected simulator output %q", line)
 							}
 						}
@@ -199,10 +201,10 @@ func TestManchesterTriggerRTLBoundaries(t *testing.T) {
 	for _, bench := range []string{"tb_manchester_frame_bounds", "tb_manchester_replay_rate"} {
 		t.Run(bench, func(t *testing.T) {
 			image := filepath.Join(t.TempDir(), "frames.vvp")
-			if out, err := exec.Command("iverilog", "-g2012", "-s", bench, "-o", image, filepath.Join(rtl, "manchester_trigger.v"), filepath.Join(rtl, "protocol_scratch.v"), filepath.Join(rtl, "sim", bench+".v")).CombinedOutput(); err != nil {
+			if out, err := exec.CommandContext(t.Context(), "iverilog", "-g2012", "-s", bench, "-o", image, filepath.Join(rtl, "manchester_trigger.v"), filepath.Join(rtl, "protocol_scratch.v"), filepath.Join(rtl, "sim", bench+".v")).CombinedOutput(); err != nil {
 				t.Fatalf("compile: %v\n%s", err, out)
 			}
-			if out, err := exec.Command("vvp", image).CombinedOutput(); err != nil {
+			if out, err := exec.CommandContext(t.Context(), "vvp", image).CombinedOutput(); err != nil {
 				t.Fatalf("frame boundaries: %v\n%s", err, out)
 			}
 		})
@@ -218,10 +220,10 @@ func TestProtocolScratchOwnershipRTL(t *testing.T) {
 	}
 	rtl := testenv.RTLDir(t)
 	image := filepath.Join(t.TempDir(), "scratch.vvp")
-	if out, err := exec.Command("iverilog", "-g2012", "-s", "tb_protocol_scratch", "-o", image, filepath.Join(rtl, "protocol_scratch.v"), filepath.Join(rtl, "sim", "tb_protocol_scratch.v")).CombinedOutput(); err != nil {
+	if out, err := exec.CommandContext(t.Context(), "iverilog", "-g2012", "-s", "tb_protocol_scratch", "-o", image, filepath.Join(rtl, "protocol_scratch.v"), filepath.Join(rtl, "sim", "tb_protocol_scratch.v")).CombinedOutput(); err != nil {
 		t.Fatalf("compile: %v\n%s", err, out)
 	}
-	if out, err := exec.Command("vvp", image).CombinedOutput(); err != nil {
+	if out, err := exec.CommandContext(t.Context(), "vvp", image).CombinedOutput(); err != nil {
 		t.Fatalf("scratch ownership: %v\n%s", err, out)
 	}
 }

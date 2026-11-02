@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-DECODE
+
 package decode
 
 import (
@@ -21,8 +22,8 @@ type mark struct{ x0, x1, gap float64 }
 // run is not (the idle between frames, a sync gap, a minute marker). It
 // reports whether the marks are the high level.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-251
-func activeMarks(S sliced) ([]mark, bool) {
-	runs := levelRuns(S)
+func activeMarks(sl sliced) ([]mark, bool) {
+	runs := levelRuns(sl)
 	longest, idle := -1.0, 0
 	for _, r := range runs {
 		if d := r.x1 - r.x0; d > longest {
@@ -116,11 +117,11 @@ func DecodeRCEncodeEdges(codes *EdgeLine, colTimeS float64, cfg LineCfg) Result 
 func decodeRCEncode(codes lineIn, colTimeS float64, cfg LineCfg) Result {
 	S := codes.slice(cfg.Threshold, cfg.HaveThr)
 	if !S.ok {
-		return Result{Proto: "rcencode", Error: S.reason}
+		return Result{Proto: protoRCEncode, Error: S.reason}
 	}
 	m, high := activeMarks(S)
 	if len(m) < 25 {
-		return Result{Proto: "rcencode", Error: "too few pulses"}
+		return Result{Proto: protoRCEncode, Error: "too few pulses"}
 	}
 	var w []float64
 	for _, k := range m {
@@ -150,7 +151,7 @@ func decodeRCEncode(codes lineIn, colTimeS float64, cfg LineCfg) Result {
 		if !inner {
 			continue
 		}
-		spans = append(spans, pspan(f[0].x0, f[0].x0, n, "", "sof", 0))
+		spans = append(spans, pspan(f[0].x0, f[0].x0, n, "", kindSOF, 0))
 		trits := make([]int, 12)
 		allTrits := true
 		for t := range 12 {
@@ -159,16 +160,16 @@ func decodeRCEncode(codes lineIn, colTimeS float64, cfg LineCfg) Result {
 			allTrits = allTrits && trits[t] >= 0
 		}
 		bad := false
-		if cfg.Variant == 12 || (cfg.Variant != 24 && allTrits) {
+		if cfg.Variant == 12 || (cfg.Variant != 24 && allTrits) { //nolint:nestif // a protocol state machine kept step for step with its decode_*.js twin (parity tests)
 			for t := range 12 {
-				txt, kind := "", "data"
+				txt, kind := "", kindData
 				switch trits[t] {
 				case 0, 1:
 					txt = strconv.Itoa(trits[t])
 				case 2:
 					txt = "F"
 				default:
-					txt, kind, bad = "!", "frame-error", true
+					txt, kind, bad = "!", kindFrameError, true
 				}
 				spans = append(spans, pspan(f[2*t].x0, f[2*t+1].x1+f[2*t+1].gap, n, txt, kind, max(0, trits[t])))
 				toks = append(toks, txt)
@@ -189,9 +190,9 @@ func decodeRCEncode(codes lineIn, colTimeS float64, cfg LineCfg) Result {
 					}
 					v |= b << k
 				}
-				txt, kind := hex2(v), "data"
+				txt, kind := hex2(v), kindData
 				if !ok {
-					txt, kind, bad = "!"+txt, "frame-error", true
+					txt, kind, bad = "!"+txt, kindFrameError, true
 				}
 				last := f[8*by+7]
 				spans = append(spans, pspan(f[8*by].x0, last.x1+last.gap, n, txt, kind, v))
@@ -202,16 +203,16 @@ func decodeRCEncode(codes lineIn, colTimeS float64, cfg LineCfg) Result {
 				frameBits = 24
 			}
 		}
-		spans = append(spans, pspan(f[24].x0, f[24].x1, n, "SYNC", "stop", 0))
+		spans = append(spans, pspan(f[24].x0, f[24].x1, n, "SYNC", kindStop, 0))
 		toks = append(toks, "SYNC")
 		good = good || !bad
 		i += 24
 	}
 	if len(spans) == 0 {
-		return Result{Proto: "rcencode", Error: "no encoder frame"}
+		return Result{Proto: protoRCEncode, Error: "no encoder frame"}
 	}
 	res := Result{
-		OK: good, Proto: "rcencode", Spans: spans, Text: strings.Join(toks, " "), Bytes: units,
+		OK: good, Proto: protoRCEncode, Spans: spans, Text: strings.Join(toks, " "), Bytes: units,
 		Thr: S.threshold, Inverted: !high, SPB: short, FrameBits: frameBits,
 	}
 	if colTimeS > 0 && short > 0 {
@@ -239,7 +240,7 @@ func manchesterHalves(runs []lrun, k int, hp float64) ([]int, []float64) {
 		if q < 1 || q > 2 {
 			break
 		}
-		for j := 0; j < q; j++ {
+		for j := range q {
 			lv = append(lv, r.lvl)
 			xs = append(xs, r.x0+float64(j)*(r.x1-r.x0)/float64(q))
 		}
@@ -295,22 +296,22 @@ func DecodeOOKEdges(codes *EdgeLine, colTimeS float64, cfg LineCfg) Result {
 
 // decodeOOK is DecodeOOK over samples or edges.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-251
-func decodeOOK(codes lineIn, colTimeS float64, cfg LineCfg) Result {
+func decodeOOK(codes lineIn, colTimeS float64, cfg LineCfg) Result { //nolint:gocyclo // a protocol state machine kept step for step with its decode_*.js twin (parity tests)
 	S := codes.slice(cfg.Threshold, cfg.HaveThr)
 	if !S.ok {
-		return Result{Proto: "ook", Error: S.reason}
+		return Result{Proto: protoOOK, Error: S.reason}
 	}
 	runs := levelRuns(S)
 	hpg := shortestRunCluster(runs)
 	if !(hpg > 0) {
-		return Result{Proto: "ook", Error: "no bursts"}
+		return Result{Proto: protoOOK, Error: "no bursts"}
 	}
 	n := S.n
 	var spans []Span
 	var toks []string
 	var units []int
 	good, ver, cut := false, 0, false
-	hp, hpRead := hpg, hpg // a burst's half bit; the last read one's
+	hpRead := hpg // the last read burst's half bit
 	for k := 0; k < len(runs); k++ {
 		if !runs[k].open && runs[k].x1-runs[k].x0 < 8*hpg {
 			continue
@@ -323,7 +324,7 @@ func decodeOOK(codes lineIn, colTimeS float64, cfg LineCfg) Result {
 			e++
 		}
 		burst := runs[k+1 : e]
-		hp = shortestRunCluster(burst)
+		hp := shortestRunCluster(burst) // the burst's half bit
 		if !(hp > 0) {
 			continue
 		}
@@ -398,7 +399,7 @@ func decodeOOK(codes lineIn, colTimeS float64, cfg LineCfg) Result {
 		if v == 21 {
 			bitLen = 4 * hp
 		}
-		spans = append(spans, pspan(bx[0], dx[0], n, "", "sof", 0))
+		spans = append(spans, pspan(bx[0], dx[0], n, "", kindSOF, 0))
 		var nib []int
 		for j := 0; j+4 <= len(data); j += 4 {
 			nib = append(nib, data[j]|data[j+1]<<1|data[j+2]<<2|data[j+3]<<3)
@@ -409,9 +410,9 @@ func decodeOOK(codes lineIn, colTimeS float64, cfg LineCfg) Result {
 		// checksum to judge
 		ends := e == len(runs) || (e == len(runs)-1 && runs[e].x1-runs[e].x0 < 8*hpg)
 		for j, x := range nib {
-			txt, kind := fmt.Sprintf("%X", x), "data"
+			txt, kind := fmt.Sprintf("%X", x), kindData
 			if ck < 0 && !ends && j == len(nib)-1 {
-				txt, kind = "!"+txt, "frame-error"
+				txt, kind = "!"+txt, kindFrameError
 			}
 			spans = append(spans, pspan(dx[4*j], dx[4*j+3]+bitLen, n, txt, kind, x))
 			toks = append(toks, txt)
@@ -425,10 +426,10 @@ func decodeOOK(codes lineIn, colTimeS float64, cfg LineCfg) Result {
 		k = e - 1 // the idle after the burst opens the next
 	}
 	if len(spans) == 0 {
-		return Result{Proto: "ook", Error: "no Oregon burst"}
+		return Result{Proto: protoOOK, Error: "no Oregon burst"}
 	}
 	res := Result{
-		OK: good, Proto: "ook", Spans: spans, Text: strings.Join(toks, " "), Bytes: units,
+		OK: good, Proto: protoOOK, Spans: spans, Text: strings.Join(toks, " "), Bytes: units,
 		Thr: S.threshold, SPB: 2 * hpRead, FrameBits: ver,
 	}
 	if colTimeS > 0 {
@@ -488,10 +489,10 @@ func DecodeMillerEdges(codes *EdgeLine, colTimeS float64, cfg LineCfg) Result {
 
 // decodeMiller is DecodeMiller over samples or edges.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-251
-func decodeMiller(codes lineIn, colTimeS float64, cfg LineCfg) Result {
+func decodeMiller(codes lineIn, colTimeS float64, cfg LineCfg) Result { //nolint:gocyclo // a protocol state machine kept step for step with its decode_*.js twin (parity tests)
 	S := codes.slice(cfg.Threshold, cfg.HaveThr)
 	if !S.ok {
-		return Result{Proto: "miller", Error: S.reason}
+		return Result{Proto: protoMiller, Error: S.reason}
 	}
 	runs := levelRuns(S)
 	var lows, highs []float64
@@ -514,7 +515,7 @@ func decodeMiller(codes lineIn, colTimeS float64, cfg LineCfg) Result {
 		iv = append(iv, xs[k]-xs[k-1])
 	}
 	if len(iv) < 8 {
-		return Result{Proto: "miller", Error: "too few edges"}
+		return Result{Proto: protoMiller, Error: msgTooFewEdges}
 	}
 	// pauses: the edges that count are the falls
 	pauses := quantile(lows, 1) < 0.4*quantile(highs, 0.5)
@@ -558,7 +559,7 @@ func decodeMiller(codes lineIn, colTimeS float64, cfg LineCfg) Result {
 		}
 	}
 	if !(T > 0) {
-		return Result{Proto: "miller", Error: "no bit time"}
+		return Result{Proto: protoMiller, Error: "no bit time"}
 	}
 	n := S.n
 	var spans []Span
@@ -638,7 +639,7 @@ func decodeMiller(codes lineIn, colTimeS float64, cfg LineCfg) Result {
 			// the record ends in the idle after a 1: the last 0 has no edge
 			bits = append(bits, mb{0, start, start + T})
 		}
-		spans = append(spans, pspan(bits[0].x0, bits[0].x0, n, "", "sof", 0))
+		spans = append(spans, pspan(bits[0].x0, bits[0].x0, n, "", kindSOF, 0))
 		for b := 0; b < len(bits); b += 8 {
 			v := 0
 			e := min(b+8, len(bits))
@@ -646,12 +647,12 @@ func decodeMiller(codes lineIn, colTimeS float64, cfg LineCfg) Result {
 				v |= bits[q].v << (q - b)
 			}
 			txt := hex2(v)
-			spans = append(spans, pspan(bits[b].x0, bits[e-1].x1, n, txt, "data", v))
+			spans = append(spans, pspan(bits[b].x0, bits[e-1].x1, n, txt, kindData, v))
 			toks = append(toks, txt)
 			units = append(units, v)
 		}
 		if bad {
-			spans = append(spans, pspan(xs[j], xs[j], n, "!", "frame-error", 0))
+			spans = append(spans, pspan(xs[j], xs[j], n, "!", kindFrameError, 0))
 			toks = append(toks, "!")
 			k = j + 1
 			continue
@@ -662,7 +663,7 @@ func decodeMiller(codes lineIn, colTimeS float64, cfg LineCfg) Result {
 		k = j // the edge after the idle opens the next message
 	}
 	res := Result{
-		OK: good, Proto: "miller", Spans: spans, Text: strings.Join(toks, " "), Bytes: units,
+		OK: good, Proto: protoMiller, Spans: spans, Text: strings.Join(toks, " "), Bytes: units,
 		Thr: S.threshold, SPB: T, Inverted: pauses,
 	}
 	if inMsg > 0 {
@@ -724,11 +725,11 @@ func DecodeMorseEdges(codes *EdgeLine, colTimeS float64, cfg LineCfg) Result {
 func decodeMorse(codes lineIn, colTimeS float64, cfg LineCfg) Result {
 	S := codes.slice(cfg.Threshold, cfg.HaveThr)
 	if !S.ok {
-		return Result{Proto: "morse", Error: S.reason}
+		return Result{Proto: protoMorse, Error: S.reason}
 	}
 	m, high := activeMarks(S)
 	if len(m) < 2 {
-		return Result{Proto: "morse", Error: "too few marks"}
+		return Result{Proto: protoMorse, Error: "too few marks"}
 	}
 	minW := math.Inf(1)
 	for _, k := range m {
@@ -766,7 +767,7 @@ func decodeMorse(codes lineIn, colTimeS float64, cfg LineCfg) Result {
 		if nc == 0 {
 			x0 = k.x0
 			if i == 0 || lead(m, i) >= 5*u {
-				spans = append(spans, pspan(k.x0, k.x0, n, "", "sof", 0))
+				spans = append(spans, pspan(k.x0, k.x0, n, "", kindSOF, 0))
 			}
 		}
 		el := byte('-')
@@ -779,9 +780,9 @@ func decodeMorse(codes lineIn, colTimeS float64, cfg LineCfg) Result {
 			continue
 		}
 		c, ok := morseCode[string(code[:nc])]
-		txt, kind := string(rune(c)), "data"
+		txt, kind := string(rune(c)), kindData
 		if !ok {
-			txt, kind, c = "?", "frame-error", '?'
+			txt, kind, c = "?", kindFrameError, '?'
 		}
 		spans = append(spans, pspan(x0, k.x1, n, txt, kind, int(c)))
 		toks = append(toks, txt)
@@ -793,7 +794,7 @@ func decodeMorse(codes lineIn, colTimeS float64, cfg LineCfg) Result {
 	}
 	good := letters >= 2
 	res := Result{
-		OK: good, Proto: "morse", Spans: spans, Text: strings.Join(toks, " "), Bytes: units,
+		OK: good, Proto: protoMorse, Spans: spans, Text: strings.Join(toks, " "), Bytes: units,
 		Thr: S.threshold, Inverted: !high, SPB: u, Cover: float64(timed) / float64(len(m)),
 	}
 	if colTimeS > 0 {
@@ -854,10 +855,10 @@ func DecodeDCF77Edges(codes *EdgeLine, colTimeS float64, cfg LineCfg) Result {
 func decodeDCF77(codes lineIn, colTimeS float64, cfg LineCfg) Result {
 	S := codes.slice(cfg.Threshold, cfg.HaveThr)
 	if !S.ok {
-		return Result{Proto: "dcf77", Error: S.reason}
+		return Result{Proto: protoDCF77, Error: S.reason}
 	}
 	if !(colTimeS > 0) {
-		return Result{Proto: "dcf77", Error: "no sample time"}
+		return Result{Proto: protoDCF77, Error: msgNoSampleTime}
 	}
 	m, high := activeMarks(S)
 	sec := 1.0 // the code's second (Baud: its bits a second)
@@ -879,12 +880,12 @@ func decodeDCF77(codes lineIn, colTimeS float64, cfg LineCfg) Result {
 	unit := func(f int, par bool) {
 		d := dcf77Fields[f]
 		v := 0
-		for q := 0; q < d.w; q++ {
+		for q := range d.w {
 			v |= bits[d.at+q] << q
 		}
-		txt, kind := fmt.Sprintf("%s%X", d.name, v), "data"
+		txt, kind := fmt.Sprintf("%s%X", d.name, v), kindData
 		if par {
-			txt, kind = "!"+txt, "parity-error"
+			txt, kind = "!"+txt, kindParityError
 		} else {
 			good = true
 		}
@@ -903,7 +904,7 @@ func decodeDCF77(codes lineIn, colTimeS float64, cfg LineCfg) Result {
 		if i > 0 {
 			if d := ms(k.x0 - m[i-1].x0); d >= 1600 && d <= 2400 {
 				c = 0
-				spans = append(spans, pspan(k.x0, k.x0, n, "", "sof", 0))
+				spans = append(spans, pspan(k.x0, k.x0, n, "", kindSOF, 0))
 			}
 		}
 		if c < 0 || c > 58 {
@@ -918,12 +919,12 @@ func decodeDCF77(codes lineIn, colTimeS float64, cfg LineCfg) Result {
 			b = 1
 		}
 		if b < 0 {
-			spans = append(spans, pspan(k.x0, k.x1, n, "!", "frame-error", 0))
+			spans = append(spans, pspan(k.x0, k.x1, n, "!", kindFrameError, 0))
 			toks = append(toks, "!")
 			c = -1
 			continue
 		}
-		bits[c], bx[c], bx[c+1] = b, k.x0, k.x0+sec/colTimeS
+		bits[c], bx[c], bx[c+1] = b, k.x0, k.x0+sec/colTimeS //nolint:gosec // c is 0..58 (skipped above), bx holds 60
 		switch c {
 		case 28:
 			unit(0, odd(21, 28))
@@ -939,10 +940,10 @@ func decodeDCF77(codes lineIn, colTimeS float64, cfg LineCfg) Result {
 		c++
 	}
 	if len(spans) == 0 {
-		return Result{Proto: "dcf77", Error: "no DCF77 minute"}
+		return Result{Proto: protoDCF77, Error: "no DCF77 minute"}
 	}
 	res := Result{
-		OK: good, Proto: "dcf77", Spans: spans, Text: strings.Join(toks, " "), Bytes: units,
+		OK: good, Proto: protoDCF77, Spans: spans, Text: strings.Join(toks, " "), Bytes: units,
 		Thr: S.threshold, Inverted: !high, SPB: sec / colTimeS, Baud: int(math.Round(1 / sec)),
 	}
 	if !good {

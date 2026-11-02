@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-DECODE
+
 package decode
 
 import (
@@ -181,7 +182,8 @@ func fuzzI2C(rng *rand.Rand, hz, sr float64, transfers int) twoLine {
 // fuzzCorpus is every labelled capture: the detection tests' and the
 // parametric buses'.
 // TRLC-LINKS: REQ-SDS-018
-func fuzzCorpus(t testing.TB) []fuzzCase {
+func fuzzCorpus(tb testing.TB) []fuzzCase {
+	tb.Helper()
 	var cs []fuzzCase
 	for _, c := range protoDetectCases() {
 		cs = append(cs, fuzzCase{detectCase: c})
@@ -190,7 +192,7 @@ func fuzzCorpus(t testing.TB) []fuzzCase {
 		cs = append(cs, fuzzCase{detectCase: c})
 	}
 	for _, sc := range scopeCaptures {
-		c1, c2, s := loadGzJSON(t, filepath.Join("testdata", sc.file))
+		c1, c2, s := loadGzJSON(tb, filepath.Join("testdata", sc.file))
 		cs = append(cs, fuzzCase{detectCase: detectCase{sc.file, c1, c2, s, sc.proto, sc.chA}, fragile: true})
 	}
 	rng := rand.New(rand.NewSource(1))
@@ -501,7 +503,7 @@ func TestAutodetectLineBesideDistractor(t *testing.T) {
 		}
 		for seed := range int64(1500) {
 			mc, m := fuzzMutate(rand.New(rand.NewSource(seed)), c)
-			if (m.distractor != "square" && m.distractor != "telegraph") || !(m.mild || m.moderate) {
+			if (m.distractor != "square" && m.distractor != "telegraph") || (!m.mild && !m.moderate) {
 				continue // a heavy mutation may hide the bus (the campaign's rule)
 			}
 			tried++

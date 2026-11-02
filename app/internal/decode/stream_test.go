@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-DECODE
+
 package decode
 
 import (
@@ -33,7 +34,7 @@ var streamCases = []streamCase{
 		linFrame(l.a, 19200, 13, i%60, []int{i & 0xff, rng.Intn(256)}, false)
 		l.a.idle(rng.Float64() * 3e-3)
 		oneLine(l)
-	}, dec: func(a, b []uint8, s float64) Result {
+	}, dec: func(a, _ []uint8, s float64) Result {
 		return DecodeLIN(a, s, LINCfg{Baud: 19200, Threshold: 128, HaveThr: true})
 	}},
 	// TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
@@ -41,7 +42,7 @@ var streamCases = []streamCase{
 		dmxPacket(l.a, 100+rng.Float64()*50, 12, 0, []int{i & 0xff, rng.Intn(256), 0x55})
 		l.a.idle(rng.Float64() * 1e-3)
 		oneLine(l)
-	}, dec: func(a, b []uint8, s float64) Result {
+	}, dec: func(a, _ []uint8, s float64) Result {
 		return DecodeDMX512(a, s, DMXCfg{Baud: 250000, Threshold: 128, HaveThr: true})
 	}},
 	// TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
@@ -49,7 +50,7 @@ var streamCases = []streamCase{
 		modbusFrame(l.a, 19200, "even", 1, []int{1 + i%7, 3, 0, i & 0xff, 0, 1})
 		l.a.idle(2e-3 + rng.Float64()*5e-3)
 		oneLine(l)
-	}, dec: func(a, b []uint8, s float64) Result {
+	}, dec: func(a, _ []uint8, s float64) Result {
 		return DecodeModbus(a, s, ModbusCfg{Baud: 19200, Parity: "even", Threshold: 128, HaveThr: true})
 	}},
 	// TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
@@ -59,7 +60,7 @@ var streamCases = []streamCase{
 		owByte(l.a, i&0xff, false)
 		l.a.idle(300e-6 + rng.Float64()*2e-3)
 		oneLine(l)
-	}, dec: func(a, b []uint8, s float64) Result {
+	}, dec: func(a, _ []uint8, s float64) Result {
 		return DecodeOneWire(a, s, OneWireCfg{Threshold: 128, HaveThr: true})
 	}},
 	// TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
@@ -71,7 +72,7 @@ var streamCases = []streamCase{
 		dhtReading(l.a, 1000+rng.Float64()*17000, [4]int{i & 0xff, 0x8C, rng.Intn(256), 0x5F}, ck)
 		l.a.idle(rng.Float64() * 5e-3)
 		oneLine(l)
-	}, dec: func(a, b []uint8, s float64) Result {
+	}, dec: func(a, _ []uint8, s float64) Result {
 		return DecodeDHT(a, s, DHTCfg{Threshold: 128, HaveThr: true})
 	}},
 	// TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
@@ -79,7 +80,7 @@ var streamCases = []streamCase{
 		cecMessage(l.a, []int{0x40, i & 0xff, rng.Intn(256)}, []int{0, 0, 1})
 		l.a.idle(rng.Float64() * 20e-3)
 		oneLine(l)
-	}, dec: func(a, b []uint8, s float64) Result {
+	}, dec: func(a, _ []uint8, s float64) Result {
 		return DecodeCEC(a, s, CECCfg{Threshold: 128, HaveThr: true})
 	}},
 	// TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
@@ -87,7 +88,7 @@ var streamCases = []streamCase{
 		j1850Frame(l.a, []int{0x68, 0x6A, 0xF1, i & 0xff, rng.Intn(256)}, i%9 == 4)
 		l.a.add(0, rng.Float64()*2e-3)
 		l.b.add(0, l.a.t-l.b.t)
-	}, dec: func(a, b []uint8, s float64) Result {
+	}, dec: func(a, _ []uint8, s float64) Result {
 		return DecodeJ1850(a, s, J1850Cfg{Threshold: 128, HaveThr: true})
 	}},
 	// TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
@@ -100,7 +101,7 @@ var streamCases = []streamCase{
 		}
 		ir.space(40e-3 + rng.Float64()*20e-3)
 		oneLine(l)
-	}, dec: func(a, b []uint8, s float64) Result {
+	}, dec: func(a, _ []uint8, s float64) Result {
 		return DecodeIRNEC(a, s, IRCfg{Threshold: 128, HaveThr: true})
 	}},
 	// TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
@@ -109,7 +110,7 @@ var streamCases = []streamCase{
 		necFrame(ir, i&0xff, -1, rng.Intn(256))
 		ir.space(40e-3 + rng.Float64()*20e-3)
 		l.b.add(0, l.a.t-l.b.t)
-	}, dec: func(a, b []uint8, s float64) Result {
+	}, dec: func(a, _ []uint8, s float64) Result {
 		return DecodeIRNEC(a, s, IRCfg{Threshold: 128, HaveThr: true})
 	}},
 	// TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
@@ -118,7 +119,7 @@ var streamCases = []streamCase{
 		sircFrame(ir, []int{12, 15, 20}[i%3], i&0x7f, rng.Intn(32), rng.Intn(256))
 		ir.space(20e-3 + rng.Float64()*20e-3)
 		oneLine(l)
-	}, dec: func(a, b []uint8, s float64) Result {
+	}, dec: func(a, _ []uint8, s float64) Result {
 		return DecodeIRSIRC(a, s, IRCfg{Threshold: 128, HaveThr: true})
 	}},
 	// TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
@@ -127,7 +128,7 @@ var streamCases = []streamCase{
 		rc5Frame(ir, i&1, i&0x1f, rng.Intn(64))
 		ir.space(30e-3 + rng.Float64()*20e-3)
 		oneLine(l)
-	}, dec: func(a, b []uint8, s float64) Result {
+	}, dec: func(a, _ []uint8, s float64) Result {
 		return DecodeIRRC5(a, s, IRCfg{Threshold: 128, HaveThr: true})
 	}},
 	// TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
@@ -136,14 +137,14 @@ var streamCases = []streamCase{
 		rc6Frame(ir, 0, i&1, []int{i & 0xff, rng.Intn(256)})
 		ir.space(30e-3 + rng.Float64()*20e-3)
 		oneLine(l)
-	}, dec: func(a, b []uint8, s float64) Result {
+	}, dec: func(a, _ []uint8, s float64) Result {
 		return DecodeIRRC6(a, s, IRCfg{Threshold: 128, HaveThr: true})
 	}},
 	// TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
 	{name: "dali", baud: 1200, lines: 1, gen: func(l twoLine, i int, rng *rand.Rand) {
 		daliFrame(l.a, []int{16, 8, 24}[i%3], int(uint32(i)*2654435761&0xffffff)>>uint(8*(2-i%3)), 10e-3+rng.Float64()*10e-3)
 		oneLine(l)
-	}, dec: func(a, b []uint8, s float64) Result {
+	}, dec: func(a, _ []uint8, s float64) Result {
 		return DecodeDALI(a, s, DALICfg{Threshold: 128, HaveThr: true})
 	}},
 	// TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
@@ -166,7 +167,7 @@ var streamCases = []streamCase{
 		}
 		l.a.idle(1e-3 + rng.Float64()*3e-3)
 		oneLine(l)
-	}, dec: func(a, b []uint8, s float64) Result {
+	}, dec: func(a, _ []uint8, s float64) Result {
 		return DecodeMIDI(a, s, MIDICfg{Baud: 31250, Threshold: 128, HaveThr: true})
 	}},
 }
@@ -179,7 +180,7 @@ var captureCases = []streamCase{
 		pdMessage(l.a, pdSOP, 0x1161+i&0xf, []uint32{uint32(i) * 0x01010101}, i%7 == 3)
 		l.a.add(l.a.bits[len(l.a.bits)-1], rng.Float64()*200e-6)
 		l.b.add(0, l.a.t-l.b.t)
-	}, dec: func(a, b []uint8, s float64) Result {
+	}, dec: func(a, _ []uint8, s float64) Result {
 		return DecodeUSBPD(a, s, USBPDCfg{Baud: 300000, Threshold: 128, HaveThr: true})
 	}},
 	// TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
@@ -187,7 +188,7 @@ var captureCases = []streamCase{
 		wsFrame(l.a, 800e3, []int{i & 0xff, rng.Intn(256), 0x5A})
 		l.a.add(0, rng.Float64()*100e-6)
 		l.b.add(0, l.a.t-l.b.t)
-	}, dec: func(a, b []uint8, s float64) Result {
+	}, dec: func(a, _ []uint8, s float64) Result {
 		return DecodeWS281x(a, s, WS281xCfg{Threshold: 128, HaveThr: true})
 	}},
 	// TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
@@ -205,10 +206,10 @@ var captureCases = []streamCase{
 		return DecodeMDIO(a, b, s, ClockedCfg{Threshold: 128, HaveThr: true, ThresholdB: 128, HaveThrB: true})
 	}},
 	// TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
-	{name: "spdif", baud: 3072000, lines: 1, gen: func(l twoLine, i int, rng *rand.Rand) {
+	{name: "spdif", baud: 3072000, lines: 1, gen: func(l twoLine, i int, _ *rand.Rand) {
 		spdifStream(l.a, 48e3, i, [][2]int{{(i * 0x1357) & 0xffffff, 0xFFFFF0 - i}})
 		l.b.add(0, l.a.t-l.b.t)
-	}, dec: func(a, b []uint8, s float64) Result {
+	}, dec: func(a, _ []uint8, s float64) Result {
 		return DecodeSPDIF(a, s, SPDIFCfg{Threshold: 128, HaveThr: true})
 	}},
 }
@@ -281,14 +282,13 @@ func TestStreamRecordCaptures(t *testing.T) {
 						}
 					}
 					if !ok || want != frameKey(f) {
-						near := ""
-						var nearSb285 strings.Builder
+						var nearBuf strings.Builder
 						for _, tf := range truth {
 							if tf.I1+2000 > uint64(pos)+f.I0 && tf.I0 < uint64(pos)+f.I1+2000 {
-								nearSb285.WriteString(fmt.Sprintf(" [%d..%d %q]", int64(tf.I0)-int64(pos), int64(tf.I1)-int64(pos), frameKey(tf)))
+								fmt.Fprintf(&nearBuf, " [%d..%d %q]", int64(tf.I0)-int64(pos), int64(tf.I1)-int64(pos), frameKey(tf))
 							}
 						}
-						near += nearSb285.String()
+						near := nearBuf.String()
 						t.Fatalf("record at %d: frame at %d..%d %q, the whole signal %q (%v); near:%s", pos, f.I0, f.I1, frameKey(f), want, ok, near)
 					}
 					got++
@@ -419,7 +419,7 @@ func TestStreamDecoderGapFree(t *testing.T) {
 			ss := bucket / 2
 			coarse := NewStreamDecoder(func(a, b []uint8) Result { return c.dec(a, b, ss) }, int(quiet/ss), 1<<30)
 			cf := append(coarse.Push(a, b), coarse.Flush()...)
-			for k := 0; k < min(len(cf), len(truth)); k++ {
+			for k := range min(len(cf), len(truth)) {
 				if frameKey(cf[k]) != frameKey(truth[k]) {
 					t.Errorf("the peak samples whole: frame %d %q, want %q (%+v)", k, frameKey(cf[k]), frameKey(truth[k]), cf[k].Spans)
 					break
@@ -445,7 +445,7 @@ func TestStreamDecoderGapFree(t *testing.T) {
 				if len(got) != len(truth) {
 					t.Errorf("chunks %v: %d frames, the whole signal %d", sizes, len(got), len(truth))
 				}
-				for k := 0; k < min(len(got), len(truth)); k++ {
+				for k := range min(len(got), len(truth)) {
 					if frameKey(got[k]) != frameKey(truth[k]) {
 						t.Errorf("chunks %v: frame %d %q, want %q", sizes, k, frameKey(got[k]), frameKey(truth[k]))
 						if testing.Verbose() {

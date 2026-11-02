@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-DECODE
+
 package decode
 
 // Host CPU of the live stream decode: a second of each main protocol's
@@ -40,7 +41,7 @@ var streamCPUExtra = []streamCase{
 		}
 		l.a.idle((20 + rng.Float64()*40) / 115200)
 		oneLine(l)
-	}, dec: func(a, b []uint8, s float64) Result {
+	}, dec: func(a, _ []uint8, s float64) Result {
 		return DecodeUART(a, s, UARTCfg{Baud: 115200, Bits: 8, Parity: "none", Threshold: 128, HaveThr: true})
 	}},
 	{name: "i2c", baud: 400000, lines: 2, gen: func(l twoLine, i int, rng *rand.Rand) {
@@ -90,7 +91,7 @@ var streamCPUExtra = []streamCase{
 		}
 		l.a.idle((14 + rng.Float64()*40) / 500000)
 		oneLine(l)
-	}, dec: func(a, b []uint8, s float64) Result {
+	}, dec: func(a, _ []uint8, s float64) Result {
 		return DecodeCANFD(a, s, CANFDCfg{NominalBaud: 500000, DominantLow: true, Threshold: 128, HaveThr: true})
 	}},
 	{name: "manchester", baud: 100000, lines: 1, gen: func(l twoLine, i int, rng *rand.Rand) {
@@ -101,7 +102,7 @@ var streamCPUExtra = []streamCase{
 		}
 		l.a.idle((12 + rng.Float64()*30) / 100000)
 		oneLine(l)
-	}, dec: func(a, b []uint8, s float64) Result {
+	}, dec: func(a, _ []uint8, s float64) Result {
 		return DecodeManchester(a, s, ManchesterCfg{Bitrate: 100000, IEEE: true, MSB: true, Bits: 8, Threshold: 128, HaveThr: true})
 	}},
 }
@@ -128,7 +129,8 @@ type streamCPUCase struct {
 
 // streamCPUCaseOf finds name's generator and its stream's bucket.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
-func streamCPUCaseOf(t testing.TB, name string) streamCPUCase {
+func streamCPUCaseOf(tb testing.TB, name string) streamCPUCase {
+	tb.Helper()
 	var all []streamCase
 	all = append(all, streamCases...)
 	all = append(all, moreStreamCases...)
@@ -148,13 +150,15 @@ func streamCPUCaseOf(t testing.TB, name string) streamCPUCase {
 		}
 		log, ok := StreamBucketLog(tc.feature)
 		if !ok {
-			for log = StreamGapFreeMinLog - 1; log > 1 && tc.feature < 3.5*float64(uint64(1)<<log)*2e-9; log-- {
+			log = StreamGapFreeMinLog - 1
+			for log > 1 && tc.feature < 3.5*float64(uint64(1)<<log)*2e-9 {
+				log--
 			}
 		}
 		tc.bucket = float64(uint64(1)<<log) * 2e-9
 		return tc
 	}
-	t.Fatalf("no case %s", name)
+	tb.Fatalf("no case %s", name)
 	return streamCPUCase{}
 }
 
@@ -277,7 +281,7 @@ func cyclesOf(fn func()) (float64, bool) {
 	if errno != 0 {
 		return 0, false
 	}
-	defer syscall.Close(int(fd))
+	defer func() { _ = syscall.Close(int(fd)) }()
 	read := func() uint64 {
 		var b [8]byte
 		_, _ = syscall.Read(int(fd), b[:])

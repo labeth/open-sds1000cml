@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-DECODE
+
 package decode
 
 import (
@@ -44,10 +45,10 @@ func DecodeDALIEdges(codes *EdgeLine, colTimeS float64, cfg DALICfg) Result {
 func decodeDALI(codes lineIn, colTimeS float64, cfg DALICfg) Result {
 	S := codes.slice(cfg.Threshold, cfg.HaveThr)
 	if !S.ok {
-		return Result{Proto: "dali", Error: S.reason}
+		return Result{Proto: protoDALI, Error: S.reason}
 	}
 	if !(colTimeS > 0) {
-		return Result{Proto: "dali", Error: "no sample time"}
+		return Result{Proto: protoDALI, Error: msgNoSampleTime}
 	}
 	marks, high := irMarks(S, colTimeS)
 	n := S.n
@@ -83,7 +84,7 @@ func decodeDALI(codes lineIn, colTimeS float64, cfg DALICfg) Result {
 				ok = false
 			}
 		}
-		spans = append(spans, pspan(xs[0], xs[0]+2*hx, n, "START", "sof", 0))
+		spans = append(spans, pspan(xs[0], xs[0]+2*hx, n, "START", kindSOF, 0))
 		toks = append(toks, "START")
 		nb := len(bits) - 1
 		// and quiet after it past where a next bit would move the line (half
@@ -91,11 +92,11 @@ func decodeDALI(codes lineIn, colTimeS float64, cfg DALICfg) Result {
 		// (an Oregon burst's middle, cut at 16, read as a DALI frame)
 		cut := us(float64(n)-(xs[len(xs)-1]+hx)) < 500
 		if !ok || cut || bits[0] != 1 || (nb != 8 && nb != 16 && nb != 24) {
-			spans = append(spans, pspan(xs[0], xs[len(xs)-1]+hx, n, fmt.Sprintf("!%dbits", nb), "frame-error", 0))
+			spans = append(spans, pspan(xs[0], xs[len(xs)-1]+hx, n, fmt.Sprintf("!%dbits", nb), kindFrameError, 0))
 			toks = append(toks, fmt.Sprintf("!%dbits", nb))
 			continue
 		}
-		for b := 0; b < nb/8; b++ {
+		for b := range nb / 8 {
 			v := 0
 			for k := range 8 {
 				v = v<<1 | bits[1+8*b+k]
@@ -110,17 +111,17 @@ func decodeDALI(codes lineIn, colTimeS float64, cfg DALICfg) Result {
 				txt = "D" + txt
 			}
 			x0 := xs[2*(1+8*b)]
-			spans = append(spans, pspan(x0, x0+16*hx, n, txt, "data", v))
+			spans = append(spans, pspan(x0, x0+16*hx, n, txt, kindData, v))
 			toks = append(toks, txt)
 			units = append(units, v)
 		}
 		good = true
 	}
 	if len(spans) == 0 {
-		return Result{Proto: "dali", Error: "no DALI frame"}
+		return Result{Proto: protoDALI, Error: "no DALI frame"}
 	}
 	res := Result{
-		OK: good, Proto: "dali", Spans: spans, Text: strings.Join(toks, " "), Bytes: units,
+		OK: good, Proto: protoDALI, Spans: spans, Text: strings.Join(toks, " "), Bytes: units,
 		Thr: S.threshold, Inverted: high, SPB: 2 * hx, Baud: 1200,
 	}
 	if !good {
@@ -195,11 +196,11 @@ type bmcBit struct {
 // of about half one a 1; a run over 1.5 bit times (or any other) ends a burst.
 // It returns the bursts.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-235
-func bmcBits(S sliced, bit float64) [][]bmcBit {
+func bmcBits(sl sliced, bit float64) [][]bmcBit {
 	// The bursts share one array, each capped at its own end: no burst
 	// grows once it ends.
-	E := S.edges
-	all := scratchSlice[bmcBit](S.sc, len(E))
+	E := sl.edges
+	all := scratchSlice[bmcBit](sl.sc, len(E))
 	var out [][]bmcBit
 	from := 0 // the current burst's first bit in all
 	end := func() {
@@ -258,21 +259,21 @@ func DecodeUSBPDEdges(codes *EdgeLine, colTimeS float64, cfg USBPDCfg) Result {
 
 // decodeUSBPD is DecodeUSBPD over samples or edges.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-235
-func decodeUSBPD(codes lineIn, colTimeS float64, cfg USBPDCfg) Result {
+func decodeUSBPD(codes lineIn, colTimeS float64, cfg USBPDCfg) Result { //nolint:gocyclo // a protocol state machine kept step for step with its decode_*.js twin (parity tests)
 	S := codes.slice(cfg.Threshold, cfg.HaveThr)
 	if !S.ok {
-		return Result{Proto: "usbpd", Error: S.reason}
+		return Result{Proto: protoUSBPD, Error: S.reason}
 	}
 	baud := cfg.Baud
 	if baud <= 0 {
 		baud = 300000
 	}
 	if !(colTimeS > 0) {
-		return Result{Proto: "usbpd", Error: "no sample time"}
+		return Result{Proto: protoUSBPD, Error: msgNoSampleTime}
 	}
 	bit := 1 / (float64(baud) * colTimeS)
 	if !(bit >= 4) {
-		return Result{Proto: "usbpd", Error: fmt.Sprintf("%.1f samples/bit; need >= 4", bit)}
+		return Result{Proto: protoUSBPD, Error: fmt.Sprintf("%.1f samples/bit; need >= 4", bit)}
 	}
 	n := S.n
 	o := newWireOut(n, S.sc)
@@ -319,7 +320,7 @@ func decodeUSBPD(codes lineIn, colTimeS float64, cfg USBPDCfg) Result {
 			}
 			return burst[len(burst)-1].x0 + bit
 		}
-		o.add(burst[at].x0, end(at+20), name, "sof", 0, false)
+		o.add(burst[at].x0, end(at+20), name, kindSOF, 0, false)
 		if name == "HRST" || name == "CRST" {
 			continue
 		}
@@ -340,8 +341,8 @@ func decodeUSBPD(codes lineIn, colTimeS float64, cfg USBPDCfg) Result {
 			idx += 10
 			return true
 		}
-		if !readByte() || !readByte() {
-			o.add(end(idx), end(idx), "!", "frame-error", 0, false)
+		if !readByte() || !readByte() { //nolint:staticcheck // each call reads the next byte: the header's two
+			o.add(end(idx), end(idx), "!", kindFrameError, 0, false)
 			continue
 		}
 		head := vals[0] | vals[1]<<8
@@ -352,11 +353,11 @@ func decodeUSBPD(codes lineIn, colTimeS float64, cfg USBPDCfg) Result {
 		}
 		crcOK := ok && !bad
 		if crcOK {
-			got := uint32(vals[len(vals)-4]) | uint32(vals[len(vals)-3])<<8 | uint32(vals[len(vals)-2])<<16 | uint32(vals[len(vals)-1])<<24
+			got := uint32(vals[len(vals)-4]) | uint32(vals[len(vals)-3])<<8 | uint32(vals[len(vals)-2])<<16 | uint32(vals[len(vals)-1])<<24 //nolint:gosec // each value is a decoded byte 0..255
 			crcOK = crc32IEEE(vals[:len(vals)-4]) == got
 		}
 		for k, v := range vals {
-			txt, kind := hex2(v), "data"
+			txt, kind := hex2(v), kindData
 			if k == 0 {
 				names := pdCtrlNames
 				if count > 0 {
@@ -367,24 +368,24 @@ func decodeUSBPD(codes lineIn, colTimeS float64, cfg USBPDCfg) Result {
 				}
 			}
 			if ok && !bad && k >= len(vals)-4 && !crcOK {
-				txt, kind = "!"+txt, "frame-error"
+				txt, kind = "!"+txt, kindFrameError
 			}
 			o.add(xs[k], end(at+20+10*(k+1)), txt, kind, v, true)
 		}
 		if !ok || bad {
-			o.add(end(idx), end(idx), "!", "frame-error", 0, false)
+			o.add(end(idx), end(idx), "!", kindFrameError, 0, false)
 			continue
 		}
 		if idx+5 <= len(burst) && sym(idx) == 22 {
-			o.add(burst[idx].x0, end(idx+5), "EOP", "rw", 0, false)
+			o.add(burst[idx].x0, end(idx+5), "EOP", kindRW, 0, false)
 		}
 		good = good || crcOK
 	}
 	if len(o.spans) == 0 {
-		return Result{Proto: "usbpd", Error: "no USB PD start of packet"}
+		return Result{Proto: protoUSBPD, Error: "no USB PD start of packet"}
 	}
 	res := Result{
-		OK: good, Proto: "usbpd", Spans: o.spans, Text: strings.Join(o.toks, " "), Bytes: o.units,
+		OK: good, Proto: protoUSBPD, Spans: o.spans, Text: strings.Join(o.toks, " "), Bytes: o.units,
 		Thr: S.threshold, SPB: bit, Baud: baud,
 	}
 	if !good {
@@ -405,10 +406,10 @@ type SPDIFCfg struct {
 // cluster of edge gaps (each is one, two or three half cells), 0 when the
 // line shows too few edges.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-235
-func spdifHalf(S sliced) float64 {
+func spdifHalf(sl sliced) float64 {
 	var gaps []float64
-	for k := 1; k < len(S.edges); k++ {
-		gaps = append(gaps, S.edges[k].x-S.edges[k-1].x)
+	for k := 1; k < len(sl.edges); k++ {
+		gaps = append(gaps, sl.edges[k].x-sl.edges[k-1].x)
 	}
 	if len(gaps) < 64 {
 		return 0
@@ -451,11 +452,11 @@ func DecodeSPDIFEdges(codes *EdgeLine, colTimeS float64, cfg SPDIFCfg) Result {
 func decodeSPDIF(codes lineIn, colTimeS float64, cfg SPDIFCfg) Result {
 	S := codes.slice(cfg.Threshold, cfg.HaveThr)
 	if !S.ok {
-		return Result{Proto: "spdif", Error: S.reason}
+		return Result{Proto: protoSPDIF, Error: S.reason}
 	}
 	h := spdifHalf(S)
 	if !(h >= 2) {
-		return Result{Proto: "spdif", Error: "no biphase-mark cells (half cell under 2 samples)"}
+		return Result{Proto: protoSPDIF, Error: "no biphase-mark cells (half cell under 2 samples)"}
 	}
 	E := S.edges
 	n := S.n
@@ -490,27 +491,29 @@ func decodeSPDIF(codes lineIn, colTimeS float64, cfg SPDIFCfg) Result {
 		// 28 cells: a gap of two halves a 0, two of one a 1
 		j := i + 4
 		bits = bits[:0]
+	cells:
 		for len(bits) < 28 && j < len(E) {
-			if k[j] == 2 {
+			switch {
+			case k[j] == 2:
 				bits = append(bits, 0)
 				j++
-			} else if k[j] == 1 && j+1 < len(E) && k[j+1] == 1 {
+			case k[j] == 1 && j+1 < len(E) && k[j+1] == 1:
 				bits = append(bits, 1)
 				j += 2
-			} else {
-				break
+			default:
+				break cells
 			}
 		}
 		x0 := E[i-1].x
-		kind := "sof"
+		kind := kindSOF
 		if name != "B" {
-			kind = "rw"
+			kind = kindRW
 		}
 		spans = append(spans, pspan(x0, E[i+3].x, n, name, kind, 0))
 		toks = append(toks, name)
 		if len(bits) < 28 {
 			if j < len(E) {
-				spans = append(spans, pspan(E[i+3].x, E[i+3].x, n, "!", "frame-error", 0))
+				spans = append(spans, pspan(E[i+3].x, E[i+3].x, n, "!", kindFrameError, 0))
 				toks = append(toks, "!")
 			}
 			i = j - 1
@@ -523,9 +526,9 @@ func decodeSPDIF(codes lineIn, colTimeS float64, cfg SPDIFCfg) Result {
 			}
 			ones += bits[b]
 		}
-		txt, kd := hex6(v), "data"
+		txt, kd := hex6(v), kindData
 		if ones%2 != 0 {
-			txt, kd = "!"+txt, "parity-error"
+			txt, kd = "!"+txt, kindParityError
 		} else {
 			goodN++
 		}
@@ -535,10 +538,10 @@ func decodeSPDIF(codes lineIn, colTimeS float64, cfg SPDIFCfg) Result {
 		i = j - 1
 	}
 	if len(spans) == 0 {
-		return Result{Proto: "spdif", Error: "no S/PDIF preamble"}
+		return Result{Proto: protoSPDIF, Error: "no S/PDIF preamble"}
 	}
 	res := Result{
-		OK: goodN >= 2, Proto: "spdif", Spans: spans, Text: strings.Join(toks, " "), Bytes: units,
+		OK: goodN >= 2, Proto: protoSPDIF, Spans: spans, Text: strings.Join(toks, " "), Bytes: units,
 		Thr: S.threshold, SPB: 2 * h,
 	}
 	if colTimeS > 0 {

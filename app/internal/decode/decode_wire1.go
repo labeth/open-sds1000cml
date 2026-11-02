@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-DECODE
+
 package decode
 
 import (
@@ -52,6 +53,8 @@ func newWireOutSized(n int, sc *scratch, spans, toks, units int) *wireOut {
 	return &wireOut{n: n, spans: make([]Span, 0, spans), toks: make([]string, 0, toks), units: make([]int, 0, units)}
 }
 
+// add appends a span over x0..x1, its text a token when not empty and val a
+// unit when unit.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-253
 func (o *wireOut) add(x0, x1 float64, text, kind string, val int, unit bool) {
 	// pspan's span, set field by field in place: no struct copied in
@@ -72,9 +75,9 @@ func (o *wireOut) add(x0, x1 float64, text, kind string, val int, unit bool) {
 // fallsAndRises lists a line's falling edges with the rise after each (-1
 // when the record ends low).
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-253
-func fallsAndRises(S sliced) (falls, rises []float64) {
-	E := S.edges
-	falls, rises = scratchSlice[float64](S.sc, len(E)/2+1), scratchSlice[float64](S.sc, len(E)/2+1)
+func fallsAndRises(sl sliced) (falls, rises []float64) {
+	E := sl.edges
+	falls, rises = scratchSlice[float64](sl.sc, len(E)/2+1), scratchSlice[float64](sl.sc, len(E)/2+1)
 	for k, e := range E {
 		if e.dir > 0 {
 			continue
@@ -135,14 +138,14 @@ func DecodeSWIMEdges(codes *EdgeLine, colTimeS float64, cfg LineCfg) Result {
 
 // decodeSWIM is DecodeSWIM over samples or edges.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-253
-func decodeSWIM(codes lineIn, colTimeS float64, cfg LineCfg) Result {
+func decodeSWIM(codes lineIn, colTimeS float64, cfg LineCfg) Result { //nolint:gocyclo,funlen // a protocol state machine kept step for step with its decode_*.js twin (parity tests)
 	S := codes.slice(cfg.Threshold, cfg.HaveThr)
 	if !S.ok {
-		return Result{Proto: "swim", Error: S.reason}
+		return Result{Proto: protoSWIM, Error: S.reason}
 	}
 	falls, rises := fallsAndRises(S)
 	if len(falls) < 5 {
-		return Result{Proto: "swim", Error: "too few bits"}
+		return Result{Proto: protoSWIM, Error: "too few bits"}
 	}
 	var T float64
 	if cfg.Baud > 0 && colTimeS > 0 {
@@ -191,7 +194,7 @@ func decodeSWIM(codes lineIn, colTimeS float64, cfg LineCfg) Result {
 			if fr[0].x0 <= T15 || fr[len(fr)-1].x1+T15 >= float64(S.n) {
 				o.add(fr[0].x0, fr[len(fr)-1].x1, "?", "gap", 0, false)
 			} else {
-				o.add(fr[0].x0, fr[len(fr)-1].x1, "!", "frame-error", 0, false)
+				o.add(fr[0].x0, fr[len(fr)-1].x1, "!", kindFrameError, 0, false)
 			}
 			return
 		}
@@ -202,7 +205,7 @@ func decodeSWIM(codes lineIn, colTimeS float64, cfg LineCfg) Result {
 		}
 		ok := p == fr[nb+1].v && fr[nb+2].v == 1
 		if cmd {
-			o.add(fr[0].x0, fr[0].x0, "", "sof", 0, false)
+			o.add(fr[0].x0, fr[0].x0, "", kindSOF, 0, false)
 		}
 		// the text, and with a "!" for a frame that fails (swimText)
 		t := 0
@@ -220,12 +223,12 @@ func decodeSWIM(codes lineIn, colTimeS float64, cfg LineCfg) Result {
 			}
 		}
 		if !ok {
-			o.add(fr[1].x0, fr[nb].x1, swimText[1][t][v], "frame-error", v, true)
+			o.add(fr[1].x0, fr[nb].x1, swimText[1][t][v], kindFrameError, v, true)
 			return
 		}
 		txt := swimText[0][t][v]
 		good = true
-		o.add(fr[1].x0, fr[nb].x1, txt, "data", v, true)
+		o.add(fr[1].x0, fr[nb].x1, txt, kindData, v, true)
 		switch {
 		case cmd && (v == 1 || v == 2):
 			state = 1
@@ -301,7 +304,7 @@ func decodeSWIM(codes lineIn, colTimeS float64, cfg LineCfg) Result {
 			// 128 of 3.6 MHz); it resets the transaction
 			if us := low * colTimeS * 1e6; colTimeS > 0 && us >= 64/8.8 && us <= 128/3.6 {
 				frame()
-				o.add(f, r, "SYNC", "rw", 0, false)
+				o.add(f, r, "SYNC", kindRW, 0, false)
 				state = 0
 				continue
 			}
@@ -350,10 +353,10 @@ func decodeSWIM(codes lineIn, colTimeS float64, cfg LineCfg) Result {
 	}
 	frame()
 	if len(o.spans) == 0 {
-		return Result{Proto: "swim", Error: "no SWIM frame"}
+		return Result{Proto: protoSWIM, Error: "no SWIM frame"}
 	}
 	res := Result{
-		OK: good, Proto: "swim", Spans: o.spans, Text: strings.Join(o.toks, " "), Bytes: o.units,
+		OK: good, Proto: protoSWIM, Spans: o.spans, Text: strings.Join(o.toks, " "), Bytes: o.units,
 		Thr: S.threshold, SPB: T,
 	}
 	if colTimeS > 0 {
@@ -386,10 +389,10 @@ func DecodeSDQEdges(codes *EdgeLine, colTimeS float64, cfg LineCfg) Result {
 func decodeSDQ(codes lineIn, colTimeS float64, cfg LineCfg) Result {
 	S := codes.slice(cfg.Threshold, cfg.HaveThr)
 	if !S.ok {
-		return Result{Proto: "sdq", Error: S.reason}
+		return Result{Proto: protoSDQ, Error: S.reason}
 	}
 	if !(colTimeS > 0) {
-		return Result{Proto: "sdq", Error: "no sample time"}
+		return Result{Proto: protoSDQ, Error: msgNoSampleTime}
 	}
 	baud := 98425.0
 	if cfg.Baud > 0 {
@@ -408,13 +411,13 @@ func decodeSDQ(codes lineIn, colTimeS float64, cfg LineCfg) Result {
 		}
 		d := r - f
 		if d > 1.2*T {
-			o.add(f, r, "", "sof", 0, false)
+			o.add(f, r, "", kindSOF, 0, false)
 			v, nb, bytesAfter, prev = 0, 0, 0, -1
 			continue
 		}
 		if nb > 0 && f-prev < 0.7*T {
 			// bits closer than the bit time: no SDQ at this rate
-			o.add(prev, f, "!", "frame-error", 0, false)
+			o.add(prev, f, "!", kindFrameError, 0, false)
 			v, nb, bytesAfter = 0, 0, -1
 		}
 		prev = f
@@ -426,7 +429,7 @@ func decodeSDQ(codes lineIn, colTimeS float64, cfg LineCfg) Result {
 		}
 		nb++
 		if nb == 8 {
-			o.add(x0, f+T, FmtByte(v, cfg.Format), "data", v, true)
+			o.add(x0, f+T, FmtByte(v, cfg.Format), kindData, v, true)
 			v, nb = 0, 0
 			if bytesAfter >= 0 {
 				bytesAfter++
@@ -435,10 +438,10 @@ func decodeSDQ(codes lineIn, colTimeS float64, cfg LineCfg) Result {
 		}
 	}
 	if len(o.spans) == 0 {
-		return Result{Proto: "sdq", Error: "no SDQ bits"}
+		return Result{Proto: protoSDQ, Error: "no SDQ bits"}
 	}
 	res := Result{
-		OK: good, Proto: "sdq", Spans: o.spans, Text: strings.Join(o.toks, " "), Bytes: o.units,
+		OK: good, Proto: protoSDQ, Spans: o.spans, Text: strings.Join(o.toks, " "), Bytes: o.units,
 		Thr: S.threshold, SPB: T, Baud: int(math.Round(baud)),
 	}
 	if !good {
@@ -500,10 +503,10 @@ func DecodePJDLEdges(codes *EdgeLine, colTimeS float64, cfg LineCfg) Result {
 func decodePJDL(codes lineIn, colTimeS float64, cfg LineCfg) Result {
 	S := codes.slice(cfg.Threshold, cfg.HaveThr)
 	if !S.ok {
-		return Result{Proto: "pjdl", Error: S.reason}
+		return Result{Proto: protoPJDL, Error: S.reason}
 	}
 	if !(colTimeS > 0) {
-		return Result{Proto: "pjdl", Error: "no sample time"}
+		return Result{Proto: protoPJDL, Error: msgNoSampleTime}
 	}
 	runs := levelRuns(S)
 	us := func(d float64) float64 { return d * colTimeS * 1e6 }
@@ -522,7 +525,7 @@ func decodePJDL(codes lineIn, colTimeS float64, cfg LineCfg) Result {
 			}
 		}
 		if best == 0 {
-			return Result{Proto: "pjdl", Error: "no PJDL sync pads"}
+			return Result{Proto: protoPJDL, Error: "no PJDL sync pads"}
 		}
 	}
 	data, pad := pjdlModes[mode][0], pjdlModes[mode][1]
@@ -583,7 +586,7 @@ func decodePJDL(codes lineIn, colTimeS float64, cfg LineCfg) Result {
 		if pads == 3 {
 			flush()
 			inFrame = true
-			o.add(a, e+dt, "", "sof", 0, false)
+			o.add(a, e+dt, "", kindSOF, 0, false)
 			x, lastEnd = e, e+dt
 			continue
 		}
@@ -597,16 +600,16 @@ func decodePJDL(codes lineIn, colTimeS float64, cfg LineCfg) Result {
 			frame = append(frame, v)
 			fx = append(fx, e+dt)
 		} else {
-			o.add(e+dt, e+9*dt, hex2(v), "data", v, true)
+			o.add(e+dt, e+9*dt, hex2(v), kindData, v, true)
 		}
 		x, lastEnd = e+9*dt, e+9*dt
 	}
 	flush()
 	if len(o.spans) == 0 {
-		return Result{Proto: "pjdl", Error: "no PJDL frame"}
+		return Result{Proto: protoPJDL, Error: "no PJDL frame"}
 	}
 	res := Result{
-		OK: good, Proto: "pjdl", Spans: o.spans, Text: strings.Join(o.toks, " "), Bytes: o.units,
+		OK: good, Proto: protoPJDL, Spans: o.spans, Text: strings.Join(o.toks, " "), Bytes: o.units,
 		Thr: S.threshold, SPB: dt, Baud: int(math.Round(1e6 / data)), FrameBits: mode,
 	}
 	if !good {
@@ -620,9 +623,9 @@ func decodePJDL(codes lineIn, colTimeS float64, cfg LineCfg) Result {
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-253
 func pjonFields(o *wireOut, b []int, fx []float64, dt float64) bool {
 	put := func(i int, txt string, bad bool) {
-		kind := "data"
+		kind := kindData
 		if bad {
-			txt, kind = "!"+txt, "frame-error"
+			txt, kind = "!"+txt, kindFrameError
 		}
 		o.add(fx[i], fx[i]+9*dt, txt, kind, b[i], true)
 	}
@@ -661,7 +664,7 @@ func pjonFields(o *wireOut, b []int, fx []float64, dt float64) bool {
 		if crc32 {
 			var v uint32
 			for _, x := range b[length-4:] {
-				v = v<<8 | uint32(x)
+				v = v<<8 | uint32(x) //nolint:gosec // x is a byte
 			}
 			endOK = crc32IEEE(b[:length-4]) == v
 		} else {
@@ -706,10 +709,10 @@ func DecodeDSIEdges(codes *EdgeLine, colTimeS float64, cfg LineCfg) Result {
 func decodeDSI(codes lineIn, colTimeS float64, cfg LineCfg) Result {
 	S := codes.slice(cfg.Threshold, cfg.HaveThr)
 	if !S.ok {
-		return Result{Proto: "dsi", Error: S.reason}
+		return Result{Proto: protoDSI, Error: S.reason}
 	}
 	if !(colTimeS > 0) {
-		return Result{Proto: "dsi", Error: "no sample time"}
+		return Result{Proto: protoDSI, Error: msgNoSampleTime}
 	}
 	marks, high := irMarks(S, colTimeS)
 	n := S.n
@@ -742,23 +745,23 @@ func decodeDSI(codes lineIn, colTimeS float64, cfg LineCfg) Result {
 			}
 			bits = append(bits, lv[2*b])
 		}
-		o.add(xs[0], xs[0]+2*hx, "START", "sof", 0, false)
+		o.add(xs[0], xs[0]+2*hx, "START", kindSOF, 0, false)
 		if !ok || len(bits) != 9 || bits[0] != 0 {
-			o.add(xs[0], xs[len(xs)-1]+hx, fmt.Sprintf("!%dbits", len(bits)), "frame-error", 0, false)
+			o.add(xs[0], xs[len(xs)-1]+hx, fmt.Sprintf("!%dbits", len(bits)), kindFrameError, 0, false)
 			continue
 		}
 		v := 0
 		for k := 1; k <= 8; k++ {
 			v = v<<1 | bits[k]
 		}
-		o.add(xs[2], xs[2]+16*hx, FmtByte(v, cfg.Format), "data", v, true)
+		o.add(xs[2], xs[2]+16*hx, FmtByte(v, cfg.Format), kindData, v, true)
 		good = true
 	}
 	if len(o.spans) == 0 {
-		return Result{Proto: "dsi", Error: "no DSI frame"}
+		return Result{Proto: protoDSI, Error: "no DSI frame"}
 	}
 	res := Result{
-		OK: good, Proto: "dsi", Spans: o.spans, Text: strings.Join(o.toks, " "), Bytes: o.units,
+		OK: good, Proto: protoDSI, Spans: o.spans, Text: strings.Join(o.toks, " "), Bytes: o.units,
 		Thr: S.threshold, Inverted: high, SPB: 2 * hx, Baud: 600,
 	}
 	if !good {
@@ -805,10 +808,10 @@ func DecodeQiEdges(codes *EdgeLine, colTimeS float64, cfg LineCfg) Result {
 func decodeQi(codes lineIn, colTimeS float64, cfg LineCfg) Result {
 	S := codes.slice(cfg.Threshold, cfg.HaveThr)
 	if !S.ok {
-		return Result{Proto: "qi", Error: S.reason}
+		return Result{Proto: protoQi, Error: S.reason}
 	}
 	if !(colTimeS > 0) {
-		return Result{Proto: "qi", Error: "no sample time"}
+		return Result{Proto: protoQi, Error: msgNoSampleTime}
 	}
 	bit := 500e-6 / colTimeS
 	o := newWireOut(S.n, S.sc)
@@ -847,11 +850,11 @@ func decodeQi(codes lineIn, colTimeS float64, cfg LineCfg) Result {
 			}
 			if c[9].v != p || c[10].v != 1 {
 				bad = true
-				o.add(c[0].x0, c[10].x0+bit, "!"+hex2(v), "parity-error", v, true)
+				o.add(c[0].x0, c[10].x0+bit, "!"+hex2(v), kindParityError, v, true)
 				break
 			}
 			if len(pkt) == 0 {
-				o.add(c[0].x0, c[0].x0, "", "sof", 0, false)
+				o.add(c[0].x0, c[0].x0, "", kindSOF, 0, false)
 			}
 			pkt, px = append(pkt, v), append(px, c[0].x0)
 			if len(pkt) == qiLen(pkt[0])+2 {
@@ -860,9 +863,9 @@ func decodeQi(codes lineIn, colTimeS float64, cfg LineCfg) Result {
 					x ^= b
 				}
 				for i, b := range pkt {
-					txt, kind := hex2(b), "data"
+					txt, kind := hex2(b), kindData
 					if i == len(pkt)-1 && x != b {
-						txt, kind = "!"+txt, "frame-error"
+						txt, kind = "!"+txt, kindFrameError
 					}
 					o.add(px[i], px[i]+11*bit, txt, kind, b, true)
 				}
@@ -872,16 +875,16 @@ func decodeQi(codes lineIn, colTimeS float64, cfg LineCfg) Result {
 		}
 		if len(pkt) > 0 && !bad {
 			for i, b := range pkt {
-				o.add(px[i], px[i]+11*bit, hex2(b), "data", b, true)
+				o.add(px[i], px[i]+11*bit, hex2(b), kindData, b, true)
 			}
-			o.add(px[len(px)-1]+11*bit, px[len(px)-1]+11*bit, "!", "frame-error", 0, false)
+			o.add(px[len(px)-1]+11*bit, px[len(px)-1]+11*bit, "!", kindFrameError, 0, false)
 		}
 	}
 	if len(o.spans) == 0 {
-		return Result{Proto: "qi", Error: "no Qi packet"}
+		return Result{Proto: protoQi, Error: "no Qi packet"}
 	}
 	res := Result{
-		OK: good, Proto: "qi", Spans: o.spans, Text: strings.Join(o.toks, " "), Bytes: o.units,
+		OK: good, Proto: protoQi, Spans: o.spans, Text: strings.Join(o.toks, " "), Bytes: o.units,
 		Thr: S.threshold, SPB: bit, Baud: 2000,
 	}
 	if !good {

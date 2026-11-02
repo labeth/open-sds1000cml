@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-DECODE
+
 package decode
 
 import (
@@ -19,7 +20,7 @@ const (
 	scanOnes = ^uint(0) / 255        // 0x01 in every byte
 )
 
-// scanAtLeast is the first index from from on whose code is k or more,
+// scanAtLeast is the first index at or after from whose code is k or more,
 // len(codes) when none is.
 // TRLC-LINKS: REQ-SDS-018
 func scanAtLeast(codes []uint8, from, k int) int {
@@ -31,7 +32,7 @@ func scanAtLeast(codes []uint8, from, k int) int {
 		return n
 	}
 	j := from
-	for j < n && (uintptr(unsafe.Pointer(unsafe.SliceData(codes)))+uintptr(j))&(scanWord-1) != 0 {
+	for j < n && (uintptr(unsafe.Pointer(unsafe.SliceData(codes)))+uintptr(j))&(scanWord-1) != 0 { //nolint:gosec // the address only aligns the word scan, it is not dereferenced
 		if int(codes[j]) >= k {
 			return j
 		}
@@ -43,7 +44,7 @@ func scanAtLeast(codes []uint8, from, k int) int {
 	if k < 128 {
 		add := uint(128-k) * scanOnes
 		for ; j+scanWord <= n; j += scanWord {
-			x := *(*uint)(unsafe.Pointer(&codes[j]))
+			x := *(*uint)(unsafe.Pointer(&codes[j])) //nolint:gosec // an aligned word read wholly inside codes (j+scanWord <= n)
 			if m := ((x & scanLow7) + add | x) & scanHigh; m != 0 {
 				return j + bits.TrailingZeros(m)/8
 			}
@@ -51,7 +52,7 @@ func scanAtLeast(codes []uint8, from, k int) int {
 	} else {
 		add := uint(256-k) * scanOnes
 		for ; j+scanWord <= n; j += scanWord {
-			x := *(*uint)(unsafe.Pointer(&codes[j]))
+			x := *(*uint)(unsafe.Pointer(&codes[j])) //nolint:gosec // an aligned word read wholly inside codes (j+scanWord <= n)
 			if m := ((x & scanLow7) + add) & x & scanHigh; m != 0 {
 				return j + bits.TrailingZeros(m)/8
 			}
@@ -65,7 +66,7 @@ func scanAtLeast(codes []uint8, from, k int) int {
 	return n
 }
 
-// scanAtMost is the first index from from on whose code is k or less,
+// scanAtMost is the first index at or after from whose code is k or less,
 // len(codes) when none is: scanAtLeast on the codes' complements.
 // TRLC-LINKS: REQ-SDS-018
 func scanAtMost(codes []uint8, from, k int) int {
@@ -78,7 +79,7 @@ func scanAtMost(codes []uint8, from, k int) int {
 	}
 	c := 255 - k // ^v >= c exactly when v <= k
 	j := from
-	for j < n && (uintptr(unsafe.Pointer(unsafe.SliceData(codes)))+uintptr(j))&(scanWord-1) != 0 {
+	for j < n && (uintptr(unsafe.Pointer(unsafe.SliceData(codes)))+uintptr(j))&(scanWord-1) != 0 { //nolint:gosec // the address only aligns the word scan, it is not dereferenced
 		if int(codes[j]) <= k {
 			return j
 		}
@@ -87,7 +88,7 @@ func scanAtMost(codes []uint8, from, k int) int {
 	if c < 128 {
 		add := uint(128-c) * scanOnes
 		for ; j+scanWord <= n; j += scanWord {
-			x := ^*(*uint)(unsafe.Pointer(&codes[j]))
+			x := ^*(*uint)(unsafe.Pointer(&codes[j])) //nolint:gosec // an aligned word read wholly inside codes (j+scanWord <= n)
 			if m := ((x & scanLow7) + add | x) & scanHigh; m != 0 {
 				return j + bits.TrailingZeros(m)/8
 			}
@@ -95,7 +96,7 @@ func scanAtMost(codes []uint8, from, k int) int {
 	} else {
 		add := uint(256-c) * scanOnes
 		for ; j+scanWord <= n; j += scanWord {
-			x := ^*(*uint)(unsafe.Pointer(&codes[j]))
+			x := ^*(*uint)(unsafe.Pointer(&codes[j])) //nolint:gosec // an aligned word read wholly inside codes (j+scanWord <= n)
 			if m := ((x & scanLow7) + add) & x & scanHigh; m != 0 {
 				return j + bits.TrailingZeros(m)/8
 			}

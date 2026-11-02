@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-DECODE
+
 package decode
 
 // Oracle cross-check of the IR multi decoder against sigrok's ir_irmp, the

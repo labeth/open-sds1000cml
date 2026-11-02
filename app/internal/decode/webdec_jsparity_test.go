@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-DECODE
+
 package decode
 
 import (
@@ -223,7 +224,7 @@ func TestWebDecStreamParity(t *testing.T) {
 	if err := os.WriteFile(cj, blob, 0o644); err != nil {
 		t.Fatal(err)
 	}
-	out, err := exec.Command("node", "../web/webdec_check.mjs", "stream", cj).CombinedOutput()
+	out, err := exec.CommandContext(t.Context(), "node", "../web/webdec_check.mjs", "stream", cj).CombinedOutput()
 	if err != nil || !strings.Contains(string(out), "WEBDEC OK") {
 		t.Fatalf("webdec_check.mjs: %v\n%s", err, out)
 	}
@@ -256,7 +257,7 @@ func TestWebDecStreamParity(t *testing.T) {
 			gf, _ := g.([]any)
 			wf, _ := w.([]any)
 			first := ""
-			for i := 0; i < min(len(gf), len(wf)); i++ {
+			for i := range min(len(gf), len(wf)) {
 				if !reflect.DeepEqual(gf[i], wf[i]) {
 					first = fmt.Sprintf("frame %d: js %v, go %v", i, gf[i], wf[i])
 					break

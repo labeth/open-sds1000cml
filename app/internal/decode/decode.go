@@ -1,7 +1,12 @@
-// Package decode ports the web protocol decoders (internal/web/decode.js) to Go
-// for the on-device LCD: UART / I2C / SPI over sampled 8-bit codes. Kept
-// algorithm-faithful to decode.js so the two surfaces agree byte-for-byte.
 // ENGMODEL-OWNER-UNIT: FU-APP-DECODE
+
+// Package decode reads serial buses and line codes off the scope's records:
+// each protocol's decoder over sampled 8-bit codes or a digital line's edges
+// (EdgeLine), Autodetect's search for the bus a pair of lines carries,
+// StreamDecoder over a continuous stream, and the models of the FPGA's bus
+// receivers and symbol trigger that the RTL tests hold the hardware to. The
+// decoders are kept algorithm-faithful to their web twins
+// (internal/web/decode*.js) so the two surfaces agree byte for byte.
 package decode
 
 import (
@@ -9,6 +14,88 @@ import (
 	"math"
 	"sort"
 	"strconv"
+)
+
+// Span kinds the decoders report (Span.Kind), as the web decoders name them.
+const (
+	kindData        = "data"
+	kindFrameError  = "frame-error"
+	kindParityError = "parity-error"
+	kindStart       = "start"
+	kindStop        = "stop"
+	kindAddr        = "addr"
+	kindBreak       = "break"
+	kindSOF         = "sof"
+	kindRW          = "rw"
+)
+
+// UART parities (UARTCfg.Parity).
+const (
+	parityNone = "none"
+	parityEven = "even"
+	parityOdd  = "odd"
+)
+
+// Errors more than one decoder reports (Result.Error).
+const (
+	msgNoSampleTime = "no sample time"
+	msgTooFewEdges  = "too few edges"
+)
+
+// Protocol names (Result.Proto, Decode's proto), as the web decoders name them.
+const (
+	protoARINC429   = "arinc429"
+	protoCaliper    = "caliper"
+	protoCANFD      = "canfd"
+	protoCEC        = "cec"
+	protoCJTAG      = "cjtag"
+	protoDALI       = "dali"
+	protoDCF77      = "dcf77"
+	protoDHT        = "dht"
+	protoDMX512     = "dmx512"
+	protoDSI        = "dsi"
+	protoEM4100     = "em4100"
+	protoEM4305     = "em4305"
+	protoFlexRay    = "flexray"
+	protoI2C        = "i2c"
+	protoIRMP       = "irmp"
+	protoIRNEC      = "irnec"
+	protoIRRC5      = "irrc5"
+	protoIRRC6      = "irrc6"
+	protoIRSIRC     = "irsirc"
+	protoJ1850      = "j1850"
+	protoLIN        = "lin"
+	protoManchester = "manchester"
+	protoMaple      = "maple"
+	protoMDIO       = "mdio"
+	protoMIDI       = "midi"
+	protoMIL1553    = "mil1553"
+	protoMiller     = "miller"
+	protoModbus     = "modbus"
+	protoMorse      = "morse"
+	protoOneWire    = "onewire"
+	protoOOK        = "ook"
+	protoPDI        = "pdi"
+	protoPJDL       = "pjdl"
+	protoPS2        = "ps2"
+	protoPWM        = "pwm"
+	protoQi         = "qi"
+	protoQuad       = "quad"
+	protoRCEncode   = "rcencode"
+	protoSDCard     = "sdcard"
+	protoSDQ        = "sdq"
+	protoSENT       = "sent"
+	protoSPDIF      = "spdif"
+	protoSPI        = "spi"
+	protoStepper    = "stepper"
+	protoSWD        = "swd"
+	protoSWIM       = "swim"
+	protoT55xx      = "t55xx"
+	protoUART       = "uart"
+	protoUSBLS      = "usbls"
+	protoUSBPD      = "usbpd"
+	protoWiegand    = "wiegand"
+	protoWS281x     = "ws281x"
 )
 
 // Span is one decoded token spanning sample indices [I0,I1].
@@ -74,37 +161,37 @@ func FeatureSamples(r Result) float64 {
 		return 0
 	}
 	switch r.Proto {
-	case "i2c", "spi", "manchester", "mil1553", "arinc429", "dali", "usbpd", "spdif", "irnec", "irrc5", "irrc6",
-		"ps2", "swd", "mdio":
+	case protoI2C, protoSPI, protoManchester, protoMIL1553, protoARINC429, protoDALI, protoUSBPD, protoSPDIF, protoIRNEC, protoIRRC5, protoIRRC6,
+		protoPS2, protoSWD, protoMDIO:
 		return r.SPB / 2
-	case "sent":
+	case protoSENT:
 		return 4 * r.SPB
-	case "ws281x":
+	case protoWS281x:
 		return r.SPB / 3
-	case "cec":
+	case protoCEC:
 		return r.SPB / 4
-	case "onewire":
+	case protoOneWire:
 		return 15 * r.SPB
-	case "dht":
+	case protoDHT:
 		return 26 * r.SPB
-	case "wiegand":
+	case protoWiegand:
 		return r.SPB / 20
-	case "quad":
+	case protoQuad:
 		return r.SPB / 4 // a quarter cycle between A's and B's edges
-	case "stepper", "pwm":
+	case protoStepper, protoPWM:
 		return r.Feature
-	case "em4305", "t55xx":
+	case protoEM4305, protoT55xx:
 		if r.Inverted { // the carrier's half cycle
 			return r.SPB / 2
 		}
 		return 8 * r.SPB // the envelope's shortest gap or field: eight field clocks
-	case "ook", "miller", "em4100", "dsi", "qi", "sdcard", "pdi", "cjtag", "maple", "caliper":
+	case protoOOK, protoMiller, protoEM4100, protoDSI, protoQi, protoSDCard, protoPDI, protoCJTAG, protoMaple, protoCaliper:
 		return r.SPB / 2
-	case "dcf77":
+	case protoDCF77:
 		return r.SPB / 10 // a 0's 100 ms pulse
-	case "swim":
+	case protoSWIM:
 		return r.SPB / 11 // a 1's low: 2 of a bit's 22 SWIM clocks
-	case "sdq":
+	case protoSDQ:
 		return r.SPB / 4
 	}
 	return r.SPB
@@ -122,9 +209,9 @@ func FeatureSamples(r Result) float64 {
 // TRLC-LINKS: REQ-SDS-018
 func EnvelopeFeatureSamples(r Result) float64 {
 	switch {
-	case r.Proto == "wiegand" && r.OK:
+	case r.Proto == protoWiegand && r.OK:
 		return r.SPB
-	case r.Proto == "pjdl":
+	case r.Proto == protoPJDL:
 		return FeatureSamples(r) / 2
 	}
 	return FeatureSamples(r)
@@ -231,15 +318,15 @@ func EnvelopeRun(codes []uint8, sampleS float64) (run, busy float64) {
 
 // Names are the protocols as the screens name them.
 var Names = map[string]string{
-	"uart": "UART", "i2c": "I2C", "spi": "SPI", "manchester": "Manchester", "sent": "SENT",
-	"canfd": "CAN", "mil1553": "MIL-1553", "arinc429": "ARINC 429", "usbls": "USB", "flexray": "FlexRay",
-	"lin": "LIN", "dmx512": "DMX512", "midi": "MIDI", "modbus": "Modbus RTU", "onewire": "1-Wire", "ws281x": "WS281x",
-	"dht": "DHT", "cec": "HDMI-CEC", "j1850": "J1850 VPW", "irnec": "IR NEC", "irsirc": "IR Sony", "irrc5": "IR RC-5",
-	"irrc6": "IR RC-6", "dali": "DALI", "usbpd": "USB PD", "spdif": "S/PDIF", "ps2": "PS/2", "swd": "SWD", "mdio": "MDIO",
-	"wiegand": "Wiegand", "quad": "Quadrature", "stepper": "Stepper", "pwm": "PWM", "rcencode": "RC encode", "ook": "OOK",
-	"miller": "Miller", "morse": "Morse", "dcf77": "DCF77", "em4100": "EM4100", "em4305": "EM4305", "t55xx": "T55xx",
-	"swim": "SWIM", "sdq": "SDQ", "pjdl": "PJON", "dsi": "DSI", "qi": "Qi", "sdcard": "SD card", "pdi": "PDI", "cjtag": "cJTAG",
-	"maple": "Maple", "caliper": "Caliper", "irmp": "IR multi",
+	protoUART: "UART", protoI2C: "I2C", protoSPI: "SPI", protoManchester: "Manchester", protoSENT: "SENT",
+	protoCANFD: "CAN", protoMIL1553: "MIL-1553", protoARINC429: "ARINC 429", protoUSBLS: "USB", protoFlexRay: "FlexRay",
+	protoLIN: "LIN", protoDMX512: "DMX512", protoMIDI: "MIDI", protoModbus: "Modbus RTU", protoOneWire: "1-Wire", protoWS281x: "WS281x",
+	protoDHT: "DHT", protoCEC: "HDMI-CEC", protoJ1850: "J1850 VPW", protoIRNEC: "IR NEC", protoIRSIRC: "IR Sony", protoIRRC5: "IR RC-5",
+	protoIRRC6: "IR RC-6", protoDALI: "DALI", protoUSBPD: "USB PD", protoSPDIF: "S/PDIF", protoPS2: "PS/2", protoSWD: "SWD", protoMDIO: "MDIO",
+	protoWiegand: "Wiegand", protoQuad: "Quadrature", protoStepper: "Stepper", protoPWM: "PWM", protoRCEncode: "RC encode", protoOOK: "OOK",
+	protoMiller: "Miller", protoMorse: "Morse", protoDCF77: "DCF77", protoEM4100: "EM4100", protoEM4305: "EM4305", protoT55xx: "T55xx",
+	protoSWIM: "SWIM", protoSDQ: "SDQ", protoPJDL: "PJON", protoDSI: "DSI", protoQi: "Qi", protoSDCard: "SD card", protoPDI: "PDI", protoCJTAG: "cJTAG",
+	protoMaple: "Maple", protoCaliper: "Caliper", protoIRMP: "IR multi",
 }
 
 // Roles is the channel assignment and SPI framing Autodetect chose: ChA is the
@@ -250,6 +337,7 @@ type Roles struct {
 	CPOL, CPHA, MSB bool
 }
 
+// invertLogic is codes with high and low swapped (255-v).
 // TRLC-LINKS: REQ-SDS-018
 func invertLogic(codes []uint8) []uint8 {
 	out := make([]uint8, len(codes))
@@ -268,6 +356,7 @@ var hexBytes = func() (t [256]string) {
 	return t
 }()
 
+// hex2 is b's low byte as two hex digits.
 // TRLC-LINKS: REQ-SDS-018
 func hex2(b int) string { return hexBytes[b&0xff] }
 
@@ -301,12 +390,53 @@ func hexText(pre string, v uint64, digits int) string {
 	return string(buf[i:])
 }
 
+// shortGapCluster is the mean of the gaps within window (a share) of their
+// tenth percentile: the shortest gaps' cluster, robust to a stray shorter
+// one. It sorts gaps in place.
+// TRLC-LINKS: REQ-SDS-018
+func shortGapCluster(gaps []float64, window float64) float64 {
+	sort.Float64s(gaps)
+	p := gaps[int(float64(len(gaps))*0.1)]
+	sum, cnt := 0.0, 0
+	for _, g := range gaps {
+		if math.Abs(g-p) <= window*p {
+			sum += g
+			cnt++
+		}
+	}
+	if cnt > 0 {
+		p = sum / float64(cnt)
+	}
+	return p
+}
+
+// gapClusters sorts gaps and groups them greedily, deterministically: each
+// cluster starts at the smallest gap not yet taken and takes every gap up to
+// 1.5 times it. It is the clusters' means, shortest first.
+// TRLC-LINKS: REQ-SDS-018
+func gapClusters(gaps []float64) []float64 {
+	sort.Float64s(gaps)
+	var cands []float64
+	for i := 0; i < len(gaps); {
+		seed := gaps[i]
+		sum, j := 0.0, i
+		for j < len(gaps) && gaps[j] <= 1.5*seed {
+			sum += gaps[j]
+			j++
+		}
+		cands = append(cands, sum/float64(j-i))
+		i = j
+	}
+	return cands
+}
+
+// popcount counts the set bits of v's two's-complement word.
 // TRLC-LINKS: REQ-SDS-018
 func popcount(v int) int {
 	// UNSIGNED shift: an arithmetic >> on a negative int shifts in sign bits
 	// and never reaches 0 — an infinite loop. A hostile UART bit count can set
 	// the sign bit of the assembled word (found by the decoder fuzz DoS).
-	u := uint64(v)
+	u := uint64(v) //nolint:gosec // the two's-complement bits, as intended
 	c := 0
 	for u != 0 {
 		c += int(u & 1)
@@ -384,7 +514,7 @@ func (s *sliced) levels() []int8 {
 		for ; at < e.i; at++ {
 			level[at] = cur
 		}
-		cur = int8((e.dir + 1) / 2)
+		cur = int8((e.dir + 1) / 2) //nolint:gosec // an edge's dir is -1 or +1: the level is 0 or 1
 	}
 	for ; at < s.n; at++ {
 		level[at] = cur
@@ -696,6 +826,8 @@ func codeFloor(t float64) int {
 	return int(min(255, math.Floor(t)))
 }
 
+// logicAt is the line's level (0 or 1) at the sample nearest x, -1 past
+// the record's ends.
 // TRLC-LINKS: REQ-SDS-018
 func logicAt(s *sliced, x float64) int {
 	i := int(math.Round(x))
@@ -714,20 +846,22 @@ func logicAt(s *sliced, x float64) int {
 	return 0
 }
 
+// minEdgeGap is the fewest samples between successive edges whose direction
+// dirOk takes, +Inf for fewer than two.
 // TRLC-LINKS: REQ-SDS-018
 func minEdgeGap(edges []edge, dirOk func(int) bool) float64 {
 	prev := -1
-	min := math.Inf(1)
+	best := math.Inf(1)
 	for _, e := range edges {
 		if !dirOk(e.dir) {
 			continue
 		}
-		if prev >= 0 && float64(e.i-prev) < min {
-			min = float64(e.i - prev)
+		if prev >= 0 && float64(e.i-prev) < best {
+			best = float64(e.i - prev)
 		}
 		prev = e.i
 	}
-	return min
+	return best
 }
 
 // ---- autodetect (ports decode.js scoreResult/clockScore/idleLevel/autodetect) --

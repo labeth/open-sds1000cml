@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-DECODE
+
 package decode
 
 // USB full speed (12 Mbit/s) vs sigrok's usb_signalling + usb_packet, and
@@ -37,7 +38,6 @@ func oracleUSBFSWave(sr float64, packets [][]int, gapBits float64) (dp, dm []byt
 		wp.add(p, cells*bt)
 		wm.add(m, cells*bt)
 	}
-	j := true
 	emit := func(isJ bool, cells float64) {
 		if isJ {
 			sym(1, 0, cells)
@@ -47,7 +47,7 @@ func oracleUSBFSWave(sr float64, packets [][]int, gapBits float64) (dp, dm []byt
 	}
 	emit(true, 20)
 	for _, bits := range packets {
-		j = true
+		j := true
 		for _, b := range bits {
 			if b == 0 {
 				j = !j
@@ -65,11 +65,16 @@ func oracleUSBFSWave(sr float64, packets [][]int, gapBits float64) (dp, dm []byt
 func TestOracleUSBFS(t *testing.T) {
 	const sr = 120000000 // 10 samples a bit
 	packets := [][]int{
-		usblsPacketBits(0xD, usblsTokenBits(0x15, 0xE)),                                      // SETUP
-		usblsPacketBits(0x3, usblsDataBits([]int{0x80, 0x06, 0x00, 0x01, 0, 0, 0x40, 0}, 0)), // DATA0
-		usblsPacketBits(0x2, nil),                                               // ACK
-		usblsPacketBits(0x5, usblsTokenBits(0x7F, 0xF)),                         // SOF-shaped token
-		usblsPacketBits(0xB, usblsDataBits([]int{0xFF, 0xFF, 0xFF, 0x00}, 0x1)), // DATA1, bad CRC
+		// SETUP
+		usblsPacketBits(0xD, usblsTokenBits(0x15, 0xE)),
+		// DATA0
+		usblsPacketBits(0x3, usblsDataBits([]int{0x80, 0x06, 0x00, 0x01, 0, 0, 0x40, 0}, 0)),
+		// ACK
+		usblsPacketBits(0x2, nil),
+		// SOF-shaped token
+		usblsPacketBits(0x5, usblsTokenBits(0x7F, 0xF)),
+		// DATA1, bad CRC
+		usblsPacketBits(0xB, usblsDataBits([]int{0xFF, 0xFF, 0xFF, 0x00}, 0x1)),
 	}
 	dp, dm := oracleUSBFSWave(sr, packets, 12)
 	r := DecodeUSBLS(bitsToCodes(dp), 1.0/sr, USBLSCfg{})

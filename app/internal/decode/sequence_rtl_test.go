@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-DECODE
+
 package decode
 
 import (
@@ -41,7 +42,7 @@ func seqReference(events []seqEvent, pattern []seqElem, qualify, endBad bool) []
 		if pending {
 			switch e.kind {
 			case 3:
-				pending, fire = false, !(endBad && e.value != 0)
+				pending, fire = false, !endBad || e.value == 0
 			case 1, 4, 5:
 				pending = false
 			}
@@ -71,7 +72,7 @@ func TestEventSequenceRTL(t *testing.T) {
 	dir := t.TempDir()
 	rtl := testenv.RTLDir(t)
 	image := filepath.Join(dir, "seq.vvp")
-	if out, err := exec.Command("iverilog", "-g2012", "-s", "tb_event_sequence", "-o", image,
+	if out, err := exec.CommandContext(t.Context(), "iverilog", "-g2012", "-s", "tb_event_sequence", "-o", image,
 		filepath.Join(rtl, "event_sequence.v"), filepath.Join(rtl, "sim", "tb_event_sequence.v")).CombinedOutput(); err != nil {
 		t.Fatalf("compile: %v\n%s", err, out)
 	}
@@ -98,7 +99,7 @@ func TestEventSequenceRTL(t *testing.T) {
 		if endBad {
 			b = 1
 		}
-		out, err := exec.Command("vvp", image, "+events="+ep, fmt.Sprintf("+n=%d", len(events)), "+elements="+pp,
+		out, err := exec.CommandContext(t.Context(), "vvp", image, "+events="+ep, fmt.Sprintf("+n=%d", len(events)), "+elements="+pp,
 			fmt.Sprintf("+m=%d", len(pattern)), fmt.Sprintf("+qualify=%d", q), fmt.Sprintf("+endbad=%d", b)).CombinedOutput()
 		if err != nil {
 			t.Fatalf("simulate: %v\n%s", err, out)
@@ -110,7 +111,7 @@ func TestEventSequenceRTL(t *testing.T) {
 			if _, err := fmt.Sscanf(line, "M %d", &v); err == nil {
 				fired = append(fired, v)
 			}
-			fmt.Sscanf(line, "O %d", &overflows)
+			_, _ = fmt.Sscanf(line, "O %d", &overflows) // only the O line sets it
 		}
 		return fired, overflows
 	}
@@ -119,12 +120,12 @@ func TestEventSequenceRTL(t *testing.T) {
 		ev := make([]seqEvent, n)
 		for i := range ev {
 			kind := uint8(2)
-			switch r := rng.Intn(20); {
-			case r == 0:
+			switch rng.Intn(20) {
+			case 0:
 				kind = 1
-			case r == 1:
+			case 1:
 				kind = 3
-			case r == 2:
+			case 2:
 				kind = 4
 			}
 			ev[i] = seqEvent{kind, uint32(rng.Intn(4)) | uint32(rng.Intn(2))<<31, gap}

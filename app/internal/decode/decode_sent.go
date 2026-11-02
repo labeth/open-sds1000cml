@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-DECODE
+
 package decode
 
 import (
@@ -29,6 +30,7 @@ const (
 	sentTol       = 0.20 // ±20% jitter tolerance on the tick
 )
 
+// sentHex1 is v's low nibble as one hex digit.
 // TRLC-LINKS: REQ-SDS-018
 func sentHex1(v int) string { i := v & 0xf; return "0123456789ABCDEF"[i : i+1] }
 
@@ -50,6 +52,7 @@ func sentCRC4(data []int) int {
 	return crc & 0xf
 }
 
+// sentClampNib clamps v to a nibble's range 0..15.
 // TRLC-LINKS: REQ-SDS-018
 func sentClampNib(v int) int {
 	if v < 0 {
@@ -68,7 +71,7 @@ func sentClampNib(v int) int {
 // nibble, a "crc" span for the last nibble of the frame, and (when cfg.PausePulse)
 // a "pause" span for the trailing pause pulse. Robust to jitter and hostile input.
 // TRLC-LINKS: REQ-SDS-018
-func DecodeSENT(codes []uint8, colTimeS float64, cfg SENTCfg) Result {
+func DecodeSENT(codes []uint8, colTimeS float64, cfg SENTCfg) Result { //nolint:gocyclo // a protocol state machine kept step for step with its decode_*.js twin (parity tests)
 	nib := cfg.Nibbles
 	if nib <= 0 {
 		nib = 8 // status + 6 data + CRC (the typical fast-channel frame)
@@ -78,7 +81,7 @@ func DecodeSENT(codes []uint8, colTimeS float64, cfg SENTCfg) Result {
 	}
 	S := sliceChannel(codes, cfg.Threshold, cfg.HaveThr)
 	if !S.ok {
-		return Result{Proto: "sent", Error: S.reason}
+		return Result{Proto: protoSENT, Error: S.reason}
 	}
 	n := S.n
 
@@ -94,7 +97,7 @@ func DecodeSENT(codes []uint8, colTimeS float64, cfg SENTCfg) Result {
 		}
 	}
 	if len(fallX) < 2 {
-		return Result{Proto: "sent", Error: "no SENT pulses (need >= 2 falling edges)"}
+		return Result{Proto: protoSENT, Error: "no SENT pulses (need >= 2 falling edges)"}
 	}
 
 	// One pulse period per consecutive pair of falling edges.
@@ -116,7 +119,7 @@ func DecodeSENT(codes []uint8, colTimeS float64, cfg SENTCfg) Result {
 	// nibbles (12..27 ticks) — a real SYNC is followed by valid nibbles; a nibble
 	// mis-taken as SYNC yields a tiny tick that blows every follower out of range.
 	firstSync := -1
-	if haveTick {
+	if haveTick { //nolint:nestif // a protocol state machine kept step for step with its decode_*.js twin (parity tests)
 		for k := range np {
 			if math.Abs(period[k]/seedTick-sentSyncTicks) <= sentTol*sentSyncTicks {
 				firstSync = k
@@ -163,7 +166,7 @@ func DecodeSENT(codes []uint8, colTimeS float64, cfg SENTCfg) Result {
 		}
 	}
 	if firstSync < 0 || seedTick <= 0 {
-		return Result{Proto: "sent", Error: "no SENT SYNC (~56-tick) pulse found"}
+		return Result{Proto: protoSENT, Error: "no SENT SYNC (~56-tick) pulse found"}
 	}
 
 	looksSync := func(P, tick float64) bool {
@@ -205,7 +208,7 @@ func DecodeSENT(codes []uint8, colTimeS float64, cfg SENTCfg) Result {
 			val := int(math.Round(P/curTick)) - 12
 			if val < 0 || val > 15 { // out-of-range pulse: a coding error, not a nibble
 				cv := sentClampNib(val)
-				spans = append(spans, Span{fallI[k], fallI[k+1], "!" + sentHex1(cv), "frame-error", cv})
+				spans = append(spans, Span{fallI[k], fallI[k+1], "!" + sentHex1(cv), kindFrameError, cv})
 				toks = append(toks, "!"+sentHex1(cv))
 				frameNibs = append(frameNibs, cv)
 				k++
@@ -221,7 +224,7 @@ func DecodeSENT(codes []uint8, colTimeS float64, cfg SENTCfg) Result {
 				valid := sentCRC4(data) == val
 				kind, txt := "crc", sentHex1(val)
 				if !valid {
-					kind, txt = "frame-error", "!"+sentHex1(val)
+					kind, txt = kindFrameError, "!"+sentHex1(val)
 				} else {
 					goodCRC = true
 				}
@@ -229,7 +232,7 @@ func DecodeSENT(codes []uint8, colTimeS float64, cfg SENTCfg) Result {
 				toks = append(toks, txt)
 				bytes = append(bytes, val)
 			} else {
-				spans = append(spans, Span{fallI[k], fallI[k+1], sentHex1(val), "data", val})
+				spans = append(spans, Span{fallI[k], fallI[k+1], sentHex1(val), kindData, val})
 				toks = append(toks, sentHex1(val))
 				bytes = append(bytes, val)
 			}
@@ -244,14 +247,14 @@ func DecodeSENT(codes []uint8, colTimeS float64, cfg SENTCfg) Result {
 		}
 	}
 	if len(spans) == 0 {
-		return Result{Proto: "sent", Error: "no SENT SYNC (~56-tick) pulse found"}
+		return Result{Proto: protoSENT, Error: "no SENT SYNC (~56-tick) pulse found"}
 	}
 	// OK means a genuinely valid frame was decoded — at least one with a good
 	// CRC-4. Noise and corrupted frames still return their spans (so the display
 	// can show them with the CRC flagged), but OK=false so nothing downstream (the
 	// serial trigger, callers) treats garbage as a confirmed SENT frame.
 	res := Result{
-		OK: goodCRC, Proto: "sent", Spans: spans, Text: strings.Join(toks, " "),
+		OK: goodCRC, Proto: protoSENT, Spans: spans, Text: strings.Join(toks, " "),
 		Bytes: bytes, SPB: curTick, Thr: S.threshold,
 	}
 	if !goodCRC {

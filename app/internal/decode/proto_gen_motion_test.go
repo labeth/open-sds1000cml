@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-DECODE
+
 package decode
 
 // Generators of the motion signals (proto_gen_test.go): a quadrature
@@ -7,7 +8,7 @@ package decode
 // quadMoves appends encoder steps to l, A on line a and B on line b: each
 // entry of moves is +1 (A leads B) or -1, one whole cycle of four quarter
 // periods of per each; the lines start and end at state ab (0..3 as A|B<<1)
-// and rest rest seconds after the moves.
+// and stay there for rest seconds after the moves.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-250
 func quadMoves(l twoLine, moves []int, per, rest float64) {
 	// the forward cycle: 00, A=1, A=B=1, B=1
