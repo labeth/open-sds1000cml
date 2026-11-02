@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-ENGINE
+
 package engine
 
 import (
@@ -293,11 +294,11 @@ func TestRawImageTimebaseFitsItsRecord(t *testing.T) {
 		if e.pendSet {
 			set = e.pendBand.TdivS // what the next capture takes (Stats.TdivSet)
 		}
-		want, max := 1e-3, 0.0
+		want, most := 1e-3, 0.0
 		if raw {
-			want, max = 200e-6, 200e-6
+			want, most = 200e-6, 200e-6
 		}
-		if tdiv != want || set != want || e.stats.TdivMaxS != max {
+		if tdiv != want || set != want || e.stats.TdivMaxS != most {
 			t.Fatalf("raw %v: timebase %g (set %g, most %g), want %g", raw, tdiv, set, e.stats.TdivMaxS, want)
 		}
 		if raw && float64(p.Samples)*p.SampleS < 10*tdiv*0.999 {

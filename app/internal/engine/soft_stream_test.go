@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-ENGINE
+
 package engine
 
 import (
@@ -120,17 +121,15 @@ func TestSoftStreamPeakWordsToEvents(t *testing.T) {
 		tr.Flush()
 		want := len(frames)
 		if stop {
-			for want = 0; !slices.Contains(frames[want], 0x80+20); want++ {
-			}
-			want++
+			want = 1 + slices.IndexFunc(frames, func(f []int) bool { return slices.Contains(f, 0x80+20) })
 		}
 		if tr.Count() != want || stopped != stop {
-			for i := 0; i < min(8, tr.Count()); i++ {
+			for i := range min(8, tr.Count()) {
 				t.Log(tr.Format(i))
 			}
 			t.Fatalf("stop %v: %d lines (want %d), stopped %v", stop, tr.Count(), want, stopped)
 		}
-		for i := 0; i < tr.Count(); i++ {
+		for i := range tr.Count() {
 			l := tr.At(i)
 			if l.Note != "BRK" || l.N != 4 || l.Errs != 0 || l.Vals[1] != uint32(i) || l.Vals[2] != uint32(0x80+i) {
 				t.Fatalf("line %d: %q %X", i, tr.Format(i), l.Vals[:l.N])
@@ -314,6 +313,7 @@ func TestSoftEventsQueue(t *testing.T) {
 		}
 	}
 	for read() > 0 {
+		continue // read drains the ring until it returns 0
 	}
 	if next != 50000 || s.err != nil {
 		t.Fatalf("read %d of 50000 (err %v)", next, s.err)

@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-ENGINE
+
 package engine
 
 // learnQualExtent keeps each channel's extent (decode.Extent) from a capture

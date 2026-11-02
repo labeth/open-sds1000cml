@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-ENGINE
+
 package engine
 
 import (
@@ -156,7 +157,7 @@ func compileQualifyTop(t *testing.T, dir, name, defines string, extra ...string)
 	}, extra...) {
 		args = append(args, filepath.Join(rtl, f))
 	}
-	if out, err := exec.Command("iverilog", args...).CombinedOutput(); err != nil {
+	if out, err := exec.CommandContext(t.Context(), "iverilog", args...).CombinedOutput(); err != nil {
 		t.Fatalf("compile: %v\n%s", err, out)
 	}
 	return image
@@ -222,7 +223,7 @@ func runSymbolTop(t *testing.T, dir, image, name string, p SerialParams, w *symW
 		"-N", image, "+input=" + words, fmt.Sprintf("+length=%d", 2*len(w.a)), "+regs=" + rp, fmt.Sprintf("+nregs=%d", len(regs)),
 		pre, "+post=2000",
 	}, extra...)
-	out, err := exec.Command("vvp", args...).CombinedOutput()
+	out, err := exec.CommandContext(t.Context(), "vvp", args...).CombinedOutput()
 	if err != nil || !strings.Contains(string(out), "PASS qualify top") {
 		t.Fatalf("simulate: %v\n%s", err, out)
 	}
@@ -233,9 +234,9 @@ func runSymbolTop(t *testing.T, dir, image, name string, p SerialParams, w *symW
 		if _, err := fmt.Sscanf(line, "M %d", &n); err == nil {
 			ms = append(ms, n)
 		}
-		fmt.Sscanf(line, "T %d", &trigger)
-		fmt.Sscanf(line, "R %d", &recorded)
-		fmt.Sscanf(line, "C %d", &count)
+		_, _ = fmt.Sscanf(line, "T %d", &trigger)  // the other lines do not match
+		_, _ = fmt.Sscanf(line, "R %d", &recorded) // the other lines do not match
+		_, _ = fmt.Sscanf(line, "C %d", &count)    // the other lines do not match
 	}
 	// The model's matches are receiver clocks of the wave (two words
 	// each); the image's come a fixed pipeline later in words.

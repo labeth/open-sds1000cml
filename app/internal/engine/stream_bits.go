@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-ENGINE
+
 package engine
 
 import "unsafe"
@@ -32,8 +33,8 @@ func unpackBits(dst []uint8, raw []byte, ch int) []uint8 {
 	if n == 0 {
 		return dst
 	}
-	o := unsafe.Pointer(&dst[at])
-	src := unsafe.Pointer(&raw[2*ch])
+	o := unsafe.Pointer(&dst[at])     //nolint:gosec // G103: the bit unpacker writes dst[at:at+n], grown above
+	src := unsafe.Pointer(&raw[2*ch]) //nolint:gosec // G103: the bit unpacker reads raw within its length, checked above
 	for i := range n {
 		lo := &bitWords[*(*uint8)(unsafe.Add(src, 4*i))]
 		hi := &bitWords[*(*uint8)(unsafe.Add(src, 4*i+1))]

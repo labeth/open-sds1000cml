@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-ENGINE
+
 package engine
 
 import (
@@ -45,14 +46,14 @@ func TestQualifierDecimatedTopRTL(t *testing.T) {
 	} {
 		args = append(args, filepath.Join(rtl, f))
 	}
-	if out, err := exec.Command("iverilog", args...).CombinedOutput(); err != nil {
+	if out, err := exec.CommandContext(t.Context(), "iverilog", args...).CombinedOutput(); err != nil {
 		t.Fatalf("compile: %v\n%s", err, out)
 	}
 	// the line: 2 ns samples, two a word; C2 held mid-scale
 	const sampleS, idle, bit = 2e-9, 40e-6, 1e-6
 	var line []bool
 	hold := func(v bool, s float64) {
-		for i := 0; i < int(s/sampleS+0.5); i++ {
+		for range int(s/sampleS + 0.5) {
 			line = append(line, v)
 		}
 	}
@@ -104,14 +105,14 @@ func TestQualifierDecimatedTopRTL(t *testing.T) {
 		if err := os.WriteFile(rp, []byte(rb.String()), 0o600); err != nil {
 			t.Fatal(err)
 		}
-		out, err := exec.Command("vvp", "-N", image, "+input="+words, fmt.Sprintf("+length=%d", len(line)/2), "+regs="+rp,
+		out, err := exec.CommandContext(t.Context(), "vvp", "-N", image, "+input="+words, fmt.Sprintf("+length=%d", len(line)/2), "+regs="+rp,
 			fmt.Sprintf("+nregs=%d", len(regs)), "+pre=64", "+post=2000").CombinedOutput()
 		if err != nil || !strings.Contains(string(out), "PASS qualify decimated") {
 			t.Fatalf("/%d: %v\n%s", 1<<log, err, out)
 		}
 		trigger := -1
 		for l := range strings.SplitSeq(string(out), "\n") {
-			fmt.Sscanf(l, "T %d", &trigger)
+			_, _ = fmt.Sscanf(l, "T %d", &trigger) // the other lines do not match
 		}
 		// within a few decimated samples (two a word at the full rate) of a start
 		near := false
@@ -162,7 +163,7 @@ func TestEdgeDecimatedTopRTL(t *testing.T) {
 	} {
 		args = append(args, filepath.Join(rtl, f))
 	}
-	if out, err := exec.Command("iverilog", args...).CombinedOutput(); err != nil {
+	if out, err := exec.CommandContext(t.Context(), "iverilog", args...).CombinedOutput(); err != nil {
 		t.Fatalf("compile: %v\n%s", err, out)
 	}
 	const sampleS = 2e-9
@@ -200,14 +201,14 @@ func TestEdgeDecimatedTopRTL(t *testing.T) {
 		if err := os.WriteFile(rp, []byte(rb.String()), 0o600); err != nil {
 			t.Fatal(err)
 		}
-		out, err := exec.Command("vvp", "-N", image, "+input="+words, fmt.Sprintf("+length=%d", len(line)/2), "+regs="+rp,
+		out, err := exec.CommandContext(t.Context(), "vvp", "-N", image, "+input="+words, fmt.Sprintf("+length=%d", len(line)/2), "+regs="+rp,
 			fmt.Sprintf("+nregs=%d", len(regs)), "+pre=64", "+post=2000").CombinedOutput()
 		if err != nil || !strings.Contains(string(out), "PASS qualify decimated") {
 			t.Fatalf("/%d: %v\n%s", 1<<log, err, out)
 		}
 		trigger := -1
 		for l := range strings.SplitSeq(string(out), "\n") {
-			fmt.Sscanf(l, "T %d", &trigger)
+			_, _ = fmt.Sscanf(l, "T %d", &trigger) // the other lines do not match
 		}
 		// full rate the comparators take the spread's first crossing (the
 		// engine confirms a full-rate trigger on its record and drops it)

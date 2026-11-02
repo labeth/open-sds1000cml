@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-ENGINE
+
 package engine
 
 import (
@@ -27,6 +28,7 @@ type ViewWindow struct {
 // ViewSurface is who asks for a view window.
 type ViewSurface int
 
+// The view surfaces, and their count.
 const (
 	ViewScope ViewSurface = iota // the scope's zoom
 	ViewWeb                      // the web page's zoom
@@ -236,9 +238,9 @@ func (e *Engine) planViews(f *Frame, m sramcapture.Metadata, screen int, offset,
 		if !ok {
 			continue
 		}
-		for q := range s {
-			if v[q] != nil && v[q].p == p {
-				v[s] = v[q]
+		for _, prev := range v[:s] {
+			if prev != nil && prev.p == p {
+				v[s] = prev
 			}
 		}
 		if v[s] == nil {

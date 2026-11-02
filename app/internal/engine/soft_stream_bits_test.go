@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-ENGINE
+
 package engine
 
 import (
@@ -141,7 +142,7 @@ func TestSoftStreamBitsToEvents(t *testing.T) {
 			if tr.Count() != len(frames) {
 				t.Fatalf("LIN at %d (%d raw words, %.3g us): %d lines, want %d", baud, plan.period, period*1e6, tr.Count(), len(frames))
 			}
-			for i := 0; i < tr.Count(); i++ {
+			for i := range tr.Count() {
 				l := tr.At(i)
 				if l.Note != "BRK" || l.N != 4 || l.Errs != 0 || l.Vals[1] != uint32(i) || l.Vals[2] != uint32(0x80+i) {
 					t.Fatalf("LIN at %d line %d: %q", baud, i, tr.Format(i))

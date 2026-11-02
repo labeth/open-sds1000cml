@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-ENGINE
+
 package engine
 
 import (
@@ -145,7 +146,7 @@ type rollView struct {
 	losses    int
 	lastBlock time.Time
 	buf       [32768]byte
-	isolated  bool // the bus worker drains the banks into its ring
+	pump      streamPumper // the bus worker's pump while it drains the banks into its ring
 	// Partial software group (plan.group > 1): averaged samples (chunked) or
 	// peak words (stream) carried to the next update.
 	accN       int
@@ -191,8 +192,8 @@ func (r *rollView) groupAvg(gap int, q1, q2 []uint16) ([]uint16, []uint16, []boo
 			}
 			n -= t
 			if r.accN == g {
-				o1 = append(o1, uint16(r.acc1/int64(g)))
-				o2 = append(o2, uint16(r.acc2/int64(g)))
+				o1 = append(o1, uint16(r.acc1/int64(g))) //nolint:gosec // G115: a mean of Q8.8 codes
+				o2 = append(o2, uint16(r.acc2/int64(g))) //nolint:gosec // G115: a mean of Q8.8 codes
 				oh = append(oh, 2*r.accHeld > g)
 				r.accN, r.accHeld, r.acc1, r.acc2 = 0, 0, 0, 0
 			}
@@ -216,7 +217,8 @@ func (r *rollView) groupPeak(raw []byte) []byte {
 	if g <= 1 {
 		return raw
 	}
-	data := append(r.carry, raw...)
+	r.carry = append(r.carry, raw...)
+	data := r.carry
 	n := len(data) / 4 / g
 	out := make([]byte, 4*n)
 	for k := range n {
@@ -383,8 +385,8 @@ func (e *Engine) rollStep(r *rollView) {
 	}
 	r.feGen = e.feGen.Load()
 	cfg := sramcapture.Config{
-		Source: sramcapture.ADC, DecimationLog2: p.log, PreWords: uint32(p.chunk - 1), PostWords: 1,
-		TriggerChannel: uint8(e.trigSrc.Load()), TriggerLevel: uint8(e.trigLevelWord()),
+		Source: sramcapture.ADC, DecimationLog2: p.log, PreWords: uint32(p.chunk - 1), PostWords: 1, //nolint:gosec // G115: a chunk is 2..Words words
+		TriggerChannel: e.trigChannel(), TriggerLevel: e.trigLevelCode(),
 	}
 	armAt := e.clk.Now()
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
@@ -479,7 +481,7 @@ func (e *Engine) rollStep(r *rollView) {
 		r.push(gap, w.q1, w.q2, nil)
 	}
 
-	e.rollPublish(r, m.Decimation*uint32(p.group), "roll view: back-to-back decimated captures; gaps between them hold the last value",
+	e.rollPublish(r, m.Decimation*uint32(p.group), "roll view: back-to-back decimated captures; gaps between them hold the last value", //nolint:gosec // G115: a group of a few words
 		fmt.Sprintf("roll (%d samples, %.0f%% captured)", p.screen, 100*r.covered),
 		fmt.Sprintf("roll chunk %d words %.0f ms, gap %d samples, cycle %.0f ms",
 			n, float64(n)*p.sampleS*1e3, gap, float64(e.clk.Now().Sub(armAt))/float64(time.Millisecond)))
@@ -495,11 +497,12 @@ func (e *Engine) rollPublish(r *rollView, decimation uint32, filter, readout, st
 		C1: c1, C2: c2, Valid: p.screen, WinCols: p.screen, SampleS: p.sampleS, CaptureSampleS: p.sampleS,
 		TdivS: tdiv, DisplayedS: tdiv, EdgeX: -1, TrigPos: -1, Coherent: true, HaltOK: true, Interp: false,
 		Decimation: decimation, TriggerKind: "roll", Roll: true, CaptureDepth: p.screen, Filter: filter,
+		Q1: q1[:0], Q2: q2[:0],
 	}
 	copy(f.C1, r.c1)
 	copy(f.C2, r.c2)
-	f.Q1 = append(q1[:0], r.q1...)
-	f.Q2 = append(q2[:0], r.q2...)
+	f.Q1 = append(f.Q1, r.q1...)
+	f.Q2 = append(f.Q2, r.q2...)
 	f.Held = append([]bool(nil), r.held...)
 	e.noteChannelMeans(f)
 	e.seq++
@@ -550,48 +553,8 @@ func (e *Engine) rollStreamStep(r *rollView) {
 		r.rescale(scale, e.clk.Now()) // a V/div or offset change, or any front-end write
 	}
 	r.feGen = e.feGen.Load()
-	if !r.streaming {
-		if err := e.freshStreamImage(imageStream); err != nil {
-			e.busErr(err)
-			e.sleepBeating(100 * time.Millisecond)
-			return
-		}
-		cfg := sramcapture.Config{
-			Source: sramcapture.ADC, DecimationLog2: p.log, PreWords: sramcapture.Words - 17, PostWords: 17,
-			TriggerChannel: uint8(e.trigSrc.Load()), TriggerLevel: uint8(e.trigLevelWord()),
-		}
-		ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
-		err := e.sram.StartStream(ctx, cfg, true, true, sramcapture.StreamPace{})
-		cancel()
-		if err != nil {
-			e.busErr(err)
-			e.sleepBeating(100 * time.Millisecond)
-			return
-		}
-		r.streaming, r.expected, r.restartAt, r.lastBlock = true, 0, e.clk.Now(), e.clk.Now()
-		// With a bus worker (the instrument), the worker drains the banks at its
-		// FIFO service into a ring, so the app's scheduling cannot lose words
-		// (in-app drains stall 16 to 21 ms behind the LCD).
-		if p, ok := e.b.(streamPumper); ok {
-			owned, err := p.SetIsolatedStreamPump(true)
-			if err != nil {
-				e.busErr(err)
-				e.rollStreamStop(r)
-				return
-			}
-			r.isolated = owned
-		}
-		// Two banks give the drain only a seal period or two of slack: on the
-		// single core the LCD render alone holds the engine off for 23 to 50 ms
-		// (every measured loss had both banks unreleased). Run the session
-		// with the decoded stream's FIFO service, as that stream does.
-		if dev, ok := e.b.(*bus.Dev); ok && r.deadline == nil && !r.isolated {
-			if d, err := dev.StartDecodedDeadline(); err != nil {
-				e.logf("roll: stream scheduling: %v", err)
-			} else {
-				r.deadline = d
-			}
-		}
+	if !r.streaming && !e.rollStreamStart(r, p) {
+		return
 	}
 	start := e.clk.Now()
 	var w rollWriter
@@ -604,62 +567,14 @@ func (e *Engine) rollStreamStep(r *rollView) {
 		if changed || !e.rollActive() || len(e.sramJobs) != 0 {
 			return // the loop stops the stream or starts the new view
 		}
-		if r.isolated {
-			p := e.b.(streamPumper)
-			first, n, _, err := p.ReadIsolatedStream(r.buf[:])
-			if err == nil && n > 0 && first != r.expected {
-				err = fmt.Errorf("stream ordinal %d, want %d", first, r.expected)
-			}
-			if err != nil {
-				r.losses++
-				e.logf("roll: stream ended after %d words: %v", r.expected, err)
-				e.noteStreamLoss(r.expected)
-				e.rollStreamStop(r)
-				break
-			}
-			if n > 0 {
-				w.Write(r.buf[:n])
-				r.expected += uint64(n / 4)
-				r.lastBlock = e.clk.Now()
-				continue
-			}
-			if len(w.q1) > 0 && e.clk.Now().Sub(r.lastPub) >= rollPublishEvery {
-				break
-			}
-			e.clk.Sleep(5 * time.Millisecond)
-			continue
+		var more bool
+		if r.pump != nil {
+			more = e.rollPumpStep(r, &w)
+		} else {
+			more = e.rollDrainStep(r, &w, start)
 		}
-		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-		block, err := e.sram.DrainStream(ctx, r.expected, &w)
-		cancel()
-		if err == sramcapture.ErrNoStreamBlock {
-			if len(w.q1) > 0 && e.clk.Now().Sub(r.lastPub) >= rollPublishEvery {
-				break
-			}
-			if r.deadline != nil {
-				if err := r.deadline.Pause(); err != nil {
-					e.logf("roll: pause: %v", err)
-				}
-			} else {
-				e.clk.Sleep(2 * time.Millisecond)
-			}
-			continue
-		}
-		if err != nil {
-			// Overrun or a transport error: the stream lost words. Say so, and
-			// start a new one (placed by the host clock) on the next step.
-			r.losses++
-			raw, _ := e.sram.StreamStatus()
-			e.logf("roll: stream ended after %d words, %.1f ms since the last block: %v (status %+v)", r.expected,
-				float64(e.clk.Now().Sub(r.lastBlock))/float64(time.Millisecond), err, raw)
-			e.noteStreamLoss(r.expected)
-			e.rollStreamStop(r)
+		if !more {
 			break
-		}
-		r.expected = block.FirstWord + uint64(block.Words)
-		r.lastBlock = e.clk.Now()
-		if e.clk.Now().Sub(start) > time.Second {
-			break // keep the view alive even if a bank is always ready
 		}
 	}
 	if len(w.q1) == 0 {
@@ -688,9 +603,136 @@ func (e *Engine) rollStreamStep(r *rollView) {
 	q1, q2 := e.peakSamples(r, raw)
 	r.push(gap, q1, q2, nil)
 	r.lastEnd, r.lastPub = now, now
-	e.rollPublish(r, uint32(1)<<p.log*uint32(p.group), "roll view: continuous peak-detect stream (stream image)",
+	e.rollPublish(r, uint32(1)<<p.log*uint32(p.group), "roll view: continuous peak-detect stream (stream image)", //nolint:gosec // G115: a group of a few words
 		fmt.Sprintf("roll stream (%d samples, %d losses)", p.screen, r.losses),
 		fmt.Sprintf("roll stream %d words this update, ordinal %d", len(w.q1), r.expected))
+}
+
+// rollStreamStart starts the roll view's peak-detect stream; false when it
+// could not (the error is reported).
+// TRLC-LINKS: REQ-SDS-010, REQ-SDS-035
+func (e *Engine) rollStreamStart(r *rollView, p rollPlan) bool {
+	if err := e.freshStreamImage(imageStream); err != nil {
+		e.busErr(err)
+		e.sleepBeating(100 * time.Millisecond)
+		return false
+	}
+	cfg := sramcapture.Config{
+		Source: sramcapture.ADC, DecimationLog2: p.log, PreWords: sramcapture.Words - 17, PostWords: 17,
+		TriggerChannel: e.trigChannel(), TriggerLevel: e.trigLevelCode(),
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	err := e.sram.StartStream(ctx, cfg, true, true, sramcapture.StreamPace{})
+	cancel()
+	if err != nil {
+		e.busErr(err)
+		e.sleepBeating(100 * time.Millisecond)
+		return false
+	}
+	r.streaming, r.expected, r.restartAt, r.lastBlock = true, 0, e.clk.Now(), e.clk.Now()
+	// With a bus worker (the instrument), the worker drains the banks at its
+	// FIFO service into a ring, so the app's scheduling cannot lose words
+	// (in-app drains stall 16 to 21 ms behind the LCD).
+	pump, err := e.ownStreamPump()
+	if err != nil {
+		e.busErr(err)
+		e.rollStreamStop(r)
+		return false
+	}
+	r.pump = pump
+	// Two banks give the drain only a seal period or two of slack: on the
+	// single core the LCD render alone holds the engine off for 23 to 50 ms
+	// (every measured loss had both banks unreleased). Run the session
+	// with the decoded stream's FIFO service, as that stream does.
+	if dev, ok := e.b.(*bus.Dev); ok && r.deadline == nil && r.pump == nil {
+		if d, err := dev.StartDecodedDeadline(); err != nil {
+			e.logf("roll: stream scheduling: %v", err)
+		} else {
+			r.deadline = d
+		}
+	}
+	return true
+}
+
+// rollPumpStep moves the bus worker's next stream words into w; false when
+// the update ends (a loss, or words to publish and none waiting).
+// TRLC-LINKS: REQ-SDS-010, REQ-SDS-035
+func (e *Engine) rollPumpStep(r *rollView, w *rollWriter) bool {
+	first, n, _, err := r.pump.ReadIsolatedStream(r.buf[:])
+	if err == nil && n > 0 && first != r.expected {
+		err = fmt.Errorf("stream ordinal %d, want %d", first, r.expected)
+	}
+	if err == nil && n > 0 {
+		_, err = w.Write(r.buf[:n])
+	}
+	if err != nil {
+		r.losses++
+		e.logf("roll: stream ended after %d words: %v", r.expected, err)
+		e.noteStreamLoss(r.expected)
+		e.rollStreamStop(r)
+		return false
+	}
+	if n > 0 {
+		r.expected += uint64(n / 4)
+		r.lastBlock = e.clk.Now()
+		return true
+	}
+	if len(w.q1) > 0 && e.clk.Now().Sub(r.lastPub) >= rollPublishEvery {
+		return false
+	}
+	e.clk.Sleep(5 * time.Millisecond)
+	return true
+}
+
+// rollDrainStep drains the next sealed stream bank into w; false when the
+// update ends (a loss, words to publish and none waiting, or a second of
+// draining since start).
+// TRLC-LINKS: REQ-SDS-010, REQ-SDS-035
+func (e *Engine) rollDrainStep(r *rollView, w *rollWriter, start time.Time) bool {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	block, err := e.sram.DrainStream(ctx, r.expected, w)
+	cancel()
+	if errors.Is(err, sramcapture.ErrNoStreamBlock) {
+		if len(w.q1) > 0 && e.clk.Now().Sub(r.lastPub) >= rollPublishEvery {
+			return false
+		}
+		if r.deadline == nil {
+			e.clk.Sleep(2 * time.Millisecond)
+		} else if err := r.deadline.Pause(); err != nil {
+			e.logf("roll: pause: %v", err)
+		}
+		return true
+	}
+	if err != nil {
+		// Overrun or a transport error: the stream lost words. Say so, and
+		// start a new one (placed by the host clock) on the next step.
+		r.losses++
+		raw, _ := e.sram.StreamStatus()
+		e.logf("roll: stream ended after %d words, %.1f ms since the last block: %v (status %+v)", r.expected,
+			float64(e.clk.Now().Sub(r.lastBlock))/float64(time.Millisecond), err, raw)
+		e.noteStreamLoss(r.expected)
+		e.rollStreamStop(r)
+		return false
+	}
+	r.expected = block.FirstWord + uint64(block.Words)
+	r.lastBlock = e.clk.Now()
+	return e.clk.Now().Sub(start) <= time.Second // keep the view alive even if a bank is always ready
+}
+
+// ownStreamPump starts the bus worker's stream-bank pump when the bus has
+// one, and returns it when the worker took the stream (nil when the app
+// drains the banks itself).
+// TRLC-LINKS: REQ-SDS-018
+func (e *Engine) ownStreamPump() (streamPumper, error) {
+	p, ok := e.b.(streamPumper)
+	if !ok {
+		return nil, nil
+	}
+	owned, err := p.SetIsolatedStreamPump(true)
+	if err != nil || !owned {
+		return nil, err
+	}
+	return p, nil
 }
 
 // streamPumper is the bus worker's stream-bank pump (bus.Dev with a worker).
@@ -752,11 +794,11 @@ func (e *Engine) rollStreamStop(r *rollView) {
 	if !r.streaming {
 		return
 	}
-	if r.isolated {
-		if _, err := e.b.(streamPumper).SetIsolatedStreamPump(false); err != nil {
+	if r.pump != nil {
+		if _, err := r.pump.SetIsolatedStreamPump(false); err != nil {
 			e.busErr(err)
 		}
-		r.isolated = false
+		r.pump = nil
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	if err := e.sram.StopStream(ctx); err != nil {

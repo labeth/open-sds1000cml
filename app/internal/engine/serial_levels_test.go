@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-ENGINE
+
 package engine
 
 import (
@@ -302,7 +303,7 @@ func TestWordPatternsGroupByUnit(t *testing.T) {
 	errs := []PatternElem{{Kind: patternError}, {Kind: patternError}, {Kind: patternData, Value: 0xA5, Mask: 0xff}, {Kind: patternData, Value: 0x5A, Mask: 0xff}}
 	p, why := e.serialPlanParams(SerialParams{Proto: serMIL1553, Baud: 1000000, HaveThr: true, Threshold: 128, Pattern: errs})
 	if why != "" || len(p.Pattern) != 2 || p.Pattern[0].Kind != patternError || p.Pattern[1].Value != 0xA55A || p.Pattern[1].Mask != 0xffff {
-		t.Fatalf("MIL-1553 ERR ERR A5 5A planned %+v (%q), want [error, A55A]", p.Pattern, why)
+		t.Fatalf("MIL-1553 [ERR ERR A5 5A] planned %+v (%q), want [error, A55A]", p.Pattern, why)
 	}
 	field := []PatternElem{{Kind: patternData, Value: 0x00, Mask: 0xff}, {Kind: patternData, Value: 0xA0, Mask: 0xf0}, {Kind: patternData, Value: 0xCD, Mask: 0xff}}
 	p, why = e.serialPlanParams(SerialParams{Proto: serARINC, Baud: 100000, HaveThr: true, Threshold: 128, Pattern: field})
@@ -387,7 +388,7 @@ func TestTwoLineBusPlansEachLineLevel(t *testing.T) {
 		e.chVdivBits[1].Store(math.Float64bits(2))
 		e.trigOffV[1].Store(math.Float64bits(-1))
 		c, _, _, _, _ = e.sramConfig()
-		if !(c.SPI.Enabled || c.I2C.Enabled) || c.TriggerLevel != 114 || c.SecondLevel != 140 {
+		if (!c.SPI.Enabled && !c.I2C.Enabled) || c.TriggerLevel != 114 || c.SecondLevel != 140 {
 			t.Fatalf("proto %d traces apart: levels %d (clock, want 114), %d (data, want 140)", proto, c.TriggerLevel, c.SecondLevel)
 		}
 	}

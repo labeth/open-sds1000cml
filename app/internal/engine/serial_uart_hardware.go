@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-ENGINE
+
 package engine
 
 import (
@@ -25,7 +26,7 @@ func planHardwareUART(p *SerialParams, sample bool) sramcapture.UARTTriggerConfi
 	}
 	var par uint8
 	switch p.Parity {
-	case "", "none":
+	case "", parityNone:
 	case "even":
 		par = 1
 	case "odd":
@@ -33,7 +34,7 @@ func planHardwareUART(p *SerialParams, sample bool) sramcapture.UARTTriggerConfi
 	default:
 		return sramcapture.UARTTriggerConfig{}
 	}
-	c := sramcapture.UARTTriggerConfig{Enabled: true, Channel: uint8(p.ChA), Inverted: p.Inverted, Length: uint8(len(p.Bytes))}
+	c := sramcapture.UARTTriggerConfig{Enabled: true, Channel: uint8(p.ChA), Inverted: p.Inverted, Length: uint8(len(p.Bytes))} //nolint:gosec // G115: the checks above bound each field
 	if sample {
 		per := decode.UARTPeriod16(float64(p.Baud))
 		if per < decode.SampleUARTMinPeriod16 && 50*per >= 49*decode.SampleUARTMinPeriod16 {

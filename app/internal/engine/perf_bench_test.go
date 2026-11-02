@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-ENGINE
+
 package engine
 
 import (
@@ -171,7 +172,7 @@ func TestUniRingStatsExact(t *testing.T) {
 	ref := func(u *uniRing) (std, stdRaw, worst float64) {
 		colStd := func(ring [][]uint8, col int) float64 {
 			var s, s2 float64
-			for k := 0; k < u.cnt; k++ {
+			for k := range u.cnt {
 				v := float64(ring[k][col])
 				s += v
 				s2 += v * v
@@ -323,7 +324,7 @@ func BenchmarkEnvReduce(b *testing.B) {
 func TestEnvColumnStep(t *testing.T) {
 	for n := 1; n < 5000; n += 7 {
 		c, num, next := 0, 0, n
-		for i := 0; i < n; i++ {
+		for i := range n {
 			for num >= next {
 				c++
 				next += n
@@ -713,7 +714,9 @@ func BenchmarkSRAMFrameWrite(b *testing.B) {
 		b.Run(map[uint8]string{0: "codes", 8: "q8"}[fb], func(b *testing.B) {
 			for b.Loop() {
 				w := sramFrameWriter{f: f, m: sramcapture.Metadata{SamplesPerWord: spw, FractionBits: fb}}
-				w.Write(payload)
+				if _, err := w.Write(payload); err != nil {
+					b.Fatal(err)
+				}
 			}
 		})
 	}
@@ -754,7 +757,7 @@ func TestBandIntervalsByKind(t *testing.T) {
 			want = float64(d) * 10
 		case KindRoll:
 			want = rollDivisor * 10
-		default:
+		case KindNativeFast, KindDecimated:
 			switch b.Class {
 			case 0x20:
 				want = 2
@@ -955,7 +958,7 @@ func TestSoundRingReadWraps(t *testing.T) {
 		r.pushWords(raw, SoundScale{}, false, time.Unix(0, 0))
 	}
 	blk := r.read(r.next-200, 200, nil, nil, 1)
-	for i := 0; i < blk.N; i++ {
+	for i := range blk.N {
 		o := blk.First + uint64(i)
 		want := uint16(int(o/97)*1000 + int(o%97))
 		if blk.Q1[i] != want || blk.Q2[i] != ^want {
@@ -1034,7 +1037,9 @@ func BenchmarkBufferDecoded(b *testing.B) {
 		for i := range batch {
 			batch[i].Sequence = e.decodedSequence + uint32(i)
 		}
-		e.bufferDecoded(batch)
+		if err := e.bufferDecoded(batch); err != nil {
+			b.Fatal(err)
+		}
 		e.decodedHead, e.decodedCount = (e.decodedHead+e.decodedCount)%decodedBufferLimit, 0 // a consumer took them
 	}
 }
@@ -1167,7 +1172,7 @@ var lineSink []byte
 // TRLC-LINKS: REQ-SDS-018
 func BenchmarkLineBuf(b *testing.B) {
 	for b.Loop() {
-		bp := lineBufs.Get().(*[]byte)
+		bp := getLineBuf()
 		lineSink = (*bp)[:16]
 		lineBufs.Put(bp)
 	}

@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-ENGINE
+
 package engine
 
 import (
@@ -151,6 +152,7 @@ func (f *packetImages) HasPacket() bool { return true }
 
 // TRLC-LINKS: REQ-SDS-013
 func newPacketTestEngine(t *testing.T) (*Engine, *stackEngineBus, *packetImages) {
+	t.Helper()
 	b := &stackEngineBus{image: "general"}
 	fake := packetEngineBus{b}
 	capture, err := sramcapture.New(fake)
@@ -159,7 +161,7 @@ func newPacketTestEngine(t *testing.T) (*Engine, *stackEngineBus, *packetImages)
 	}
 	images := &packetImages{b: b}
 	e := &Engine{
-		b: fake, sram: capture, sramJobs: make(chan sramJob, 1), done: make(chan struct{}), images: images,
+		b: fake, sram: capture, sramJobs: make(chan ownerJob, 1), done: make(chan struct{}), images: images,
 		logf: t.Logf, clk: Clock{Now: time.Now, Sleep: func(time.Duration) {}},
 	}
 	e.probeSerialHardware()

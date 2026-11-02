@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-ENGINE
+
 package engine
 
 import (
@@ -249,7 +250,7 @@ func TestSingleShotNotConsumedByFlatFallback(t *testing.T) {
 	// engine with a "captured" flat screen. It now gates on `lock`.
 	fb := newFakeBus()
 	fb.mu.Lock()
-	fb.wave = func(i int) (uint8, uint8) { return 128, 128 } // flat rail: no lock possible
+	fb.wave = func(_ int) (uint8, uint8) { return 128, 128 } // flat rail: no lock possible
 	fb.mu.Unlock()
 	e, _ := newTestEngine(t, fb)
 	b, ok := PlanTdiv(1e-6)

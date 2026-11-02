@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-ENGINE
+
 package engine
 
 import (
@@ -48,13 +49,13 @@ type bkFamily struct {
 func bodeBreakerFamilies(dt float64) []bkFamily {
 	nyq := 0.5 / dt
 	sine := func(fHz, amp, off, ph float64) func(int, int, func() float64) float64 {
-		return func(i, n int, _ func() float64) float64 {
+		return func(i, _ int, _ func() float64) float64 {
 			return off + amp*math.Sin(2*math.Pi*fHz*float64(i)*dt+ph)
 		}
 	}
 	sq := func(fHz, amp, off, duty float64) func(int, int, func() float64) float64 {
 		p := 1.0 / (fHz * dt)
-		return func(i, n int, _ func() float64) float64 {
+		return func(i, _ int, _ func() float64) float64 {
 			if math.Mod(float64(i), p) < p*duty {
 				return off + amp
 			}
@@ -74,11 +75,11 @@ func bodeBreakerFamilies(dt float64) []bkFamily {
 	add("sq-90%", sq(nyq*0.05, 90, 128, 0.9))
 	add("sq-99%", sq(nyq*0.02, 90, 128, 0.99))
 	add("sq-nearNyq", sq(nyq*0.48, 90, 128, 0.5))
-	add("saw", func(i, n int, _ func() float64) float64 {
+	add("saw", func(i, _ int, _ func() float64) float64 {
 		p := 1.0 / (nyq * 0.05 * dt)
 		return 40 + 200*math.Mod(float64(i), p)/p
 	})
-	add("triangle", func(i, n int, _ func() float64) float64 {
+	add("triangle", func(i, _ int, _ func() float64) float64 {
 		p := 1.0 / (nyq * 0.05 * dt)
 		m := math.Mod(float64(i), p) / p
 		if m < 0.5 {
@@ -86,19 +87,19 @@ func bodeBreakerFamilies(dt float64) []bkFamily {
 		}
 		return 30 + 400*(1-m)
 	})
-	add("two-tone", func(i, n int, _ func() float64) float64 {
+	add("two-tone", func(i, _ int, _ func() float64) float64 {
 		x := float64(i) * dt
 		return 128 + 45*math.Sin(2*math.Pi*nyq*0.05*x) + 45*math.Sin(2*math.Pi*nyq*0.13*x)
 	})
-	add("three-tone", func(i, n int, _ func() float64) float64 {
+	add("three-tone", func(i, _ int, _ func() float64) float64 {
 		x := float64(i) * dt
 		return 128 + 30*math.Sin(2*math.Pi*nyq*0.03*x) + 30*math.Sin(2*math.Pi*nyq*0.07*x) + 30*math.Sin(2*math.Pi*nyq*0.19*x)
 	})
-	add("am", func(i, n int, _ func() float64) float64 {
+	add("am", func(i, _ int, _ func() float64) float64 {
 		x := float64(i) * dt
 		return 128 + 90*math.Sin(2*math.Pi*nyq*0.1*x)*(0.5+0.5*math.Sin(2*math.Pi*nyq*0.005*x))
 	})
-	add("fm", func(i, n int, _ func() float64) float64 {
+	add("fm", func(i, _ int, _ func() float64) float64 {
 		x := float64(i) * dt
 		return 128 + 90*math.Sin(2*math.Pi*nyq*0.1*x+3*math.Sin(2*math.Pi*nyq*0.008*x))
 	})
@@ -106,11 +107,11 @@ func bodeBreakerFamilies(dt float64) []bkFamily {
 		fr := nyq * (0.02 + 0.3*float64(i)/float64(n))
 		return 128 + 90*math.Sin(2*math.Pi*fr*float64(i)*dt)
 	})
-	add("beat", func(i, n int, _ func() float64) float64 {
+	add("beat", func(i, _ int, _ func() float64) float64 {
 		x := float64(i) * dt
 		return 128 + 90*math.Sin(2*math.Pi*nyq*0.1*x)*math.Cos(2*math.Pi*nyq*0.002*x)
 	})
-	add("harmonic-rich", func(i, n int, _ func() float64) float64 {
+	add("harmonic-rich", func(i, _ int, _ func() float64) float64 {
 		x := float64(i) * dt
 		s := 0.0
 		for h := 1; h <= 7; h++ {
@@ -118,7 +119,7 @@ func bodeBreakerFamilies(dt float64) []bkFamily {
 		}
 		return 128 + 70*s
 	})
-	add("halfwave", func(i, n int, _ func() float64) float64 {
+	add("halfwave", func(i, _ int, _ func() float64) float64 {
 		v := math.Sin(2 * math.Pi * nyq * 0.06 * float64(i) * dt)
 		if v < 0 {
 			v = 0
@@ -128,27 +129,27 @@ func bodeBreakerFamilies(dt float64) []bkFamily {
 	add("sine+dc-drift", func(i, n int, _ func() float64) float64 {
 		return 60 + float64(i)/float64(n)*120 + 40*math.Sin(2*math.Pi*nyq*0.08*float64(i)*dt)
 	})
-	add("burst", func(i, n int, _ func() float64) float64 {
+	add("burst", func(i, _ int, _ func() float64) float64 {
 		if i%800 < 200 {
 			return 128 + 90*math.Sin(2*math.Pi*nyq*0.12*float64(i)*dt)
 		}
 		return 128
 	})
-	add("white-noise", func(i, n int, rng func() float64) float64 { return 128 + 80*(rng()*2-1) })
-	add("noisy-sine", func(i, n int, rng func() float64) float64 {
+	add("white-noise", func(_, _ int, rng func() float64) float64 { return 128 + 80*(rng()*2-1) })
+	add("noisy-sine", func(i, _ int, rng func() float64) float64 {
 		return 128 + 70*math.Sin(2*math.Pi*nyq*0.09*float64(i)*dt) + 20*(rng()*2-1)
 	})
-	add("flat-mid", func(i, n int, _ func() float64) float64 { return 128 })
-	add("flat-low", func(i, n int, _ func() float64) float64 { return 0 })
-	add("flat-high", func(i, n int, _ func() float64) float64 { return 255 })
-	add("tiny-amp", func(i, n int, _ func() float64) float64 { return 128 + 1.2*math.Sin(2*math.Pi*nyq*0.1*float64(i)*dt) })
-	add("clipped", func(i, n int, _ func() float64) float64 {
+	add("flat-mid", func(_, _ int, _ func() float64) float64 { return 128 })
+	add("flat-low", func(_, _ int, _ func() float64) float64 { return 0 })
+	add("flat-high", func(_, _ int, _ func() float64) float64 { return 255 })
+	add("tiny-amp", func(i, _ int, _ func() float64) float64 { return 128 + 1.2*math.Sin(2*math.Pi*nyq*0.1*float64(i)*dt) })
+	add("clipped", func(i, _ int, _ func() float64) float64 {
 		return clampf(128 + 300*math.Sin(2*math.Pi*nyq*0.07*float64(i)*dt))
 	})
 	add("railed-square", sq(nyq*0.1, 300, 128, 0.5))
-	add("dc-near-rail", func(i, n int, _ func() float64) float64 { return 253 + 2*math.Sin(2*math.Pi*nyq*0.1*float64(i)*dt) })
-	add("dc-near-zero", func(i, n int, _ func() float64) float64 { return 2 + 2*math.Sin(2*math.Pi*nyq*0.1*float64(i)*dt) })
-	add("impulse-train", func(i, n int, _ func() float64) float64 {
+	add("dc-near-rail", func(i, _ int, _ func() float64) float64 { return 253 + 2*math.Sin(2*math.Pi*nyq*0.1*float64(i)*dt) })
+	add("dc-near-zero", func(i, _ int, _ func() float64) float64 { return 2 + 2*math.Sin(2*math.Pi*nyq*0.1*float64(i)*dt) })
+	add("impulse-train", func(i, _ int, _ func() float64) float64 {
 		if i%512 == 0 {
 			return 255
 		}
@@ -172,25 +173,25 @@ func bodeBreakerFamilies(dt float64) []bkFamily {
 		return 40 + 200*math.Exp(-float64(i)/float64(n)*4)*math.Abs(math.Sin(2*math.Pi*nyq*0.05*float64(i)*dt))
 	})
 	add("asym-pulse", sq(nyq*0.04, 90, 128, 0.03))
-	add("ringing", func(i, n int, _ func() float64) float64 {
+	add("ringing", func(i, _ int, _ func() float64) float64 {
 		m := math.Mod(float64(i), 1000)
 		return 128 + 100*math.Exp(-m/120)*math.Cos(2*math.Pi*nyq*0.15*m*dt)
 	})
-	add("glitch-sine", func(i, n int, _ func() float64) float64 {
+	add("glitch-sine", func(i, _ int, _ func() float64) float64 {
 		v := 128 + 90*math.Sin(2*math.Pi*nyq*0.08*float64(i)*dt)
 		if i%333 == 0 {
 			v = 0
 		}
 		return v
 	})
-	add("staircase", func(i, n int, _ func() float64) float64 {
+	add("staircase", func(i, _ int, _ func() float64) float64 {
 		return 20 + 40*math.Floor(math.Mod(float64(i), 600)/100)
 	})
 	return fams
 }
 
 // TRLC-LINKS: REQ-SDS-066
-func mkChan(fam bkFamily, n int, dt float64, seed int64) []uint8 {
+func mkChan(fam bkFamily, n int, _ float64, seed int64) []uint8 {
 	s := seed
 	rng := func() float64 {
 		s = (s*6364136223846793005 + 1442695040888963407) & 0x7fffffffffffffff

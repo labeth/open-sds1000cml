@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-ENGINE
+
 package engine
 
 import (
@@ -50,10 +51,10 @@ func TestStreamRingTopRTL(t *testing.T) {
 			} {
 				args = append(args, filepath.Join(rtl, f))
 			}
-			if out, err := exec.Command("iverilog", args...).CombinedOutput(); err != nil {
+			if out, err := exec.CommandContext(t.Context(), "iverilog", args...).CombinedOutput(); err != nil {
 				t.Fatalf("compile: %v\n%s", err, out)
 			}
-			out, err := exec.Command("vvp", "-N", image).CombinedOutput()
+			out, err := exec.CommandContext(t.Context(), "vvp", "-N", image).CombinedOutput()
 			if err != nil || !regexp.MustCompile(`(?m)^PASS tb_top_bits_ring`).Match(out) {
 				t.Fatalf("simulation: %v\n%s", err, out)
 			}

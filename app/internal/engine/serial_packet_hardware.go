@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-ENGINE
+
 package engine
 
 import (
@@ -31,7 +32,7 @@ func planHardwarePacket(p *SerialParams, mask uint16, arinc uint32) sramcapture.
 	if !serialThresholdOK(p) || p.Proto < 0 || p.Proto > 15 || mask&(1<<p.Proto) == 0 {
 		return off
 	}
-	c := sramcapture.PacketTriggerConfig{Enabled: true, Protocol: uint8(p.Proto), Channel: uint8(p.ChA)}
+	c := sramcapture.PacketTriggerConfig{Enabled: true, Protocol: uint8(p.Proto), Channel: uint8(p.ChA)} //nolint:gosec // G115: the protocol is checked to 0..15 above, the channel is 0 or 1
 	bytes := func(limit int) bool {
 		if len(p.Bytes) > limit {
 			return false
@@ -42,7 +43,7 @@ func planHardwarePacket(p *SerialParams, mask uint16, arinc uint32) sramcapture.
 			}
 			c.Pattern = c.Pattern<<8 | uint64(b)
 		}
-		c.Length = uint8(len(p.Bytes))
+		c.Length = uint8(len(p.Bytes)) //nolint:gosec // G115: a pattern of at most eight bytes
 		return true
 	}
 	switch p.Proto {
@@ -71,7 +72,7 @@ func planHardwarePacket(p *SerialParams, mask uint16, arinc uint32) sramcapture.
 			if p.Bytes[0] < 0 || p.Bytes[0] > 0x7ffff {
 				return off
 			}
-			c.Pattern = uint64(0x7ffff)<<42 | uint64(p.Bytes[0])<<10
+			c.Pattern = uint64(0x7ffff)<<42 | uint64(p.Bytes[0])<<10 //nolint:gosec // G115: checked to 0..0x7ffff above
 		}
 	default:
 		return off
@@ -108,7 +109,7 @@ func planHardwareManchester(p *SerialParams) sramcapture.ManchesterTriggerConfig
 	if p.Proto != serManchester || !serialThresholdOK(p) || bits < 1 || bits > 16 || len(p.Bytes) > 4 || ticks < 8 || ticks > 0x3fffff {
 		return sramcapture.ManchesterTriggerConfig{}
 	}
-	c := sramcapture.ManchesterTriggerConfig{Enabled: true, Channel: uint8(p.ChA), IEEE: p.IEEE, MSB: p.MSB, Bits: uint8(bits), BitTicks: uint32(ticks), Length: uint8(len(p.Bytes))}
+	c := sramcapture.ManchesterTriggerConfig{Enabled: true, Channel: uint8(p.ChA), IEEE: p.IEEE, MSB: p.MSB, Bits: uint8(bits), BitTicks: uint32(ticks), Length: uint8(len(p.Bytes))} //nolint:gosec // G115: the checks above bound each field
 	for _, w := range p.Bytes {
 		if w < 0 || w >= 1<<bits {
 			return sramcapture.ManchesterTriggerConfig{}
@@ -226,6 +227,9 @@ const (
 	// clock, UART to 62.5 MBd, I2C's high-speed mode (ADR-SAMPLE-DOMAIN-SPI).
 	imageFast = "fast"
 )
+
+// imageGeneralName is how the status names the general image.
+const imageGeneralName = "general"
 
 // protocolImage names the image whose hardware triggers p, or "" for the
 // general image with UART, I2C and SPI (ADR-IMAGE-REGROUP-DECIMATION). SPI,
@@ -413,7 +417,7 @@ func (e *Engine) loadImage(name string) bool {
 	load := e.imageLoader(name)
 	shown := name
 	if shown == "" {
-		shown = "general"
+		shown = imageGeneralName
 	}
 	e.logf("engine: loading the %s image", shown)
 	e.setBusy("loading "+shown+" image", 0) // the loading indicator covers the reload
@@ -432,7 +436,7 @@ func (e *Engine) loadImage(name string) bool {
 		} else {
 			e.busErr(err)
 		}
-		name, shown = "", "general"
+		name, shown = "", imageGeneralName
 	}
 	e.protocolImage = name
 	e.probeSerialHardware()
@@ -458,7 +462,7 @@ func (e *Engine) reloadImage() error {
 	}
 	shown := e.protocolImage
 	if shown == "" {
-		shown = "general"
+		shown = imageGeneralName
 	}
 	e.setBusy("reloading "+shown+" image", 0)
 	defer e.beatWhile()()
@@ -472,7 +476,7 @@ func (e *Engine) reloadImage() error {
 			return restore
 		}
 		e.mu.Lock()
-		e.stats.Image = "general"
+		e.stats.Image = imageGeneralName
 		e.mu.Unlock()
 	}
 	e.probeSerialHardware()
@@ -531,7 +535,7 @@ func (e *Engine) noteARINCLevels(f *Frame) {
 // load).
 // TRLC-LINKS: REQ-SDS-011, REQ-SDS-014
 func (e *Engine) noteBackendsLoading(image string) {
-	shown := map[string]string{imageQualify: "qualifier", imagePacket: "packet", imageLine: "line", imageStream: "stream", imageBits: "digital stream", "": "general"}[image]
+	shown := map[string]string{imageQualify: "qualifier", imagePacket: "packet", imageLine: "line", imageStream: "stream", imageBits: "digital stream", "": imageGeneralName}[image]
 	why := "none: loading the " + shown + " FPGA image"
 	zones := e.zonesOn()
 	serial := e.serialMode.Load() == SerialTrigger

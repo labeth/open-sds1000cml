@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-ENGINE
+
 package engine
 
 import "math"
@@ -14,8 +15,9 @@ import "math"
 // TRLC-LINKS: REQ-SDS-011
 type TrigType int
 
+// The trigger types (SetTrigType).
 const (
-	TrigEdge  TrigType = 0
+	TrigEdge  TrigType = 0 // the hardware edge alone
 	TrigPulse TrigType = 1 // GLIT
 	TrigSlope TrigType = 2 // SLEW
 	TrigVideo TrigType = 3 // TV
@@ -63,14 +65,14 @@ func defaultTrigParams() trigParams {
 }
 
 // TRLC-LINKS: REQ-SDS-011
-func condOK(m, min, max float64, cond int) bool {
+func condOK(m, lo, hi float64, cond int) bool {
 	switch cond {
 	case CondLess:
-		return m < min
+		return m < lo
 	case CondGreater:
-		return m > max
+		return m > hi
 	case CondInside:
-		return min <= m && m <= max
+		return lo <= m && m <= hi
 	default:
 		return true
 	}
@@ -195,9 +197,9 @@ func qualifySlopeAt(disc []uint8, intervalNs float64, p trigParams, rising bool,
 	hi := mn + int(p.slopeHiFrac*float64(span))
 	bail := span / 10
 
-	first, second := lo, hi // rising: up through lo, then up through hi
+	first, second, sg := lo, hi, 1 // rising: up through lo, then up through hi
 	if !rising {
-		first, second = hi, lo
+		first, second, sg = hi, lo, -1
 	}
 
 	bestX, bestDist := -1.0, n+1
@@ -218,34 +220,19 @@ func qualifySlopeAt(disc []uint8, intervalNs float64, p trigParams, rising bool,
 		// edge at any decimated band) is detected as a zero-time traversal at
 		// index c — otherwise disc[k-1] is already past `second` for the whole
 		// plateau and the crossing is never found.
+		// In the slope's own orientation (codes negated for a falling edge)
+		// the walk runs upward.
 		for k := c; k < n; k++ {
-			v := int(disc[k])
-			if rising {
-				if v < first-bail {
-					break
+			v, prev := sg*int(disc[k]), sg*int(disc[k-1])
+			if v < sg*first-bail {
+				break
+			}
+			if prev < sg*second && v >= sg*second {
+				tNs := slopeTimeNs(disc, c, first, k, second, p, intervalNs)
+				if condOK(tNs, p.slopeTMinNs, p.slopeTMaxNs, p.slopeCond) && at.closer(k, &bestDist) {
+					bestX = crossFrac(disc, k, second)
 				}
-				if int(disc[k-1]) < second && v >= second {
-					tNs := slopeTimeNs(disc, c, first, k, second, p, intervalNs)
-					if condOK(tNs, p.slopeTMinNs, p.slopeTMaxNs, p.slopeCond) {
-						if at.closer(k, &bestDist) {
-							bestX = crossFrac(disc, k, second)
-						}
-					}
-					break
-				}
-			} else {
-				if v > first+bail {
-					break
-				}
-				if int(disc[k-1]) > second && v <= second {
-					tNs := slopeTimeNs(disc, c, first, k, second, p, intervalNs)
-					if condOK(tNs, p.slopeTMinNs, p.slopeTMaxNs, p.slopeCond) {
-						if at.closer(k, &bestDist) {
-							bestX = crossFrac(disc, k, second)
-						}
-					}
-					break
-				}
+				break
 			}
 		}
 	}

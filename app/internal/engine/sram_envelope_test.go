@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-ENGINE
+
 package engine
 
 import (
@@ -48,7 +49,7 @@ func TestEnvelopeWindow(t *testing.T) {
 // TRLC-LINKS: REQ-SDS-010
 func TestEnvelopeWindowKeepsTheScreen(t *testing.T) {
 	const total = 2 * sramcapture.Words
-	limit := uint32(sramcapture.Words - 16)
+	limit := sramcapture.Words - 16
 	screen, front := limit*3/5, limit*3/5
 	offset := uint32(1000)
 	b, s, n := envelopeWindow(offset, front+screen, 2048, total, front)
@@ -67,39 +68,38 @@ func TestEnvelopeWindowKeepsTheScreen(t *testing.T) {
 // TRLC-LINKS: REQ-SDS-010
 func TestEnvelopeAllowed(t *testing.T) {
 	e := &Engine{hardwareEnvelope: true}
-	edge := trigParams{typ: TrigEdge}
-	if !e.envelopeAllowed(sramcapture.Config{}, edge) {
+	if !e.envelopeAllowed() {
 		t.Fatal("plain edge capture refused")
 	}
 	e.SetBodeMode(true, 0, 1)
-	if e.envelopeAllowed(sramcapture.Config{}, edge) {
+	if e.envelopeAllowed() {
 		t.Fatal("Bode needs time-ordered samples, not extrema")
 	}
 	e.SetBodeMode(false, 0, 1)
 	// Masks, decode and software qualifiers run on the time-ordered envelope.
 	e.SetMaskMode(MaskTest)
-	if !e.envelopeAllowed(sramcapture.Config{}, edge) {
+	if !e.envelopeAllowed() {
 		t.Fatal("mask testing refused the live envelope")
 	}
 	e.SetMaskMode(MaskOff)
 	e.SetDecodeView(true)
-	if !e.envelopeAllowed(sramcapture.Config{}, trigParams{typ: TrigPulse}) {
+	if !e.envelopeAllowed() {
 		t.Fatal("decode / pulse qualification refused the live envelope")
 	}
 	e.SetDecodeView(false)
 	// The noise-reducing modes need true samples: decimated live captures.
 	for _, mode := range []int32{AcqAverage, AcqPrecision, AcqEres} {
 		e.acqMode.Store(mode)
-		if why := e.envelopeBlock(&sramcapture.Config{}, edge); why == "" || !liveDecimates(why) {
+		if why := e.envelopeBlock(); why == "" || !liveDecimates(why) {
 			t.Fatalf("mode %d: block %q", mode, why)
 		}
 	}
 	e.acqMode.Store(AcqPeak)
-	if !e.envelopeAllowed(sramcapture.Config{}, edge) {
+	if !e.envelopeAllowed() {
 		t.Fatal("peak mode refused")
 	}
 	e.hardwareEnvelope = false
-	if e.envelopeAllowed(sramcapture.Config{}, edge) {
+	if e.envelopeAllowed() {
 		t.Fatal("an image without the envelope recall")
 	}
 }
@@ -147,9 +147,8 @@ func TestOrderEnvelopeHead(t *testing.T) {
 // TRLC-LINKS: REQ-SDS-010, REQ-SDS-070
 func TestSpectrumLease(t *testing.T) {
 	e := &Engine{hardwareEnvelope: true, clk: Clock{Now: time.Now}}
-	edge := trigParams{typ: TrigEdge}
 	e.LeaseSpectrumView(3 * time.Second)
-	block := e.envelopeBlock(&sramcapture.Config{}, edge)
+	block := e.envelopeBlock()
 	if block != blockSpectrum {
 		t.Fatalf("block %q", block)
 	}
@@ -164,7 +163,7 @@ func TestSpectrumLease(t *testing.T) {
 		t.Fatal("the sample and raw leases changed")
 	}
 	e.LeaseSpectrumView(0)
-	if e.envelopeBlock(&sramcapture.Config{}, edge) != "" {
+	if e.envelopeBlock() != "" {
 		t.Fatal("an ended lease still blocks the envelope")
 	}
 }
@@ -183,15 +182,15 @@ func TestSearchLease(t *testing.T) {
 	}
 	e.LeaseSearchView(3 * time.Second)
 	e.LeaseSampleView(3 * time.Second)
-	if e.rollActive() || e.envelopeBlock(&sramcapture.Config{}, e.tp) != blockSearch {
-		t.Fatalf("search lease: roll %v, block %q", e.rollActive(), e.envelopeBlock(&sramcapture.Config{}, e.tp))
+	if e.rollActive() || e.envelopeBlock() != blockSearch {
+		t.Fatalf("search lease: roll %v, block %q", e.rollActive(), e.envelopeBlock())
 	}
 	_, p, _, _, _ := e.sramConfig()
 	if p.Screen < SearchLiveSamples/2 || p.Screen > SearchLiveSamples || p.Samples > 2*p.Screen {
 		t.Fatalf("search record: %d samples, screen %d", p.Samples, p.Screen)
 	}
 	e.LeaseSearchView(0)
-	if e.envelopeBlock(&sramcapture.Config{}, e.tp) != blockSamples {
+	if e.envelopeBlock() != blockSamples {
 		t.Fatal("the sample lease no longer blocks the envelope")
 	}
 	e.band.TdivS = 5e-3

@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-ENGINE
+
 package engine
 
 import (
@@ -307,7 +308,7 @@ func TestQualifierPublishPolicy(t *testing.T) {
 	// in AUTO (the qualifier IS the trigger), and publishes when one appears.
 	fb := newFakeBus()
 	fb.mu.Lock()
-	fb.wave = func(i int) (uint8, uint8) { return 128, 128 } // flat: no pulses
+	fb.wave = func(_ int) (uint8, uint8) { return 128, 128 } // flat: no pulses
 	fb.mu.Unlock()
 	e, _ := newTestEngine(t, fb)
 	e.bringUp()

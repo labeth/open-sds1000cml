@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-ENGINE
+
 package engine
 
 import (
@@ -26,6 +27,23 @@ func symbolTwoLines(proto int) bool {
 // symBits is a frame's line bits in arrival order, each either required to
 // equal its value (care) or free.
 type symBits struct{ val, care []bool }
+
+// last64 shifts the last 64 bits (or all, when fewer) into pattern and
+// mask, oldest first.
+// TRLC-LINKS: REQ-SDS-013
+func (b *symBits) last64(pattern, mask uint64) (uint64, uint64) {
+	n := len(b.val)
+	for i := max(0, n-64); i < n; i++ {
+		pattern, mask = pattern<<1, mask<<1
+		if b.val[i] {
+			pattern |= 1
+		}
+		if b.care[i] {
+			mask |= 1
+		}
+	}
+	return pattern, mask
+}
 
 // TRLC-LINKS: REQ-SDS-013
 func (b *symBits) put(v, care bool) {
@@ -156,7 +174,7 @@ var symMids = func() (mids [1024]float64) {
 		if e == 0 {
 			mids[i] = float64(m)
 		} else {
-			first := float64(int(64+m) << (e - 1))
+			first := float64((64 + m) << (e - 1))
 			mids[i] = first + (float64(int(1)<<(e-1))-1)/2
 		}
 		if e == 15 && m == 63 {
@@ -243,28 +261,28 @@ func uartChar(b *symBits, u symUnit, bits int, parity string) {
 // symbolSpec compiles a protocol's line timing: false when its rate is out
 // of the block's reach.
 // TRLC-LINKS: REQ-SDS-013, REQ-SDS-018
-func symbolSpec(p SerialParams) (symSpec, bool) {
+func symbolSpec(p SerialParams) (symSpec, bool) { //nolint:gocyclo,funlen // one case per protocol: the table reads as one
 	T := 1 / float64(p.Baud)
 	inf := math.Inf(1)
 	us, ms := 1e-6, 1e-3
 	q8 := func(s float64) uint32 { return uint32(math.Round(s / (sramcapture.SymbolClockNs * 1e-9) * 256)) }
 	w8 := func(int) int { return 8 }
-	s := symSpec{cfg: sramcapture.SymbolTriggerConfig{Enabled: true, Channel: uint8(p.ChA), InvA: p.Inverted, InvB: p.Inverted, UnitQ8: 2048}, width: w8}
+	s := symSpec{cfg: sramcapture.SymbolTriggerConfig{Enabled: true, Channel: uint8(p.ChA), InvA: p.Inverted, InvB: p.Inverted, UnitQ8: 2048}, width: w8} //nolint:gosec // G115: the channel is 0 or 1 (serialPlanParams)
 	none := func(*symBits, []symUnit) bool { return true }
 	s.start = none
 	set := func(mode, lead int, longest float64, data uint8) {
-		s.cfg.Mode, s.cfg.LeadLen = uint8(mode), uint8(lead)
+		s.cfg.Mode, s.cfg.LeadLen = uint8(mode), uint8(lead) //nolint:gosec // G115: a symbol mode and a leader of a few units
 		s.tab = newSymTab(longest, decode.SymLeadNone, data)
 	}
 	switch p.Proto {
 	case serLIN, serDMX, serModbus:
-		bits, parity, frame := 8, "none", 10
+		bits, parity, frame := 8, parityNone, 10
 		if p.Proto == serModbus {
 			parity = p.Parity
 			if parity == "" {
 				parity = "even"
 			}
-			if parity != "none" {
+			if parity != parityNone {
 				frame = 11
 			}
 		}
@@ -276,7 +294,7 @@ func symbolSpec(p SerialParams) (symSpec, bool) {
 			set(sramcapture.SymbolLevel, 2, 20*T, decode.SymDataSep)
 			s.tab.both(false, 11*T, inf, leadStep0, decode.SymDataRestart)
 			s.tab.lead(true, 0.5*T, 20*T, leadStep1)
-			s.start = func(b *symBits, _ []symUnit) bool { uartChar(b, symUnit{0x55, 0xff}, 8, "none"); return true }
+			s.start = func(b *symBits, _ []symUnit) bool { uartChar(b, symUnit{0x55, 0xff}, 8, parityNone); return true }
 		case serDMX:
 			// break of 22 bit times (88 us) or more, mark after break of 1.5 or more
 			set(sramcapture.SymbolLevel, 2, 22*T, decode.SymDataSep)
@@ -532,7 +550,7 @@ func symbolSpec(p SerialParams) (symSpec, bool) {
 		set(sramcapture.SymbolClocked, 0, T, decode.SymDataSep)
 		s.cfg.TwoLines, s.sliding = true, true
 		s.width = func(i int) int { return []int{14, 16, 0}[min(i, 2)] }
-		s.start = func(b *symBits, units []symUnit) bool {
+		s.start = func(b *symBits, _ []symUnit) bool {
 			for range 32 {
 				b.fixed(1)
 			}
@@ -559,7 +577,7 @@ func symbolSpec(p SerialParams) (symSpec, bool) {
 		// D0 then reads 0 for a D0 pulse and 1 for a D1 pulse
 		gap := math.Max(5*T, 2*ms)
 		set(sramcapture.SymbolClocked, 1, gap, decode.SymDataSep)
-		s.cfg.Channel, s.cfg.AndAB, s.cfg.ClockFall, s.cfg.TwoLines = uint8(p.ChB), true, true, true
+		s.cfg.Channel, s.cfg.AndAB, s.cfg.ClockFall, s.cfg.TwoLines = uint8(p.ChB), true, true, true //nolint:gosec // G115: the channel is 0 or 1 (serialPlanParams)
 		s.tab.both(true, gap, inf, leadStep0, decode.SymDataRestart)
 		widths := []int{8, 8, 8, 8, 8, 8, 8}
 		switch p.Bits {
@@ -592,8 +610,62 @@ func symbolSpec(p SerialParams) (symSpec, bool) {
 			return s, false // eight receiver clocks a unit at least (the block's floor)
 		}
 	}
-	s.cfg.Prescale = uint8(s.tab.prescale)
+	s.cfg.Prescale = uint8(s.tab.prescale) //nolint:gosec // G115: symTab caps the prescale at 7
 	return s, true
+}
+
+// units are the data elements of a request as the protocol's units (a
+// leading start element opens the frame); ok is false for an element the
+// symbol trigger cannot take. A free tail is dropped where the protocol
+// says so.
+// TRLC-LINKS: REQ-SDS-013, REQ-SDS-018
+func (s *symSpec) units(elems []PatternElem) ([]symUnit, bool) {
+	var units []symUnit
+	for i, e := range elems {
+		switch {
+		case e.Kind == patternStart && i == 0:
+		case e.Kind == patternData:
+			w := s.width(len(units))
+			if w <= 0 || w > 32 {
+				return nil, false
+			}
+			allowed := 1<<w - 1
+			if e.Value < 0 || e.Mask < 0 || e.Value&^allowed != 0 || e.Mask&^allowed != 0 {
+				return nil, false
+			}
+			units = append(units, symUnit{e.Value & e.Mask, e.Mask})
+		default:
+			return nil, false
+		}
+	}
+	for s.dropFreeTail && len(units) > 0 && units[len(units)-1].mask == 0 {
+		units = units[:len(units)-1]
+	}
+	return units, true
+}
+
+// customConfig is the block's settings for a protocol that builds its own
+// bits (symSpec.custom); off when they do not fit the 64-bit window.
+// TRLC-LINKS: REQ-SDS-013, REQ-SDS-018
+func (s *symSpec) customConfig(units []symUnit, anchored bool) sramcapture.SymbolTriggerConfig {
+	b, period, ok := s.custom(units, anchored)
+	n := len(b.val)
+	if !ok || n > 1023 || (period != 0 && (n == 0 || n > 64)) {
+		return sramcapture.SymbolTriggerConfig{}
+	}
+	for i := range n - 64 {
+		if b.care[i] {
+			return sramcapture.SymbolTriggerConfig{}
+		}
+	}
+	c := s.cfg
+	c.K, c.Period = uint16(n), uint8(period) //nolint:gosec // G115: checked to 1023 units and a period of 64 above
+	c.Pattern, c.Mask = b.last64(c.Pattern, c.Mask)
+	c.Table = s.tab.t
+	if c.Validate() != nil {
+		return sramcapture.SymbolTriggerConfig{}
+	}
+	return c
 }
 
 // planHardwareSymbol compiles a request on a protocol of the symbol trigger
@@ -626,54 +698,12 @@ func planHardwareSymbol(p *SerialParams) sramcapture.SymbolTriggerConfig {
 	case s.oneFrame:
 		anchored = true
 	}
-	var units []symUnit
-	for i, e := range elems {
-		switch {
-		case e.Kind == patternStart && i == 0:
-		case e.Kind == patternData:
-			w := s.width(len(units))
-			if w <= 0 || w > 32 {
-				return off
-			}
-			allowed := 1<<w - 1
-			if e.Value < 0 || e.Mask < 0 || e.Value&^allowed != 0 || e.Mask&^allowed != 0 {
-				return off
-			}
-			units = append(units, symUnit{e.Value & e.Mask, e.Mask})
-		default:
-			return off
-		}
-	}
-	for s.dropFreeTail && len(units) > 0 && units[len(units)-1].mask == 0 {
-		units = units[:len(units)-1]
+	units, ok := s.units(elems)
+	if !ok {
+		return off
 	}
 	if s.custom != nil {
-		b, period, ok := s.custom(units, anchored)
-		n := len(b.val)
-		if !ok || n > 1023 || (period != 0 && (n == 0 || n > 64)) {
-			return off
-		}
-		for i := 0; i < n-64; i++ {
-			if b.care[i] {
-				return off
-			}
-		}
-		c := s.cfg
-		c.K, c.Period = uint16(n), uint8(period)
-		for i := max(0, n-64); i < n; i++ {
-			c.Pattern, c.Mask = c.Pattern<<1, c.Mask<<1
-			if b.val[i] {
-				c.Pattern |= 1
-			}
-			if b.care[i] {
-				c.Mask |= 1
-			}
-		}
-		c.Table = s.tab.t
-		if c.Validate() != nil {
-			return off
-		}
-		return c
+		return s.customConfig(units, anchored)
 	}
 	var b symBits
 	if anchored && !s.start(&b, units) {
@@ -719,18 +749,10 @@ func planHardwareSymbol(p *SerialParams) sramcapture.SymbolTriggerConfig {
 			return off
 		}
 		k := len(lead.val) + n
-		c.K, c.Period = uint16(k), uint8(s.period)
-		c.Phase0 = uint8((s.period - k%s.period) % s.period)
+		c.K, c.Period = uint16(k), uint8(s.period)           //nolint:gosec // G115: a leader and at most 64 units; a period of at most 64
+		c.Phase0 = uint8((s.period - k%s.period) % s.period) //nolint:gosec // G115: under the period
 	}
-	for i := max(0, n-64); i < n; i++ {
-		c.Pattern, c.Mask = c.Pattern<<1, c.Mask<<1
-		if b.val[i] {
-			c.Pattern |= 1
-		}
-		if b.care[i] {
-			c.Mask |= 1
-		}
-	}
+	c.Pattern, c.Mask = b.last64(c.Pattern, c.Mask)
 	table := s.tab.t
 	c.Table = table
 	if c.Validate() != nil {

@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-ENGINE
+
 package engine
 
 import (
@@ -77,7 +78,7 @@ func TestSRAMAverageAlignsShiftedRecordWithoutWrapping(t *testing.T) {
 			f.Q2[i] = uint16(20000 - (i-shift)*64)
 		}
 		a.push(&f, 3)
-		for i := 0; i < f.Valid; i++ {
+		for i := range f.Valid {
 			if f.Q1[i] != uint16(10000+(i+a.lo)*128) || f.Q2[i] != uint16(20000-(i+a.lo)*64) {
 				t.Fatalf("frame %d sample %d alignment failed", k, i)
 			}

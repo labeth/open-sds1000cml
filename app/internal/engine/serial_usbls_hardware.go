@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-ENGINE
+
 package engine
 
 import (
@@ -15,7 +16,7 @@ func planHardwareUSBLS(p *SerialParams) sramcapture.USBLSTriggerConfig {
 	if ticks < 2048 || ticks > 0xffffff {
 		return sramcapture.USBLSTriggerConfig{}
 	}
-	c := sramcapture.USBLSTriggerConfig{Enabled: true, Channel: uint8(p.ChA), Inverted: p.Inverted, BitTicksQ8: uint32(ticks), Length: uint8(len(p.Bytes))}
+	c := sramcapture.USBLSTriggerConfig{Enabled: true, Channel: uint8(p.ChA), Inverted: p.Inverted, BitTicksQ8: uint32(ticks), Length: uint8(len(p.Bytes))} //nolint:gosec // G115: the checks above bound each field
 	for _, b := range p.Bytes {
 		if b < 0 || b > 255 {
 			return sramcapture.USBLSTriggerConfig{}

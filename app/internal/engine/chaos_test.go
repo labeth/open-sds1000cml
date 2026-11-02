@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-ENGINE
+
 package engine
 
 import (
@@ -43,7 +44,7 @@ func TestEngineConcurrencyChaos(t *testing.T) {
 				e.rollUpdate(norm)
 			case KindEnvelope:
 				e.envFrame(norm)
-			default:
+			case KindNativeFast, KindDecimated:
 				e.oneFrame(norm)
 			}
 			e.Consume()
@@ -77,7 +78,7 @@ func TestEngineConcurrencyChaos(t *testing.T) {
 		e.SetZoneMode(r.Intn(2))
 		e.SetMaskMode(r.Intn(3))
 	})
-	hammer(4, func(r *rand.Rand) {
+	hammer(4, func(_ *rand.Rand) {
 		_ = e.Snapshot()
 		_ = e.MaskFails()
 		_ = e.Zones()

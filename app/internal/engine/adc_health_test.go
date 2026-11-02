@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-ENGINE
+
 package engine
 
 import (
@@ -138,6 +139,7 @@ func (f *convImages) LoadGeneral() error { return f.load("general") }
 
 // TRLC-LINKS: REQ-SDS-231
 func newConvEngine(t *testing.T, conv *fakeConverters) (*Engine, *convImages, *[]string) {
+	t.Helper()
 	e, b, _ := newPacketTestEngine(t)
 	calls := &[]string{}
 	conv.calls = calls

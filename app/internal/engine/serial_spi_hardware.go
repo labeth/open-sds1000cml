@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-ENGINE
+
 package engine
 
 import (
@@ -43,9 +44,9 @@ func planHardwareSPI(p *SerialParams, sample bool) sramcapture.SPITriggerConfig 
 	if ticks > 0xffffff {
 		return sramcapture.SPITriggerConfig{}
 	}
-	c := sramcapture.SPITriggerConfig{Enabled: true, ClockChannel: uint8(p.ChA), Inverted: p.Inverted, CPOL: p.CPOL, CPHA: p.CPHA, MSB: p.MSB, GapTicks: uint32(ticks), Length: uint8(len(p.Bytes))}
+	c := sramcapture.SPITriggerConfig{Enabled: true, ClockChannel: uint8(p.ChA), Inverted: p.Inverted, CPOL: p.CPOL, CPHA: p.CPHA, MSB: p.MSB, GapTicks: uint32(ticks), Length: uint8(len(p.Bytes))} //nolint:gosec // G115: the checks above bound each field
 	if sample {
-		c.Delay = int8(spiDelay16(p.SPIDelayNs, p.ChA))
+		c.Delay = int8(spiDelay16(p.SPIDelayNs, p.ChA)) //nolint:gosec // G115: spiDelay16 clamps to -128..127
 	}
 	for _, b := range p.Bytes {
 		if b < 0 || b > 255 {

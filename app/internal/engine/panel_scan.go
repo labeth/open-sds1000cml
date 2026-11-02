@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-ENGINE
+
 package engine
 
 import (
@@ -80,8 +81,12 @@ func (e *Engine) PanelScan() (sramcapture.PanelFrame, error) {
 	if e.sram == nil {
 		return sramcapture.PanelFrame{}, errors.New("engine: no SRAM fabric")
 	}
-	if ok, err := e.sram.SupportsPanel(); err != nil || !ok {
-		return sramcapture.PanelFrame{}, fmt.Errorf("engine: fabric lacks the panel scan: %v", err)
+	ok, err := e.sram.SupportsPanel()
+	if err != nil {
+		return sramcapture.PanelFrame{}, fmt.Errorf("engine: fabric lacks the panel scan: %w", err)
+	}
+	if !ok {
+		return sramcapture.PanelFrame{}, errors.New("engine: fabric lacks the panel scan")
 	}
 	return e.sram.ReadPanel()
 }
@@ -143,10 +148,10 @@ func panelMatrix(f sramcapture.PanelFrame, k *panelKnobs) ([5]uint16, bool) {
 	}
 	down := 0
 	for row := range 8 {
-		b := uint8(f.Words[row/2] >> (8 * uint(row%2)))
+		b := uint8(f.Words[row/2] >> (8 * uint(row%2)) & 0xff)
 		down += 6 - bits.OnesCount8(b&0xfc) // keys at positions 2..7 read low when down
 		if k.primed {
-			d := int(int8(uint8(f.Knobs[row/2]>>(8*uint(row%2))) - k.last[row]))
+			d := int(int8(uint8(f.Knobs[row/2]>>(8*uint(row%2))&0xff) - k.last[row])) //nolint:gosec // G115: the counter's 8-bit difference is a signed step
 			if d > panelMaxCountsRead || d < -panelMaxCountsRead {
 				down = panelMaxKeysDown + 1
 			}
@@ -157,7 +162,7 @@ func panelMatrix(f sramcapture.PanelFrame, k *panelKnobs) ([5]uint16, bool) {
 		return [5]uint16{0xffff, 0xffff, 0xffff, 0xffff, 0}, false
 	}
 	for row := range 8 {
-		b := uint8(f.Words[row/2] >> (8 * uint(row%2)))
+		b := uint8(f.Words[row/2] >> (8 * uint(row%2)) & 0xff)
 		word, shift := 3-row/2, uint(8)
 		if row%2 == 1 {
 			shift = 0
@@ -167,9 +172,9 @@ func panelMatrix(f sramcapture.PanelFrame, k *panelKnobs) ([5]uint16, bool) {
 				m[word] &^= 1 << (panelPositionBit[pos] + shift)
 			}
 		}
-		count := uint8(f.Knobs[row/2] >> (8 * uint(row%2)))
+		count := uint8(f.Knobs[row/2] >> (8 * uint(row%2)) & 0xff)
 		if k.primed {
-			k.pending[row] += panelKnobSign * int(int8(count-k.last[row]))
+			k.pending[row] += panelKnobSign * int(int8(count-k.last[row])) //nolint:gosec // G115: the counter's 8-bit difference is a signed step
 		}
 		k.last[row] = count
 	}
@@ -203,7 +208,7 @@ func panelMatrix(f sramcapture.PanelFrame, k *panelKnobs) ([5]uint16, bool) {
 			bit = panelPositionBit[1]
 		}
 		m[word] &^= 1 << (bit + shift)
-		m[4] = uint16(mag)
+		m[4] = uint16(mag) //nolint:gosec // G115: mag is 0..panelMagnitudeMax
 		break
 	}
 	return m, true

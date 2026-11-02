@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-ENGINE
+
 package engine
 
 import (
@@ -123,7 +124,7 @@ func (e *Engine) soundTrigCfg(s *soundState) SoundMarkConfig {
 		return *g
 	}
 	rising := e.trigRising.Load()
-	return SoundMarkConfig{Ch: int(e.trigSrc.Load()) & 1, Level: uint8(e.trigLevelWord()), Rising: rising, Falling: !rising}
+	return SoundMarkConfig{Ch: int(e.trigSrc.Load()) & 1, Level: e.trigLevelCode(), Rising: rising, Falling: !rising}
 }
 
 // soundMarkWant is the marks the stream should make now: the trigger's
@@ -213,43 +214,20 @@ func (e *Engine) soundTrigStep(s *soundState) {
 		s.armAt = max(s.armFrom, lastGap+preN)
 	}
 	if s.armed {
-		if lastGap+preN > s.armAt {
-			s.armAt = lastGap + preN // a gap since: the pre-trigger time again
-		}
+		s.armAt = max(s.armAt, lastGap+preN) // a gap since: the pre-trigger time again
 		if s.cfgFrom > s.armFrom {
 			// the level, slope or source changed since the arm: only its marks count
 			s.armFrom, s.armAt = s.cfgFrom, max(s.armAt, s.cfgFrom)
 		}
-		prevAt, havePrev := uint64(0), false
-		for _, m := range marks {
-			if m.Ch != cfg.Ch || m.Rising != cfg.Rising && !(cfg.Rising && cfg.Falling) {
-				continue
-			}
-			if m.At < s.armAt {
-				prevAt, havePrev = m.At, true
-				continue
-			}
-			at := m.At
-			if m.N > 1 {
-				// Several crossings since the last read: the image kept the
-				// newest; the first after the arm (and after the mark before)
-				// is on the samples between.
-				lo := s.armAt
-				if havePrev && prevAt+1 > lo {
-					lo = prevAt + 1
-				}
-				if m.At >= next {
-					return // its samples are not here yet
-				}
-				at = e.soundFirstCrossing(s, lo, m.At, cfg, m.Rising)
-			}
-			s.armed, s.pending, s.trigAt, s.trigRising = false, true, at, m.Rising
-			break
-		}
-		if s.armed {
+		at, rising, found, wait := e.soundTriggerMark(s, marks, cfg, next)
+		switch {
+		case wait:
+			return // its samples are not here yet
+		case !found:
 			s.setMode("armed")
 			return
 		}
+		s.armed, s.pending, s.trigAt, s.trigRising = false, true, at, rising
 	}
 	if !s.pending {
 		return
@@ -260,7 +238,7 @@ func (e *Engine) soundTrigStep(s *soundState) {
 	}
 	s.pending = false
 	from := s.trigAt - min(preN, s.trigAt)
-	b := s.ring.read(from, int(s.trigAt+postN-from), nil, nil, rate)
+	b := s.ring.read(from, int(s.trigAt+postN-from), nil, nil, rate) //nolint:gosec // G115: a take of a few seconds of samples
 	if len(b.Gaps) > 0 || b.First != from {
 		s.nextArm = next // a gap in the stretch: arm again
 		return
@@ -284,6 +262,39 @@ func (e *Engine) soundTrigStep(s *soundState) {
 	}
 }
 
+// soundTriggerMark finds the first of marks that fires the armed trigger:
+// on cfg's channel and slope, at or after the arm. wait reports one whose
+// crossing must be found on samples not here yet (before next).
+// TRLC-LINKS: REQ-SDS-275, REQ-SDS-272
+func (e *Engine) soundTriggerMark(s *soundState, marks []SoundMark, cfg SoundMarkConfig, next uint64) (at uint64, rising, found, wait bool) {
+	prevAt, havePrev := uint64(0), false
+	eitherSlope := cfg.Rising && cfg.Falling
+	for _, m := range marks {
+		if m.Ch != cfg.Ch || m.Rising != cfg.Rising && !eitherSlope {
+			continue
+		}
+		if m.At < s.armAt {
+			prevAt, havePrev = m.At, true
+			continue
+		}
+		if m.N <= 1 {
+			return m.At, m.Rising, true, false
+		}
+		// Several crossings since the last read: the image kept the newest;
+		// the first after the arm (and after the mark before) is on the
+		// samples between.
+		lo := s.armAt
+		if havePrev && prevAt+1 > lo {
+			lo = prevAt + 1
+		}
+		if m.At >= next {
+			return 0, false, false, true
+		}
+		return e.soundFirstCrossing(s, lo, m.At, cfg, m.Rising), m.Rising, true, false
+	}
+	return 0, false, false, false
+}
+
 // soundFirstCrossing is the first sample in [lo, hi] at which channel cfg.Ch
 // crosses the FPGA's level the way the comparator does (from at or below
 // the level less the hysteresis, to at or above it; mirrored falling);
@@ -296,14 +307,14 @@ func (e *Engine) soundFirstCrossing(s *soundState, lo, hi uint64, cfg SoundMarkC
 	}
 	lead := uint64(s.info.RateHz / 20) // the state before lo
 	from := lo - min(lead, lo)
-	b := s.ring.read(from, int(hi-from+1), nil, nil, s.info.RateHz)
+	b := s.ring.read(from, int(hi-from+1), nil, nil, s.info.RateHz) //nolint:gosec // G115: a take of a few seconds of samples
 	q := b.Q1
 	if cfg.Ch == 1 {
 		q = b.Q2
 	}
 	if lo >= b.First {
-		if i, ok := firstCrossingFrom(q, int(cfg.Level), hyst, rising, int(lo-b.First)); ok {
-			return b.First + uint64(i)
+		if i, ok := firstCrossingFrom(q, int(cfg.Level), hyst, rising, int(lo-b.First)); ok { //nolint:gosec // G115: lo lies within the block read
+			return b.First + uint64(i) //nolint:gosec // G115: i is an index of the block
 		}
 	}
 	return hi

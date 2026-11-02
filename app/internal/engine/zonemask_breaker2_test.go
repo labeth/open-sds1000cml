@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-ENGINE
+
 package engine
 
 import (
@@ -279,7 +280,7 @@ func TestZoneBreakerDifferential(t *testing.T) {
 		for k := range 10 {
 			var combo []Zone
 			must := +1
-			for j := 0; j < 2+int(rng()*2); j++ {
+			for range 2 + int(rng()*2) {
 				z := zones[int(rng()*float64(len(zones)))]
 				combo = append(combo, z)
 				st := zoneRefState(f, fam.valid, edgeX, sampleS, z)

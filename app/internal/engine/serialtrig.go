@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-ENGINE
+
 package engine
 
 // Serial / protocol trigger: publish only frames whose decoded UART/I2C/SPI
@@ -19,9 +20,25 @@ import (
 	"time"
 )
 
+// The decode.Span kinds the serial trigger and the streams read.
 const (
-	SerialOff     = 0
-	SerialTrigger = 1
+	spanData        = "data"
+	spanStart       = "start"
+	spanStop        = "stop"
+	spanGap         = "gap"
+	spanSOF         = "sof"
+	spanSync        = "sync"
+	spanFrameError  = "frame-error"
+	spanParityError = "parity-error"
+)
+
+// parityNone is a UART request without parity ("" reads the same).
+const parityNone = "none"
+
+// The serial trigger modes (SerialOff, SerialTrigger) and the protocol ids.
+const (
+	SerialOff     = 0 // the trigger is the hardware's own
+	SerialTrigger = 1 // the trigger is a decoded serial match
 
 	serialFallback = 60 // AUTO liveness: publish one unmatched frame every N holds
 
@@ -286,7 +303,7 @@ func serialMatchIn(chA, chB []uint8, sampleS float64, p SerialParams, at anchorS
 // TRLC-LINKS: REQ-SDS-013, REQ-SDS-223
 func wordOpening(spans []decode.Span, at int) int {
 	for k, sp := range spans {
-		if sp.I0 != at || sp.Kind != "data" {
+		if sp.I0 != at || sp.Kind != spanData {
 			continue
 		}
 		for j := k - 1; j >= 0; j-- {
@@ -294,7 +311,7 @@ func wordOpening(spans []decode.Span, at int) int {
 			if o.I1 > at {
 				continue // a span over the field (a decoder note)
 			}
-			if (o.Kind == "addr" || o.Kind == "start" || o.Kind == "sync") && at-o.I1 <= max(1, (sp.I1-sp.I0)/4) {
+			if (o.Kind == "addr" || o.Kind == spanStart || o.Kind == spanSync) && at-o.I1 <= max(1, (sp.I1-sp.I0)/4) {
 				return o.I0
 			}
 			break
@@ -380,9 +397,9 @@ func matchI2C(sp []decode.Span, p SerialParams) (bool, int) {
 		var vals []int
 		for j := i + 1; j < len(sp); j++ {
 			switch sp[j].Kind {
-			case "start", "stop", "addr":
+			case spanStart, spanStop, "addr":
 				j = len(sp) // break out
-			case "data":
+			case spanData:
 				vals = append(vals, sp[j].Val)
 			}
 		}
@@ -409,9 +426,9 @@ func matchBytes(sp []decode.Span, want []int) (bool, int) {
 	segment := 0
 	for _, s := range sp {
 		switch s.Kind {
-		case "data":
+		case spanData:
 			seq = append(seq, db{s.Val, s.I0, s.I1, segment})
-		case "gap", "frame-error", "parity-error":
+		case spanGap, spanFrameError, spanParityError:
 			// Never manufacture a sequence by dropping a corrupt byte or an
 			// explicit decoder gap, even when the sample indices are close.
 			segment++

@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-ENGINE
+
 package engine
 
 import (
@@ -118,7 +119,7 @@ func (b *stackEngineBus) RawWrite(s, v uint16) error {
 				b.opError = true
 				return nil
 			}
-			for i := 0; i < int(b.regs[119]); i++ {
+			for i := range int(b.regs[119]) {
 				for c := range 2 {
 					m := &b.tile[i][c]
 					m.Count += 2
@@ -227,6 +228,7 @@ func (f *fakeImages) LoadGeneral() error {
 
 // TRLC-LINKS: REQ-SDS-141
 func newStackTestEngine(t *testing.T) (*Engine, *stackEngineBus, *fakeImages) {
+	t.Helper()
 	b := &stackEngineBus{image: "general"}
 	capture, err := sramcapture.New(b)
 	if err != nil {
@@ -234,7 +236,7 @@ func newStackTestEngine(t *testing.T) (*Engine, *stackEngineBus, *fakeImages) {
 	}
 	images := &fakeImages{b: b}
 	e := &Engine{
-		b: b, sram: capture, sramJobs: make(chan sramJob, 1), done: make(chan struct{}), images: images,
+		b: b, sram: capture, sramJobs: make(chan ownerJob, 1), done: make(chan struct{}), images: images,
 		logf: t.Logf, clk: Clock{Now: time.Now, Sleep: func(time.Duration) {}},
 	}
 	return e, b, images
@@ -242,7 +244,7 @@ func newStackTestEngine(t *testing.T) (*Engine, *stackEngineBus, *fakeImages) {
 
 // runStack serves exactly one owner-side job, as the SRAM loop top does.
 // TRLC-LINKS: REQ-SDS-141
-func runStack(t *testing.T, e *Engine, req FPGAStackRequest) (FPGAStackResult, error) {
+func runStack(_ *testing.T, e *Engine, req FPGAStackRequest) (FPGAStackResult, error) {
 	type reply struct {
 		res FPGAStackResult
 		err error

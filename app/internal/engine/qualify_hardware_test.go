@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-ENGINE
+
 package engine
 
 import (
@@ -12,6 +13,7 @@ import (
 // channels' extents not yet learned.
 // TRLC-LINKS: REQ-SDS-011
 func qualEngine(t *testing.T) (*Engine, *stackEngineBus, *packetImages) {
+	t.Helper()
 	e, b, images := newPacketTestEngine(t)
 	for ch := range 2 {
 		e.chVdivBits[ch].Store(math.Float64bits(1))

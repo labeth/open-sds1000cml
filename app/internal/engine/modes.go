@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-ENGINE
+
 package engine
 
 import "math"
@@ -8,11 +9,12 @@ import "math"
 // paths ARE peak-detect by construction), and the cross-frame uniformity
 // telemetry. All pure CPU on the owner goroutine, zero bus access.
 
+// The acquisition modes (SetAcqMode).
 const (
 	AcqPrecision = 4 // cascaded low-pass plus aligned block averaging
-	AcqNormal    = 0
-	AcqAverage   = 1
-	AcqEres      = 2
+	AcqNormal    = 0 // the record as captured
+	AcqAverage   = 1 // edge-aligned average of the last frames
+	AcqEres      = 2 // boxcar enhanced resolution
 	AcqPeak      = 3 // accepted/stored; behaves as NORMAL at real-time bands
 )
 
@@ -73,7 +75,7 @@ func eresBoxcar(sig []uint8, l int, scratch []uint16) {
 		out[i] = uint16(math.Round(float64(sum) / float64(wantHi-wantLo+1)))
 	}
 	for i := range n {
-		sig[i] = uint8(out[i])
+		sig[i] = uint8(out[i]) //nolint:gosec // G115: a mean of 8-bit codes
 	}
 }
 
@@ -117,7 +119,7 @@ func (r *avgRing) reset(depth, width int) {
 func (r *avgRing) push(f *Frame, edgeX float64) {
 	shift := int(math.Round(edgeX)) - r.width/2
 	c1, c2, vm := r.c1[r.pos], r.c2[r.pos], r.valid[r.pos]
-	for i := 0; i < r.width; i++ {
+	for i := range r.width {
 		j := i + shift
 		if j < 0 || j >= f.Valid {
 			vm[i] = false
@@ -139,9 +141,9 @@ func (r *avgRing) meanInto(f *Frame) {
 	if r.cnt == 0 {
 		return
 	}
-	for i := 0; i < r.width; i++ {
+	for i := range r.width {
 		var s1, s2, nc int
-		for k := 0; k < r.cnt; k++ {
+		for k := range r.cnt {
 			if !r.valid[k][i] {
 				continue
 			}
@@ -153,8 +155,8 @@ func (r *avgRing) meanInto(f *Frame) {
 			f.C1[i], f.C2[i] = 128, 128
 			continue
 		}
-		f.C1[i] = uint8(s1 / nc)
-		f.C2[i] = uint8(s2 / nc)
+		f.C1[i] = uint8(s1 / nc) //nolint:gosec // G115: a mean of 8-bit codes
+		f.C2[i] = uint8(s2 / nc) //nolint:gosec // G115: a mean of 8-bit codes
 	}
 	f.Valid = r.width
 	f.EdgeX = float64(r.width) / 2
@@ -200,10 +202,7 @@ func (u *uniRing) push(disc []uint8, winCols int, edgeX float64) {
 	extract := func(dst []uint8, xc float64) {
 		left := xc - float64(winCols)/2
 		for x := range uniCols {
-			pos := max(int(left+float64(x)*float64(winCols)/float64(uniCols)), 0)
-			if pos > n-1 {
-				pos = n - 1
-			}
+			pos := min(max(int(left+float64(x)*float64(winCols)/float64(uniCols)), 0), n-1)
 			dst[x] = disc[pos]
 		}
 	}
@@ -231,7 +230,7 @@ func (u *uniRing) stats() (std, stdRaw, worst float64) {
 	// an exact integer, so the figures are the same.
 	colStds := func(ring [][]uint8, out *[uniCols]float64) {
 		var s, s2 [uniCols]int
-		for k := 0; k < u.cnt; k++ {
+		for k := range u.cnt {
 			for c, b := range ring[k][:uniCols] {
 				v := int(b)
 				s[c] += v

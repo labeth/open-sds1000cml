@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-ENGINE
+
 package engine
 
 import (
@@ -109,7 +110,7 @@ func FuzzSerialAllProtocols(f *testing.F) {
 		var a, b []uint8
 		for i, v := range line {
 			n := 1 + int(v&0x3f)*int(1+v>>6)
-			lvA, lvB := uint8(255*(v&1)), uint8(255*(v>>1&1))
+			lvA, lvB := 255*(v&1), 255*(v>>1&1)
 			if i%5 == 4 {
 				lvA = v // a level between the rails now and then
 			}

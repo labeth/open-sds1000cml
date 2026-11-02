@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-ENGINE
+
 package engine
 
 import (
@@ -7,6 +8,7 @@ import (
 	"time"
 )
 
+// SetTrigType selects the trigger type (a TrigType; out of range is edge).
 // TRLC-LINKS: REQ-SDS-011
 func (e *Engine) SetTrigType(t int) {
 	if t < int(TrigEdge) || t > int(TrigVideo) {
@@ -21,6 +23,8 @@ func (e *Engine) SetTrigType(t int) {
 	e.mu.Unlock()
 }
 
+// SetPulseParams sets the pulse qualifier: its level as a fraction of the
+// frame's span, the width limits and the condition (Cond*).
 // TRLC-LINKS: REQ-SDS-011
 func (e *Engine) SetPulseParams(lvlFrac, wMinNs, wMaxNs float64, cond int) {
 	e.mu.Lock()
@@ -31,6 +35,9 @@ func (e *Engine) SetPulseParams(lvlFrac, wMinNs, wMaxNs float64, cond int) {
 	e.mu.Unlock()
 }
 
+// SetSlopeParams sets the slope qualifier: its low and high levels as
+// fractions of the frame's span, the transition-time limits and the
+// condition (Cond*).
 // TRLC-LINKS: REQ-SDS-011
 func (e *Engine) SetSlopeParams(loFrac, hiFrac, tMinNs, tMaxNs float64, cond int) {
 	e.mu.Lock()
@@ -41,6 +48,8 @@ func (e *Engine) SetSlopeParams(loFrac, hiFrac, tMinNs, tMaxNs float64, cond int
 	e.mu.Unlock()
 }
 
+// SetVideoParams sets the video qualifier: the standard (0 or 1), the line
+// (0 for any) and the sync polarity.
 // TRLC-LINKS: REQ-SDS-011
 func (e *Engine) SetVideoParams(std, line int, neg bool) {
 	if std != 1 {
@@ -67,6 +76,7 @@ func orderPair(lo, hi float64) (float64, float64) {
 	return lo, hi
 }
 
+// clampFrac clamps a level fraction to [0, 1].
 // TRLC-LINKS: REQ-SDS-011
 func clampFrac(f float64) float64 {
 	if f < 0 {
@@ -78,6 +88,7 @@ func clampFrac(f float64) float64 {
 	return f
 }
 
+// SetAcqMode selects the acquisition mode (Acq*; out of range is normal).
 // TRLC-LINKS: REQ-SDS-012
 func (e *Engine) SetAcqMode(m int) {
 	if m < AcqNormal || m > AcqPrecision {
@@ -91,6 +102,7 @@ func (e *Engine) SetAcqMode(m int) {
 	e.mu.Unlock()
 }
 
+// SetAvgCount sets how many frames the average holds, clamped to [1, 256].
 // TRLC-LINKS: REQ-SDS-012
 func (e *Engine) SetAvgCount(n int) {
 	if n < 1 {
@@ -106,15 +118,17 @@ func (e *Engine) SetAvgCount(n int) {
 	e.mu.Unlock()
 }
 
+// SetEresLen sets the ERES boxcar length (clamped like EresLenForBits).
 // TRLC-LINKS: REQ-SDS-012
 func (e *Engine) SetEresLen(l int) {
 	l = clampEresLen(l)
-	e.eresLen.Store(int32(l))
+	e.eresLen.Store(int32(l)) //nolint:gosec // G115: clampEresLen bounds it to 1..64
 	e.mu.Lock()
 	e.stats.EresLen = l
 	e.mu.Unlock()
 }
 
+// SetRunning runs or stops acquisition; either cancels a pending single-shot.
 // TRLC-LINKS: REQ-SDS-008
 func (e *Engine) SetRunning(on bool) {
 	e.running.Store(on)
@@ -200,7 +214,7 @@ const couplingAC = 1
 // fabric's trigger level where the AC trace crosses it.
 // TRLC-LINKS: REQ-SDS-011, REQ-SDS-096
 func (e *Engine) SetChannelCoupling(ch, mode int) {
-	e.chCoupling[ch&1].Store(int32(mode))
+	e.chCoupling[ch&1].Store(int32(mode)) //nolint:gosec // G115: a coupling mode, a small enum
 }
 
 // noteChannelMeans folds a published frame's raw channel means into the
@@ -313,6 +327,7 @@ func (e *Engine) trigDispLevel(srcCh int) int {
 	return dc
 }
 
+// SetNorm selects the NORM (on) or AUTO trigger mode as the user's choice.
 // TRLC-LINKS: REQ-SDS-011
 func (e *Engine) SetNorm(on bool) {
 	e.singleRestore.Store(0) // the user's own choice: nothing to restore after a SINGLE
@@ -554,6 +569,7 @@ func (e *Engine) SetOffsetDAC(ch int, code uint16) {
 	e.mu.Unlock()
 }
 
+// SetTrigSlope selects the rising (true) or falling edge.
 // TRLC-LINKS: REQ-SDS-011
 func (e *Engine) SetTrigSlope(rising bool) {
 	e.trigRising.Store(rising)
@@ -578,6 +594,7 @@ func (e *Engine) SetETS(on bool) {
 	e.mu.Unlock()
 }
 
+// SetTrigSource selects the trigger channel (0 = C1, 1 = C2).
 // TRLC-LINKS: REQ-SDS-011
 func (e *Engine) SetTrigSource(ch int) {
 	if ch != 1 {

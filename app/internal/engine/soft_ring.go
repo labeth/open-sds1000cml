@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-ENGINE
+
 package engine
 
 import (
@@ -95,7 +96,7 @@ func softRingWord(m sramcapture.Metadata, n int, last uint32, ord uint64) (uint3
 		return 0, false
 	}
 	raw := ord / 2
-	newest := raw + uint64(last-uint32(raw)) // unwrapped: at or after ord's raw word
+	newest := raw + uint64(last-uint32(raw)) //nolint:gosec // G115: the raw word's low 32 bits, unwrapped by the difference; unwrapped: at or after ord's raw word
 	centre := 2*float64(newest) - softRingDelay(n)
 	k := math.Round((centre - float64(ord)) / float64(uint64(1)<<n))
 	if k < 0 {
@@ -117,7 +118,7 @@ func softRingPace(m sramcapture.Metadata, n int, last uint32) error {
 	if m.Length >= sramcapture.Words {
 		return nil
 	}
-	span := uint32(uint64(m.Length) << (n - 1))
+	span := uint32(uint64(m.Length) << (n - 1)) //nolint:gosec // G115: the record is under Words long, checked above
 	if lag := last - span; lag > softRingArmLagMax {
 		return fmt.Errorf("the ring's %d words span %d raw words, the stream's start was %d ago", m.Length, span, last)
 	}
