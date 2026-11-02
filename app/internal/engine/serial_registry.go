@@ -3,10 +3,11 @@
 package engine
 
 import (
+	"cmp"
 	"errors"
 	"fmt"
 	"open-sds/app/internal/decode"
-	"sort"
+	"slices"
 	"sync"
 )
 
@@ -56,7 +57,7 @@ func SerialDecoderList() []SerialDecoder {
 	for _, d := range serialDecoders.byID {
 		result = append(result, d)
 	}
-	sort.Slice(result, func(i, j int) bool { return result[i].ID < result[j].ID })
+	slices.SortFunc(result, func(a, b SerialDecoder) int { return cmp.Compare(a.ID, b.ID) })
 	return result
 }
 

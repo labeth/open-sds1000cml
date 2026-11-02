@@ -3,9 +3,10 @@
 package engine
 
 import (
+	"cmp"
 	"fmt"
 	"math"
-	"sort"
+	"slices"
 	"sync"
 )
 
@@ -96,7 +97,7 @@ func (e *Engine) BodePoints() []BodePoint {
 	for _, p := range e.bode.bins {
 		out = append(out, p)
 	}
-	sort.Slice(out, func(i, j int) bool { return out[i].FreqHz < out[j].FreqHz })
+	slices.SortFunc(out, func(a, b BodePoint) int { return cmp.Compare(a.FreqHz, b.FreqHz) })
 	return out
 }
 

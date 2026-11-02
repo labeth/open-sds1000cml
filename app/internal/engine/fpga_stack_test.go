@@ -244,7 +244,7 @@ func newStackTestEngine(t *testing.T) (*Engine, *stackEngineBus, *fakeImages) {
 
 // runStack serves exactly one owner-side job, as the SRAM loop top does.
 // TRLC-LINKS: REQ-SDS-141
-func runStack(_ *testing.T, e *Engine, req FPGAStackRequest) (FPGAStackResult, error) {
+func runStack(e *Engine, req FPGAStackRequest) (FPGAStackResult, error) {
 	type reply struct {
 		res FPGAStackResult
 		err error
@@ -265,7 +265,7 @@ func runStack(_ *testing.T, e *Engine, req FPGAStackRequest) (FPGAStackResult, e
 func TestFPGAStackSessionSwitchesImagesAndReducesTraffic(t *testing.T) {
 	e, b, images := newStackTestEngine(t)
 	req := FPGAStackRequest{Records: 3, Stack: sramcapture.StackConfig{Level: 128, Hysteresis: 8, Bins: 64, Factor: 4, ChannelMask: 3}}
-	res, err := runStack(t, e, req)
+	res, err := runStack(e, req)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -290,16 +290,16 @@ func TestFPGAStackSessionAlwaysRestoresGeneral(t *testing.T) {
 	e, b, images := newStackTestEngine(t)
 	req := FPGAStackRequest{Records: 2, Stack: sramcapture.StackConfig{Bins: 8, Factor: 1, ChannelMask: 3}}
 	b.failScan = true
-	if _, err := runStack(t, e, req); err == nil || b.image != "general" || b.grant {
+	if _, err := runStack(e, req); err == nil || b.image != "general" || b.grant {
 		t.Fatalf("scan failure: %v image %s grant %v", err, b.image, b.grant)
 	}
 	b.failScan = false
 	images.failStack, images.loads = true, nil
-	if _, err := runStack(t, e, req); err == nil || strings.Join(images.loads, ",") != "stack,general" || b.image != "general" {
+	if _, err := runStack(e, req); err == nil || strings.Join(images.loads, ",") != "stack,general" || b.image != "general" {
 		t.Fatalf("load failure: %v loads %v image %s", err, images.loads, b.image)
 	}
 	images.failStack, images.failReturn = false, true
-	if _, err := runStack(t, e, req); err == nil || !strings.Contains(err.Error(), "restore") {
+	if _, err := runStack(e, req); err == nil || !strings.Contains(err.Error(), "restore") {
 		t.Fatalf("restore failure not reported: %v", err)
 	}
 	for _, bad := range []FPGAStackRequest{{Records: 0, Stack: req.Stack}, {Records: 1, Stack: sramcapture.StackConfig{Bins: 8}}} {
@@ -310,7 +310,7 @@ func TestFPGAStackSessionAlwaysRestoresGeneral(t *testing.T) {
 			}
 			continue
 		}
-		if _, err := runStack(t, e, bad); err == nil || b.image != "general" {
+		if _, err := runStack(e, bad); err == nil || b.image != "general" {
 			t.Fatalf("accepted %+v", bad)
 		}
 	}
@@ -324,7 +324,7 @@ func TestFPGAStackSessionAlwaysRestoresGeneral(t *testing.T) {
 func TestFPGAStackSameRecordsAcrossTiles(t *testing.T) {
 	e, b, _ := newStackTestEngine(t)
 	b.recordDrift = true
-	res, err := runStack(t, e, FPGAStackRequest{Records: 3, Stack: sramcapture.StackConfig{Level: 128, Hysteresis: 8, Bins: 72, Factor: 4, ChannelMask: 3}})
+	res, err := runStack(e, FPGAStackRequest{Records: 3, Stack: sramcapture.StackConfig{Level: 128, Hysteresis: 8, Bins: 72, Factor: 4, ChannelMask: 3}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -341,7 +341,7 @@ func TestFPGAStackSameRecordsAcrossTiles(t *testing.T) {
 func TestFPGAStackRejectsTileDisagreement(t *testing.T) {
 	e, b, _ := newStackTestEngine(t)
 	b.mismatch = true
-	_, err := runStack(t, e, FPGAStackRequest{Records: 2, Stack: sramcapture.StackConfig{Level: 128, Hysteresis: 8, Bins: 64, Factor: 4, ChannelMask: 3}})
+	_, err := runStack(e, FPGAStackRequest{Records: 2, Stack: sramcapture.StackConfig{Level: 128, Hysteresis: 8, Bins: 64, Factor: 4, ChannelMask: 3}})
 	if err == nil || !strings.Contains(err.Error(), "disagree") {
 		t.Fatalf("got %v", err)
 	}
