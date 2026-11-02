@@ -246,7 +246,8 @@ module stream_drum #(parameter AW=19,WF_AW=12,DESC_AW=8,BANK_AW=10,
  reg p1_due=0,p1_min=0,p1_tail=0,p1_spill=0,p1_empty=0;
  reg [AW:0] p2_dist_w=0,p2_dist_r=0; // the borrow (the head behind the counter) on top
  reg [PW:0] p2_lvl=0;reg p2_room=0,p2_due=0,p2_min=0,p2_tail=0,p2_spill=0,p2_empty=0;
- reg p3_go=0,p3_keep=0,w_more=0,p3_head=0,p3_rhead=0;reg [2:0] p3_kind=0;reg [AW-1:0] p3_seek=0;
+ reg p3_go=0,p3_keep=0,w_more=0,p3_head=0,p3_rhead=0,p3_tread=0;reg [2:0] p3_kind=0;reg [AW-1:0] p3_seek=0;
+ reg tripped=0;                      // the partial read since the trip fell due is made
  reg [2:0] settle=0;
  reg oc=0; // constant 0 in the stream image: its logic folds away there
  // Packets in the current bank (published when full, or sealed), and
@@ -268,6 +269,10 @@ module stream_drum #(parameter AW=19,WF_AW=12,DESC_AW=8,BANK_AW=10,
  // 2^PROJ_SH pulses (a slower stream only trips a little early).
  reg [AW-1:0] proj=0;
  wire [AW:0] trip_lvl=p2_lvl+proj;
+ // The trip leaves this much under TRIP_AT: the projection counts the way's
+ // pulses, not its commands' overheads, the rewind or the write's half rate,
+ // and the FIFO reached 4564 of 4608 words at 2.6M words/s without it.
+ localparam TRIP_SLACK=TRIP_AT>1024 ? TRIP_AT-512 : TRIP_AT;
  // Registered (a clock later than the rest of p2: the inputs are settled).
  reg at_w=0,at_r=0,w_first=0,trip=0;
  wire [AW-1:0] seek_w=p2_dist_w[AW-1:0]>SEG ? SEG : p2_dist_w[AW-1:0],seek_r=p2_dist_r[AW-1:0]>SEG ? SEG : p2_dist_r[AW-1:0];
@@ -311,8 +316,8 @@ module stream_drum #(parameter AW=19,WF_AW=12,DESC_AW=8,BANK_AW=10,
   // the FIFO (a burst of at least WRITE_AT words, and then what came
   // meanwhile, so a trip leaves little for the next lap).
   w_on<=!behind_w && way_w<way_r;proj<=way_w>>PROJ_SH;
-  at_w<=p2_dist_w[AW-1:0]==0;at_r<=p2_dist_r[AW-1:0]==0;w_first<=way_w<way_r;trip<=p2_min && trip_lvl>=TRIP_AT/2;
-  p3_go<=1;p3_kind<=go_r;p3_seek<=seek_r;p3_head<=0;p3_rhead<=0;p3_keep<=0;p3_seal<=p2_partial;
+  at_w<=p2_dist_w[AW-1:0]==0;at_r<=p2_dist_r[AW-1:0]==0;w_first<=way_w<way_r;trip<=p2_min && trip_lvl>=TRIP_SLACK/2;
+  p3_go<=1;p3_kind<=go_r;p3_seek<=seek_r;p3_head<=0;p3_rhead<=0;p3_tread<=0;p3_keep<=0;p3_seal<=p2_partial;
   if(p2_empty)begin
    if(bank_ready && p2_due)p3_kind<=K_DIRECT;
    else if(oc)p3_go<=0;
@@ -320,16 +325,23 @@ module stream_drum #(parameter AW=19,WF_AW=12,DESC_AW=8,BANK_AW=10,
    else if(!bank_ready && p2_spill && p2_room)p3_kind<=K_WRITE;
    else p3_go<=0;
   end else if(at_r)begin
-   if(can_read)begin p3_kind<=K_READ;p3_seal<=0;end
-   else if(trip && !dsc_empty && p1_part)begin p3_kind<=K_READ;p3_seal<=0;end // what fits, then the trip
+   // A trip due makes one read of what fits and goes: partial reads one
+   // after another kept the counter at the read head while the FIFO filled
+   // past the point the trip was planned from. A full bank still reads
+   // (the ring must drain when it is nearly full).
+   if(can_read)begin p3_kind<=K_READ;p3_seal<=0;p3_tread<=trip;end
+   else if(trip && !tripped && !dsc_empty && p1_part)begin p3_kind<=K_READ;p3_seal<=0;p3_tread<=1;end // what fits, then the trip
    // No bank room: the FIFO's burst goes to the write head now, while the
    // host drains its two banks (1.7 ms at the bus's rate, longer than a
    // trip of the ring), rather than when the FIFO must.
    else if(trip || !p1_part && p2_min)begin p3_kind<=go_w;p3_seek<=seek_w;p3_head<=1;end
    else begin p3_go<=0;p3_seal<=0;end
-  end else if(go_wh || (go_rh ? w_on : w_first))begin
+  // A trip due with no bank room, the read head a lap away (behind the
+  // counter), goes to the write head now: the read head would read
+  // nothing, and the way there and back is a lap on the FIFO.
+  end else if(go_wh || trip && !p1_part && behind_r || (go_rh ? w_on : w_first))begin
    p3_keep<=1;
-   if(!at_w)begin p3_kind<=go_w;p3_seek<=seek_w;end
+   if(!at_w)begin p3_kind<=go_w;p3_seek<=seek_w;p3_head<=trip && !p1_part && behind_r;end
    else if((p2_min || w_more && p2_tail) && p2_room)p3_kind<=K_WRITE;
    else begin p3_keep<=0;p3_rhead<=1;end // nothing to write: on to the read head
   end else p3_seal<=0;               // on to the next burst
@@ -370,7 +382,7 @@ module stream_drum #(parameter AW=19,WF_AW=12,DESC_AW=8,BANK_AW=10,
    st<=S_IDLE;h_wend<=0;h_fault<=0;w_more<=0;bfill<=0;hoff<=0;wf_wr<=0;wf_rd<=0;wf_level<=0;wf_in_q<=0;wf_pop_q<=0;in_have<=0;iq_rp<=0;wq_wp<=0;rq_rp<=0;
    dsc_wr<=0;dsc_rd<=0;done_seen<=done_q;
    // The counter starts at the write head when that is in the ring.
-   go_wh<=0;go_rh<=0;
+   go_wh<=0;go_rh<=0;tripped<=0;
    whead<=pos_q+2'd2>=RING_BASE && pos_q+2'd2<=LAST_START ? pos_q+2'd2 : RING_BASE;h_rew<=0;
   end else case(st)
    S_IDLE:if(settle==7 && p3_seal)begin
@@ -378,6 +390,7 @@ module stream_drum #(parameter AW=19,WF_AW=12,DESC_AW=8,BANK_AW=10,
    end else if(settle==7 && p3_go)begin
     d_kind<=p3_kind;seek_cnt<=p3_seek;st<=S_ISS;
     if(p3_head)go_wh<=1;else if(at_w || p3_kind==K_READ)go_wh<=0; // arrived (or reading again)
+    if(p3_tread)tripped<=1;else if(p3_kind==K_WRITE || p3_head)tripped<=0;
     if(p3_rhead)go_rh<=1;else if(at_r || p3_head || p3_kind==K_READ || p3_kind==K_WRITE)go_rh<=0;
     if(!p3_keep)w_more<=0;
    end
