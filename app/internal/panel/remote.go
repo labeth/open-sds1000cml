@@ -604,7 +604,7 @@ func (c *Controller) remoteCall(row string, fn func() SetResult) SetResult {
 func (c *Controller) publish() {
 	s := c.snap()
 	st := c.status(s)
-	raw, _ := json.Marshal(st)
+	raw, _ := json.Marshal(st) // plain data: strings, numbers, slices and structs only
 	h := newSig()
 	h.bytes(raw)
 	sig := uint64(h)
@@ -892,10 +892,15 @@ func (c *Controller) RemoteKnob(name string, dir, steps int, nomenu bool) SetRes
 			return SetResult{Row: name, Error: why}
 		}
 		c.resync()
-		c.dispatch(name, dir, max(steps, 1))
+		c.dispatch(name, dir, min(max(steps, 1), maxRemoteSteps))
 		return SetResult{OK: true, Row: name}
 	})
 }
+
+// maxRemoteSteps bounds a remote's knob turn: more steps than any knob's
+// range (65535 trigger codes at a code a step), and few enough that the
+// steps times a step's size cannot overflow.
+const maxRemoteSteps = 1 << 16
 
 // adjustOpensMenu: the Adjust push opens a menu on the LCD in this
 // workspace: SCOPE's opens its target row's sheet, BUS's the byte picker

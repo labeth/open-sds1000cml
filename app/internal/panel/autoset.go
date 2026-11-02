@@ -1735,7 +1735,9 @@ func (c *Controller) setVdiv(ch, idx int) {
 	if c.fe == nil {
 		return
 	}
-	_ = c.fe.SetVdiv(ch, idx)
+	if err := c.fe.SetVdiv(ch, idx); err != nil {
+		c.logf("panel: autoset V/div: %v", err)
+	}
 	c.mu.Lock()
 	c.vIdx[ch] = idx
 	c.mu.Unlock()

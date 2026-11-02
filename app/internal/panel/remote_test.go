@@ -757,3 +757,22 @@ func TestTypedValueUnderTheLowestIsRefused(t *testing.T) {
 		}
 	}
 }
+
+// A remote's knob turn of a huge step count raises the trigger level as far
+// as it goes: the steps times the codes a step overflowed, and the level
+// went to the other end.
+// TRLC-LINKS: REQ-SDS-162, REQ-SDS-220
+func TestRemoteKnobHugeStepsKeepTheirDirection(t *testing.T) {
+	c, _, _ := newC(t)
+	step := c.trigStepCodes()
+	steps := 2 * (math.MaxInt / step) // step*steps wraps to a small negative
+	if res := c.RemoteKnob("triglevel", 1, steps, true); !res.OK {
+		t.Fatalf("knob: %+v", res)
+	}
+	c.mu.Lock()
+	code := c.trigCode
+	c.mu.Unlock()
+	if code != engine.TrigCodeMin { // clockwise raises the level: the lowest code
+		t.Fatalf("trigger code %d after a huge clockwise turn, want %d", code, engine.TrigCodeMin)
+	}
+}
