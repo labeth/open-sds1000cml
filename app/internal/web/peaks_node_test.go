@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-WEB
+
 package web
 
 import (
@@ -16,7 +17,7 @@ import (
 func TestPeaksJS(t *testing.T) {
 	testenv.NeedNode(t)
 	node, _ := exec.LookPath("node")
-	out, err := exec.Command(node, "peaks.test.cjs").CombinedOutput()
+	out, err := exec.CommandContext(t.Context(), node, "peaks.test.cjs").CombinedOutput()
 	t.Logf("peaks.test.cjs output:\n%s", out)
 	if err != nil {
 		t.Fatalf("peaks.js e2e test failed: %v", err)
@@ -31,7 +32,7 @@ func TestPeaksJS(t *testing.T) {
 // TRLC-LINKS: REQ-SDS-216
 func TestSpectrumLevelJS(t *testing.T) {
 	testenv.NeedNode(t)
-	if out, err := exec.Command("node", "spectrum_level.test.cjs").CombinedOutput(); err != nil || !strings.Contains(string(out), "ALL PASS") {
+	if out, err := exec.CommandContext(t.Context(), "node", "spectrum_level.test.cjs").CombinedOutput(); err != nil || !strings.Contains(string(out), "ALL PASS") {
 		t.Fatalf("spectrum level: %v\n%s", err, out)
 	}
 }
@@ -41,7 +42,7 @@ func TestSpectrumLevelJS(t *testing.T) {
 // TRLC-LINKS: REQ-SDS-070
 func TestPickToggleJS(t *testing.T) {
 	testenv.NeedNode(t)
-	if out, err := exec.Command("node", "pick_toggle.test.cjs").CombinedOutput(); err != nil || !strings.Contains(string(out), "ALL PASS") {
+	if out, err := exec.CommandContext(t.Context(), "node", "pick_toggle.test.cjs").CombinedOutput(); err != nil || !strings.Contains(string(out), "ALL PASS") {
 		t.Fatalf("pick toggle: %v\n%s", err, out)
 	}
 }

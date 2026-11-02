@@ -16,7 +16,7 @@ import (
 	"fmt"
 	"go/format"
 	"os"
-	"sort"
+	"slices"
 	"strings"
 )
 
@@ -46,7 +46,7 @@ func main() {
 	for n := range s.Tokens {
 		names = append(names, n)
 	}
-	sort.Strings(names)
+	slices.Sort(names)
 	var css strings.Builder
 	css.WriteString("/* Code generated from tokens.json by gen_tokens.go. DO NOT EDIT. */\n:root {\n")
 	for _, n := range names {
@@ -60,7 +60,7 @@ func main() {
 	for c := range s.LCD {
 		cols = append(cols, c)
 	}
-	sort.Strings(cols)
+	slices.Sort(cols)
 	var go_ strings.Builder
 	go_.WriteString("// Code generated from ../web/tokens.json by gen_tokens.go. DO NOT EDIT.\n")
 	go_.WriteString("// The LCD palette shares web's tokens so the two surfaces cannot diverge.\n\n")

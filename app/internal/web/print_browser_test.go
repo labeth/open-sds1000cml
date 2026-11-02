@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-WEB-APP-CONTROLS
+
 package web
 
 import (
@@ -15,7 +16,7 @@ func TestDevicePrintNamesTheFileBrowser(t *testing.T) {
 	testenv.NeedNode(t)
 	r := newRemoteRig(t)
 	r.pc.SetHardcopy(func() (string, error) { return "SDS0042.png", nil })
-	out, err := exec.Command("node", "print_browser.mjs", r.app.URL).CombinedOutput()
+	out, err := exec.CommandContext(t.Context(), "node", "print_browser.mjs", r.app.URL).CombinedOutput()
 	t.Logf("print_browser.mjs:\n%s", out)
 	if strings.HasPrefix(strings.TrimSpace(string(out)), "SKIP:") {
 		testenv.SkipBrowser(t, "browser unavailable")

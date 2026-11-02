@@ -1,8 +1,10 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-WEB
+
 package web
 
 import (
 	"bytes"
+	"context"
 	"encoding/binary"
 	"encoding/json"
 	"io"
@@ -34,7 +36,7 @@ type wordsScope struct {
 }
 
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
-func (s *wordsScope) ReadClientWords(seq uint64, max int, wait time.Duration, dst []engine.ClientChunk) (engine.ClientWords, func()) {
+func (s *wordsScope) ReadClientWords(seq uint64, _ int, wait time.Duration, dst []engine.ClientChunk) (engine.ClientWords, func()) {
 	s.mu.Lock()
 	s.asked = append(s.asked, seq)
 	s.waits = append(s.waits, wait)
@@ -90,12 +92,12 @@ func TestStreamWordsEndpoints(t *testing.T) {
 	sc := &wordsScope{fakeScope: &fakeScope{}}
 	srv := httptest.NewServer(New(sc, nil, nil, nil).Handler())
 	defer srv.Close()
-	r, err := http.Get(srv.URL + "/api/stream/words.bin?from=7&max=100&wait=20000")
+	r, err := httpGet(t, nil, srv.URL+"/api/stream/words.bin?from=7&max=100&wait=20000")
 	if err != nil {
 		t.Fatal(err)
 	}
 	body, _ := io.ReadAll(r.Body)
-	r.Body.Close()
+	_ = r.Body.Close()
 	if r.StatusCode != http.StatusOK || string(body[:4]) != "SDW1" {
 		t.Fatalf("status %d, %q", r.StatusCode, body[:min(8, len(body))])
 	}
@@ -110,8 +112,8 @@ func TestStreamWordsEndpoints(t *testing.T) {
 	if err := json.Unmarshal(body[8:8+jl], &h); err != nil {
 		t.Fatal(err)
 	}
-	if h["proto"] != "lin" || h["active"] != true || h["next"].(float64) != 9 || h["chunks"].(float64) != 2 || h["dropped"].(float64) != 1 ||
-		h["lag"].(float64) != 4096 || h["params"].(map[string]any)["haveThr"] != true {
+	if h["proto"] != "lin" || h["active"] != true || h["next"] != 9.0 || h["chunks"] != 2.0 || h["dropped"] != 1.0 ||
+		h["lag"] != 4096.0 || jsonAt[any](t, h, "params", "haveThr") != true {
 		t.Fatalf("header %v", h)
 	}
 	heads := body[8+jl:]
@@ -130,18 +132,23 @@ func TestStreamWordsEndpoints(t *testing.T) {
 		testenv.NeedNode(t)
 		dir := t.TempDir()
 		rep := filepath.Join(dir, "r.bin")
-		os.WriteFile(rep, body, 0o644)
+		if err := os.WriteFile(rep, body, 0o644); err != nil {
+			t.Fatal(err)
+		}
 		cases, _ := json.Marshal([]map[string]any{{"name": "web", "replies": []string{rep}, "out": filepath.Join(dir, "f.bin")}})
-		os.WriteFile(filepath.Join(dir, "cases.json"), cases, 0o644)
-		out, err := exec.Command("node", "webdec_check.mjs", "session", filepath.Join(dir, "cases.json")).CombinedOutput()
+		if err := os.WriteFile(filepath.Join(dir, "cases.json"), cases, 0o644); err != nil {
+			t.Fatal(err)
+		}
+		out, err := exec.CommandContext(t.Context(), "node", "webdec_check.mjs", "session", filepath.Join(dir, "cases.json")).CombinedOutput()
 		if err != nil || !strings.Contains(string(out), "WEBDEC OK") {
 			t.Fatalf("webdec_check.mjs: %v\n%s", err, out)
 		}
 		fb, _ := os.ReadFile(filepath.Join(dir, "f.bin"))
-		pr, err := http.Post(srv.URL+"/api/stream/frames.bin", "application/octet-stream", bytes.NewReader(fb))
+		pr, err := httpPost(t, nil, srv.URL+"/api/stream/frames.bin", "application/octet-stream", bytes.NewReader(fb))
 		if err != nil || pr.StatusCode != http.StatusNoContent {
-			t.Fatalf("frames post: %v %v", err, pr.Status)
+			t.Fatalf("frames post: %v %v", err, pr)
 		}
+		_ = pr.Body.Close()
 		// the decode starts at the first chunk, the second follows lost words
 		if sc.session != 0xC0000003 || sc.through != 1600+32 {
 			t.Fatalf("posted session %x through %d", sc.session, sc.through)
@@ -167,10 +174,11 @@ func TestStreamWordsEndpoints(t *testing.T) {
 	fb = append(fb, 1, 0, 0, 0)
 	put(200, 0, 0)
 	fb = append(fb, 6)
-	pr, err := http.Post(srv.URL+"/api/stream/frames.bin", "application/octet-stream", bytes.NewReader(fb))
+	pr, err := httpPost(t, nil, srv.URL+"/api/stream/frames.bin", "application/octet-stream", bytes.NewReader(fb))
 	if err != nil || pr.StatusCode != http.StatusNoContent {
-		t.Fatalf("frames post: %v %v", err, pr.Status)
+		t.Fatalf("frames post: %v %v", err, pr)
 	}
+	_ = pr.Body.Close()
 	if sc.session != 5 || sc.through != 900 || !bytes.Equal(sc.posted, fb) {
 		t.Fatalf("posted %d %d %x", sc.session, sc.through, sc.posted)
 	}
@@ -178,17 +186,20 @@ func TestStreamWordsEndpoints(t *testing.T) {
 		t.Fatalf("%d reads, %d released", len(sc.asked), sc.released)
 	}
 	for _, bad := range [][]byte{nil, []byte("SDF1"), fb[:len(fb)-3], append([]byte("XXXX"), fb[4:]...)} {
-		pr, err := http.Post(srv.URL+"/api/stream/frames.bin", "application/octet-stream", bytes.NewReader(bad))
+		pr, err := httpPost(t, nil, srv.URL+"/api/stream/frames.bin", "application/octet-stream", bytes.NewReader(bad))
 		if err != nil || pr.StatusCode != http.StatusBadRequest {
-			t.Fatalf("a bad body %q: %v %v", bad, err, pr.Status)
+			t.Fatalf("a bad body %q: %v %v", bad, err, pr)
 		}
+		_ = pr.Body.Close()
 	}
 	// a scope without client decode
 	plain := httptest.NewServer(New(&fakeScope{}, nil, nil, nil).Handler())
 	defer plain.Close()
-	if r, err := http.Get(plain.URL + "/api/stream/words.bin"); err != nil || r.StatusCode != http.StatusNotFound {
-		t.Fatalf("words.bin without client decode: %v %v", err, r.Status)
+	r, err = httpGet(t, nil, plain.URL+"/api/stream/words.bin")
+	if err != nil || r.StatusCode != http.StatusNotFound {
+		t.Fatalf("words.bin without client decode: %v %v", err, r)
 	}
+	_ = r.Body.Close()
 }
 
 // benchWords is a scope whose ring always holds a megabyte of busy words
@@ -199,9 +210,9 @@ type benchWords struct {
 }
 
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
-func (s *benchWords) ReadClientWords(seq uint64, max int, wait time.Duration, dst []engine.ClientChunk) (engine.ClientWords, func()) {
+func (s *benchWords) ReadClientWords(seq uint64, limit int, _ time.Duration, dst []engine.ClientChunk) (engine.ClientWords, func()) {
 	cw := engine.ClientWords{Info: engine.ClientStreamInfo{Session: 1, Proto: "swd", Lines: 2, Mask: 0xFFFFFFFF, Active: true}, Next: seq + 16}
-	n := min(max>>16, len(s.enc)>>16)
+	n := min(limit>>16, len(s.enc)>>16)
 	for k := range n {
 		dst = append(dst, engine.ClientChunk{Seq: seq + uint64(k), Index: uint64(k) << 18, Words: 16383, Enc: s.enc[k<<16 : (k+1)<<16]})
 	}
@@ -224,12 +235,14 @@ func BenchmarkStreamWordsHTTP(b *testing.B) {
 	cl := srv.Client()
 	b.SetBytes(1 << 20)
 	for b.Loop() {
-		r, err := cl.Get(srv.URL + "/api/stream/words.bin?from=0&max=1048576")
+		r, err := httpGet(b, cl, srv.URL+"/api/stream/words.bin?from=0&max=1048576")
 		if err != nil {
 			b.Fatal(err)
 		}
-		io.Copy(io.Discard, r.Body)
-		r.Body.Close()
+		if _, err := io.Copy(io.Discard, r.Body); err != nil {
+			b.Fatal(err)
+		}
+		_ = r.Body.Close()
 	}
 }
 
@@ -252,7 +265,7 @@ func (d *discardRW) WriteHeader(int) {}
 func BenchmarkStreamWordsHandler(b *testing.B) {
 	sc := &benchWords{fakeScope: &fakeScope{}, enc: make([]byte, 1<<20)}
 	h := New(sc, nil, nil, nil).Handler()
-	req := httptest.NewRequest(http.MethodGet, "/api/stream/words.bin?from=0&max=1048576", nil)
+	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/api/stream/words.bin?from=0&max=1048576", nil)
 	w := &discardRW{h: http.Header{}}
 	b.ReportAllocs()
 	for b.Loop() {

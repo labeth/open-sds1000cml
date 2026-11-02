@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-WEB
+
 package web
 
 import (
@@ -51,7 +52,7 @@ func tagAssets() (map[string]string, map[string][]byte) {
 	tags, pages := map[string]string{}, map[string][]byte{}
 	tag := func(body []byte) string {
 		h := fnv.New64a()
-		h.Write(body)
+		_, _ = h.Write(body) // a hash never fails a write
 		return fmt.Sprintf(`"%016x"`, h.Sum64())
 	}
 	files, _ := assetFS.ReadDir(".")
@@ -96,12 +97,15 @@ var gzipped sync.Map
 // TRLC-LINKS: REQ-SDS-161
 func gzipBody(name string, body []byte) []byte {
 	if v, ok := gzipped.Load(name); ok {
-		return v.([]byte)
+		if gz, ok := v.([]byte); ok {
+			return gz
+		}
 	}
 	var b bytes.Buffer
 	zw, _ := gzip.NewWriterLevel(&b, gzip.BestCompression)
-	zw.Write(body)
-	zw.Close()
+	// A bytes.Buffer never fails a write: the compressor cannot either.
+	_, _ = zw.Write(body)
+	_ = zw.Close()
 	gzipped.Store(name, b.Bytes())
 	return b.Bytes()
 }
@@ -151,7 +155,7 @@ func serveAsset(w http.ResponseWriter, r *http.Request, name string) bool {
 	if !ok {
 		// Read once: ReadFile copies the whole embedded file every request.
 		if b, ok := assetBodies.Load(name); ok {
-			body = b.([]byte)
+			body, _ = b.([]byte)
 		} else {
 			var err error
 			if body, err = assetFS.ReadFile(name); err != nil {

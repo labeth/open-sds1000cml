@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-WEB
+
 package web
 
 import (
@@ -70,7 +71,7 @@ func TestRecordServesAWholeSampledRecord(t *testing.T) {
 	sc.init()
 	s := New(sc, nil, nil, nil)
 	rec := httptest.NewRecorder()
-	s.Handler().ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/api/record.bin?sample_s=2e-8&wait_ms=2000", nil))
+	s.Handler().ServeHTTP(rec, httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/api/record.bin?sample_s=2e-8&wait_ms=2000", nil))
 	if rec.Code != 200 {
 		t.Fatalf("code %d: %s", rec.Code, rec.Body.String())
 	}
@@ -93,7 +94,7 @@ func TestRecordServesAWholeSampledRecord(t *testing.T) {
 	sc2 := &recordScope{fakeScope: &fakeScope{}, never: true}
 	sc2.init()
 	rec = httptest.NewRecorder()
-	New(sc2, nil, nil, nil).Handler().ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/api/record.bin?sample_s=2e-8&wait_ms=300", nil))
+	New(sc2, nil, nil, nil).Handler().ServeHTTP(rec, httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/api/record.bin?sample_s=2e-8&wait_ms=300", nil))
 	if rec.Code != 409 || !strings.Contains(rec.Body.String(), "err") {
 		t.Fatalf("no record: code %d %s", rec.Code, rec.Body.String())
 	}
@@ -102,14 +103,14 @@ func TestRecordServesAWholeSampledRecord(t *testing.T) {
 	first := make(chan int)
 	go func() {
 		r := httptest.NewRecorder()
-		s2.Handler().ServeHTTP(r, httptest.NewRequest(http.MethodGet, "/api/record.bin?sample_s=2e-8&wait_ms=600", nil))
+		s2.Handler().ServeHTTP(r, httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/api/record.bin?sample_s=2e-8&wait_ms=600", nil))
 		first <- r.Code
 	}()
 	for !s2.recordBusy.Load() {
 		time.Sleep(time.Millisecond)
 	}
 	rec = httptest.NewRecorder()
-	s2.Handler().ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/api/record.bin?sample_s=2e-8&wait_ms=100", nil))
+	s2.Handler().ServeHTTP(rec, httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/api/record.bin?sample_s=2e-8&wait_ms=100", nil))
 	if rec.Code != 409 || !strings.Contains(rec.Body.String(), "one at a time") {
 		t.Fatalf("a second record meanwhile: code %d %s", rec.Code, rec.Body.String())
 	}
@@ -117,7 +118,7 @@ func TestRecordServesAWholeSampledRecord(t *testing.T) {
 		t.Fatalf("the first: code %d, still busy %v", c, s2.recordBusy.Load())
 	}
 	rec = httptest.NewRecorder()
-	New(sc2, nil, nil, nil).Handler().ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/api/record.bin?sample_s=0", nil))
+	New(sc2, nil, nil, nil).Handler().ServeHTTP(rec, httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/api/record.bin?sample_s=0", nil))
 	if rec.Code != 400 {
 		t.Fatalf("a bad sample_s: code %d", rec.Code)
 	}
@@ -128,7 +129,7 @@ func TestRecordServesAWholeSampledRecord(t *testing.T) {
 // TRLC-LINKS: REQ-SDS-278, REQ-SDS-279, REQ-SDS-280
 func TestVisualStateJS(t *testing.T) {
 	testenv.NeedNode(t)
-	if out, err := exec.Command("node", "visual.test.cjs").CombinedOutput(); err != nil {
+	if out, err := exec.CommandContext(t.Context(), "node", "visual.test.cjs").CombinedOutput(); err != nil {
 		t.Fatalf("the Visual view's state: %v\n%s", err, out)
 	}
 }

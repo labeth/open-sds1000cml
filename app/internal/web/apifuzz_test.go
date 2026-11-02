@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-WEB
+
 package web
 
 import (
@@ -36,19 +37,19 @@ func TestAPIFuzz(t *testing.T) {
 	client := srv.Client()
 
 	post := func(path, body string) int {
-		r, err := client.Post(srv.URL+path, "application/json", strings.NewReader(body))
+		r, err := httpPost(t, client, srv.URL+path, "application/json", strings.NewReader(body))
 		if err != nil {
 			t.Fatalf("POST %s: transport error: %v (server crashed?)", path, err)
 		}
-		r.Body.Close()
+		_ = r.Body.Close()
 		return r.StatusCode
 	}
 	get := func(path string) int {
-		r, err := client.Get(srv.URL + path)
+		r, err := httpGet(t, client, srv.URL+path)
 		if err != nil {
 			t.Fatalf("GET %s: transport error: %v (server crashed?)", path, err)
 		}
-		r.Body.Close()
+		_ = r.Body.Close()
 		return r.StatusCode
 	}
 
@@ -134,9 +135,9 @@ func TestAPIFuzz(t *testing.T) {
 	}
 
 	// the server must still be alive and serving real frames after all of it
-	r, err := client.Get(srv.URL + "/api/status")
+	r, err := httpGet(t, client, srv.URL+"/api/status")
 	if err != nil || r.StatusCode != http.StatusOK {
 		t.Fatalf("server unhealthy after fuzz: %v %v", err, r)
 	}
-	r.Body.Close()
+	_ = r.Body.Close()
 }

@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-SRAMCAPTURE
+
 package sramcapture
 
 import (
@@ -205,13 +206,19 @@ func (c *Capture) stackGrant(ctx context.Context, on bool) error {
 // StackPeek returns {CH2[i+1], CH1[i+1], CH2[i], CH1[i]} read by the stacking
 // engine from the frozen record, for checking its addressing against recall.
 // TRLC-LINKS: REQ-SDS-141
-func (c *Capture) StackPeek(ctx context.Context, index uint32) (uint32, error) {
+func (c *Capture) StackPeek(ctx context.Context, index uint32) (v uint32, err error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	if err := c.stackGrant(ctx, true); err != nil {
 		return 0, err
 	}
-	defer c.stackGrant(context.Background(), false)
+	// A grant that does not come back leaves the stacker holding the SRAM
+	// the record is recalled from: the peek says so, as StackRecord does.
+	defer func() {
+		if e := c.stackGrant(context.Background(), false); err == nil {
+			err = e
+		}
+	}()
 	if err := c.write32(selStackFirst, index); err != nil {
 		return 0, err
 	}
@@ -271,14 +278,14 @@ func (c *Capture) StackRecord(ctx context.Context, cfg StackConfig, st *StackSta
 		{selStackFlags, uint32(flags), false},
 		{selStackPre, cfg.PreSamples, true},
 		{selStackSep, cfg.MinSeparation, true},
-		{selStackFactor, uint32(cfg.Factor), false},
+		{selStackFactor, uint32(cfg.Factor), false}, //nolint:gosec // G115: bounded by StackConfig.validate
 		{selStackInitial, st.Hits, true},
 		{selStackFirst, 0, true},
 	} {
 		if w.two {
 			err = c.write32(w.sel, w.v)
 		} else {
-			err = c.write(w.sel, uint16(w.v))
+			err = c.write(w.sel, uint16(w.v&0xffff))
 		}
 		if err != nil {
 			return 0, 0, err
@@ -306,7 +313,7 @@ func (c *Capture) StackRecord(ctx context.Context, cfg StackConfig, st *StackSta
 				}
 			}
 		}
-		if err = c.write(selStackBins, uint16(n)); err != nil {
+		if err = c.write(selStackBins, uint16(n&0xffff)); err != nil {
 			return 0, 0, err
 		}
 		if err = c.write32(selStackFirstBin, uint32(first)); err != nil {
@@ -355,7 +362,7 @@ func (c *Capture) stackUpload(ctx context.Context, bin, ch int, m superres.FPGAS
 	for _, w := range words {
 		regs = append(regs, [2]uint16{selStackMail, w})
 	}
-	if err := c.writeMany(append(regs, [2]uint16{selStackTile, uint16(bin<<1 | ch)})...); err != nil {
+	if err := c.writeMany(append(regs, [2]uint16{selStackTile, uint16((bin<<1 | ch) & 0xffff)})...); err != nil {
 		return err
 	}
 	return c.stackOp(ctx, stackOpTileWrite, time.Second)
@@ -363,7 +370,7 @@ func (c *Capture) stackUpload(ctx context.Context, bin, ch int, m superres.FPGAS
 
 // TRLC-LINKS: REQ-SDS-141
 func (c *Capture) stackDownload(ctx context.Context, bin, ch int) (superres.FPGAStackMoments, error) {
-	if err := c.write(selStackTile, uint16(bin<<1|ch)); err != nil {
+	if err := c.write(selStackTile, uint16((bin<<1|ch)&0xffff)); err != nil {
 		return superres.FPGAStackMoments{}, err
 	}
 	if err := c.stackOp(ctx, stackOpTileRead, time.Second); err != nil {
@@ -435,7 +442,7 @@ func (c *Capture) StackDownloadWords(ctx context.Context, n int, dst []byte) err
 			binary.LittleEndian.PutUint16(at[2*k:], w)
 		}
 	}
-	c.beats.Add(uint64(n * superres.FPGAStackWords))
+	c.beats.Add(uint64(n * superres.FPGAStackWords)) //nolint:gosec // G115: a count of words read, never negative
 	return nil
 }
 
@@ -473,13 +480,13 @@ func (c *Capture) StackBegin(cfg StackConfig) (int, error) {
 		{selStackFlags, uint32(flags), false},
 		{selStackPre, cfg.PreSamples, true},
 		{selStackSep, cfg.MinSeparation, true},
-		{selStackFactor, uint32(cfg.Factor), false},
+		{selStackFactor, uint32(cfg.Factor), false}, //nolint:gosec // G115: bounded by StackConfig.validate
 		{selStackFirst, 0, true},
 	} {
 		if w.two {
 			err = c.write32(w.sel, w.v)
 		} else {
-			err = c.write(w.sel, uint16(w.v))
+			err = c.write(w.sel, uint16(w.v&0xffff))
 		}
 		if err != nil {
 			return 0, err
@@ -505,7 +512,7 @@ func (c *Capture) stackQualifier(cfg StackConfig) error {
 		return err
 	}
 	for _, v := range cfg.Template {
-		if err := c.write(selStackTemplateByte, uint16(v)); err != nil {
+		if err := c.write(selStackTemplateByte, uint16(v&0xffff)); err != nil {
 			return err
 		}
 	}
@@ -514,17 +521,17 @@ func (c *Capture) stackQualifier(cfg StackConfig) error {
 		v   uint32
 		two bool
 	}{
-		{selStackQualifyCount, uint32(len(cfg.Template)), false},
-		{selStackQualifyStride, uint32(cfg.TemplateStride), false},
-		{selStackQualifyPre, uint32(cfg.TemplatePre), true},
-		{selStackQualifyThresh, uint32(cfg.TemplateThreshold), true},
+		{selStackQualifyCount, uint32(len(cfg.Template)), false},     //nolint:gosec // G115: bounded by StackConfig.validate
+		{selStackQualifyStride, uint32(cfg.TemplateStride), false},   //nolint:gosec // G115: bounded by StackConfig.validate
+		{selStackQualifyPre, uint32(cfg.TemplatePre), true},          //nolint:gosec // G115: bounded by StackConfig.validate
+		{selStackQualifyThresh, uint32(cfg.TemplateThreshold), true}, //nolint:gosec // G115: bounded by StackConfig.validate
 		{selStackQualify, 1, false},
 	} {
 		var err error
 		if w.two {
 			err = c.write32(w.sel, w.v)
 		} else {
-			err = c.write(w.sel, uint16(w.v))
+			err = c.write(w.sel, uint16(w.v&0xffff))
 		}
 		if err != nil {
 			return err
@@ -560,11 +567,11 @@ func (c *Capture) StackScan(ctx context.Context, first, n int, initial uint32) (
 		sel uint16
 		v   uint32
 		two bool
-	}{{selStackBins, uint32(n), false}, {selStackFirstBin, uint32(first), true}, {selStackInitial, initial, true}} {
+	}{{selStackBins, uint32(n), false}, {selStackFirstBin, uint32(first), true}, {selStackInitial, initial, true}} { //nolint:gosec // G115: bounded by StackConfig.validate
 		if w.two {
 			err = c.write32(w.sel, w.v)
 		} else {
-			err = c.write(w.sel, uint16(w.v))
+			err = c.write(w.sel, uint16(w.v&0xffff))
 		}
 		if err != nil {
 			return 0, 0, 0, err

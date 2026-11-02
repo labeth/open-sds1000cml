@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-BUS
+
 package bus
 
 import (
@@ -40,7 +41,7 @@ func (d *Dev) StartDecodedDeadline() (*DecodedDeadline, error) {
 		return nil, err
 	}
 	s.policy = policy
-	_, _, err = syscall.RawSyscall(syscall.SYS_SCHED_GETPARAM, 0, uintptr(unsafe.Pointer(&s.priority)), 0)
+	_, _, err = syscall.RawSyscall(syscall.SYS_SCHED_GETPARAM, 0, uintptr(unsafe.Pointer(&s.priority)), 0) //nolint:gosec // G103: the system call takes its argument by address
 	if err != 0 {
 		runtime.UnlockOSThread()
 		return nil, err
@@ -48,7 +49,7 @@ func (d *Dev) StartDecodedDeadline() (*DecodedDeadline, error) {
 	priority := int32(1)
 	// Reset scheduling in any child thread the runtime creates here.
 	const fifoResetOnFork = 1 | 0x40000000
-	_, _, err = syscall.RawSyscall(syscall.SYS_SCHED_SETSCHEDULER, 0, fifoResetOnFork, uintptr(unsafe.Pointer(&priority)))
+	_, _, err = syscall.RawSyscall(syscall.SYS_SCHED_SETSCHEDULER, 0, fifoResetOnFork, uintptr(unsafe.Pointer(&priority))) //nolint:gosec // G103: the system call takes its argument by address
 	if err != 0 {
 		runtime.UnlockOSThread()
 		return nil, fmt.Errorf("decoded deadline scheduling: %w", err)
@@ -68,7 +69,7 @@ func (s *DecodedDeadline) Pause() error {
 	ts := syscall.NsecToTimespec(500000)
 	for {
 		var remaining syscall.Timespec
-		_, _, err := syscall.RawSyscall(syscall.SYS_NANOSLEEP, uintptr(unsafe.Pointer(&ts)), uintptr(unsafe.Pointer(&remaining)), 0)
+		_, _, err := syscall.RawSyscall(syscall.SYS_NANOSLEEP, uintptr(unsafe.Pointer(&ts)), uintptr(unsafe.Pointer(&remaining)), 0) //nolint:gosec // G103: the system call takes its argument by address
 		if err == 0 {
 			return nil
 		}
@@ -103,7 +104,7 @@ func (s *DecodedDeadline) RaiseProcess() {
 		if err != nil || tid == self {
 			continue
 		}
-		if _, _, e := syscall.RawSyscall(syscall.SYS_SCHED_SETSCHEDULER, uintptr(tid), fifoResetOnFork, uintptr(unsafe.Pointer(&priority))); e == 0 {
+		if _, _, e := syscall.RawSyscall(syscall.SYS_SCHED_SETSCHEDULER, uintptr(tid), fifoResetOnFork, uintptr(unsafe.Pointer(&priority))); e == 0 { //nolint:gosec // G103: the system call takes its argument by address
 			s.raised = append(s.raised, tid)
 		}
 	}
@@ -114,10 +115,10 @@ func (s *DecodedDeadline) RaiseProcess() {
 // TRLC-LINKS: REQ-SDS-013, REQ-SDS-001
 func (s *DecodedDeadline) Close() error {
 	for _, tid := range s.raised {
-		_, _, _ = syscall.RawSyscall(syscall.SYS_SCHED_SETSCHEDULER, uintptr(tid), s.policy, uintptr(unsafe.Pointer(&s.priority)))
+		_, _, _ = syscall.RawSyscall(syscall.SYS_SCHED_SETSCHEDULER, uintptr(tid), s.policy, uintptr(unsafe.Pointer(&s.priority))) //nolint:gosec // G103: the system call takes its argument by address
 	}
 	s.raised = nil
-	_, _, err := syscall.RawSyscall(syscall.SYS_SCHED_SETSCHEDULER, 0, s.policy, uintptr(unsafe.Pointer(&s.priority)))
+	_, _, err := syscall.RawSyscall(syscall.SYS_SCHED_SETSCHEDULER, 0, s.policy, uintptr(unsafe.Pointer(&s.priority))) //nolint:gosec // G103: the system call takes its argument by address
 	if err != 0 {
 		return fmt.Errorf("restore decoded scheduling: %w", err)
 	}

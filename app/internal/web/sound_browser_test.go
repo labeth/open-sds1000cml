@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-WEB
+
 package web
 
 import (
@@ -73,7 +74,7 @@ func (s *soundScope) SoundTake() *engine.SoundTake {
 }
 
 // TRLC-LINKS: REQ-SDS-274
-func (s *soundScope) SoundRead(from uint64, n int, q1, q2 []uint16) engine.SoundBlock {
+func (s *soundScope) SoundRead(from uint64, n int, _, _ []uint16) engine.SoundBlock {
 	next := s.nextOrd()
 	if next > 1<<20 && from < next-1<<20 {
 		from = next - 1<<20
@@ -141,12 +142,12 @@ func (p *soundPanelFake) SoundAction(a string) error {
 }
 
 // TRLC-LINKS: REQ-SDS-274
-func (p *soundPanelFake) SoundReport(api, marks bool) panel.SoundReport {
+func (p *soundPanelFake) SoundReport(_, _ bool) panel.SoundReport {
 	return panel.SoundReport{Settings: p.SoundSettings(), ADSR: "idle"}
 }
 
 // TRLC-LINKS: REQ-SDS-274
-func (p *soundPanelFake) SoundWant(api, marks bool) {}
+func (p *soundPanelFake) SoundWant(_, _ bool) {}
 
 // TestSoundBrowser drives the web SOUND workspace in headless Chromium: Alt+6,
 // the stream arriving, the tuner (A4 +3 cents), the meters, the cycle trace
@@ -171,7 +172,7 @@ func TestSoundBrowser(t *testing.T) {
 	pp := &soundPanelFake{set: panel.SoundSettings{A4: 440, Ref: "dbu", Cycles: 2, Gate: -1, GateV: 0.1}}
 	srv := httptest.NewServer(New(sc, nil, pp, nil).Handler())
 	defer srv.Close()
-	out, err := exec.Command("node", "sound_browser.mjs", srv.URL).CombinedOutput()
+	out, err := exec.CommandContext(t.Context(), "node", "sound_browser.mjs", srv.URL).CombinedOutput()
 	t.Logf("sound_browser.mjs:\n%s", out)
 	if strings.Contains(string(out), "SKIP:") {
 		testenv.SkipBrowser(t, "browser driver skipped: %s", firstLine(out))

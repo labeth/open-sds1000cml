@@ -18,6 +18,7 @@
 //     never-read buffer per drain.
 //
 // ENGMODEL-OWNER-UNIT: FU-APP-BUS
+
 package bus
 
 import (
@@ -73,13 +74,13 @@ type regs32 interface {
 type memRegs struct{ m []byte }
 
 // TRLC-LINKS: REQ-SDS-081
-func (r memRegs) R(off uint32) uint32 { return *(*uint32)(unsafe.Pointer(&r.m[off])) }
+func (r memRegs) R(off uint32) uint32 { return *(*uint32)(unsafe.Pointer(&r.m[off])) } //nolint:gosec // G103: a register in the block mapped from /dev/mem
 
 // TRLC-LINKS: REQ-SDS-081
-func (r memRegs) W(off, v uint32) { *(*uint32)(unsafe.Pointer(&r.m[off])) = v }
+func (r memRegs) W(off, v uint32) { *(*uint32)(unsafe.Pointer(&r.m[off])) = v } //nolint:gosec // G103: a register in the block mapped from /dev/mem
 
 // TRLC-LINKS: REQ-SDS-081
-func (r memRegs) close() { syscall.Munmap(r.m) }
+func (r memRegs) close() { _ = syscall.Munmap(r.m) }
 
 // dmaBuf is a pinned buffer with the physical address of every page.
 // TRLC-LINKS: REQ-SDS-081
@@ -131,16 +132,16 @@ const yieldLearn = 32
 // 110 us): a sleep through a transfer asks that much less.
 const yieldOvershoot = 120 * time.Microsecond
 
-// slackStep, slackMin and slackPolls tune the learned wake slack: a poll
+// slackStep, minSlack and slackPolls tune the learned wake slack: a poll
 // of the completion register is about half a microsecond.
 const (
 	slackStep  = 4 * time.Microsecond
-	slackMin   = 8 * time.Microsecond
+	minSlack   = 8 * time.Microsecond
 	slackPolls = 24
 )
 
-// yieldMin is the shortest transfer slept through.
-const yieldMin = 80 * time.Microsecond
+// minYieldSleep is the shortest transfer slept through.
+const minYieldSleep = 80 * time.Microsecond
 
 // newEDMADrainer maps the TPCC, validates the pagemap path once, and picks the
 // coherency strategy. Any failure returns an error and the caller stays on ioctl.
@@ -153,7 +154,7 @@ func newEDMADrainer(maxWords int, logf func(string, ...any)) (*edmaDrainer, erro
 	if err != nil {
 		return nil, err
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 	m, err := syscall.Mmap(int(f.Fd()), edmaCCBase, edmaCCLen,
 		syscall.PROT_READ|syscall.PROT_WRITE, syscall.MAP_SHARED)
 	if err != nil {
@@ -170,7 +171,7 @@ func newEDMADrainer(maxWords int, logf func(string, ...any)) (*edmaDrainer, erro
 	probe, err := pg.alloc(pageSize)
 	if err != nil {
 		cc.close()
-		pm.Close()
+		_ = pm.Close()
 		return nil, err
 	}
 	probe.release()
@@ -180,22 +181,24 @@ func newEDMADrainer(maxWords int, logf func(string, ...any)) (*edmaDrainer, erro
 			d.persistent.release()
 		}
 		cc.close()
-		pm.Close()
+		_ = pm.Close()
 	}
 	if fd, err := syscall.Open("/dev/dcinv", syscall.O_RDWR, 0); err == nil {
 		if buf, err := pg.alloc(maxWords * 2); err == nil {
 			d.persistent = buf
 			d.inv = func(b []byte) {
-				arg := [2]uint32{uint32(uintptr(unsafe.Pointer(&b[0]))), uint32(len(b))}
+				arg := [2]uint32{uint32(uintptr(unsafe.Pointer(&b[0]))), uint32(len(b))} //nolint:gosec // G103: the driver takes the buffer's address; the buffer outlives the ioctl
 				// The local driver only invalidates this bounded buffer's cache
-				// lines. It does not wait for DMA or any other device operation.
-				syscall.RawSyscall(syscall.SYS_IOCTL, uintptr(fd), dcinvIOC, uintptr(unsafe.Pointer(&arg[0])))
+				// lines. It does not wait for DMA or any other device operation,
+				// and its one failure (a bad range) cannot happen for this
+				// buffer, proven by the allocation above.
+				_, _, _ = syscall.RawSyscall(syscall.SYS_IOCTL, uintptr(fd), dcinvIOC, uintptr(unsafe.Pointer(&arg[0]))) //nolint:gosec // G103: the system call takes its argument by address
 			}
 			prev := d.closeFn
-			d.closeFn = func() { prev(); syscall.Close(fd) }
+			d.closeFn = func() { prev(); _ = syscall.Close(fd) }
 			logf("bus: EDMA coherency via /dev/dcinv (persistent %d-word buffer)", maxWords)
 		} else {
-			syscall.Close(fd)
+			_ = syscall.Close(fd)
 			logf("bus: /dev/dcinv present but pinned buffer failed (%v) — fresh buffer per drain", err)
 		}
 	} else {
@@ -234,19 +237,19 @@ func (p *pagemapPager) alloc(nbytes int) (*dmaBuf, error) {
 		return nil, fmt.Errorf("edma buf mmap: %w", err)
 	}
 	if err := syscall.Mlock(buf); err != nil { // fault + pin (zero-filled by MAP_ANON)
-		syscall.Munmap(buf)
+		_ = syscall.Munmap(buf)
 		return nil, fmt.Errorf("edma mlock: %w", err)
 	}
 	npages := nbytes / pageSize
 	phys := make([]uint32, npages)
 	for pg := range npages {
-		phys[pg] = physOf(p.pm, unsafe.Pointer(&buf[pg*pageSize]))
+		phys[pg] = physOf(p.pm, unsafe.Pointer(&buf[pg*pageSize])) //nolint:gosec // G103: the page's address, looked up in /proc/self/pagemap
 		if phys[pg] == 0 {
-			syscall.Munmap(buf)
+			_ = syscall.Munmap(buf)
 			return nil, errors.New("edma pagemap resolve failed (need root)")
 		}
 	}
-	return &dmaBuf{buf: buf, phys: phys, release: func() { syscall.Munmap(buf) }}, nil
+	return &dmaBuf{buf: buf, phys: phys, release: func() { _ = syscall.Munmap(buf) }}, nil
 }
 
 // mapShared maps nbytes of the file fd shared, pins it and resolves its
@@ -261,18 +264,18 @@ func (p *pagemapPager) mapShared(fd, nbytes int) (*dmaBuf, error) {
 		return nil, fmt.Errorf("edma shared mmap: %w", err)
 	}
 	if err := syscall.Mlock(buf); err != nil {
-		syscall.Munmap(buf)
+		_ = syscall.Munmap(buf)
 		return nil, fmt.Errorf("edma shared mlock: %w", err)
 	}
 	phys := make([]uint32, nbytes/pageSize)
 	for pg := range phys {
-		phys[pg] = physOf(p.pm, unsafe.Pointer(&buf[pg*pageSize]))
+		phys[pg] = physOf(p.pm, unsafe.Pointer(&buf[pg*pageSize])) //nolint:gosec // G103: the page's address, looked up in /proc/self/pagemap
 		if phys[pg] == 0 {
-			syscall.Munmap(buf)
+			_ = syscall.Munmap(buf)
 			return nil, errors.New("edma pagemap resolve failed (need root)")
 		}
 	}
-	return &dmaBuf{buf: buf, phys: phys, release: func() { syscall.Munmap(buf) }}, nil
+	return &dmaBuf{buf: buf, phys: phys, release: func() { _ = syscall.Munmap(buf) }}, nil
 }
 
 // PinSharedRing maps nbytes of fd for in-place DMA: a pop whose destination
@@ -305,7 +308,7 @@ func (d *Dev) PinSharedRing(fd, nbytes int) ([]byte, error) {
 func physOf(pm *os.File, p unsafe.Pointer) uint32 {
 	v := uintptr(p)
 	var b [8]byte
-	if _, err := pm.ReadAt(b[:], int64(v/pageSize)*8); err != nil {
+	if _, err := pm.ReadAt(b[:], int64(v/pageSize)*8); err != nil { //nolint:gosec // G115: a page number of a 32-bit address space
 		return 0
 	}
 	var ent uint64
@@ -315,7 +318,7 @@ func physOf(pm *os.File, p unsafe.Pointer) uint32 {
 	if ent&(1<<63) == 0 { // page not present
 		return 0
 	}
-	return uint32((ent&((1<<55)-1))*pageSize + uint64(v%pageSize))
+	return uint32((ent&((1<<55)-1))*pageSize + uint64(v%pageSize)) //nolint:gosec // G115: physical addresses on this SoC are 32-bit
 }
 
 // runParam programs channel edmaChan's PaRAM for a fixed-source (bcnt × 2-byte)
@@ -324,7 +327,7 @@ func physOf(pm *os.File, p unsafe.Pointer) uint32 {
 // TRLC-LINKS: REQ-SDS-081
 func (e *edmaDrainer) runParam(src, dst, bcnt uint32) bool {
 	const ch = uint32(edmaChan)
-	pb := uint32(offPaRAM + ch*paramSize)
+	pb := offPaRAM + ch*paramSize
 	e.cc.W(pb+0x00, optSyncAB|(ch<<12)|optTCINTEN) // OPT: SYNCDIM=AB, TCC=ch, TCINTEN
 	e.cc.W(pb+0x04, src)                           // SRC (fixed)
 	e.cc.W(pb+0x08, 2|(bcnt<<16))                  // ACNT=2, BCNT=bcnt
@@ -351,7 +354,7 @@ func (e *edmaDrainer) runParam(src, dst, bcnt uint32) bool {
 		learn = e.nsPerWord == 0 || e.transfers%yieldLearn == 0
 		if learn {
 			t0 = time.Now()
-		} else if d := time.Duration(e.nsPerWord * float64(bcnt)); d >= yieldMin {
+		} else if d := time.Duration(e.nsPerWord * float64(bcnt)); d >= minYieldSleep {
 			// The shortest sleep outlasts a page's transfer (about 100 us):
 			// the bank is late by the difference, which the fabric's FIFO
 			// holds, and the core is the app's meanwhile.
@@ -362,7 +365,7 @@ func (e *edmaDrainer) runParam(src, dst, bcnt uint32) bool {
 			slept = true
 		}
 	}
-	for i := 0; i < e.pollMax; i++ {
+	for i := range e.pollMax {
 		if e.cc.R(offShadow0+offIPR+hi)&cb != 0 {
 			if slept {
 				// Done at the first look: the sleep may have overslept;
@@ -371,7 +374,7 @@ func (e *edmaDrainer) runParam(src, dst, bcnt uint32) bool {
 				case i == 0:
 					e.slack = min(e.slack+slackStep, yieldOvershoot)
 				case i > slackPolls:
-					e.slack = max(e.slack-slackStep, slackMin)
+					e.slack = max(e.slack-slackStep, minSlack)
 				}
 			}
 			e.cc.W(offShadow0+offICR+hi, cb)
@@ -391,7 +394,7 @@ func sleepThread(d time.Duration) {
 	ts := syscall.NsecToTimespec(int64(d))
 	for {
 		var rem syscall.Timespec
-		_, _, err := syscall.RawSyscall(syscall.SYS_NANOSLEEP, uintptr(unsafe.Pointer(&ts)), uintptr(unsafe.Pointer(&rem)), 0)
+		_, _, err := syscall.RawSyscall(syscall.SYS_NANOSLEEP, uintptr(unsafe.Pointer(&ts)), uintptr(unsafe.Pointer(&rem)), 0) //nolint:gosec // G103: the system call takes its argument by address
 		if err != syscall.EINTR {
 			return
 		}
@@ -432,7 +435,7 @@ func (e *edmaDrainer) drainWords(src uint32, dst []uint16, n int) bool {
 		if base+w > n {
 			w = n - base
 		}
-		if !e.runParam(src, b.phys[base/wordsPage], uint32(w)) {
+		if !e.runParam(src, b.phys[base/wordsPage], uint32(w)) { //nolint:gosec // G115: a drain of at most maxWords words
 			return false
 		}
 	}
@@ -450,7 +453,7 @@ func leWords(dst []uint16, src []byte) {
 	if len(dst) == 0 {
 		return
 	}
-	copy(unsafe.Slice((*byte)(unsafe.Pointer(&dst[0])), 2*len(dst)), src)
+	copy(unsafe.Slice((*byte)(unsafe.Pointer(&dst[0])), 2*len(dst)), src) //nolint:gosec // G103: the words' own memory, little-endian on this CPU
 }
 
 // pinnedAt returns the pinned buffer dst lies inside and dst's offset in it.
@@ -459,9 +462,9 @@ func (e *edmaDrainer) pinnedAt(dst []byte) (*dmaBuf, int) {
 	if len(dst) == 0 {
 		return nil, 0
 	}
-	p := uintptr(unsafe.Pointer(&dst[0]))
+	p := uintptr(unsafe.Pointer(&dst[0])) //nolint:gosec // G103: an address compared, never dereferenced
 	for _, b := range e.pinned {
-		base := uintptr(unsafe.Pointer(&b.buf[0]))
+		base := uintptr(unsafe.Pointer(&b.buf[0])) //nolint:gosec // G103: an address compared, never dereferenced
 		if p >= base && p+uintptr(len(dst)) <= base+uintptr(len(b.buf)) {
 			return b, int(p - base)
 		}
@@ -478,7 +481,7 @@ func (e *edmaDrainer) drainPinned(src uint32, b *dmaBuf, off int, dst []byte) bo
 	for at := off; at < end; {
 		page := at / pageSize
 		piece := min(end, (page+1)*pageSize) - at
-		if piece%2 != 0 || !e.runParam(src, b.phys[page]+uint32(at%pageSize), uint32(piece/2)) {
+		if piece%2 != 0 || !e.runParam(src, b.phys[page]+uint32(at%pageSize), uint32(piece/2)) { //nolint:gosec // G115: a piece within one page
 			return false
 		}
 		at += piece
@@ -514,7 +517,7 @@ func (e *edmaDrainer) drainBytes(src uint32, dst []byte) bool {
 		if base+w > n {
 			w = n - base
 		}
-		if !e.runParam(src, b.phys[base/wordsPage], uint32(w)) {
+		if !e.runParam(src, b.phys[base/wordsPage], uint32(w)) { //nolint:gosec // G115: a drain of at most maxWords words
 			return false
 		}
 	}
@@ -544,7 +547,7 @@ func (e *edmaDrainer) drain(c1, c2 []uint8, n int) bool {
 		if base+w > n {
 			w = n - base
 		}
-		if !e.runParam(burstPortPhys, b.phys[base/wordsPage], uint32(w)) {
+		if !e.runParam(burstPortPhys, b.phys[base/wordsPage], uint32(w)) { //nolint:gosec // G115: a drain of at most maxWords words
 			return false
 		}
 	}

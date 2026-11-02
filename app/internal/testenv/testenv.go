@@ -23,15 +23,15 @@ func required() bool { return os.Getenv("CI_REQUIRE_BROWSER") == "1" }
 // NeedNode skips t when node is not on PATH — or fails it under
 // CI_REQUIRE_BROWSER=1.
 // TRLC-LINKS: REQ-SDS-179
-func NeedNode(t testing.TB) {
-	t.Helper()
+func NeedNode(tb testing.TB) {
+	tb.Helper()
 	if haveNode() {
 		return
 	}
 	if required() {
-		t.Fatal("CI_REQUIRE_BROWSER=1 but node is not on PATH — this lane must run the node/browser tests, not skip them")
+		tb.Fatal("CI_REQUIRE_BROWSER=1 but node is not on PATH — this lane must run the node/browser tests, not skip them")
 	}
-	t.Skip("node not installed")
+	tb.Skip("node not installed")
 }
 
 // haveNode is whether node is on PATH, looked up once for every test.
@@ -44,12 +44,12 @@ var haveNode = sync.OnceValue(func() bool {
 // installed, or the browser failed to launch) — or fails the test under
 // CI_REQUIRE_BROWSER=1.
 // TRLC-LINKS: REQ-SDS-179
-func SkipBrowser(t testing.TB, format string, args ...any) {
-	t.Helper()
+func SkipBrowser(tb testing.TB, format string, args ...any) {
+	tb.Helper()
 	if required() {
-		t.Fatalf("CI_REQUIRE_BROWSER=1 but the browser is unavailable: "+format, args...)
+		tb.Fatalf("CI_REQUIRE_BROWSER=1 but the browser is unavailable: "+format, args...)
 	}
-	t.Skipf(format, args...)
+	tb.Skipf(format, args...)
 }
 
 // RTLDir returns a directory holding every FPGA source file flat, with the
@@ -70,7 +70,7 @@ func RTLDir(tb testing.TB) string {
 		}
 	}
 	dir := tb.TempDir()
-	if err := os.Mkdir(filepath.Join(dir, "sim"), 0o755); err != nil {
+	if err := os.Mkdir(filepath.Join(dir, "sim"), 0o750); err != nil {
 		tb.Fatal(err)
 	}
 	groups, _ := filepath.Glob(filepath.Join(fpga, "images", "*"))

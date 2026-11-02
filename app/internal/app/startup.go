@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-APP
+
 package app
 
 import (
@@ -17,9 +18,9 @@ func loadGeneralImage(fd int) error {
 	if len(rbf) == 0 {
 		return errors.New("this binary embeds no FPGA images: build it with make app")
 	}
-	show := func(stage string, sent, total int) {}
+	show := func(_ string, _, _ int) {}
 	if fb, err := lcd.OpenFB(); err == nil {
-		defer fb.Close()
+		defer func() { _ = fb.Close() }()
 		surface := lcd.NewMemSurface()
 		shown := false
 		show = func(stage string, sent, total int) {

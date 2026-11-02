@@ -82,6 +82,7 @@ const (
 	errOutOfRange = "Data out of range"
 )
 
+// Handler answers SCPI lines against the scope, its front end and display.
 // TRLC-LINKS: REQ-SDS-024
 type Handler struct {
 	sc   Scope
@@ -155,9 +156,9 @@ func (h *Handler) settle() {
 	}
 }
 
-// TRLC-LINKS: REQ-SDS-024
 // SetupMemory stores and recalls whole instrument setups in numbered slots
 // (*SAV/*RCL).
+// TRLC-LINKS: REQ-SDS-024
 type SetupMemory interface {
 	SaveSetup(slot int) error
 	RecallSetup(slot int) error
@@ -189,6 +190,8 @@ func (h *Handler) SetSetupMemory(m SetupMemory) {
 // setupSlots is the vendor's *SAV/*RCL range.
 const setupSlots = 20
 
+// New is a handler for sc; fe, disp and shot may be nil, and the commands
+// that need them then answer with an error.
 // TRLC-LINKS: REQ-SDS-024
 func New(sc Scope, fe Analog, disp Display, shot Screenshot, logf func(string, ...any)) *Handler {
 	return &Handler{

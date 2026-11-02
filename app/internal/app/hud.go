@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-APP
+
 package app
 
 import (
@@ -75,7 +76,7 @@ func buildHUD(e *engine.Engine, fe *analog.FrontEnd) lcd.HUD {
 		}
 		hud.TrigLvlV = e.TrigVoltsAt(st.TrigCode, st.TrigSource) * max(probe, 1)
 	}
-	if pc := uiCtrl.Load(); pc != nil { // the workspace UI + per-channel display
+	if pc := uiCtrl.Load(); pc != nil { //nolint:nestif // the stream page is formatted only inside stream mode; the workspace UI + per-channel display
 		if sv := streamCtrl.Load(); sv != nil && pc.StreamMode() {
 			v := sv.Snapshot()
 			list, top := pc.StreamList()

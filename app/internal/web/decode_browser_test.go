@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-WEB
+
 package web
 
 import (
@@ -39,8 +40,8 @@ func i2cWave(n int) (scl, sda []uint8) {
 	seg(SPB*2, true, true) // idle
 	seg(half, true, true)
 	seg(half, true, false) // START: SDA falls while SCL high
-	emit((0x50 << 1) | 0)
-	bit(false) // addr 0x50 W + ACK
+	emit(0x50 << 1)        // address 0x50, write
+	bit(false)             // addr 0x50 W + ACK
 	emit(0x00)
 	bit(false) // data 0x00 + ACK
 	emit(0xFF)
@@ -80,7 +81,7 @@ func TestDecodeBrowser(t *testing.T) {
 	srv := httptest.NewServer(New(fs, nil, newDecodePanel(fs, nil), nil).Handler())
 	defer srv.Close()
 
-	out, err := exec.Command("node", "decode_browser.mjs", srv.URL).CombinedOutput()
+	out, err := exec.CommandContext(t.Context(), "node", "decode_browser.mjs", srv.URL).CombinedOutput()
 	t.Logf("decode_browser.mjs:\n%s", out)
 	if strings.Contains(string(out), "SKIP:") {
 		testenv.SkipBrowser(t, "browser driver skipped: %s", firstLine(out))

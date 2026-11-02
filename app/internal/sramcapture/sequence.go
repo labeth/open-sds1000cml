@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-SRAMCAPTURE
+
 package sramcapture
 
 import (
@@ -120,8 +121,8 @@ func (c *Capture) configureSequence(p SequenceTriggerConfig) error {
 	// packets): six writes an element were a round trip each.
 	regs := make([][2]uint16, 0, 6*int(p.Length))
 	for k, e := range p.Elements[:p.Length] {
-		regs = append(regs, [2]uint16{119, uint16(k)}, [2]uint16{120, uint16(e.Value)}, [2]uint16{121, uint16(e.Value >> 16)},
-			[2]uint16{122, uint16(e.Mask)}, [2]uint16{123, uint16(e.Mask >> 16)}, [2]uint16{124, uint16(e.Kind)})
+		regs = append(regs, [2]uint16{119, uint16(k)}, [2]uint16{120, uint16(e.Value & 0xffff)}, [2]uint16{121, uint16(e.Value >> 16)},
+			[2]uint16{122, uint16(e.Mask & 0xffff)}, [2]uint16{123, uint16(e.Mask >> 16)}, [2]uint16{124, uint16(e.Kind)})
 	}
 	if err := c.writeMany(regs...); err != nil {
 		return err

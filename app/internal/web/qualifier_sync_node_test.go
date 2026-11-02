@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-WEB
+
 package web
 
 import (
@@ -10,7 +11,7 @@ import (
 // TRLC-LINKS: REQ-SDS-011, REQ-SDS-072
 func TestQualifierControlSyncJS(t *testing.T) {
 	testenv.NeedNode(t)
-	if out, err := exec.Command("node", "qualifier_sync.test.cjs").CombinedOutput(); err != nil {
+	if out, err := exec.CommandContext(t.Context(), "node", "qualifier_sync.test.cjs").CombinedOutput(); err != nil {
 		t.Fatalf("qualifier controls: %v\n%s", err, out)
 	}
 }

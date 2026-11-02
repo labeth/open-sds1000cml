@@ -7,6 +7,8 @@
 package vxi11srv
 
 import (
+	"bytes"
+	"context"
 	"encoding/binary"
 	"fmt"
 	"io"
@@ -38,6 +40,7 @@ const (
 
 	errOK      = 0
 	errInvLink = 4
+	errIO      = 17
 	errLocked  = 11
 	errTimeout = 15
 
@@ -51,6 +54,7 @@ const (
 // TRLC-LINKS: REQ-SDS-024
 type Handler func(line []byte) []byte
 
+// Server is one running VXI-11 DEVICE_CORE listener with its single link.
 // TRLC-LINKS: REQ-SDS-024
 type Server struct {
 	h    Handler
@@ -75,11 +79,18 @@ type conn struct {
 // portmapper (register=false for tests), and serves in the background.
 // TRLC-LINKS: REQ-SDS-024
 func Start(h Handler, register bool, logf func(string, ...any)) (*Server, int, error) {
-	ln, err := net.Listen("tcp", ":0")
+	// Every interface: the instrument is controlled over the LAN.
+	var lc net.ListenConfig
+	ln, err := lc.Listen(context.Background(), "tcp", ":0")
 	if err != nil {
 		return nil, 0, err
 	}
-	port := ln.Addr().(*net.TCPAddr).Port
+	addr, ok := ln.Addr().(*net.TCPAddr)
+	if !ok {
+		_ = ln.Close()
+		return nil, 0, fmt.Errorf("vxi11: listener address %v is not TCP", ln.Addr())
+	}
+	port := addr.Port
 	s := &Server{h: h, logf: logf, ln: ln, nextLID: 1}
 	if register {
 		if err := registerPortmap(port, logf); err != nil {
@@ -136,7 +147,7 @@ func readRecord(r io.Reader) ([]byte, error) {
 // TRLC-LINKS: REQ-SDS-024
 func writeRecord(w io.Writer, msg []byte) error {
 	var hdr [4]byte
-	binary.BigEndian.PutUint32(hdr[:], 0x80000000|uint32(len(msg)))
+	binary.BigEndian.PutUint32(hdr[:], 0x80000000|uint32(len(msg))) //nolint:gosec // G115: replies are a few header words plus at most maxRecvSize data, far below 2^31
 	if _, err := w.Write(hdr[:]); err != nil {
 		return err
 	}
@@ -211,7 +222,7 @@ func putU32(b []byte, v uint32) []byte {
 
 // TRLC-LINKS: REQ-SDS-024
 func putOpaque(b, data []byte) []byte {
-	b = putU32(b, uint32(len(data)))
+	b = putU32(b, uint32(len(data))) //nolint:gosec // G115: data comes from a record bounded by maxRecord
 	b = append(b, data...)
 	for pad := (4 - len(data)%4) % 4; pad > 0; pad-- {
 		b = append(b, 0)
@@ -225,7 +236,7 @@ func putOpaque(b, data []byte) []byte {
 func (cn *conn) serve() {
 	defer func() {
 		cn.srv.release(cn)
-		cn.c.Close()
+		_ = cn.c.Close()
 	}()
 	for {
 		msg, err := readRecord(cn.c)
@@ -313,9 +324,17 @@ func (cn *conn) dispatch(proc uint32, x *xdr) []byte {
 			r := putU32(nil, errInvLink)
 			return putU32(r, 0)
 		}
+		// A line never ends past maxRecvSize: a client that keeps writing
+		// without a newline or END would otherwise grow the buffer until the
+		// scope runs out of memory. The partial line is dropped.
+		if len(cn.lineBuf)+len(data) > maxRecvSize {
+			cn.lineBuf = nil
+			r := putU32(nil, errIO)
+			return putU32(r, 0)
+		}
 		cn.lineBuf = append(cn.lineBuf, data...)
 		for {
-			i := indexByte(cn.lineBuf, '\n')
+			i := bytes.IndexByte(cn.lineBuf, '\n')
 			if i < 0 {
 				break
 			}
@@ -330,7 +349,7 @@ func (cn *conn) dispatch(proc uint32, x *xdr) []byte {
 			cn.lineBuf = nil
 		}
 		r := putU32(nil, errOK)
-		return putU32(r, uint32(len(data)))
+		return putU32(r, uint32(len(data))) //nolint:gosec // G115: data comes from a record bounded by maxRecord
 
 	case procDeviceRead:
 		lid := x.u32()
@@ -402,16 +421,6 @@ func (cn *conn) owns(lid uint32) bool {
 	return cn.srv.linkOwner == cn && cn.lid == lid && lid != 0
 }
 
-// TRLC-LINKS: REQ-SDS-024
-func indexByte(b []byte, c byte) int {
-	for i, v := range b {
-		if v == c {
-			return i
-		}
-	}
-	return -1
-}
-
 // ---- portmap registration (spec 11 §1.2) ----
 
 // registerPortmap UNSETs any stale DEVICE_CORE mapping and SETs ours. The
@@ -435,8 +444,9 @@ func registerPortmap(port int, logf func(string, ...any)) error {
 		if err != nil {
 			return fmt.Errorf("privileged dial: %w", err)
 		}
-		defer c.Close()
-		msg := putU32(nil, uint32(time.Now().UnixNano()))
+		defer func() { _ = c.Close() }()
+		xid := uint32(time.Now().UnixNano()) //nolint:gosec // G115: the xid is any 32 bits that differ per call; the clock's low bits do
+		msg := putU32(nil, xid)
 		msg = putU32(msg, 0) // CALL
 		msg = putU32(msg, 2) // rpc v2
 		msg = putU32(msg, progPortmap)
@@ -453,14 +463,16 @@ func registerPortmap(port int, logf func(string, ...any)) error {
 		if err := writeRecord(c, msg); err != nil {
 			return err
 		}
-		c.SetReadDeadline(time.Now().Add(2 * time.Second))
+		if err := c.SetReadDeadline(time.Now().Add(2 * time.Second)); err != nil {
+			return err
+		}
 		_, err = readRecord(c)
 		return err
 	}
 	if err := call(pmapProcUnset, progCore, 1, 6, 0); err != nil {
 		logf("vxi11: portmap UNSET: %v", err)
 	}
-	if err := call(pmapProcSet, progCore, 1, 6, uint32(port)); err != nil {
+	if err := call(pmapProcSet, progCore, 1, 6, uint32(port)); err != nil { //nolint:gosec // G115: a TCP port is 0..65535
 		return err
 	}
 	logf("vxi11: DEVICE_CORE registered on tcp/%d", port)

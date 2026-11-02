@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-SRAMCAPTURE
+
 package sramcapture
 
 import (
@@ -44,8 +45,8 @@ func (p PacketTriggerConfig) validate() error {
 	case PacketFlexRay:
 		bad = bad || p.Ticks < 1024 || p.Aux != 0 || p.Length > 8
 	case PacketARINC:
-		lo, hi, exitLo, exitHi := uint8(p.Aux), uint8(p.Aux>>8), uint8(p.Aux>>16), uint8(p.Aux>>24)
-		bad = bad || p.Ticks < 4 || p.Inverted || p.Length != 0 || !(lo < exitLo && exitLo <= exitHi && exitHi < hi)
+		lo, hi, exitLo, exitHi := uint8(p.Aux&0xff), uint8((p.Aux>>8)&0xff), uint8((p.Aux>>16)&0xff), uint8(p.Aux>>24)
+		bad = bad || p.Ticks < 4 || p.Inverted || p.Length != 0 || (lo >= exitLo || exitLo > exitHi || exitHi >= hi)
 	default:
 		bad = true
 	}
@@ -99,9 +100,9 @@ func (c *Capture) configurePacket(p PacketTriggerConfig) error {
 			control |= 4
 		}
 		// The registers, then the control, in one batch.
-		return c.writeMany([2]uint16{110, uint16(p.Ticks)}, [2]uint16{111, uint16(p.Ticks >> 16)}, [2]uint16{112, uint16(p.Aux)},
-			[2]uint16{113, uint16(p.Aux >> 16)}, [2]uint16{114, uint16(p.Pattern)}, [2]uint16{115, uint16(p.Pattern >> 16)},
-			[2]uint16{116, uint16(p.Pattern >> 32)}, [2]uint16{117, uint16(p.Pattern >> 48)}, [2]uint16{109, control})
+		return c.writeMany([2]uint16{110, uint16(p.Ticks & 0xffff)}, [2]uint16{111, uint16(p.Ticks >> 16)}, [2]uint16{112, uint16(p.Aux & 0xffff)},
+			[2]uint16{113, uint16(p.Aux >> 16)}, [2]uint16{114, uint16(p.Pattern & 0xffff)}, [2]uint16{115, uint16((p.Pattern >> 16) & 0xffff)},
+			[2]uint16{116, uint16((p.Pattern >> 32) & 0xffff)}, [2]uint16{117, uint16(p.Pattern >> 48)}, [2]uint16{109, control})
 	}
 	return c.write(109, control)
 }
@@ -174,8 +175,8 @@ func (c *Capture) configureManchester(p ManchesterTriggerConfig) error {
 		if p.MSB {
 			control |= 16
 		}
-		return c.writeMany([2]uint16{103, uint16(p.BitTicks)}, [2]uint16{104, uint16(p.BitTicks >> 16)},
-			[2]uint16{105, uint16(p.Pattern)}, [2]uint16{106, uint16(p.Pattern >> 16)}, [2]uint16{107, uint16(p.Pattern >> 32)},
+		return c.writeMany([2]uint16{103, uint16(p.BitTicks & 0xffff)}, [2]uint16{104, uint16(p.BitTicks >> 16)},
+			[2]uint16{105, uint16(p.Pattern & 0xffff)}, [2]uint16{106, uint16((p.Pattern >> 16) & 0xffff)}, [2]uint16{107, uint16((p.Pattern >> 32) & 0xffff)},
 			[2]uint16{108, uint16(p.Pattern >> 48)}, [2]uint16{102, control})
 	}
 	return c.write(102, control)

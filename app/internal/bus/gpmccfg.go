@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-BUS
+
 package bus
 
 import (
@@ -58,12 +59,12 @@ func programCS1CycleGap(delay uint32) error {
 	if err != nil {
 		return err
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 	m, err := syscall.Mmap(int(f.Fd()), gpmcBase, gpmcLen, syscall.PROT_READ|syscall.PROT_WRITE, syscall.MAP_SHARED)
 	if err != nil {
 		return err
 	}
-	defer syscall.Munmap(m)
+	defer func() { _ = syscall.Munmap(m) }()
 	return applyCS1CycleGap(memRegs{m}, delay)
 }
 

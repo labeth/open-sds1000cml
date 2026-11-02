@@ -45,20 +45,20 @@ const (
 // fails; check Source to see what was loaded.
 // TRLC-LINKS: REQ-SDS-016
 func Load(logf func(string, ...any)) *Table {
-	if t, err := LoadFile(PathPrimary); err == nil {
+	t, err := LoadFile(PathPrimary)
+	if err == nil {
 		t.Source = "file"
 		logf("cal: loaded %s", PathPrimary)
 		return t
-	} else {
-		logf("cal: %s: %v", PathPrimary, err)
 	}
-	if t, err := LoadFile(PathBackup); err == nil {
+	logf("cal: %s: %v", PathPrimary, err)
+	t, err = LoadFile(PathBackup)
+	if err == nil {
 		t.Source = "backup"
 		logf("cal: loaded backup %s", PathBackup)
 		return t
-	} else {
-		logf("cal: %s: %v", PathBackup, err)
 	}
+	logf("cal: %s: %v", PathBackup, err)
 	logf("cal: CALIBRATION MEMORY LOST — using compiled defaults")
 	return Defaults()
 }
@@ -66,7 +66,7 @@ func Load(logf func(string, ...any)) *Table {
 // LoadFile parses one calibration blob.
 // TRLC-LINKS: REQ-SDS-016
 func LoadFile(path string) (*Table, error) {
-	raw, err := os.ReadFile(path)
+	raw, err := os.ReadFile(path) //nolint:gosec // G304: the path is the firmware's calibration file or a test's, never a client's
 	if err != nil {
 		return nil, err
 	}
@@ -106,8 +106,8 @@ func Parse(raw []byte) (*Table, error) {
 		for vd := range numVdiv {
 			base := (ch*numVdiv + vd) * 8
 			t.Rec[ch][vd] = Rec{
-				GainDAC: int16(binary.LittleEndian.Uint16(payload[base:])),
-				Zero:    int16(binary.LittleEndian.Uint16(payload[base+2:])),
+				GainDAC: int16(binary.LittleEndian.Uint16(payload[base:])),   //nolint:gosec // G115: the word is a two's-complement int16 on disk
+				Zero:    int16(binary.LittleEndian.Uint16(payload[base+2:])), //nolint:gosec // G115: the word is a two's-complement int16 on disk
 				Gain:    math.Float32frombits(binary.LittleEndian.Uint32(payload[base+4:])),
 			}
 		}

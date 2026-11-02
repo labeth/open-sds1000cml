@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-WEB
+
 package web
 
 import (
@@ -50,7 +51,7 @@ func TestReplyNamesTheMeasuredFrame(t *testing.T) {
 		t.Fatalf("stopped: frame %d read %d, want 7 and 4", rep.MeasSeq, rep.EdgeRead)
 	}
 	testenv.NeedNode(t)
-	if out, err := exec.Command("node", "measure_stats.test.cjs").CombinedOutput(); err != nil {
+	if out, err := exec.CommandContext(t.Context(), "node", "measure_stats.test.cjs").CombinedOutput(); err != nil {
 		t.Fatalf("statistics (page): %v\n%s", err, out)
 	}
 }

@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-WEB
+
 package web
 
 import (
@@ -96,7 +97,7 @@ func TestBinFrameCarriesTheViewWindow(t *testing.T) {
 		t.Fatalf("the scope's view served: view_n %d, %d bytes", rep.ViewN, len(pay))
 	}
 	testenv.NeedNode(t)
-	if out, err := exec.Command("node", "view_window.test.cjs").CombinedOutput(); err != nil {
+	if out, err := exec.CommandContext(t.Context(), "node", "view_window.test.cjs").CombinedOutput(); err != nil {
 		t.Fatalf("view window (page): %v\n%s", err, out)
 	}
 }

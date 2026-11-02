@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-SRAMCAPTURE
+
 package sramcapture
 
 import (
@@ -60,7 +61,7 @@ func TestEnvelopeReduceRTL(t *testing.T) {
 	dir := t.TempDir()
 	rtl := testenv.RTLDir(t)
 	image := filepath.Join(dir, "env.vvp")
-	if out, err := exec.Command("iverilog", "-g2012", "-s", "tb_envelope_reduce", "-o", image,
+	if out, err := exec.CommandContext(t.Context(), "iverilog", "-g2012", "-s", "tb_envelope_reduce", "-o", image,
 		filepath.Join(rtl, "envelope_reduce.v"), filepath.Join(rtl, "sim", "tb_envelope_reduce.v")).CombinedOutput(); err != nil {
 		t.Fatalf("compile: %v\n%s", err, out)
 	}
@@ -89,7 +90,7 @@ func TestEnvelopeReduceRTL(t *testing.T) {
 			if c.q8 {
 				q = 1
 			}
-			out, err := exec.Command("vvp", image, "+input="+path, fmt.Sprintf("+n=%d", n), fmt.Sprintf("+bucket=%d", c.bucket/2),
+			out, err := exec.CommandContext(t.Context(), "vvp", image, "+input="+path, fmt.Sprintf("+n=%d", n), fmt.Sprintf("+bucket=%d", c.bucket/2),
 				fmt.Sprintf("+skip=%d", c.skip/2), fmt.Sprintf("+q8=%d", q)).CombinedOutput()
 			if err != nil {
 				t.Fatalf("simulate: %v\n%s", err, out)
@@ -105,7 +106,11 @@ func TestEnvelopeReduceRTL(t *testing.T) {
 					}
 					got = append(got, [2]uint32{hi, lo})
 				}
-				fmt.Sscanf(line, "N %d", &count)
+				if strings.HasPrefix(line, "N ") {
+					if _, err := fmt.Sscanf(line, "N %d", &count); err != nil {
+						t.Fatalf("%q: %v", line, err)
+					}
+				}
 			}
 			want := envelopeReference(words, c.skip, c.bucket, c.q8)
 			if fmt.Sprint(got) != fmt.Sprint(want) || count != 2*len(want) {

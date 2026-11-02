@@ -1,8 +1,10 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-SRAMCAPTURE
+
 package sramcapture
 
 import "errors"
 
+// I2CTriggerConfig is the FPGA's I2C trigger.
 // TRLC-LINKS: REQ-SDS-013
 type I2CTriggerConfig struct {
 	Enabled      bool   `json:"enabled"`
@@ -27,6 +29,7 @@ const (
 	i2cSamples = 0x4902
 )
 
+// SupportsI2C reports whether the image has the I2C trigger.
 // TRLC-LINKS: REQ-SDS-013
 func (c *Capture) SupportsI2C() (bool, error) {
 	c.mu.Lock()
@@ -75,9 +78,9 @@ func (c *Capture) configureI2C(revision uint16, p I2CTriggerConfig) error {
 			control |= 32
 		}
 		// The registers, then the control, in one batch.
-		regs := [][2]uint16{{54, uint16(p.Address) & 127}, {55, uint16(p.Pattern)}, {56, uint16(p.Pattern >> 16)}}
+		regs := [][2]uint16{{54, uint16(p.Address & 127)}, {55, uint16(p.Pattern & 0xffff)}, {56, uint16(p.Pattern >> 16)}}
 		if capability == i2cSamples {
-			regs = append(regs, [2]uint16{regSampleDelay, uint16(uint8(p.Delay))})
+			regs = append(regs, [2]uint16{regSampleDelay, uint16(uint8(p.Delay))}) //nolint:gosec // G115: the register takes the delay as a two's-complement byte
 		}
 		return c.writeMany(append(regs, [2]uint16{53, control})...)
 	}

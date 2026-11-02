@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-APP
+
 package app
 
 import (
@@ -24,10 +25,10 @@ func applySRAMReadTiming(port bus.TimingPort, verify func() error) (fast bool, e
 		return true, nil
 	}
 	if restore := port.Restore(old); restore != nil {
-		return false, fmt.Errorf("fast timing failed (%v), restore failed: %w", err, restore)
+		return false, fmt.Errorf("fast timing failed (%w), restore failed: %w", err, restore)
 	}
 	if baseline := verify(); baseline != nil {
-		return false, fmt.Errorf("fast timing failed (%v), original timing also failed: %w", err, baseline)
+		return false, fmt.Errorf("fast timing failed (%w), original timing also failed: %w", err, baseline)
 	}
 	return false, nil
 }

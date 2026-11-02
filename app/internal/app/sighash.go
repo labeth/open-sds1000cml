@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-APP
+
 package app
 
 import (
@@ -45,7 +46,7 @@ var sigSeed = maphash.MakeSeed()
 // add feeds one value.
 // TRLC-LINKS: REQ-SDS-168
 func (h *sigHash) add(v reflect.Value) {
-	switch v.Kind() {
+	switch v.Kind() { //nolint:exhaustive // the kinds a settings value holds; channels, functions and unsafe pointers add nothing
 	case reflect.Bool:
 		if v.Bool() {
 			h.byte1(1)
@@ -53,7 +54,7 @@ func (h *sigHash) add(v reflect.Value) {
 			h.byte1(0)
 		}
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-		h.word(uint64(v.Int()))
+		h.word(uint64(v.Int())) //nolint:gosec // G115: a hash input: the bits count, not the sign
 	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr:
 		h.word(v.Uint())
 	case reflect.Float32, reflect.Float64:
@@ -72,7 +73,7 @@ func (h *sigHash) add(v reflect.Value) {
 		fallthrough
 	case reflect.Array:
 		n := v.Len()
-		h.word(uint64(n))
+		h.word(uint64(n)) //nolint:gosec // G115: a length, never negative
 		if v.Type().Elem().Kind() == reflect.Uint8 && v.Kind() == reflect.Slice {
 			h.word(maphash.Bytes(sigSeed, v.Bytes()))
 			return
@@ -82,7 +83,7 @@ func (h *sigHash) add(v reflect.Value) {
 		}
 	case reflect.Struct:
 		skip := sigSkips(v.Type())
-		for i := 0; i < v.NumField(); i++ {
+		for i := range v.NumField() {
 			if skip[i] { // a generation field stands for it
 				continue
 			}
@@ -100,7 +101,7 @@ func (h *sigHash) add(v reflect.Value) {
 		h.add(v.Elem())
 	case reflect.Map:
 		// Order-free: the sum of each entry's own fingerprint.
-		h.word(uint64(v.Len()))
+		h.word(uint64(v.Len())) //nolint:gosec // G115: a length, never negative
 		var sum sigHash
 		it := v.MapRange()
 		for it.Next() {
@@ -121,7 +122,9 @@ var sigSkipCache sync.Map // reflect.Type -> []bool
 // TRLC-LINKS: REQ-SDS-168
 func sigSkips(t reflect.Type) []bool {
 	if s, ok := sigSkipCache.Load(t); ok {
-		return s.([]bool)
+		if skips, ok := s.([]bool); ok {
+			return skips
+		}
 	}
 	s := make([]bool, t.NumField())
 	for i := range s {

@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-APP
+
 package app
 
 import (
@@ -156,7 +157,7 @@ func hudExtraSig(hud *lcd.HUD) uint64 {
 			h.byte1(0)
 		}
 	}
-	num := func(v int) { h.word(uint64(v)) }
+	num := func(v int) { h.word(uint64(v)) } //nolint:gosec // G115: a hash input: the bits count, not the sign
 	flt := func(v float64) { h.word(math.Float64bits(v)) }
 	flag(hud.AutosetBusy)
 	h.str(hud.AutosetMsg)
@@ -198,7 +199,7 @@ func hudExtraSig(hud *lcd.HUD) uint64 {
 // a hard minimum; faster starves the acquisition owner). Fully optional: on
 // any bring-up failure the scope keeps running headless.
 // TRLC-LINKS: REQ-SDS-168
-func runLCD(e *engine.Engine, fe *analog.FrontEnd, fo *frames.Fanout) {
+func runLCD(e *engine.Engine, fe *analog.FrontEnd, fo *frames.Fanout) { //nolint:gocyclo // the LCD loop: one tick's render decisions, read top to bottom in the order they apply
 	if err := lcd.Bringup(logf); err != nil {
 		logf("lcd: disabled: %v", err)
 		return
@@ -271,7 +272,7 @@ func runLCD(e *engine.Engine, fe *analog.FrontEnd, fo *frames.Fanout) {
 		// follows.
 		pc := uiCtrl.Load()
 		st := e.Snapshot()
-		if mode := lcdBusyMode(st, pc != nil && pc.AutosetBusy(), pc != nil && pc.StreamMode()); mode != busyNone && scr == panel.ScreenOn {
+		if mode := lcdBusyMode(st, pc != nil && pc.AutosetBusy(), pc != nil && pc.StreamMode()); mode != busyNone && scr == panel.ScreenOn { //nolint:nestif // the busy screen's draw, in place of the workspace's
 			if now := time.Now(); now.Sub(busyDrawAt) >= lcdBusyEvery || !wasBusy {
 				busyDrawAt, wasBusy = now, true
 				e.QuietRLock()
@@ -317,7 +318,7 @@ func runLCD(e *engine.Engine, fe *analog.FrontEnd, fo *frames.Fanout) {
 				lastSeq = f.Seq
 				lastFresh = time.Now()
 			}
-			if f != nil {
+			if f != nil { //nolint:nestif // the frame's fields copied into the HUD only with a frame
 				hud.Trigd = f.Trigd // on-screen TRIG'd indicator (there is no TRIG'd lamp)
 				hud.SampleS = f.SampleS
 				// Zoomed into the live envelope: ask for the zoomed part at
@@ -360,6 +361,7 @@ func runLCD(e *engine.Engine, fe *analog.FrontEnd, fo *frames.Fanout) {
 					present = true
 				}
 				return
+			case panel.ScreenOn: // the workspace renders, below
 			}
 			// Repaint only when the picture changed.
 			force := lcdForceRepaint(hud)

@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-ANALOG
+
 package analog
 
 import (
@@ -172,10 +173,9 @@ func TestRemoveDC(t *testing.T) {
 		t.Fatal("RemoveDC mutated its input")
 	}
 	// Clamps at the rails rather than wrapping.
-	for _, v := range RemoveDC([]uint8{0, 255}) {
-		if v > 255 {
-			t.Fatal("RemoveDC produced an out-of-range code")
-		}
+	// (mean 64: a shift of +64 takes 255 past the top rail, to 255, not 63)
+	if got := RemoveDC([]uint8{0, 0, 0, 255}); !slices.Equal(got, []uint8{64, 64, 64, 255}) {
+		t.Fatalf("RemoveDC at the rail: %v", got)
 	}
 }
 
@@ -384,7 +384,7 @@ func TestSetVdivStagesZeroWithoutOffset(t *testing.T) {
 	tab.Rec[0][2].Zero, tab.Rec[0][8].Zero = 10426, 10445
 	fe := New(&fakeTr{}, func(time.Duration) {}, tab)
 	var staged []uint16
-	fe.OnOffset(func(ch int, code uint16) { staged = append(staged, code) })
+	fe.OnOffset(func(_ int, code uint16) { staged = append(staged, code) })
 	if err := fe.SetVdiv(0, 2); err != nil {
 		t.Fatal(err)
 	}

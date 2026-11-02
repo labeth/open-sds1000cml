@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-SRAMCAPTURE
+
 package sramcapture
 
 import (
@@ -570,7 +571,7 @@ type panelProbe struct {
 func (p *panelProbe) Write(b []byte) (int, error) {
 	p.writes++
 	if p.writes == 1 {
-		go func() { p.c.ReadPanel(); close(p.done) }()
+		go func() { _, _ = p.c.ReadPanel(); close(p.done) }()
 	}
 	select {
 	case <-p.done:

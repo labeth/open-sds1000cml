@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-SCPI
+
 package scpi
 
 import (
@@ -55,7 +56,7 @@ func TestSCPIFuzzNoPanic(t *testing.T) {
 	seeds := []string{"C1:VDIV 0.5", "TDIV 1E-3", "TRMD NORM", "C1:WF? DAT2", "WFSU SP,4,NP,1000,FP,0", "MSIZ 14K", "TRSE EDGE,SR,C1,HT,TI,HV,100NS", "C1:BWL OFF", "C2:UNIT A", "C1:SKEW -5NS", "C1:INVS ON", "TRCP DC", "C1:CPL A1M", "XYDS ON", "PESU INFINITE", "MENU ON", "GRDS FULL", "INTS GRID,100,TRACE,100", "BUZZ OFF"}
 	for i := range 20000 {
 		b := []byte(seeds[rng.Intn(len(seeds))])
-		for k := 0; k < 1+rng.Intn(6); k++ {
+		for range 1 + rng.Intn(6) {
 			switch rng.Intn(4) {
 			case 0: // flip a byte
 				b[rng.Intn(len(b))] = byte(rng.Intn(256))
@@ -172,10 +173,7 @@ func TestSCPIFuzzSetQueryInvariant(t *testing.T) {
 		},
 		func() round { // TRLV: the query reflects the CLAMPED+quantized effective level
 			v := rng.Float64()*20 - 10 // spans well past the DAC window to exercise the clamp
-			code := max(int(math.Round(31437-911*v)), engine.TrigCodeMin)
-			if code > engine.TrigCodeMax {
-				code = engine.TrigCodeMax
-			}
+			code := min(max(int(math.Round(31437-911*v)), engine.TrigCodeMin), engine.TrigCodeMax)
 			eff := engine.TrigLevelVolts(uint16(code))
 			return round{
 				"TRLV " + strconv.FormatFloat(v, 'E', -1, 64), "",

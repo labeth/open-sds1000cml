@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-WEB
+
 package web
 
 import (
@@ -14,7 +15,7 @@ import (
 // TRLC-LINKS: REQ-SDS-265
 func TestSoundPlayerRidesLateReplies(t *testing.T) {
 	testenv.NeedNode(t)
-	if out, err := exec.Command("node", "sound_worklet.test.cjs").CombinedOutput(); err != nil {
+	if out, err := exec.CommandContext(t.Context(), "node", "sound_worklet.test.cjs").CombinedOutput(); err != nil {
 		t.Fatalf("sound player: %v\n%s", err, out)
 	}
 }

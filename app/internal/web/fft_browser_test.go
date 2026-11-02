@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-WEB
+
 package web
 
 import (
@@ -64,7 +65,7 @@ func TestFFTBrowser(t *testing.T) {
 	defer srv.Close()
 
 	// The driver self-skips (prints SKIP, exits 0) when the browser is absent.
-	out, err := exec.Command("node", "fft_browser.mjs", srv.URL).CombinedOutput()
+	out, err := exec.CommandContext(t.Context(), "node", "fft_browser.mjs", srv.URL).CombinedOutput()
 	t.Logf("fft_browser.mjs:\n%s", out)
 	if strings.Contains(string(out), "SKIP:") {
 		testenv.SkipBrowser(t, "browser driver skipped: %s", firstLine(out))

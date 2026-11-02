@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-CAL
+
 package cal
 
 // descramble applies the three byte-involutions IN ORDER (spec 10 §2.2):

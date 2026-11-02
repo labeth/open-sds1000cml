@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-BUILDINFO
+
 package buildinfo
 
 import "testing"

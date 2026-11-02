@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-BUS
+
 package bus
 
 import (
@@ -31,9 +32,9 @@ func (d *Dev) EnableKernelDMA() error {
 	if err != nil {
 		return err
 	}
-	fail := func(e error) error { f.Close(); return e }
-	fd := uint32(d.fd)
-	if _, _, e := syscall.Syscall(syscall.SYS_IOCTL, f.Fd(), 0x40045102, uintptr(unsafe.Pointer(&fd))); e != 0 {
+	fail := func(e error) error { _ = f.Close(); return e }
+	fd := uint32(d.fd)                                                                                           //nolint:gosec // G115: an open descriptor, small and non-negative
+	if _, _, e := syscall.Syscall(syscall.SYS_IOCTL, f.Fd(), 0x40045102, uintptr(unsafe.Pointer(&fd))); e != 0 { //nolint:gosec // G103: the system call takes its argument by address
 		return fail(e)
 	}
 	// No FPGA read: module self-test copies coherent RAM through its IRQ path.
@@ -47,6 +48,7 @@ func (d *Dev) EnableKernelDMA() error {
 	return nil
 }
 
+// CloseKernelDMA releases the kernel DMA stream driver, if it is open.
 // TRLC-LINKS: REQ-SDS-002, REQ-SDS-134
 func (d *Dev) CloseKernelDMA() error {
 	if d.kernelDMA == nil {
@@ -65,8 +67,8 @@ func (k *kernelDMADrainer) pop(sel uint16, dst []byte) error {
 	if sel != 25 || len(dst) == 0 || len(dst) > 16384 || len(dst)%2 != 0 {
 		return errors.New("bus: invalid kernel pop selector/size")
 	}
-	a := [4]uint32{uint32(len(dst)), uint32(uintptr(unsafe.Pointer(&dst[0]))), 0, 0}
-	_, _, e := syscall.Syscall(syscall.SYS_IOCTL, k.file.Fd(), 0x40105101, uintptr(unsafe.Pointer(&a)))
+	a := [4]uint32{uint32(len(dst)), uint32(uintptr(unsafe.Pointer(&dst[0]))), 0, 0}                    //nolint:gosec // G103: the driver takes the buffer's address; the buffer outlives the ioctl
+	_, _, e := syscall.Syscall(syscall.SYS_IOCTL, k.file.Fd(), 0x40105101, uintptr(unsafe.Pointer(&a))) //nolint:gosec // G103: the system call takes its argument by address
 	runtime.KeepAlive(dst)
 	if e != 0 {
 		return fmt.Errorf("bus: kernel DMA pop failed (pointer may have advanced): %w", e)
@@ -89,7 +91,7 @@ func (d *Dev) StartKernelStream(log, source, target, seconds uint32) error {
 		return errors.New("bus: invalid kernel stream configuration")
 	}
 	a := [4]uint32{log, source, target, seconds}
-	_, _, e := syscall.Syscall(syscall.SYS_IOCTL, d.kernelDMA.file.Fd(), 0x40105103, uintptr(unsafe.Pointer(&a)))
+	_, _, e := syscall.Syscall(syscall.SYS_IOCTL, d.kernelDMA.file.Fd(), 0x40105103, uintptr(unsafe.Pointer(&a))) //nolint:gosec // G103: the system call takes its argument by address
 	if e != 0 {
 		return e
 	}
@@ -113,13 +115,14 @@ func (d *Dev) ReadKernelStream(dst []byte) (int, error) {
 	return d.kernelDMA.file.Read(dst)
 }
 
+// KernelStreamStats is the kernel DMA stream driver's counters.
 // TRLC-LINKS: REQ-SDS-134
 func (d *Dev) KernelStreamStats() ([8]uint32, error) {
 	var stats [8]uint32
 	if d.kernelDMA == nil {
 		return stats, errors.New("bus: kernel DMA disabled")
 	}
-	_, _, e := syscall.Syscall(syscall.SYS_IOCTL, d.kernelDMA.file.Fd(), 0x80205104, uintptr(unsafe.Pointer(&stats)))
+	_, _, e := syscall.Syscall(syscall.SYS_IOCTL, d.kernelDMA.file.Fd(), 0x80205104, uintptr(unsafe.Pointer(&stats))) //nolint:gosec // G103: the system call takes its argument by address
 	if e != 0 {
 		return stats, e
 	}

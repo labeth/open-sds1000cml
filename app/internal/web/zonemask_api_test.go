@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-WEB
+
 package web
 
 import (
@@ -22,10 +23,12 @@ func TestZoneMaskAPI(t *testing.T) {
 	body := `[{"dt_lo_s":-1e-6,"dt_hi_s":2e-6,"code_lo":-5,"code_hi":300,"avoid":true,"ch":3},
 	          {"dt_lo_s":0,"dt_hi_s":1e-6,"code_lo":10,"code_hi":20}]`
 	rr := httptest.NewRecorder()
-	mux.ServeHTTP(rr, httptest.NewRequest(http.MethodPost, "/api/zones", strings.NewReader(body)))
+	mux.ServeHTTP(rr, httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/api/zones", strings.NewReader(body)))
 	var rep map[string]any
-	json.Unmarshal(rr.Body.Bytes(), &rep)
-	if rep["ok"] != true || rep["zones"].(float64) != 2 {
+	if err := json.Unmarshal(rr.Body.Bytes(), &rep); err != nil {
+		t.Fatal(err)
+	}
+	if rep["ok"] != true || rep["zones"] != 2.0 {
 		t.Fatalf("zones reply: %v", rep)
 	}
 	if len(fs.zones) != 2 || fs.zones[0].CodeLo != 0 || fs.zones[0].CodeHi != 255 || fs.zones[0].Ch != 1 || !fs.zones[0].Avoid {
@@ -34,24 +37,28 @@ func TestZoneMaskAPI(t *testing.T) {
 
 	// mask upload + clear
 	rr = httptest.NewRecorder()
-	mux.ServeHTTP(rr, httptest.NewRequest(http.MethodPost, "/api/mask", strings.NewReader(`{"lo":[10,10],"hi":[200,200],"win":2,"ch":0}`)))
-	json.Unmarshal(rr.Body.Bytes(), &rep)
+	mux.ServeHTTP(rr, httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/api/mask", strings.NewReader(`{"lo":[10,10],"hi":[200,200],"win":2,"ch":0}`)))
+	if err := json.Unmarshal(rr.Body.Bytes(), &rep); err != nil {
+		t.Fatal(err)
+	}
 	if rep["ok"] != true || fs.mask == nil || fs.mask.WinCols != 2 || fs.mask.Hi[1] != 200 {
 		t.Fatalf("mask upload: %v %+v", rep, fs.mask)
 	}
 	// a re-install names the install it replaces, and is refused once the
 	// scope's mask changed since: a mask cleared elsewhere does not come back
-	gen := uint64(rep["gen"].(float64))
+	gen := uint64(jsonAt[float64](t, rep, "gen"))
 	reinstall := func(ifGen uint64) map[string]any {
 		rr := httptest.NewRecorder()
-		mux.ServeHTTP(rr, httptest.NewRequest(http.MethodPost, "/api/mask", strings.NewReader(
+		mux.ServeHTTP(rr, httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/api/mask", strings.NewReader(
 			fmt.Sprintf(`{"lo":[20,20],"hi":[220,220],"win":2,"ch":0,"if_gen":%d}`, ifGen),
 		)))
 		var out map[string]any
-		json.Unmarshal(rr.Body.Bytes(), &out)
+		if err := json.Unmarshal(rr.Body.Bytes(), &out); err != nil {
+			t.Fatal(err)
+		}
 		return out
 	}
-	if out := reinstall(gen); out["ok"] != true || uint64(out["gen"].(float64)) != gen+1 || fs.mask.Lo[0] != 20 {
+	if out := reinstall(gen); out["ok"] != true || uint64(jsonAt[float64](t, out, "gen")) != gen+1 || fs.mask.Lo[0] != 20 {
 		t.Fatalf("re-install of the mask installed: %v %+v", out, fs.mask)
 	}
 	if out := reinstall(gen); out["ok"] != false || out["stale"] != true || fs.mask.Lo[0] != 20 {
@@ -59,14 +66,16 @@ func TestZoneMaskAPI(t *testing.T) {
 	}
 	fs.SetMaskMode(1)
 	rr = httptest.NewRecorder()
-	mux.ServeHTTP(rr, httptest.NewRequest(http.MethodPost, "/api/mask", strings.NewReader(`{"lo":[],"hi":[],"win":0}`)))
+	mux.ServeHTTP(rr, httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/api/mask", strings.NewReader(`{"lo":[],"hi":[],"win":0}`)))
 	if fs.mask != nil || fs.maskMode != 0 {
 		t.Fatalf("empty mask must clear the mask and its test: mask %v, mode %d", fs.mask != nil, fs.maskMode)
 	}
 	// length mismatch rejected
 	rr = httptest.NewRecorder()
-	mux.ServeHTTP(rr, httptest.NewRequest(http.MethodPost, "/api/mask", strings.NewReader(`{"lo":[1,2,3],"hi":[4],"win":3}`)))
-	json.Unmarshal(rr.Body.Bytes(), &rep)
+	mux.ServeHTTP(rr, httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/api/mask", strings.NewReader(`{"lo":[1,2,3],"hi":[4],"win":3}`)))
+	if err := json.Unmarshal(rr.Body.Bytes(), &rep); err != nil {
+		t.Fatal(err)
+	}
 	if rep["ok"] != false {
 		t.Fatal("length mismatch must be rejected")
 	}
@@ -74,9 +83,11 @@ func TestZoneMaskAPI(t *testing.T) {
 	// maskfail gallery
 	fs.maskRing = []engine.MaskFail{{C1: []uint8{1, 2, 3}, C2: []uint8{4, 5, 6}, Valid: 3, Seq: 42, FailCol: 7, FailCode: 99, AtNs: 1500000}}
 	rr = httptest.NewRecorder()
-	mux.ServeHTTP(rr, httptest.NewRequest(http.MethodGet, "/api/maskfail?i=0", nil))
-	json.Unmarshal(rr.Body.Bytes(), &rep)
-	if rep["ok"] != true || rep["seq"].(float64) != 42 || rep["fail_code"].(float64) != 99 {
+	mux.ServeHTTP(rr, httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/api/maskfail?i=0", nil))
+	if err := json.Unmarshal(rr.Body.Bytes(), &rep); err != nil {
+		t.Fatal(err)
+	}
+	if rep["ok"] != true || rep["seq"] != 42.0 || rep["fail_code"] != 99.0 {
 		t.Fatalf("maskfail: %v", rep)
 	}
 	for _, ch := range []string{"c1", "c2"} {
@@ -95,25 +106,27 @@ func TestZoneMaskAPI(t *testing.T) {
 		}
 	}
 	rr = httptest.NewRecorder()
-	mux.ServeHTTP(rr, httptest.NewRequest(http.MethodGet, "/api/maskfail?i=5", nil))
-	json.Unmarshal(rr.Body.Bytes(), &rep)
+	mux.ServeHTTP(rr, httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/api/maskfail?i=5", nil))
+	if err := json.Unmarshal(rr.Body.Bytes(), &rep); err != nil {
+		t.Fatal(err)
+	}
 	if rep["ok"] != false {
 		t.Fatal("out-of-range index must report no such failure")
 	}
 
 	// set verbs
 	rr = httptest.NewRecorder()
-	mux.ServeHTTP(rr, httptest.NewRequest(http.MethodPost, "/api/set", strings.NewReader(`{"control":"zonemode","value":1}`)))
+	mux.ServeHTTP(rr, httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/api/set", strings.NewReader(`{"control":"zonemode","value":1}`)))
 	if fs.zoneMode != 1 {
 		t.Fatal("zonemode not applied")
 	}
 	rr = httptest.NewRecorder()
-	mux.ServeHTTP(rr, httptest.NewRequest(http.MethodPost, "/api/set", strings.NewReader(`{"control":"maskmode","value":2}`)))
+	mux.ServeHTTP(rr, httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/api/set", strings.NewReader(`{"control":"maskmode","value":2}`)))
 	if fs.maskMode != 2 {
 		t.Fatal("maskmode not applied")
 	}
 	rr = httptest.NewRecorder()
-	mux.ServeHTTP(rr, httptest.NewRequest(http.MethodPost, "/api/set", strings.NewReader(`{"control":"maskclear","value":0}`)))
+	mux.ServeHTTP(rr, httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/api/set", strings.NewReader(`{"control":"maskclear","value":0}`)))
 	if !fs.maskCleared {
 		t.Fatal("maskclear not applied")
 	}
@@ -133,7 +146,7 @@ func TestMaskFullSRAMRecord(t *testing.T) {
 	}
 	fs := &fakeScope{}
 	rr := httptest.NewRecorder()
-	New(fs, nil, nil, nil).Handler().ServeHTTP(rr, httptest.NewRequest(http.MethodPost, "/api/mask", bytes.NewReader(body)))
+	New(fs, nil, nil, nil).Handler().ServeHTTP(rr, httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/api/mask", bytes.NewReader(body)))
 	var rep map[string]any
 	if err = json.Unmarshal(rr.Body.Bytes(), &rep); err != nil {
 		t.Fatal(err)

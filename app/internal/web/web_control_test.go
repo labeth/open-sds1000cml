@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-WEB
+
 package web
 
 import (
@@ -91,7 +92,7 @@ func TestProbeAttenuation(t *testing.T) {
 		t.Fatalf("probe 3× accepted: %v", out)
 	}
 	_, base := s.vertScales() // both channels ×1
-	tv1 := getStatus(t, s)["trig_volts"].(float64)
+	tv1 := jsonAt[float64](t, getStatus(t, s), "trig_volts")
 
 	if out := post(t, s, "probe1", 10); out["ok"] != true || fa.probe[0] != 10 {
 		t.Fatalf("probe1 10×: %v fa=%+v", out, fa)
@@ -115,7 +116,7 @@ func TestProbeAttenuation(t *testing.T) {
 	if rep["probe1"] != 10.0 || rep["probe2"] != 100.0 {
 		t.Fatalf("status probes = %v / %v", rep["probe1"], rep["probe2"])
 	}
-	if tv10 := rep["trig_volts"].(float64); math.Abs(tv10-tv1*10) > 1e-9 {
+	if tv10 := jsonAt[float64](t, rep, "trig_volts"); math.Abs(tv10-tv1*10) > 1e-9 {
 		t.Fatalf("trig_volts not ×10: base %v got %v", tv1, tv10)
 	}
 }
@@ -177,17 +178,17 @@ func TestACCouplingRemovesDC(t *testing.T) {
 	}
 
 	// DC-coupled: mean sits ~72 codes above centre → nonzero Vmean.
-	dc := frameV()["m1"].(map[string]any)
-	if math.Abs(dc["vmean"].(float64)) < 1e-6 {
+	dc := jsonAt[map[string]any](t, frameV(), "m1")
+	if math.Abs(jsonAt[float64](t, dc, "vmean")) < 1e-6 {
 		t.Fatalf("DC-coupled vmean unexpectedly ~0: %v", dc["vmean"])
 	}
 	// AC-coupled: software DC-block centres the record → Vmean ≈ 0, Vpp intact.
 	post(t, s, "coupling1", 1) // AC
-	ac := frameV()["m1"].(map[string]any)
-	if math.Abs(ac["vmean"].(float64)) > math.Abs(dc["vmean"].(float64))*0.1 {
+	ac := jsonAt[map[string]any](t, frameV(), "m1")
+	if math.Abs(jsonAt[float64](t, ac, "vmean")) > math.Abs(jsonAt[float64](t, dc, "vmean"))*0.1 {
 		t.Fatalf("AC vmean not removed: dc=%v ac=%v", dc["vmean"], ac["vmean"])
 	}
-	if math.Abs(ac["vpp"].(float64)-dc["vpp"].(float64)) > dc["vpp"].(float64)*0.2 {
+	if math.Abs(jsonAt[float64](t, ac, "vpp")-jsonAt[float64](t, dc, "vpp")) > jsonAt[float64](t, dc, "vpp")*0.2 {
 		t.Fatalf("AC changed vpp too much: dc=%v ac=%v", dc["vpp"], ac["vpp"])
 	}
 }
@@ -224,14 +225,14 @@ func TestQualifierAndAcqVerbs(t *testing.T) {
 
 	// Param verbs carry named fields.
 	body, _ := json.Marshal(map[string]any{"control": "pulseparams", "lvl": 0.4, "min": 100.0, "max": 500.0, "cond": 3})
-	req := httptest.NewRequest(http.MethodPost, "/api/set", bytes.NewReader(body))
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/api/set", bytes.NewReader(body))
 	rec := httptest.NewRecorder()
 	s.Handler().ServeHTTP(rec, req)
 	last := fs.lastCall()
 	if last[0] != "pulse" {
 		t.Fatalf("pulseparams not dispatched: %v", last)
 	}
-	args := last[1].([]any)
+	args := jsonAt[[]any](t, last[1])
 	if args[0] != 0.4 || args[1] != 100.0 || args[2] != 500.0 || args[3] != 3 {
 		t.Fatalf("pulseparams args: %v", args)
 	}
@@ -245,7 +246,7 @@ func TestBodeEndpoint(t *testing.T) {
 		{FreqHz: 2e6, GainDB: -12, PhaseDeg: -90},
 	}}
 	s := New(fs, nil, nil, nil)
-	req := httptest.NewRequest(http.MethodGet, "/api/bode", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/api/bode", nil)
 	rec := httptest.NewRecorder()
 	s.Handler().ServeHTTP(rec, req)
 	var rep struct {
@@ -270,12 +271,12 @@ func TestBodeEndpoint(t *testing.T) {
 	// empty curve → n:0, valid arrays (not null-crash)
 	s2 := New(&fakeScope{}, nil, nil, nil)
 	rec2 := httptest.NewRecorder()
-	s2.Handler().ServeHTTP(rec2, httptest.NewRequest(http.MethodGet, "/api/bode", nil))
+	s2.Handler().ServeHTTP(rec2, httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/api/bode", nil))
 	var rep2 map[string]any
 	if err := json.Unmarshal(rec2.Body.Bytes(), &rep2); err != nil {
 		t.Fatalf("empty bode bad JSON: %v", err)
 	}
-	if rep2["n"].(float64) != 0 {
+	if jsonAt[float64](t, rep2, "n") != 0 {
 		t.Errorf("empty bode n = %v, want 0", rep2["n"])
 	}
 }
@@ -286,7 +287,7 @@ func (f *fakeAnalog) TrigVolts(code uint16, srcCh int) float64 {
 }
 
 // TRLC-LINKS: REQ-SDS-162
-func (f *fakeAnalog) TrigCalActive(srcCh int) (float64, float64) { return 31437, 911 }
+func (f *fakeAnalog) TrigCalActive(_ int) (float64, float64) { return 31437, 911 }
 
 // TRLC-LINKS: REQ-SDS-204
 func TestRunToggleAfterSingleCapture(t *testing.T) {
@@ -318,7 +319,7 @@ func (*fakeRefs) RefsExport() [2]panel.RefExport {
 func TestRefsEndpoint(t *testing.T) {
 	s := New(&fakeScope{}, nil, &fakeRefs{}, nil)
 	rec := httptest.NewRecorder()
-	s.Handler().ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/api/refs", nil))
+	s.Handler().ServeHTTP(rec, httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/api/refs", nil))
 	var got struct {
 		OK   bool              `json:"ok"`
 		Refs [2]map[string]any `json:"refs"`
@@ -327,12 +328,12 @@ func TestRefsEndpoint(t *testing.T) {
 		t.Fatalf("refs %s (%v)", rec.Body.String(), err)
 	}
 	rec = httptest.NewRecorder()
-	New(&fakeScope{}, nil, nil, nil).Handler().ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/api/refs", nil))
+	New(&fakeScope{}, nil, nil, nil).Handler().ServeHTTP(rec, httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/api/refs", nil))
 	if !strings.Contains(rec.Body.String(), `"ok":false`) {
 		t.Fatalf("no panel: %s", rec.Body.String())
 	}
 	rec = httptest.NewRecorder()
-	s.Handler().ServeHTTP(rec, httptest.NewRequest(http.MethodPut, "/api/refs", nil))
+	s.Handler().ServeHTTP(rec, httptest.NewRequestWithContext(t.Context(), http.MethodPut, "/api/refs", nil))
 	if rec.Code != 405 {
 		t.Fatalf("PUT: %d", rec.Code)
 	}
@@ -358,7 +359,7 @@ func TestRefsEndpointChangesTheScopes(t *testing.T) {
 	h := New(&fakeScope{}, nil, p, nil).Handler()
 	post := func(body string) map[string]any {
 		rec := httptest.NewRecorder()
-		h.ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/api/refs", strings.NewReader(body)))
+		h.ServeHTTP(rec, httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/api/refs", strings.NewReader(body)))
 		var out map[string]any
 		if err := json.Unmarshal(rec.Body.Bytes(), &out); err != nil {
 			t.Fatalf("%s: %v", rec.Body.String(), err)
@@ -403,7 +404,7 @@ func TestPanelAutoForThePagesWorkspace(t *testing.T) {
 	h := New(&fakeScope{}, nil, p, nil).Handler()
 	post := func(body string) string {
 		rec := httptest.NewRecorder()
-		h.ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/api/panel", strings.NewReader(body)))
+		h.ServeHTTP(rec, httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/api/panel", strings.NewReader(body)))
 		return strings.TrimSpace(rec.Body.String())
 	}
 	if got := post(`{"button":"auto","for":"bus"}`); got != `{"ok":true}` {

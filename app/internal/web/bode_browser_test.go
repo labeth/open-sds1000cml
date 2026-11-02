@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-WEB
+
 package web
 
 import (
@@ -46,7 +47,7 @@ func TestBodeBrowser(t *testing.T) {
 	srv := httptest.NewServer(New(fs, nil, nil, nil).Handler())
 	defer srv.Close()
 
-	out, err := exec.Command("node", "bode_browser.mjs", srv.URL).CombinedOutput()
+	out, err := exec.CommandContext(t.Context(), "node", "bode_browser.mjs", srv.URL).CombinedOutput()
 	t.Logf("bode_browser.mjs:\n%s", out)
 	if strings.Contains(string(out), "SKIP:") {
 		testenv.SkipBrowser(t, "browser driver skipped: %s", firstLine(out))

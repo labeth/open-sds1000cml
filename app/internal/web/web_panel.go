@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-WEB
+
 package web
 
 import (
@@ -63,7 +64,7 @@ func (s *Server) hRefs(w http.ResponseWriter, r *http.Request) {
 	}
 	pr, ok := s.panel.(panelRefs)
 	if !ok {
-		writeJSON(w, map[string]any{"ok": false, "error": "no panel on this server"})
+		writeJSON(w, map[string]any{"ok": false, "error": "no panel on this server"}) //nolint:goconst // JSON field names: the literal shows the reply's shape
 		return
 	}
 	if r.Method == http.MethodGet {
@@ -154,7 +155,7 @@ func (s *Server) hPanelWait(w http.ResponseWriter, r *http.Request) {
 // hSheets returns the whole sheet model: every tab and row with its id,
 // kind, options or range, value and whether it is in use, and the Seq.
 // TRLC-LINKS: REQ-SDS-162
-func (s *Server) hSheets(w http.ResponseWriter, r *http.Request) {
+func (s *Server) hSheets(w http.ResponseWriter, _ *http.Request) {
 	pr, ok := s.remote(w)
 	if !ok {
 		return

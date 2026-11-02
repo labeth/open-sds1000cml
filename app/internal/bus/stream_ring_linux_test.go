@@ -2,6 +2,7 @@ package bus
 
 import (
 	"encoding/binary"
+	"errors"
 	"testing"
 )
 
@@ -54,7 +55,7 @@ func TestStreamRingReserveCommitPeek(t *testing.T) {
 		t.Fatalf("wrapped peek: %d %d %d %v", first, at, count, err)
 	}
 	w.sShared = false
-	if _, _, _, err := peek(0); err != ErrNoSharedRing {
+	if _, _, _, err := peek(0); !errors.Is(err, ErrNoSharedRing) {
 		t.Fatalf("unshared ring: %v", err)
 	}
 }

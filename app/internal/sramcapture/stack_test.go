@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-SRAMCAPTURE
+
 package sramcapture
 
 import (
@@ -27,6 +28,7 @@ type stackPortBus struct {
 	failOnScan          int
 	grantAtFailure      bool
 	scannedWithoutGrant bool
+	stuckGrant          bool // a release leaves the grant held
 }
 
 // TRLC-LINKS: REQ-SDS-141
@@ -101,7 +103,9 @@ func (f *stackPortBus) Read(plane uint8, s uint16) (uint16, error) {
 func (f *stackPortBus) RawWrite(s, v uint16) error {
 	switch s {
 	case selStackGrant:
-		f.grant = v&1 != 0
+		if !f.stuckGrant || v&1 != 0 {
+			f.grant = v&1 != 0
+		}
 	case selStackMailIndex:
 		f.mailIndex = int(v)
 	case selStackTemplateIndex:
@@ -124,6 +128,7 @@ func (f *stackPortBus) RawWrite(s, v uint16) error {
 			f.uploads++
 		case stackOpTileRead:
 			copy(f.mailbox[:], f.tile[bin][ch][:])
+		case stackOpPeek:
 		case stackOpScan:
 			f.scans++
 			if !f.grant {
@@ -135,14 +140,14 @@ func (f *stackPortBus) RawWrite(s, v uint16) error {
 			}
 			initial := uint32(f.regs[selStackInitial]) | uint32(f.regs[selStackInitial+1])<<16
 			first := int(f.regs[selStackFirstBin]) | int(f.regs[selStackFirstBin+1])<<16
-			for b := 0; b < int(f.regs[selStackBins]); b++ {
+			for b := range int(f.regs[selStackBins]) {
 				for c := range 2 {
 					m, err := superres.DecodeFPGAMoments(f.tile[b][c][:])
 					if err != nil {
 						return err
 					}
 					value := uint64(first+b+1) << 24
-					for h := uint32(0); h < f.hitsPerScan; h++ {
+					for h := range f.hitsPerScan {
 						m.Sum[0] += value
 						m.SumSquares[0] += value * value >> 24 // bounded test payload
 						m.Count++
@@ -194,7 +199,7 @@ func TestStackRecordTilesAndRestore(t *testing.T) {
 	if bus.scans != 6 || bus.uploads != 2*cfg.Bins {
 		t.Fatalf("scans %d uploads %d", bus.scans, bus.uploads)
 	}
-	for b := 0; b < cfg.Bins; b++ {
+	for b := range cfg.Bins {
 		for ch := range 2 {
 			m := st.Moments[2*b+ch]
 			want := uint64(b+1) << 24
@@ -213,6 +218,24 @@ func TestStackRecordTilesAndRestore(t *testing.T) {
 	}
 	if _, err := superres.FPGAStack(st.Moments, 4, 0, 0, 0, 0); err == nil {
 		t.Fatal("partial sample accepted")
+	}
+}
+
+// A peek whose grant is not released reports it: the stacker would keep
+// the SRAM the record is recalled from.
+// TRLC-LINKS: REQ-SDS-141
+func TestStackPeekReportsAHeldGrant(t *testing.T) {
+	bus := newStackPortBus()
+	c, err := New(bus)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := c.StackPeek(context.Background(), 4); err != nil || bus.grant {
+		t.Fatalf("peek: %v, grant held %v", err, bus.grant)
+	}
+	bus.stuckGrant = true
+	if _, err := c.StackPeek(context.Background(), 4); err == nil {
+		t.Fatal("a peek that left the grant held reported no error")
 	}
 }
 

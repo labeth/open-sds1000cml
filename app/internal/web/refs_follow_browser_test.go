@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-WEB
+
 package web
 
 import (
@@ -14,6 +15,7 @@ import (
 // panel stores references and runs AUTO on them.
 // TRLC-LINKS: REQ-SDS-227
 func framedRig(t *testing.T) *remoteRig {
+	t.Helper()
 	const n = 2048
 	var seq uint64
 	// wired before the panel's loop runs: it reads the frame source

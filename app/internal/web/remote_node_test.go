@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-WEB-REMOTE
+
 package web
 
 import (
@@ -20,7 +21,7 @@ func TestRemoteCoreJS(t *testing.T) {
 	if _, err := os.ReadFile("remote.test.cjs"); err != nil { // read here so Go's test cache sees a change to it
 		t.Fatal(err)
 	}
-	out, err := exec.Command("node", "remote.test.cjs").CombinedOutput()
+	out, err := exec.CommandContext(t.Context(), "node", "remote.test.cjs").CombinedOutput()
 	if err != nil || !strings.Contains(string(out), "ALL PASS") {
 		t.Fatalf("remote.test.cjs: %v\n%s", err, out)
 	}

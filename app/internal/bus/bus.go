@@ -53,7 +53,9 @@ const (
 	reqRead  = 0x80026700 // ioctl request: register read (6-byte record)
 	reqWrite = 0x40026701 // ioctl request: register write
 
+	// PlaneCS1 is the FPGA's register plane.
 	PlaneCS1 = 1
+	// PlaneCS3 is the MAX V's register plane.
 	PlaneCS3 = 3
 
 	// CS3ConfigPort is the MAX V configuration port (DCLK/DATA0/nCONFIG write
@@ -105,7 +107,7 @@ func Writable(plane uint8, sel uint16) bool {
 
 // TRLC-LINKS: REQ-SDS-129
 func encode(plane uint8, sel, val uint16) [6]byte {
-	return [6]byte{plane, 0, byte(sel), byte(sel >> 8), byte(val), byte(val >> 8)}
+	return [6]byte{plane, 0, byte(sel & 0xff), byte(sel >> 8), byte(val & 0xff), byte(val >> 8)}
 }
 
 // TRLC-LINKS: REQ-SDS-129, REQ-SDS-134
@@ -119,7 +121,7 @@ func (d *Dev) ioctl(req uintptr, b *[6]byte) error {
 	// These six-byte ioctls perform one bounded register transaction, not a
 	// blocking stream read. Keep the Go execution slot across the call so a
 	// register poll cannot hand it to a display render for an entire quantum.
-	_, _, errno := syscall.RawSyscall(syscall.SYS_IOCTL, uintptr(d.fd), req, uintptr(unsafe.Pointer(&b[0])))
+	_, _, errno := syscall.RawSyscall(syscall.SYS_IOCTL, uintptr(d.fd), req, uintptr(unsafe.Pointer(&b[0]))) //nolint:gosec // G103: the system call takes its argument by address
 	if errno != 0 {
 		return errno
 	}
@@ -198,7 +200,7 @@ func (d *Dev) BurstInto(c1, c2 []uint8, n int) {
 	for i := range n {
 		v, _ := d.Read(PlaneCS1, iface.SelBurst)
 		c1[i] = uint8(v >> 8)
-		c2[i] = uint8(v)
+		c2[i] = uint8(v & 0xff)
 	}
 }
 
@@ -348,12 +350,12 @@ func (d *Dev) PopBytesChecked(sel uint16, dst []byte) error {
 		}
 		return nil
 	}
-	for i := 0; i < len(dst); i += 2 {
+	for i := 0; i+1 < len(dst); i += 2 {
 		v, err := d.Read(PlaneCS1, sel)
 		if err != nil {
 			return err
 		}
-		dst[i], dst[i+1] = byte(v), byte(v>>8)
+		dst[i], dst[i+1] = byte(v&0xff), byte(v>>8)
 	}
 	return nil
 }

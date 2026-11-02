@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-SETTINGS
+
 package settings_test
 
 import (
@@ -18,19 +19,19 @@ import (
 type nullBus struct{}
 
 // TRLC-LINKS: REQ-SDS-072
-func (nullBus) Read(plane uint8, sel uint16) (uint16, error) { return 0, nil }
+func (nullBus) Read(_ uint8, _ uint16) (uint16, error) { return 0, nil }
 
 // TRLC-LINKS: REQ-SDS-072
-func (nullBus) Write(plane uint8, sel, val uint16) error { return nil }
+func (nullBus) Write(_ uint8, _, _ uint16) error { return nil }
 
 // TRLC-LINKS: REQ-SDS-072
-func (nullBus) RawWrite(sel, val uint16) error { return nil }
+func (nullBus) RawWrite(_, _ uint16) error { return nil }
 
 // TRLC-LINKS: REQ-SDS-072
-func (nullBus) BurstInto(c1, c2 []uint8, n int) {}
+func (nullBus) BurstInto(_, _ []uint8, _ int) {}
 
 // TRLC-LINKS: REQ-SDS-072
-func (nullBus) PopWords(sel uint16, dst []uint16, n int) {}
+func (nullBus) PopWords(_ uint16, _ []uint16, _ int) {}
 
 // TRLC-LINKS: REQ-SDS-072
 func (nullBus) FastDrain() bool { return true }
@@ -41,23 +42,23 @@ func (nullBus) FastDrain() bool { return true }
 type nullSPI struct{ relays, gains int }
 
 // TRLC-LINKS: REQ-SDS-072
-func (n *nullSPI) WriteRelay(word uint32) error { n.relays++; return nil }
+func (n *nullSPI) WriteRelay(_ uint32) error { n.relays++; return nil }
 
 // TRLC-LINKS: REQ-SDS-072
-func (n *nullSPI) WriteGain(ch2, ch1 uint8) error { n.gains++; return nil }
+func (n *nullSPI) WriteGain(_, _ uint8) error { n.gains++; return nil }
 
 // rig builds the production object graph exactly as cmd/app/main.go wires it
 // (engine ← bus stub, front end ← SPI stub with the engine hooks, panel
 // controller on top), without running any goroutine.
 // TRLC-LINKS: REQ-SDS-072
-func rig(t testing.TB) (*engine.Engine, *analog.FrontEnd, *panel.Controller, *nullSPI) {
-	t.Helper()
-	e := engine.New(engine.Config{Bus: nullBus{}, Logf: t.Logf})
+func rig(tb testing.TB) (*engine.Engine, *analog.FrontEnd, *panel.Controller, *nullSPI) {
+	tb.Helper()
+	e := engine.New(engine.Config{Bus: nullBus{}, Logf: tb.Logf})
 	spi := &nullSPI{}
 	fe := analog.New(spi, func(time.Duration) {}, nil)
 	fe.OnOffset(e.SetOffsetDAC)
 	fe.OnVdiv(e.SetChannelVdiv)
-	pc := panel.New(e, fe, -1, engine.SupportedTdivs(), 500e-6, t.Logf)
+	pc := panel.New(e, fe, -1, engine.SupportedTdivs(), 500e-6, tb.Logf)
 	return e, fe, pc, spi
 }
 

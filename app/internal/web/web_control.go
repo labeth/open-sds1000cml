@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-WEB
+
 package web
 
 import (
@@ -33,7 +34,7 @@ func (s *Server) hZones(w http.ResponseWriter, r *http.Request) {
 		Ch     int     `json:"ch"`
 	}
 	if err := json.NewDecoder(io.LimitReader(r.Body, 1<<16)).Decode(&zs); err != nil {
-		writeJSON(w, map[string]any{"ok": false, "err": "bad json"})
+		writeBadJSON(w)
 		return
 	}
 	if len(zs) > 4 {
@@ -80,7 +81,7 @@ func (s *Server) hSerial(w http.ResponseWriter, r *http.Request) {
 	}
 	var p engine.SerialParams
 	if err := json.NewDecoder(io.LimitReader(r.Body, 1<<16)).Decode(&p); err != nil {
-		writeJSON(w, map[string]any{"ok": false, "err": "bad json"})
+		writeBadJSON(w)
 		return
 	}
 	p.Proto = clampI(p.Proto, 0, engine.SerialProtocols-1) // 0 off … 10 flexray, 11 lin … 30 wiegand … 52 IR multi
@@ -179,7 +180,7 @@ func (s *Server) hMask(w http.ResponseWriter, r *http.Request) {
 		IfGen      *uint64 `json:"if_gen"` // a re-install: the install it replaces (Stats.MaskGen)
 	}
 	if err := json.NewDecoder(io.LimitReader(r.Body, 4<<20)).Decode(&m); err != nil {
-		writeJSON(w, map[string]any{"ok": false, "err": "bad json"})
+		writeBadJSON(w)
 		return
 	}
 	var lo, hi []uint8
@@ -202,8 +203,8 @@ func (s *Server) hMask(w http.ResponseWriter, r *http.Request) {
 		}
 		lo, hi = make([]uint8, m.Win), make([]uint8, m.Win)
 		for i := range m.Win {
-			lo[i] = uint8(clampI(m.Lo[i], 0, 255))
-			hi[i] = uint8(clampI(m.Hi[i], 0, 255))
+			lo[i] = uint8(clampI(m.Lo[i], 0, 255) & 0xff)
+			hi[i] = uint8(clampI(m.Hi[i], 0, 255) & 0xff)
 		}
 	}
 	// a page re-scaling its mask to a new V/div names the install it replaces:
@@ -244,7 +245,7 @@ func (s *Server) clearMask() {
 // arrays (compact for the plot): frequency (Hz), magnitude (dB), phase (deg),
 // sorted ascending by frequency.
 // TRLC-LINKS: REQ-SDS-162
-func (s *Server) hBode(w http.ResponseWriter, r *http.Request) {
+func (s *Server) hBode(w http.ResponseWriter, _ *http.Request) {
 	pts := s.sc.BodePoints()
 	f := make([]float64, len(pts))
 	g := make([]float64, len(pts))
@@ -259,7 +260,7 @@ func (s *Server) hBode(w http.ResponseWriter, r *http.Request) {
 func (s *Server) hMaskFail(w http.ResponseWriter, r *http.Request) {
 	ring := s.sc.MaskFails()
 	i := 0
-	fmt.Sscanf(r.URL.Query().Get("i"), "%d", &i)
+	_, _ = fmt.Sscanf(r.URL.Query().Get("i"), "%d", &i) // bad: 0, the newest
 	if i < 0 || i >= len(ring) {
 		writeJSON(w, map[string]any{"ok": false, "err": "no such failure", "count": len(ring)})
 		return
@@ -298,7 +299,7 @@ type setReq struct {
 }
 
 // TRLC-LINKS: REQ-SDS-162
-func (s *Server) hSet(w http.ResponseWriter, r *http.Request) {
+func (s *Server) hSet(w http.ResponseWriter, r *http.Request) { //nolint:gocyclo,funlen // /api/set: one case per control
 	if r.Method != http.MethodPost {
 		http.Error(w, "POST only", http.StatusMethodNotAllowed)
 		return
@@ -307,7 +308,7 @@ func (s *Server) hSet(w http.ResponseWriter, r *http.Request) {
 	// 4 KB cap: a scalar-verb body is tens of bytes; an unbounded decoder
 	// would buffer an attacker-sized body on a 64 MB-class ARM.
 	if err := decodeSmall(r.Body, &req); err != nil {
-		writeJSON(w, map[string]any{"ok": false, "err": "bad json"})
+		writeBadJSON(w)
 		return
 	}
 	for _, v := range []float64{req.Value, req.Lvl, req.Lo, req.Hi, req.Min, req.Max} {
@@ -367,7 +368,7 @@ func (s *Server) hSet(w http.ResponseWriter, r *http.Request) {
 		s.sc.SetTrigPosFrac(req.Value)
 	case "memdepth":
 		applied := s.sc.SetMemDepth(int(req.Value))
-		writeJSON(w, map[string]any{"ok": true, "applied": applied})
+		writeJSON(w, map[string]any{"ok": true, "applied": applied}) //nolint:goconst // JSON field names: the literal shows the reply's shape
 		return
 	case "frameperiod":
 		applied := s.sc.SetFramePeriod(int(req.Value))
@@ -558,7 +559,10 @@ func (s *Server) endWebCapture(ctx context.Context) {
 // buffers; one with more after it still decodes its first value.
 // TRLC-LINKS: REQ-SDS-162
 func decodeSmall(body io.Reader, v any) error {
-	buf := smallBodies.Get().(*[4 << 10]byte)
+	buf, ok := smallBodies.Get().(*[4 << 10]byte)
+	if !ok {
+		buf = new([4 << 10]byte)
+	}
 	defer smallBodies.Put(buf)
 	n, err := io.ReadFull(body, buf[:])
 	if err != nil && err != io.ErrUnexpectedEOF && err != io.EOF {

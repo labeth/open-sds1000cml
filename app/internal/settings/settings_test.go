@@ -1,7 +1,10 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-SETTINGS
+
 package settings
 
 import (
+	"errors"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
@@ -57,7 +60,7 @@ func TestSaveAtomicNoTmpLeft(t *testing.T) {
 	if err := Save(path, sample()); err != nil {
 		t.Fatalf("Save: %v", err)
 	}
-	if _, err := os.Stat(path + ".tmp"); !os.IsNotExist(err) {
+	if _, err := os.Stat(path + ".tmp"); !errors.Is(err, fs.ErrNotExist) {
 		t.Fatalf("temp file left behind: %v", err)
 	}
 }

@@ -13,6 +13,7 @@
 // for the words ready (workerStreamPeek) and in the same request gives back
 // the bytes it finished with, which the worker may then fill again.
 // ENGMODEL-OWNER-UNIT: FU-APP-BUS
+
 package bus
 
 import (
@@ -28,8 +29,8 @@ import (
 // GPMC descriptor 3 and the socket 4).
 const sharedRingFD = 5
 
-// ErrNoSharedRing: the worker's stream ring is not shared with the app; the
-// reader takes the words through ReadIsolatedStream.
+// ErrNoSharedRing reports that the worker's stream ring is not shared with
+// the app; the reader takes the words through ReadIsolatedStream.
 var ErrNoSharedRing = errors.New("bus: no shared stream ring")
 
 // createSharedRing makes the ring's file in a RAM file system and unlinks it:
@@ -45,7 +46,7 @@ func createSharedRing() (*os.File, error) {
 		}
 		_ = os.Remove(f.Name())
 		if err = f.Truncate(workerStreamBytes); err != nil {
-			f.Close()
+			_ = f.Close()
 			last = err
 			continue
 		}
@@ -101,8 +102,8 @@ func (w *acquisitionWorker) streamPeek(release uint32, data []byte) (int, error)
 		return 0, w.sFault
 	}
 	binary.LittleEndian.PutUint64(data[0:], w.sFirst)
-	binary.LittleEndian.PutUint32(data[8:], uint32(w.sHead))
-	binary.LittleEndian.PutUint32(data[12:], uint32(w.sCount))
+	binary.LittleEndian.PutUint32(data[8:], uint32(w.sHead))   //nolint:gosec // G115: a position inside the ring (< its size, far below 2^31)
+	binary.LittleEndian.PutUint32(data[12:], uint32(w.sCount)) //nolint:gosec // G115: a count inside the ring (< its size, far below 2^31)
 	return 16, nil
 }
 
@@ -117,7 +118,7 @@ func (d *Dev) PeekIsolatedStream(release int) (first uint64, a, b []byte, err er
 		return 0, nil, nil, ErrNoSharedRing
 	}
 	var reply [16]byte
-	n, err := d.remote.call(workerStreamPeek, 0, 0, 0, uint32(release), reply[:])
+	n, err := d.remote.call(workerStreamPeek, 0, 0, 0, uint32(release), reply[:]) //nolint:gosec // G115: bytes released inside the ring (< its size)
 	if err != nil {
 		if strings.HasSuffix(err.Error(), ErrNoSharedRing.Error()) {
 			err = ErrNoSharedRing

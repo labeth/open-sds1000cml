@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-BUS
+
 package bus
 
 import (
@@ -35,7 +36,7 @@ func fakeEnv(present map[string]bool, devices string) (dcinvEnv, *[]string) {
 			return nil
 		},
 		devices:  func() (string, error) { return devices, nil },
-		mknod:    func(p string, major int) error { log = append(log, "mknod:"+p); present[p] = true; return nil },
+		mknod:    func(p string, _ int) error { log = append(log, "mknod:"+p); present[p] = true; return nil },
 		sleep:    func(time.Duration) {},
 		deadline: 200 * time.Millisecond,
 	}

@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-WEB
+
 package web
 
 import (
@@ -34,10 +35,10 @@ func (f *soundFakeScope) SoundInfo() engine.SoundInfo {
 }
 
 // TRLC-LINKS: REQ-SDS-265
-func (f *soundFakeScope) SoundRead(from uint64, max int, q1, q2 []uint16) engine.SoundBlock {
+func (f *soundFakeScope) SoundRead(from uint64, limit int, _, _ []uint16) engine.SoundBlock {
 	from = min(f.next, from)
 	from = maxU(from, f.first)
-	n := int(min(uint64(max), f.next-from))
+	n := int(min(uint64(limit), f.next-from))
 	b := engine.SoundBlock{
 		First: from, N: n, Next: f.next, RateHz: 61035.15625, Q1: make([]uint16, n), Q2: make([]uint16, n),
 		Scales: []engine.SoundScale{{From: f.first, VdivV: [2]float64{1, 0.5}, OffV: [2]float64{math.NaN(), 0}}},
@@ -55,7 +56,7 @@ func maxU(a, b uint64) uint64 {
 }
 
 // TRLC-LINKS: REQ-SDS-265
-func (f *soundFakeScope) SoundWait(after uint64, timeout time.Duration) uint64 { return f.next }
+func (f *soundFakeScope) SoundWait(_ uint64, _ time.Duration) uint64 { return f.next }
 
 // soundFakePanel is the panel's SOUND service with a report full of the
 // values JSON refuses.
@@ -87,7 +88,7 @@ func (p *soundFakePanel) SoundAction(a string) error {
 }
 
 // TRLC-LINKS: REQ-SDS-274
-func (p *soundFakePanel) SoundReport(api, marks bool) panel.SoundReport {
+func (p *soundFakePanel) SoundReport(_, _ bool) panel.SoundReport {
 	r := panel.SoundReport{Settings: p.set, Hz: math.NaN(), Cents: math.Inf(-1), CV: math.Inf(1)}
 	r.ADSRRes.Start = math.NaN()
 	for i := range 40 {
@@ -98,7 +99,7 @@ func (p *soundFakePanel) SoundReport(api, marks bool) panel.SoundReport {
 }
 
 // TRLC-LINKS: REQ-SDS-274
-func (p *soundFakePanel) SoundWant(api, marks bool) {}
+func (p *soundFakePanel) SoundWant(_, _ bool) {}
 
 // TestSoundAPIHostile asks /api/sound.bin for any stretch and posts any
 // body to /api/sound: no server error, a well-formed reply every time - a
@@ -116,12 +117,12 @@ func TestSoundAPIHostile(t *testing.T) {
 		"wait=-1", "wait=999999999", "wait=10&from=71000&min=1000", "marks=1&max=1", "from=18446744073709551000&min=60000&wait=5",
 		"who=phone", "who=", "who=%00%ff", "who=" + strings.Repeat("p", 5000), "who=phone&who=web&marks=1",
 	} {
-		r, err := cl.Get(srv.URL + "/api/sound.bin?" + q)
+		r, err := httpGet(t, cl, srv.URL+"/api/sound.bin?"+q)
 		if err != nil {
 			t.Fatalf("%s: %v", q, err)
 		}
 		b, _ := io.ReadAll(r.Body)
-		r.Body.Close()
+		_ = r.Body.Close()
 		if r.StatusCode != http.StatusOK || len(b) < 8 || string(b[:3]) != "SB\x01" {
 			t.Fatalf("%s: status %d, %d bytes", q, r.StatusCode, len(b))
 		}
@@ -140,23 +141,23 @@ func TestSoundAPIHostile(t *testing.T) {
 		`{"settings":{"ref":"` + strings.Repeat("A", 9000) + `"}}`, `{"action":"take_scope"}`, `{"action":"take_scope","settings":{"drift":true}}`,
 		`{"settings":{"pre_s":-1,"post_s":1e308}}`, `{"settings":{"pre_s":1e308,"post_s":-1e308,"trig_gate":true}}`, `{"settings":{"pre_s":"x"}}`,
 	} {
-		r, err := cl.Post(srv.URL+"/api/sound?who=phone", "application/json", strings.NewReader(body))
+		r, err := httpPost(t, cl, srv.URL+"/api/sound?who=phone", "application/json", strings.NewReader(body))
 		if err != nil {
 			t.Fatalf("%q: %v", body, err)
 		}
 		b, _ := io.ReadAll(r.Body)
-		r.Body.Close()
+		_ = r.Body.Close()
 		var out map[string]any
 		if r.StatusCode >= 500 || json.Unmarshal(b, &out) != nil {
 			t.Fatalf("%q: status %d, reply %q", body[:min(len(body), 60)], r.StatusCode, b[:min(len(b), 200)])
 		}
 	}
 	for _, q := range []string{"", "?who=phone", "?x=%zz"} {
-		r, err := cl.Get(srv.URL + "/api/sound/take.bin" + q)
+		r, err := httpGet(t, cl, srv.URL+"/api/sound/take.bin"+q)
 		if err != nil {
 			t.Fatalf("take.bin%s: %v", q, err)
 		}
-		r.Body.Close()
+		_ = r.Body.Close()
 		if r.StatusCode >= 500 {
 			t.Fatalf("take.bin%s: status %d", q, r.StatusCode)
 		}

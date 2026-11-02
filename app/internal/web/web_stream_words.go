@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-WEB
+
 package web
 
 import (
@@ -21,7 +22,7 @@ import (
 
 // clientDecoder is the engine's client decode (engine/soft_client.go).
 type clientDecoder interface {
-	ReadClientWords(seq uint64, max int, wait time.Duration, dst []engine.ClientChunk) (engine.ClientWords, func())
+	ReadClientWords(seq uint64, limit int, wait time.Duration, dst []engine.ClientChunk) (engine.ClientWords, func())
 	PostClientFrames(body []byte) error
 }
 
@@ -76,7 +77,10 @@ func (s *Server) hStreamWords(w http.ResponseWriter, r *http.Request) {
 	if v, err := strconv.Atoi(q.Get("wait")); err == nil && v > 0 {
 		wait = min(v, 1500)
 	}
-	wb := wordsBufs.Get().(*wordsBuf)
+	wb, ok := wordsBufs.Get().(*wordsBuf)
+	if !ok {
+		wb = new(wordsBuf)
+	}
 	defer wordsBufs.Put(wb)
 	cw, release := src.ReadClientWords(from, maxB, time.Duration(wait)*time.Millisecond, wb.chunks[:0])
 	defer release()
@@ -94,8 +98,9 @@ func (s *Server) hStreamWords(w http.ResponseWriter, r *http.Request) {
 	for len(hj)%4 != 0 {
 		hj = append(hj, ' ')
 	}
-	head := append(wb.head[:0], wordsBinMagic[:]...)
-	head = binary.LittleEndian.AppendUint32(head, uint32(len(hj)))
+	head := wb.head[:0]
+	head = append(head, wordsBinMagic[:]...)
+	head = binary.LittleEndian.AppendUint32(head, uint32(len(hj))) //nolint:gosec // G115: a JSON header of a few KB
 	head = append(head, hj...)
 	head = engine.AppendClientChunkHeads(head, cw.Chunks)
 	wb.head = head
@@ -129,7 +134,10 @@ func (s *Server) hStreamFrames(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "no client decode", http.StatusNotFound)
 		return
 	}
-	bp := framesBufs.Get().(*[]byte)
+	bp, ok := framesBufs.Get().(*[]byte)
+	if !ok {
+		bp = new([]byte)
+	}
 	defer framesBufs.Put(bp)
 	body, err := readBody(http.MaxBytesReader(w, r.Body, framesBinMax), (*bp)[:0], r.ContentLength)
 	*bp = body[:0]

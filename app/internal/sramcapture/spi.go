@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-SRAMCAPTURE
+
 package sramcapture
 
 import "errors"
@@ -39,6 +40,7 @@ const regSampleDelay = 58
 // every image with those receivers; register 7's hysteresis is its band.
 const regSecondLevel = 59
 
+// SupportsSPI reports whether the image has the SPI trigger.
 // TRLC-LINKS: REQ-SDS-013
 func (c *Capture) SupportsSPI() (bool, error) {
 	c.mu.Lock()
@@ -73,27 +75,26 @@ func (c *Capture) configureSPI(revision uint16, p SPITriggerConfig) error {
 		}
 		return nil
 	}
-	control := uint16(0)
-	if p.Enabled {
-		control = 1 | uint16(p.ClockChannel)<<1 | uint16(p.Length)<<6
-		if p.Inverted {
-			control |= 4
-		}
-		if p.CPOL {
-			control |= 8
-		}
-		if p.CPHA {
-			control |= 16
-		}
-		if p.MSB {
-			control |= 32
-		}
-		// The registers, then the control, in one batch.
-		regs := [][2]uint16{{65, uint16(p.GapTicks)}, {66, uint16(p.GapTicks >> 16)}, {67, uint16(p.Pattern)}, {68, uint16(p.Pattern >> 16)}}
-		if capability == spiSamples {
-			regs = append(regs, [2]uint16{regSampleDelay, uint16(uint8(p.Delay))})
-		}
-		return c.writeMany(append(regs, [2]uint16{64, control})...)
+	if !p.Enabled {
+		return c.write(64, 0)
 	}
-	return c.write(64, control)
+	control := 1 | uint16(p.ClockChannel)<<1 | uint16(p.Length)<<6
+	if p.Inverted {
+		control |= 4
+	}
+	if p.CPOL {
+		control |= 8
+	}
+	if p.CPHA {
+		control |= 16
+	}
+	if p.MSB {
+		control |= 32
+	}
+	// The registers, then the control, in one batch.
+	regs := [][2]uint16{{65, uint16(p.GapTicks & 0xffff)}, {66, uint16(p.GapTicks >> 16)}, {67, uint16(p.Pattern & 0xffff)}, {68, uint16(p.Pattern >> 16)}}
+	if capability == spiSamples {
+		regs = append(regs, [2]uint16{regSampleDelay, uint16(uint8(p.Delay))}) //nolint:gosec // G115: the register takes the delay as a two's-complement byte
+	}
+	return c.writeMany(append(regs, [2]uint16{64, control})...)
 }

@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-BUS
+
 package bus
 
 import (
@@ -88,34 +89,37 @@ func (f *workerFake) PopBytesChecked(sel uint16, dst []byte) error {
 }
 
 // TRLC-LINKS: REQ-SDS-001, REQ-SDS-013
-func workerFixture(t testing.TB) (*Dev, *workerFake) {
-	t.Helper()
+func workerFixture(tb testing.TB) (*Dev, *workerFake) {
+	tb.Helper()
 	f := &workerFake{}
 	capture, err := sramcapture.New(f)
 	if err != nil {
-		t.Fatal(err)
+		tb.Fatal(err)
 	}
 	w := &acquisitionWorker{bus: f, capture: capture, ring: make([]byte, workerQueueEvents*32)}
 	fds, err := syscall.Socketpair(syscall.AF_UNIX, syscall.SOCK_SEQPACKET, 0)
 	if err != nil {
-		t.Fatal(err)
+		tb.Fatal(err)
 	}
 	p := os.NewFile(uintptr(fds[0]), "worker-test")
 	conn, err := net.FileConn(p)
-	p.Close()
+	_ = p.Close()
 	if err != nil {
-		t.Fatal(err)
+		tb.Fatal(err)
 	}
 	done := make(chan error, 1)
-	go func() { done <- w.serve(fds[1]); syscall.Close(fds[1]) }()
+	go func() { done <- w.serve(fds[1]); _ = syscall.Close(fds[1]) }()
 	d := &Dev{fd: -1, remote: &workerClient{conn: conn, fast: true}}
-	t.Cleanup(func() {
+	tb.Cleanup(func() {
 		_ = d.RawWrite(57, 0)
-		conn.Close()
+		_ = conn.Close()
 		select {
-		case <-done:
+		case err := <-done:
+			if err != nil {
+				tb.Logf("worker serve ended: %v", err)
+			}
 		case <-time.After(3 * time.Second):
-			t.Error("worker did not stop after peer closed")
+			tb.Error("worker did not stop after peer closed")
 		}
 	})
 	return d, f
@@ -241,7 +245,7 @@ func TestWorkerRingWrapAndOverflowAreExplicit(t *testing.T) {
 // TRLC-LINKS: REQ-SDS-001, REQ-SDS-013
 func TestWorkerDisconnectNeverFallsBackToParentFD(t *testing.T) {
 	d, _ := workerFixture(t)
-	d.remote.conn.Close()
+	_ = d.remote.conn.Close()
 	for range 2 {
 		_, err := d.Read(1, 0)
 		if err == nil || !strings.Contains(err.Error(), "worker transport failed") {

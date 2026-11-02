@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-SCPI
+
 package scpi
 
 import (
@@ -148,12 +149,16 @@ var pavaOrder = []string{
 	"PER", "FREQ", "PWID", "NWID", "RISE", "FALL", "DUTY", "NDUTY",
 }
 
+// noReading is the vendor's reading of a measurement the record cannot
+// support.
+const noReading = "****"
+
 // pavaValue formats one parameter of a measurement; "****" when the record
 // cannot support it.
 // TRLC-LINKS: REQ-SDS-024
 func pavaValue(arg string, r *measure.Result) string {
 	p := pavaParam[arg]
-	value := "****"
+	value := noReading
 	show := r != nil
 	switch {
 	case !show:
@@ -162,9 +167,10 @@ func pavaValue(arg string, r *measure.Result) string {
 		// timebase) has a rise time (RISE must not read **** at 50 ns/div on a
 		// clean 20 ns edge).
 		show = (!r.EnvTiming || r.EdgeShape) && (r.RiseS > 0 || r.FallS > 0)
-		if arg == "RISE" {
+		switch arg {
+		case "RISE":
 			show = show && r.RiseS > 0
-		} else if arg == "FALL" {
+		case "FALL":
 			show = show && r.FallS > 0
 		}
 	case p.timing:

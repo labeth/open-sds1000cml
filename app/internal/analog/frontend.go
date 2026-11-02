@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-ANALOG
+
 package analog
 
 import (
@@ -368,7 +369,7 @@ func (f *FrontEnd) CalSource() string { return f.tab.Source }
 func (f *FrontEnd) gainFor(ch, idx int) uint8 {
 	idx = analogDetent(idx)
 	if f.tab.Source != "defaults" {
-		return uint8(f.tab.Rec[ch&1][idx].GainDAC)
+		return uint8(f.tab.Rec[ch&1][idx].GainDAC) //nolint:gosec // G115: the gain DAC is 8-bit; the calibration keeps its codes (0..255) in an int16 field
 	}
 	return Detents[idx].Gain
 }
@@ -445,7 +446,7 @@ func (f *FrontEnd) DCVolts(ch int, meanCode float64) float64 {
 func (f *FrontEnd) relayWord() uint32 {
 	b0 := channelByte(f.idx[0], false, f.bwl[0])
 	b1 := channelByte(f.idx[1], true, f.bwl[1])
-	b2 := uint8(0x70 | (f.trigSrc&3)<<2) // DC trigger-coupling nibble
+	b2 := uint8((0x70 | (f.trigSrc&3)<<2) & 0xff) // DC trigger-coupling nibble
 	return uint32(b0) | uint32(b1)<<8 | uint32(b2)<<16
 }
 
@@ -639,12 +640,12 @@ const offsetZeroFallback = 10223
 // OffsetCode is the table-less fallback mapping (front end unavailable): the
 // boot detent's 1 V/div slope and ×25 tier clamp about the boot-default zero.
 // TRLC-LINKS: REQ-SDS-095
-func OffsetCode(ch int, volts float64) uint16 {
+func OffsetCode(_ int, volts float64) uint16 {
 	return offsetCode(offsetZeroFallback, BootDetent, volts)
 }
 
 // OffsetVolts is the fallback inverse for labels/readback.
 // TRLC-LINKS: REQ-SDS-095
-func OffsetVolts(ch int, code uint16) float64 {
+func OffsetVolts(_ int, code uint16) float64 {
 	return (offsetZeroFallback - float64(code)) / offsetSlope(BootDetent)
 }

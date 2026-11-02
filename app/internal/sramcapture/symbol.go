@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-SRAMCAPTURE
+
 package sramcapture
 
 import "errors"
@@ -157,17 +158,17 @@ func SymbolRegisters(p SymbolTriggerConfig) [][2]uint16 {
 		}
 	}
 	return [][2]uint16{
-		{94, uint16(p.UnitQ8)},
+		{94, uint16(p.UnitQ8 & 0xffff)},
 		{95, uint16(p.UnitQ8 >> 16)},
 		{96, uint16(p.Period)<<8 | uint16(p.FrameUnits)},
 		{97, uint16(p.Phase0)<<10 | p.K},
-		{101, uint16(p.Pattern)},
-		{102, uint16(p.Pattern >> 16)},
-		{103, uint16(p.Pattern >> 32)},
+		{101, uint16(p.Pattern & 0xffff)},
+		{102, uint16((p.Pattern >> 16) & 0xffff)},
+		{103, uint16((p.Pattern >> 32) & 0xffff)},
 		{104, uint16(p.Pattern >> 48)},
-		{105, uint16(p.Mask)},
-		{106, uint16(p.Mask >> 16)},
-		{107, uint16(p.Mask >> 32)},
+		{105, uint16(p.Mask & 0xffff)},
+		{106, uint16((p.Mask >> 16) & 0xffff)},
+		{107, uint16((p.Mask >> 32) & 0xffff)},
 		{108, uint16(p.Mask >> 48)},
 		{93, control},
 	}

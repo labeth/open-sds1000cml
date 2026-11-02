@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-WEB
+
 package web
 
 import (
@@ -21,7 +22,7 @@ func TestStatusInvertSource(t *testing.T) {
 	get := func() (bool, bool) {
 		t.Helper()
 		rec := httptest.NewRecorder()
-		s.hStatus(rec, httptest.NewRequest(http.MethodGet, "/api/status", nil))
+		s.hStatus(rec, httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/api/status", nil))
 		// Decode with the page's wire names, so a JSON-tag change fails here.
 		var rep struct {
 			Inv1 bool `json:"inv1"`

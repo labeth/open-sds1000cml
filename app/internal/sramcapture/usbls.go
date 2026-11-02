@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-SRAMCAPTURE
+
 package sramcapture
 
 import "errors"
@@ -24,6 +25,7 @@ func (p USBLSTriggerConfig) validate() error {
 	return nil
 }
 
+// SupportsUSBLS reports whether the image has the low-speed USB trigger.
 // TRLC-LINKS: REQ-SDS-013
 func (c *Capture) SupportsUSBLS() (bool, error) {
 	c.mu.Lock()
@@ -55,7 +57,7 @@ func (c *Capture) configureUSBLS(revision uint16, p USBLSTriggerConfig) error {
 			control |= 4
 		}
 		// The registers, then the control, in one batch.
-		return c.writeMany([2]uint16{98, uint16(p.BitTicksQ8)}, [2]uint16{99, uint16(p.BitTicksQ8 >> 16)}, [2]uint16{100, uint16(p.Pattern)},
+		return c.writeMany([2]uint16{98, uint16(p.BitTicksQ8 & 0xffff)}, [2]uint16{99, uint16(p.BitTicksQ8 >> 16)}, [2]uint16{100, uint16(p.Pattern & 0xffff)},
 			[2]uint16{101, uint16(p.Pattern >> 16)}, [2]uint16{97, control})
 	}
 	return c.write(97, control)

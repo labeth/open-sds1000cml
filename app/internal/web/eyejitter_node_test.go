@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-WEB
+
 package web
 
 import (
@@ -18,7 +19,7 @@ import (
 func TestEyejitterJS(t *testing.T) {
 	testenv.NeedNode(t)
 	node, _ := exec.LookPath("node")
-	out, err := exec.Command(node, "eyejitter.test.cjs").CombinedOutput()
+	out, err := exec.CommandContext(t.Context(), node, "eyejitter.test.cjs").CombinedOutput()
 	t.Logf("eyejitter.test.cjs output:\n%s", out)
 	if err != nil {
 		t.Fatalf("eyejitter.js test failed: %v", err)
@@ -34,7 +35,7 @@ func TestEyejitterJS(t *testing.T) {
 // TRLC-LINKS: REQ-SDS-215
 func TestEyeFullRateJS(t *testing.T) {
 	testenv.NeedNode(t)
-	if out, err := exec.Command("node", "eye_fullrate.test.cjs").CombinedOutput(); err != nil || !strings.Contains(string(out), "ALL PASS") {
+	if out, err := exec.CommandContext(t.Context(), "node", "eye_fullrate.test.cjs").CombinedOutput(); err != nil || !strings.Contains(string(out), "ALL PASS") {
 		t.Fatalf("eye full-rate: %v\n%s", err, out)
 	}
 }

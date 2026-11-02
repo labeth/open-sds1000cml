@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-WEB-APP-SERIALTRIG
+
 package web
 
 import (
@@ -37,7 +38,7 @@ func TestSerialTrigAdoptBrowser(t *testing.T) {
 	srv := httptest.NewServer(New(fs, nil, nil, nil).Handler())
 	defer srv.Close()
 
-	out, err := exec.Command("node", "serialadopt_browser.mjs", srv.URL).CombinedOutput()
+	out, err := exec.CommandContext(t.Context(), "node", "serialadopt_browser.mjs", srv.URL).CombinedOutput()
 	t.Logf("serialadopt_browser.mjs:\n%s", out)
 	if strings.HasPrefix(strings.TrimSpace(string(out)), "SKIP:") {
 		testenv.SkipBrowser(t, "browser unavailable")
@@ -79,7 +80,7 @@ func TestSerialStoredMatchBrowser(t *testing.T) {
 	srv := httptest.NewServer(New(fs, nil, nil, nil).Handler())
 	defer srv.Close()
 
-	out, err := exec.Command("node", "serialstored_browser.mjs", srv.URL).CombinedOutput()
+	out, err := exec.CommandContext(t.Context(), "node", "serialstored_browser.mjs", srv.URL).CombinedOutput()
 	t.Logf("serialstored_browser.mjs:\n%s", out)
 	if strings.HasPrefix(strings.TrimSpace(string(out)), "SKIP:") {
 		testenv.SkipBrowser(t, "browser unavailable")

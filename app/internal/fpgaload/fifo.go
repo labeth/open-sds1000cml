@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-FPGALOAD
+
 package fpgaload
 
 import (
@@ -21,16 +22,18 @@ func fifoShift(shift func() error) error {
 	defer runtime.UnlockOSThread()
 	policy, _, e1 := syscall.RawSyscall(syscall.SYS_SCHED_GETSCHEDULER, 0, 0, 0)
 	var prio int32
-	_, _, e2 := syscall.RawSyscall(syscall.SYS_SCHED_GETPARAM, 0, uintptr(unsafe.Pointer(&prio)), 0)
+	_, _, e2 := syscall.RawSyscall(syscall.SYS_SCHED_GETPARAM, 0, uintptr(unsafe.Pointer(&prio)), 0) //nolint:gosec // G103: the system call takes its argument by address
 	if e1 != 0 || e2 != 0 {
 		return shift()
 	}
 	fifo := int32(1)
 	const fifoResetOnFork = 1 | 0x40000000
-	if _, _, e := syscall.RawSyscall(syscall.SYS_SCHED_SETSCHEDULER, 0, fifoResetOnFork, uintptr(unsafe.Pointer(&fifo))); e != 0 {
+	if _, _, e := syscall.RawSyscall(syscall.SYS_SCHED_SETSCHEDULER, 0, fifoResetOnFork, uintptr(unsafe.Pointer(&fifo))); e != 0 { //nolint:gosec // G103: the system call takes its argument by address
 		return shift()
 	}
 	err := shift()
-	syscall.RawSyscall(syscall.SYS_SCHED_SETSCHEDULER, 0, policy, uintptr(unsafe.Pointer(&prio)))
+	// Back to the policy and priority it had, values the kernel just gave:
+	// returning a thread to them needs no privilege and is not refused.
+	_, _, _ = syscall.RawSyscall(syscall.SYS_SCHED_SETSCHEDULER, 0, policy, uintptr(unsafe.Pointer(&prio))) //nolint:gosec // G103: the system call takes its argument by address
 	return err
 }

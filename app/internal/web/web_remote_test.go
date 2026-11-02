@@ -1,9 +1,11 @@
 // ENGMODEL-OWNER-UNIT: FU-WEB-REMOTE
+
 package web
 
 import (
 	"bytes"
 	"compress/gzip"
+	"context"
 	"encoding/json"
 	"fmt"
 	"image/png"
@@ -24,7 +26,7 @@ import (
 // get runs one GET (with extra headers) against s.
 // TRLC-LINKS: REQ-SDS-220
 func get(s *Server, path string, hdr ...string) *httptest.ResponseRecorder {
-	req := httptest.NewRequest(http.MethodGet, path, nil)
+	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, path, nil)
 	for i := 0; i+1 < len(hdr); i += 2 {
 		req.Header.Set(hdr[i], hdr[i+1])
 	}
@@ -255,7 +257,7 @@ func TestPanelWorkspaceEndpoint(t *testing.T) {
 		t.Fatalf("a notice from before the switch was passed on: %v", out)
 	}
 	_, out = httpCall(t, s, "POST", "/api/panel", map[string]any{"workspace": "nope"})
-	if out["ok"] != false || !strings.Contains(out["error"].(string), `no workspace "nope"`) {
+	if out["ok"] != false || !strings.Contains(jsonAt[string](t, out, "error"), `no workspace "nope"`) {
 		t.Fatalf("a refused switch: %v", out)
 	}
 	if p.writes != 0 {

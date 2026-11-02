@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-WEB
+
 package web
 
 import (
@@ -18,7 +19,7 @@ func TestFrameClient(t *testing.T) {
 	if s.FrameClient(time.Hour) {
 		t.Fatal("a page shows the scope before any asked for a frame")
 	}
-	s.Handler().ServeHTTP(httptest.NewRecorder(), httptest.NewRequest(http.MethodGet, "/api/frame.bin?since=0&cols=800", nil))
+	s.Handler().ServeHTTP(httptest.NewRecorder(), httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/api/frame.bin?since=0&cols=800", nil))
 	if !s.FrameClient(time.Second) {
 		t.Fatal("no page after a frame request")
 	}

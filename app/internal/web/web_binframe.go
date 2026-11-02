@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-WEB
+
 package web
 
 import (
@@ -74,7 +75,7 @@ func encodeBinFrame(rep frameReply) []byte {
 	buf := make([]byte, 8, 8+len(hj)+payloadBytes)
 	buf[0] = binMagic
 	buf[1] = flags
-	binary.LittleEndian.PutUint32(buf[4:8], uint32(len(hj)))
+	binary.LittleEndian.PutUint32(buf[4:8], uint32(len(hj))) //nolint:gosec // G115: a JSON header of a few KB
 	buf = append(buf, hj...)
 	// The payload written in place: the precision words as their
 	// little-endian bytes, the codes a byte each.
@@ -88,7 +89,7 @@ func encodeBinFrame(rep frameReply) []byte {
 		for _, seg := range segs {
 			out := buf[at : at+segLen]
 			for i, v := range seg[head : head+segLen] {
-				out[i] = uint8(v)
+				out[i] = uint8(v & 0xff) // a display code, 0..255
 			}
 			at += segLen
 		}
@@ -97,7 +98,7 @@ func encodeBinFrame(rep frameReply) []byte {
 		for _, seg := range [][]int16{rep.VC1, rep.VC2} {
 			out := buf[at : at+len(seg)]
 			for i, v := range seg {
-				out[i] = uint8(v)
+				out[i] = uint8(v & 0xff) // a display code, 0..255
 			}
 			at += len(seg)
 		}
@@ -191,10 +192,11 @@ func (s *Server) hFrameBin(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	var since uint64
-	fmt.Sscanf(r.URL.Query().Get("since"), "%d", &since)
+	// An absent or bad number leaves its default.
+	_, _ = fmt.Sscanf(r.URL.Query().Get("since"), "%d", &since)
 	cols := screenCols
 	if c := r.URL.Query().Get("cols"); c != "" {
-		fmt.Sscanf(c, "%d", &cols)
+		_, _ = fmt.Sscanf(c, "%d", &cols)
 	}
 	if cols < 64 {
 		cols = 64
@@ -204,7 +206,7 @@ func (s *Server) hFrameBin(w http.ResponseWriter, r *http.Request) {
 	}
 	full := r.URL.Query().Get("full") == "1"
 	waitms := 0
-	fmt.Sscanf(r.URL.Query().Get("waitms"), "%d", &waitms)
+	_, _ = fmt.Sscanf(r.URL.Query().Get("waitms"), "%d", &waitms)
 	if waitms < 0 {
 		waitms = 0
 	}
@@ -215,23 +217,7 @@ func (s *Server) hFrameBin(w http.ResponseWriter, r *http.Request) {
 	// published, and blocks when none has — otherwise a fresh page against an
 	// idle engine hot-loops instant unchanged replies at the client's tick.
 	if waitms > 0 {
-		timeout := time.Duration(waitms) * time.Millisecond
-		if fw, ok := s.sc.(frameWaiter); ok {
-			fw.WaitNextFrame(since, timeout)
-		} else { // test doubles: degrade to a short seq poll
-			for deadline := time.Now().Add(timeout); time.Now().Before(deadline); {
-				var seq uint64
-				s.sc.WithFrame(func(f *engine.Frame) {
-					if f != nil {
-						seq = f.Seq
-					}
-				})
-				if seq != since {
-					break
-				}
-				time.Sleep(20 * time.Millisecond)
-			}
-		}
+		s.waitFrame(since, time.Duration(waitms)*time.Millisecond)
 	}
 	var buf []byte
 	// Serialize under the quiet READ-lock so this CPU burst pauses during the
@@ -264,9 +250,33 @@ func (s *Server) hFrameBin(w http.ResponseWriter, r *http.Request) {
 	// resets it, and the keep-alive connection is reused by other handlers
 	// that set none (an absolute deadline left armed would fail them later).
 	rc := http.NewResponseController(w)
-	rc.SetWriteDeadline(time.Now().Add(5 * time.Second))
-	w.Write(buf)
-	rc.SetWriteDeadline(time.Time{})
+	// A writer without deadlines (a test recorder) writes unbounded, and a
+	// failed write has no one to report to.
+	_ = rc.SetWriteDeadline(time.Now().Add(5 * time.Second))
+	_, _ = w.Write(buf)
+	_ = rc.SetWriteDeadline(time.Time{})
+}
+
+// waitFrame parks until a frame after since has published, or timeout.
+// TRLC-LINKS: REQ-SDS-163
+func (s *Server) waitFrame(since uint64, timeout time.Duration) {
+	if fw, ok := s.sc.(frameWaiter); ok {
+		fw.WaitNextFrame(since, timeout)
+		return
+	}
+	// test doubles: degrade to a short seq poll
+	for deadline := time.Now().Add(timeout); time.Now().Before(deadline); {
+		var seq uint64
+		s.sc.WithFrame(func(f *engine.Frame) {
+			if f != nil {
+				seq = f.Seq
+			}
+		})
+		if seq != since {
+			return
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
 }
 
 // rawBinMsg assembles the raw-shape binary message (?raw=1): the un-windowed,
@@ -296,11 +306,10 @@ func (s *Server) rawBinMsg(since uint64) []byte {
 			// clamp to the actual sample slices: Valid > len is an engine-invariant
 			// violation, but a serve-path slice panic on one bad frame must never
 			// crash the UI (frame-serve fuzz). C2 may be shorter than C1.
-			f.Valid, len(f.C1),
-		)
-		if n > len(f.C2) {
-			n = len(f.C2)
-		}
+			min(
+
+				f.Valid, len(f.C1),
+			), len(f.C2))
 		if n <= 0 {
 			hdr = frameReply{Seq: f.Seq, Unchanged: true, EdgeX: -1}
 			flags |= binUnchanged | binEmpty
@@ -342,7 +351,7 @@ func (s *Server) rawBinMsg(since uint64) []byte {
 	buf := make([]byte, 8, 8+len(hj)+len(payload))
 	buf[0] = binMagic
 	buf[1] = flags
-	binary.LittleEndian.PutUint32(buf[4:8], uint32(len(hj)))
+	binary.LittleEndian.PutUint32(buf[4:8], uint32(len(hj))) //nolint:gosec // G115: a JSON header of a few KB
 	buf = append(buf, hj...)
 	return append(buf, payload...)
 }
@@ -353,5 +362,5 @@ func leBytes(w []uint16) []byte {
 	if len(w) == 0 {
 		return nil
 	}
-	return unsafe.Slice((*byte)(unsafe.Pointer(&w[0])), 2*len(w))
+	return unsafe.Slice((*byte)(unsafe.Pointer(&w[0])), 2*len(w)) //nolint:gosec // G103: the words' own memory, little-endian on this CPU
 }

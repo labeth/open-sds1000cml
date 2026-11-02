@@ -35,6 +35,8 @@ type Port interface {
 	ReadCfg() (uint16, error)
 }
 
+// The configuration port's bits: DCLK, nCONFIG and DATA0 written,
+// nSTATUS and CONF_DONE read.
 const (
 	BitDCLK     uint16 = 1 << 0
 	BitNCONFIG  uint16 = 1 << 1
@@ -47,7 +49,7 @@ const (
 	wordReset uint16 = 0x0000
 	wordIdle  uint16 = BitNCONFIG
 
-	// Bitstream size for EP4CE10, uncompressed (fpga-specs 05 §3.3). Anything
+	// RBFLen is the bitstream size for EP4CE10, uncompressed (fpga-specs 05 §3.3). Anything
 	// longer is a different device; shorter, a compressed image (the device
 	// decompresses in passive serial), whose shifting takes half the time.
 	RBFLen = 368011
@@ -182,7 +184,7 @@ func configureOnce(p Port, rbf []byte, rev bool, o *Options) error {
 	}
 	// 3. wait for nSTATUS high (ready to accept data).
 	ready := false
-	for i := 0; i < o.StatusPolls; i++ {
+	for range o.StatusPolls {
 		v, err := p.ReadCfg()
 		if err != nil {
 			return fmt.Errorf("nSTATUS read: %w", err)
@@ -208,7 +210,7 @@ func configureOnce(p Port, rbf []byte, rev bool, o *Options) error {
 	shift := time.Since(tShift)
 	o.Logf("fpgaload: shifted %d bytes in %v (%.2f Mbit/s)", len(rbf), shift.Round(time.Millisecond), float64(8*len(rbf))/shift.Seconds()/1e6)
 	// 5. init clocks (DATA0 low).
-	for i := 0; i < o.InitClocks; i++ {
+	for i := range o.InitClocks {
 		if err := p.WriteCfg(wordIdle); err != nil {
 			return fmt.Errorf("init clock %d: %w", i, err)
 		}

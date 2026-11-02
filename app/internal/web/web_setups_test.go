@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-WEB
+
 package web
 
 import (
@@ -29,7 +30,7 @@ func (f *fakeSetups) RecallSetup(n int) error {
 func setupCall(t *testing.T, s *Server, body string) map[string]any {
 	t.Helper()
 	rec := httptest.NewRecorder()
-	s.Handler().ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/api/setup", bytes.NewReader([]byte(body))))
+	s.Handler().ServeHTTP(rec, httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/api/setup", bytes.NewReader([]byte(body))))
 	var out map[string]any
 	if err := json.Unmarshal(rec.Body.Bytes(), &out); err != nil {
 		t.Fatalf("bad json %q: %v", rec.Body.String(), err)
@@ -68,7 +69,7 @@ func TestSetupEndpoint(t *testing.T) {
 	// GET: what the slots hold, when the store can say (null when it cannot)
 	get := func() map[string]any {
 		rec := httptest.NewRecorder()
-		s.Handler().ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/api/setup", nil))
+		s.Handler().ServeHTTP(rec, httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/api/setup", nil))
 		var out map[string]any
 		if err := json.Unmarshal(rec.Body.Bytes(), &out); err != nil {
 			t.Fatalf("GET: bad json %q: %v", rec.Body.String(), err)
@@ -84,14 +85,14 @@ func TestSetupEndpoint(t *testing.T) {
 	if len(slots) != 20 {
 		t.Fatalf("GET: %v", r)
 	}
-	if s4 := slots[3].(map[string]any); s4["slot"] != 4.0 || s4["used"] != true || s4["summary"] != "SCOPE  1ms/div  C1^ 0V  C1 1V C2 1V" {
+	if s4 := jsonAt[map[string]any](t, slots, 3); s4["slot"] != 4.0 || s4["used"] != true || s4["summary"] != "SCOPE  1ms/div  C1^ 0V  C1 1V C2 1V" {
 		t.Fatalf("slot 4: %v", s4)
 	}
-	if s5 := slots[4].(map[string]any); s5["used"] != false || s5["summary"] != nil {
+	if s5 := jsonAt[map[string]any](t, slots, 4); s5["used"] != false || s5["summary"] != nil {
 		t.Fatalf("slot 5: %v", s5)
 	}
 	rec := httptest.NewRecorder()
-	s.Handler().ServeHTTP(rec, httptest.NewRequest(http.MethodPut, "/api/setup", nil))
+	s.Handler().ServeHTTP(rec, httptest.NewRequestWithContext(t.Context(), http.MethodPut, "/api/setup", nil))
 	if rec.Code != 405 {
 		t.Fatalf("PUT: %d", rec.Code)
 	}

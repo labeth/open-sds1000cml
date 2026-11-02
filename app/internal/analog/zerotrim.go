@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-ANALOG
+
 package analog
 
 import (
@@ -38,7 +39,7 @@ func DefaultZeroTrim() (*ZeroTrim, error) { return parseZeroTrim(zeroTrimDefault
 func parseZeroTrim(raw []byte) (*ZeroTrim, error) {
 	var t ZeroTrim
 	if err := json.Unmarshal(raw, &t); err != nil {
-		return nil, fmt.Errorf("zero trim: %v", err)
+		return nil, fmt.Errorf("zero trim: %w", err)
 	}
 	if len(t.VdivV) != len(t.C1V) || len(t.VdivV) != len(t.C2V) {
 		return nil, fmt.Errorf("zero trim: %d detents, %d/%d channel values", len(t.VdivV), len(t.C1V), len(t.C2V))

@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-APP
+
 package app
 
 import (
@@ -58,8 +59,8 @@ func healthLoop(e *engine.Engine, path string) {
 		tok := fmt.Sprintf("mode=%s frames=%d beats=%d coherent=%d published=%d ts=%d\n",
 			mode, s.Frames, beats, s.Coherent, s.Published, time.Now().UnixNano())
 		tmp := path + ".tmp"
-		if err := os.WriteFile(tmp, []byte(tok), 0o644); err == nil {
-			if os.Rename(tmp, path) == nil {
+		if err := os.WriteFile(tmp, []byte(tok), 0o644); err == nil { //nolint:gosec // G306: the OTA agent reads the token
+			if os.Rename(tmp, path) == nil { //nolint:gosec // G703: the path is the app's own health token, never a client's
 				lastBeats, lastWrite = beats, time.Now()
 			}
 		}
