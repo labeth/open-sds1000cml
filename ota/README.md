@@ -1,47 +1,44 @@
 # OTA — device supervisor + host controller
 
-The remote-access and over-the-air update system for the open-sds1000cml unit. Two Go programs plus
-the USB boot anchor:
+The remote-access and over-the-air update system for the scope, module
+`github.com/labeth/open-sds1000cml/ota`: two Go programs and the USB boot anchor. Installing a release
+on a scope, updating and removing it are in the top [README](../README.md#install-update-and-remove);
+this file is for working on the OTA system and for every `otactl` command.
 
 | Piece | Where it runs | Role |
 |---|---|---|
-| `cmd/agent` | on the scope (ARMv7) | boot-tree supervisor: holds the inherited `/dev/Gpmc` + `/dev/fpga_key` fds, owns the hardware watchdog after takeover, launches/supervises the clean-room app across A/B slots with health rollback, and serves the remote control/OTA endpoint (NATS + a local TCP listener). |
-| `cmd/otactl` | on your laptop (amd64) | host controller: status/probe/exec, chunked file transfer, app + agent OTA, factory takeover, and Shelly mains power control. Can run an embedded NATS broker (`otactl serve`). |
-| `boot/startup.sh` | on the scope, from the USB stick | the never-OTA'd boot anchor: runs an optional `commands` file, then the agent A/B respawn loop with crash-loop revert. |
+| `cmd/agent` | on the scope (ARMv7) | boot-tree supervisor: holds the inherited `/dev/Gpmc` + `/dev/fpga_key` fds, owns the hardware watchdog after takeover, launches and supervises the app across A/B slots with health rollback, and serves the remote control/OTA endpoint (a local TCP listener, and NATS when configured). |
+| `cmd/otactl` | on your computer | host controller: status/probe/exec, logs, chunked file transfer, app + agent OTA, factory takeover, raw SCPI, and Shelly mains power control. Can run an embedded NATS broker (`otactl serve`). |
+| `boot/startup.sh` | on the scope, from the USB stick | the never-OTA'd boot anchor: runs the stick's `commands` file, then the agent A/B respawn loop with crash-loop revert. |
 
 There is **no on-device shell/login service**. All control is through the agent and `otactl`; recovery
-of last resort is the external mains power-cycle (`otactl power`, via the Shelly plug).
+of last resort is a mains power-cycle.
 
-## The app ↔ OTA contract (build the app against THIS, never touch the OTA)
+## The app ↔ OTA contract
 
 The OTA agent owns everything operational — takeover, the watchdog, A/B slots,
-health rollback, remote transport. The clean-room app is a plain binary that
-implements only this surface:
+health rollback, remote transport. The app ([`../app`](../app/README.md)) is a
+plain binary that implements only this surface:
 
 1. **It is `exec`'d by the agent as a direct child**, so it *inherits* the boot
-   fds. Discover them by scanning `/proc/self/fd` for `/dev/Gpmc` and
-   `/dev/fpga_key`; **never fresh-open them, never close them** (spec 01 §5).
-2. **Env the agent exports**: `OTA_HEALTH_PATH` (health token to write),
-   `SCOPE_GPMC` (`/dev/Gpmc`) and, from `startup.sh`, `OTA_DIR` (the stick's
-   `ota/` directory, where the app keeps its settings).
-3. **Health = frame-advance liveness**: after ≥3 genuine coherent frames,
-   re-write `OTA_HEALTH_PATH` whenever the engine advances (throttle ~500 ms).
-   Do **not** write it before the first real capture. The agent marks the app
-   healthy on the first change and unhealthy → relaunch if it stalls > ~3 s.
+   fds. It finds them by scanning `/proc/self/fd` for `/dev/Gpmc` and
+   `/dev/fpga_key`; it **never fresh-opens them and never closes them** (spec 01 §5).
+2. **Env**: the agent exports `OTA_HEALTH_PATH` (the health token to write) and
+   `SCOPE_GPMC` (`/dev/Gpmc`); `startup.sh` exports `OTA_DIR` (the stick's
+   `ota/` directory, where the app keeps its settings). The app refuses to start
+   without all three.
+3. **Health = frame-advance liveness**: after ≥3 coherent frames, the app
+   re-writes `OTA_HEALTH_PATH` whenever the engine advances (throttled to about
+   500 ms). It does **not** write it before the first real capture. The agent
+   marks the app healthy on the first change and relaunches it if it stalls past
+   `OTA_HEALTH_TIMEOUT`.
 4. **Exit cleanly (0) on SIGTERM** so the agent's stop path is clean.
 
-That's the whole contract. The app needs zero knowledge of takeover, the
-watchdog, slots, or rollback. To ship a new app: `otactl update-app ./app-arm`
-(stages it into the inactive slot; a stable run confirms it, a crash-loop rolls
-back). The takeover cutover is `otactl takeover` — no app change required.
-
-**Validated end-to-end on the real unit (SDS1102CML+):** takeover drove the
-factory `SDS1000_arm.app` to STOP over VXI-11, confirmed the idle landing
-(`version=0x0052`, fill `0x46` frozen, `status 0x38≈0x8a`), killed it, claimed
-and pet `/dev/watchdog`, and launched the reference app — which reported
-`inherited /dev/Gpmc fd=5 /dev/fpga_key fd=6` and went healthy. `untakeover`
-released control; a power-cycle restored the factory app. Agent self-update over
-the network (`update-agent`) was validated in the same run.
+The app needs no knowledge of takeover, the watchdog, slots, or rollback.
+`otactl update-app <app>` stages a new app into the inactive slot; a stable run
+(`OTA_STABLE`) confirms it, a crash-loop (`OTA_MAXFAILS` failures) rolls back to
+the confirmed slot. When the confirmed slot itself crash-loops the agent keeps
+retrying it and stays reachable for an update.
 
 ## The load-bearing rules (from specs 01 / 09)
 
@@ -59,113 +56,94 @@ the network (`update-agent`) was validated in the same run.
   `/dev/watchdog`; an unserviced watchdog warm-resets the SoC in ~60 s and drops USB hotplug (→ physical
   power-cycle). Clean stop disarms with the magic byte `'V'`.
 - **Takeover lands at idle, never mid-frame.** `takeover` drives the factory app to `STOP` over its own
-  VXI-11 SCPI, confirms `0x12==0x0052` + a frozen `0x46`, persists `taken_over=true` **before** the kill
-  (so a crashed successor re-acquires the watchdog immediately), then SIGKILLs the factory tree.
+  VXI-11 SCPI, confirms `0x12==0x0052` + a frozen `0x46`, persists `taken_over=true` in `ota/state.json`
+  **before** the kill (so a crashed successor re-acquires the watchdog immediately), then SIGKILLs the
+  factory tree.
 
-## Quick start
+## otactl
 
 ```sh
-# on the laptop: run a broker (optional — TCP works without it)
-otactl serve
-
-# talk to the unit directly over TCP (agent's OTA_LISTEN, default :5900)
-otactl -tcp 192.168.1.209:5900 status
-otactl -tcp 192.168.1.209:5900 probe --gpmc      # read-only device fingerprint
-otactl -tcp 192.168.1.209:5900 takeover --dry-run
-otactl -tcp 192.168.1.209:5900 takeover          # inherit-then-kill the factory app
-otactl -tcp 192.168.1.209:5900 update-app  ./app-arm
-otactl -tcp 192.168.1.209:5900 update-agent ./agent-arm
-
-# hard power-cycle if the unit wedges (only real recovery from a bus wedge)
-otactl power -shelly 192.168.1.223 cycle
+otactl -tcp <scope-ip>:5900 status                 # device, app, slots, watchdog
+otactl -tcp <scope-ip>:5900 logs agent             # or boot
+otactl -tcp <scope-ip>:5900 probe --gpmc           # read-only device fingerprint
+otactl -tcp <scope-ip>:5900 takeover --dry-run
+otactl -tcp <scope-ip>:5900 takeover               # inherit-then-kill the factory app
+otactl -tcp <scope-ip>:5900 update-app  ./app-arm  # into the inactive slot
+otactl -tcp <scope-ip>:5900 activate A             # or B: run that slot
+otactl -tcp <scope-ip>:5900 update-agent ./agent-arm
+otactl -tcp <scope-ip>:5900 scpi '*IDN?'           # raw VXI-11 SCPI to the instrument
+otactl serve                                       # embedded NATS broker (optional; TCP needs none)
+otactl power -shelly <plug-ip> cycle               # mains power-cycle through a Shelly plug
 ```
+
+`otactl` with no command lists them all (`exec`, `sh`, `put`, `get`, `app start|stop|restart`,
+`untakeover`, `restore-factory`, `reboot`, `discover`, `watch`, `version`) and the global flags
+(`-tcp`, `-nats`/`-device`, `-shelly`, `-stage`, `-timeout`). Uploads stage on the stick
+(`agent-slots/staging`), as the scope's root file system, `/tmp` included, is read-only.
 
 ## Build
 
 ```sh
-# device agent — static ARMv7
-CGO_ENABLED=0 GOOS=linux GOARCH=arm GOARM=7 go build ./cmd/agent
-# host controller
-go build ./cmd/otactl
+make -C ota agent    # dist/agent-arm (static ARMv7)
+make -C ota otactl   # dist/otactl for this computer
+make -C ota dist     # both, and the stick tree under dist/stick (agent slots, no app)
+make -C ota test
 ```
 
-`make -C ota dist` cross-compiles both and lays out the USB stick tree under `dist/`.
+## Making a boot stick
 
-## Preparing the USB boot stick
+The stock firmware, at boot, mounts a USB stick and **runs `startup.sh` from its root** (the vendor's
+own script hook). That is the entire entry point: `startup.sh` launches the agent, which then takes
+over the instrument. No firmware modification, no on-device login. The firmware reads the stick only
+at boot, and sees it only as **MBR** with a **single primary FAT32 partition** (type `0x0c`), which
+comes up as `/dev/sda1`, mounted at `/usr/bin/siglent/usr/media/U-disk0`.
 
-**How takeover starts:** the stock SDS1000CML+ firmware, at boot, mounts a USB
-stick and **runs `startup.sh` from its root** (the vendor's own script hook).
-That is our entire entry point — `startup.sh` launches the agent, which then
-takes over the instrument. No firmware modification, no on-device login.
-
-`mkstick.sh` makes a **ready-to-run** stick: it pre-loads the clean-room app into
-both app slots, and ships `agent.env` with
-auto-takeover ON — so a fresh stick boots **straight into the working scope + web
-UI**, no network deploy required. (You still update the app later over the network
-with `otactl update-app`.)
-
-For the firmware to see the stick it **must** be:
-
-- **MBR-partitioned** (msdos/DOS partition table — **not GPT**);
-- a **single primary FAT32 partition**, type `0x0c` (W95 FAT32 LBA);
-- that partition is what appears as **`/dev/sda1`**, mounted at
-  `/usr/bin/siglent/usr/media/U-disk0`, on the instrument.
-
-The stick is prepared **on your computer**, then physically moved to the scope,
-which reads it **only at boot** — so the last step is a reboot:
-
-**1. On your computer** — format + populate the stick (the helper runs `make dist`
-and writes the tree to the stick):
+`mkstick.sh` builds the agent and the app and makes a ready-to-run stick: the app in both app slots and
+`agent.env` with auto-takeover on, so a fresh stick boots straight into the scope and its web UI.
 
 ```sh
-# A) format a blank stick correctly (MBR + FAT32) and populate it, in one go:
-sudo ota/mkstick.sh --format /dev/sdX      # DESTRUCTIVE; guards: removable + size + type-to-confirm
-
-# B) or copy the tree onto an already-mounted FAT32 stick:
-ota/mkstick.sh /run/media/you/OPENSDS
-ota/mkstick.sh --verify /run/media/you/OPENSDS   # just check the layout
-
-# then edit  <stick>/ota/agent.env  (device id, OTA_LISTEN, OTA_NATS, takeover policy)
+sudo ota/mkstick.sh --format /dev/sdX            # DESTRUCTIVE: MBR + FAT32, then populate; guards: removable + size + type-to-confirm
+ota/mkstick.sh /run/media/you/OPENSDS            # populate an already-mounted FAT32 stick
+ota/mkstick.sh --verify /run/media/you/OPENSDS   # check a stick's layout
+ota/mkstick.sh --zip [out.zip]                   # the release zip (what release.yml publishes)
 ```
 
-**2. Move the stick to the scope** and **reboot it** (power-cycle) — the firmware
-runs `startup.sh` from the stick as it comes up. A stick inserted into an
-already-running scope does nothing until the next boot.
-
-**3. Back on your computer** — confirm the chain came up (agent reachable, stick
-mounted FAT32, boot.log reached the agent, app serving):
-
-```sh
-ota/checkdev.sh <ip>        # exits non-zero if any check fails
-```
+Edit `<stick>/ota/agent.env` if needed, move the stick to the scope and power-cycle it. Then
+`ota/checkdev.sh <ip>` confirms the chain came up (agent reachable, stick mounted FAT32, boot.log
+reached the agent, app serving); it exits non-zero if any check fails.
 
 ## USB stick layout
 
 ```
 <stick>/
   startup.sh              boot anchor (never OTA'd)
-  commands                optional root-exec fallback run at boot
+  commands                read-only first-boot diagnostic, run before the agent (logs/firstboot.log)
+  LICENSE.txt  SAFETY.txt  THIRD_PARTY_LICENSES.txt
   ota/
     agent.A  agent.B      A/B agent binaries
     agent.active          pointer: A|B
     agent.confirmed       last agent slot that ran stably
-    agent.env             per-deployment env (OTA_NATS=, OTA_DEVICE_ID=, …)
-    logs/                 boot.log, agent.log (size-capped)
+    agent.env             per-deployment env (OTA_LISTEN=, OTA_AUTO_TAKEOVER=, ...)
+    state.json            the agent's state (taken_over)
+    scope-settings.json   the app's settings
+    logs/                 boot.log, agent.log (rotated at 1 MiB), firstboot.log
   agent-slots/
-    A/app  B/app          A/B clean-room app binaries
-    active  confirmed      app slot pointers
+    A/app  B/app          A/B app binaries
+    active  confirmed     app slot pointers
     staging/              upload staging
 ```
 
-`mkstick.sh` populates the `agent-slots/` app binaries + pointers for you; plain
-`make dist` only lays out the empty slot dirs (the app is pushed later via OTA).
+## Env (set in `ota/agent.env`, exported by `startup.sh`)
 
-## Env contract (set in `ota/agent.env`, exported by `startup.sh`)
+`boot/agent.env.example` documents the common ones:
 
-`OTA_NATS`, `OTA_DEVICE_ID`, `OTA_LISTEN` (default `:5900`), `OTA_HEALTH_DIR` (default `/dev`),
-`OTA_WD_PET`, `OTA_STABLE`, `OTA_MAXFAILS`, `OTA_APP_GRACE`, `OTA_HEALTH_TIMEOUT`,
-`OTA_AUTO_TAKEOVER` (set to auto-take-over after boot), `OTA_FACTORY_NAMES` (extra process-name hints).
-The agent derives all paths from `OTA_DIR` / `OTA_SLOT_ROOT`.
+- transport: `OTA_LISTEN` (default `:5900`), `OTA_NATS` (empty: TCP only), `OTA_DEVICE_ID`
+  (default `sds-<mac tail>`), `OTA_NKEY`, `OTA_CREDS`, `OTA_CA` (NATS auth), `OTA_HB_INTERVAL` (default 10 s);
+- takeover: `OTA_AUTO_TAKEOVER` (the stick ships it on; a stick that has taken over before also remembers it
+  in `ota/state.json`), `OTA_TAKEOVER_DELAY`, `OTA_FACTORY_NAMES` (extra process-name hints);
+- supervision, in seconds: `OTA_WD_PET` (15, must stay under 60), `OTA_STABLE` (30), `OTA_MAXFAILS` (3),
+  `OTA_APP_GRACE` (30), `OTA_HEALTH_TIMEOUT` (3), and `OTA_HEALTH_DIR` (default `/dev`, RAM-backed);
+- devices and paths, normally left alone: `OTA_GPMC`, `OTA_FPGA_KEY`, `OTA_WD_DEV`, `OTA_DIR`, `OTA_SLOT_ROOT`.
 
 ## Tests
 
