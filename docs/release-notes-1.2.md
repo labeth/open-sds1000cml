@@ -61,6 +61,12 @@ power-cycle, and the factory firmware is back.
   a huge step count turns the right way; a failed write of the agent's takeover state no longer
   takes the bus without the watchdog; four races in the agent (uploads, restore-factory, the
   watchdog's start, the status reads) are closed.
+* **COMPARE's master and mask on real signals.** The repeat test reads each capture as column
+  extremes, so a probe's ringing at an edge no longer makes a steady signal read as not repeating
+  (a 1 MHz square wave was refused a master), and it no longer judges the record's ends, where an
+  edge on the window's edge had no partner. A master's mask is built from the live raw captures
+  after it, as the MASK row builds one; the average stays REF A. A mask drawn around the average
+  failed every raw capture, whose ringing the averaging had flattened.
 * **One app, one path.** The app has no alternative capture modes, environment switches or
   diagnostic pages any more, and the stick carries no emergency app: what ships is the path the
   scope runs and the tests cover.
@@ -139,6 +145,9 @@ settings tab (the Help key), at the end of the web UI's status line and in `/api
   is named in a notice on the LCD and in the web UI's status line ("ADC fault: converter E2 not
   converting - restart the scope") and in `/api/status` (`adc_fault`). Restart the scope when it
   appears.
+* **Acquisition worker:** rarely (about once in seventy bus changes on the bench) the acquisition
+  worker stops answering while a stream starts; the agent sees the health signal go stale and
+  restarts the app, which is back with its settings within seconds.
 * **SCPI identity:** `*IDN?` answers as the factory firmware does, so Siglent scripts that check it
   keep working; the firmware's own version is on the SYS tab and in `/api/status`.
 * **Network security:** the web UI (8080), SCPI (VXI-11) and the agent's control port (5900) have
