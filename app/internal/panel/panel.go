@@ -289,7 +289,8 @@ type Controller struct {
 	stackN         int                    // the master's depth
 	webCapture     bool                   // a web page's decoded capture holds the acquisition (seen by SyncLEDs)
 	stack          *stackState            // a master being stacked
-	maskAutoTest   bool                   // the COMPARE MASK row: count once built
+	maskAutoTest   bool                   // the COMPARE MASK row or a master: test once built
+	maskAutoMode   int                    // and in which mode: count, or stop on fail (0: count)
 	detectSync     bool                   // tests: run the bus detection inline
 	searchMu       sync.Mutex             // one bus search at a time (findBus steps the timebase)
 	autoSearch     atomic.Bool            // the next bus search is AUTO's own (runBusAuto)
@@ -382,7 +383,6 @@ type Controller struct {
 	maskTol      int         // index into maskTols presets
 	maskBuilding bool        // a build goroutine is running
 	maskGen      uint64      // counts mask clears: a build running when the mask is cleared installs nothing
-	masterPend   *masterSrc  // a finished master waiting for a live capture to build its mask in
 	maskMsg      string      // build/status line for the LCD HUD
 	srFrames     int         // stacked frame count (guarded by mu — srStack.Frames races)
 	srRejected   int         // rejected (non-matching) frame count (guarded by mu)

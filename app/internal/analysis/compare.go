@@ -46,8 +46,9 @@ func RefDiff(live, ref []float64, tolDiv float64) (maxAbs, rms, pctWithin float6
 // Repeats reports whether two consecutive captures of the trigger source
 // repeat, by the mask build's rule (panel/mask.go, engine
 // BuildMaskFromEnvelope): every sample of each lies within +-tolDiv of the
-// other's min/max envelope over +-slack samples. A sample that is a gap, or
-// whose envelope window touches a gap, is not judged (an unobserved mask
+// other's min/max envelope over +-slack samples. A sample that is a gap, one
+// of the first or last slack samples, or one whose envelope window touches a
+// gap, is not judged (an unobserved mask
 // column always passes: a transition may hide in the gap); captures of
 // different lengths or without a judged sample do not repeat. A master
 // averaged from captures that fail this is a smear.
@@ -99,7 +100,10 @@ func within(x, env []float64, tol float64, slack int) int {
 		for len(maxQ) > 0 && maxQ[0] < i-slack {
 			maxQ = maxQ[1:]
 		}
-		if math.IsNaN(v) || gaps > 0 || len(minQ) == 0 {
+		// the first and last slack samples have a truncated envelope: a
+		// shifted edge there has no partner inside the record (wsmath.js
+		// repeats skips them too), unless they are all there is
+		if end := min(slack, (n-1)/2); i < end || i >= n-end || math.IsNaN(v) || gaps > 0 || len(minQ) == 0 {
 			continue
 		}
 		if v < env[minQ[0]]-tol || v > env[maxQ[0]]+tol {

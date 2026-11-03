@@ -514,11 +514,9 @@ traffic holds no idle to frame by. SPECTRUM starts on the FFT; MEASURE with noth
 Vpp and frequency of the shown channels. Each workspace remembers its view. A master (COMPARE again)
 averages N captures of the trigger source (the engine's Average, N = 64 by default; under a serial
 trigger aligned on the match's own edge, as the live captures are), stores the result as REF A,
-restores the acquisition so live captures are tested raw, builds the mask from the master in the
-geometry of the live captures once three in a row share it (the averaged record is not that geometry:
-on the SRAM images a filtered record at another sample interval than the live peak-detect readouts),
-and turns the test on
-with zeroed counters; it is refused, saying how to fix the trigger, while the trigger source does not
+restores the acquisition, builds the mask from the live raw captures after it as the MASK row does
+(the average is the reference, not the mask: averaging captures that jitter by a fraction of a sample
+flattens a probe's ringing that every raw capture shows), and turns the test on with zeroed counters; it is refused, saying how to fix the trigger, while the trigger source does not
 repeat from capture to capture. COMPARE's MASK row push, once a mask
 exists: a mask built with its test off starts counting, counting stops on a fail, and after stop on
 fail the push clears the mask (the sheet's Mask test turns a test off and keeps the mask; its Clear

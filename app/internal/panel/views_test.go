@@ -405,9 +405,16 @@ func TestWorkspaceScreens(t *testing.T) {
 	if v := r.shot("compare_stacking"); !v.Cmp.Rows[cmpMaster].Bar {
 		t.Fatalf("stacking row %+v", v.Cmp.Rows[cmpMaster])
 	}
+	c.mu.Lock()
+	c.maskN = 8
+	c.mu.Unlock()
 	r.show(toneFrame("block average 64/64 (waveform aligned)"))
-	for range 3 { // live captures: the master's mask is built in their geometry
+	for range 200 { // live captures: the master's mask is built from them
+		if r.eng.Snapshot().MaskSet {
+			break
+		}
 		r.show(toneFrame(""))
+		time.Sleep(15 * time.Millisecond)
 	}
 	r.clk.advance(3 * time.Second)
 	r.eng.set(func(st *engine.Stats) { st.MaskPass = 120 })

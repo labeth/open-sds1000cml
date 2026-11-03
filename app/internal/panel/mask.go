@@ -77,7 +77,8 @@ func (c *Controller) maskBuildRun(gen uint64, n, tolT, tolV, ch int, posFrac flo
 		time.Sleep(60 * time.Millisecond)
 		ok := false
 		c.frameFn(func(f *engine.Frame) {
-			if f == nil || f.Seq == lastSeq || f.EdgeX < 0 || f.SampleS <= 0 || f.IsEnv || (f.PeakDetect && !f.Ordered && c.eng.Snapshot().AcqMode != engine.AcqPeak) {
+			if f == nil || f.Seq == lastSeq || f.EdgeX < 0 || f.SampleS <= 0 || f.IsEnv || blockAvgRE.MatchString(f.Filter) ||
+				(f.PeakDetect && !f.Ordered && c.eng.Snapshot().AcqMode != engine.AcqPeak) {
 				return
 			}
 			lastSeq = f.Seq
@@ -135,11 +136,12 @@ func (c *Controller) maskBuildRun(gen uint64, n, tolT, tolV, ch int, posFrac flo
 	c.eng.SetMask(m)
 	c.noteMaskSetup()
 	c.mu.Lock()
-	auto := c.maskAutoTest
-	c.maskAutoTest = false
+	auto, mode := c.maskAutoTest, max(c.maskAutoMode, 1)
+	c.maskAutoTest, c.maskAutoMode = false, 0
 	c.mu.Unlock()
-	if auto { // the COMPARE MASK row builds and starts counting in one push
-		c.eng.SetMaskMode(1)
+	if auto { // the COMPARE MASK row, or a master, builds and starts the test in one push
+		c.eng.SetMaskMode(mode)
+		c.eng.ClearMaskFails()
 		c.maskSetMsg("")
 		return
 	}
@@ -185,7 +187,6 @@ func (c *Controller) clearMask() {
 	c.mu.Lock()
 	c.maskGen++
 	c.maskAutoTest = false
-	c.masterPend = nil
 	stacking := c.stack != nil
 	c.mu.Unlock()
 	if stacking {

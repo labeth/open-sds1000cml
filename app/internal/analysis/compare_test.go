@@ -116,3 +116,21 @@ func BenchmarkRepeats(b *testing.B) {
 		Repeats(x, y, 0.25, 6)
 	}
 }
+
+// TestRepeatsAnEdgeAtTheRecordStart: an edge on the first sample, with a
+// couple of samples of trigger jitter, repeats: the first and last slack
+// samples have no full envelope (a 1 MHz square's edge sits on the window's
+// left end at 1 us/div, ten periods a window).
+// TRLC-LINKS: REQ-SDS-218
+func TestRepeatsAnEdgeAtTheRecordStart(t *testing.T) {
+	const tol, slack = 0.25, 1
+	a := squareDiv(400, 40, -1, 0.03, 1) // the rising edge at sample 1
+	b := squareDiv(400, 40, 0, 0.03, 2)  // and at sample 0
+	if !Repeats(a, b, tol, slack) || !Repeats(b, a, tol, slack) {
+		t.Error("an edge at the record's start breaks the repeat")
+	}
+	end := squareDiv(400, 40, 1, 0.03, 3) // a rising edge on the last sample
+	if !Repeats(end, squareDiv(400, 40, 0, 0.03, 4), tol, slack) {
+		t.Error("an edge at the record's end breaks the repeat")
+	}
+}

@@ -5,6 +5,7 @@ package panel
 import (
 	"math"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -141,15 +142,15 @@ func TestDefaultSetupClearsMatchAndMask(t *testing.T) {
 	}
 }
 
-// The master's mask is built in the geometry of the live captures the test
-// judges. On the SRAM images the averaged master is a filtered record at
-// 256 ns while the live captures are peak-detect readouts at 488 ns over
-// another window, and a mask stamped with the master's geometry had every
-// live capture skipped. Mapped by time from the trigger, a live capture passes
-// its own master's mask. A clear while the master waits drops its mask, and
-// Clear refs forgets the master that was REF A.
+// A master's mask is built from the live raw captures after it, in their
+// geometry, as the MASK row builds one: on the SRAM images the averaged master
+// is a filtered record at 256 ns while the live captures are peak-detect
+// readouts at 488 ns over another window, and averaging flattens the ringing
+// every raw capture shows. Averaged captures still in flight are not part of
+// it, a live capture passes it, the test starts in the master's mode, and a
+// clear while it builds drops it.
 // TRLC-LINKS: REQ-SDS-218, REQ-SDS-139
-func TestMasterMaskInLiveGeometry(t *testing.T) {
+func TestMasterMaskFromLiveCaptures(t *testing.T) {
 	wave := func(tS float64) uint8 { // a UART-like line: 8.68 us bits
 		if bit := int(math.Floor(tS/8.68e-6)) + 1000; bit%3 == 0 || bit%7 == 1 {
 			return 60
@@ -161,35 +162,52 @@ func TestMasterMaskInLiveGeometry(t *testing.T) {
 		for i := range sig {
 			sig[i] = wave((float64(i) - edge) * sampleS)
 		}
-		return &engine.Frame{C1: sig, C2: sig, Valid: n, WinCols: win, EdgeX: edge, SampleS: sampleS, TdivS: 100e-6, PeakDetect: peak, Filter: filter}
+		return &engine.Frame{C1: sig, C2: sig, Valid: n, WinCols: win, EdgeX: edge, SampleS: sampleS, TdivS: 100e-6, PeakDetect: peak, Ordered: peak, Filter: filter}
 	}
 	master := frame(4721, 3906, 2408, 256e-9, false, "CIC3 + compensated FIR; block average 64/64 (waveform aligned)")
 	live := frame(4096, 2049, 1355, 488e-9, true, "peak-detect display readout")
-	finish := func(c *Controller) {
+	start := func(prevMask int, feed func(seq uint64) *engine.Frame) (*Controller, *fakeEng) {
+		c, eng, _ := newC(t)
+		var seq uint64
+		var mu sync.Mutex
+		c.SetFrameSource(func(fn func(*engine.Frame)) {
+			mu.Lock()
+			seq++
+			f := *feed(seq)
+			f.Seq = seq
+			mu.Unlock()
+			fn(&f)
+		})
 		c.mu.Lock()
-		c.stack = &stackState{n: 64, src: 0, prevMode: 0, prevAvg: 16}
+		c.maskN = 8
+		c.stack = &stackState{n: 64, src: 0, prevMode: 0, prevAvg: 16, prevMask: prevMask}
 		c.mu.Unlock()
 		c.stackFinish(master)
+		return c, eng
+	}
+	built := func(eng *fakeEng) bool {
+		for range 100 {
+			if eng.Snapshot().MaskSet {
+				return true
+			}
+			time.Sleep(20 * time.Millisecond)
+		}
+		return false
 	}
 
-	c, eng, _ := newC(t)
-	withClock(c)
-	finish(c)
-	if eng.Snapshot().MaskSet {
-		t.Fatal("a mask before any live capture: built in the averaged geometry")
+	// the averaged captures first, then the live ones
+	c, eng := start(2, func(seq uint64) *engine.Frame {
+		if seq <= 3 {
+			return master
+		}
+		return live
+	})
+	if !built(eng) {
+		t.Fatal("no mask from the live captures after the master")
 	}
-	c.masterMaskFrame(master) // an averaged capture still in flight: not the geometry to judge
-	// one made while Average was switched off: the filtered record, its average not named
-	c.masterMaskFrame(frame(4721, 3906, 2408, 256e-9, false, "CIC3 + compensated FIR"))
-	c.masterMaskFrame(live)
-	c.masterMaskFrame(live)
-	if eng.Snapshot().MaskSet {
-		t.Fatal("a mask before the live geometry held for three captures")
-	}
-	c.masterMaskFrame(live)
 	m := eng.mask
-	if m == nil || !m.FrameIdent || m.WinCols != 2049 || m.SampleS != 488e-9 || !m.PeakDetect || m.TdivS != 100e-6 || eng.Snapshot().MaskMode != 1 {
-		t.Fatalf("the master's mask %+v, test mode %d: want the live geometry", m, eng.Snapshot().MaskMode)
+	if m == nil || !m.FrameIdent || m.WinCols != 2049 || m.SampleS != 488e-9 || !m.PeakDetect || m.TdivS != 100e-6 || eng.Snapshot().MaskMode != 2 {
+		t.Fatalf("the master's mask %+v, test mode %d: want the live geometry, stop on fail", m, eng.Snapshot().MaskMode)
 	}
 	left := int(math.Round(live.EdgeX - float64(m.WinCols)*0.5))
 	for j := range m.WinCols {
@@ -204,15 +222,11 @@ func TestMasterMaskInLiveGeometry(t *testing.T) {
 		t.Fatalf("after Clear refs the master row says %q", got)
 	}
 
-	c, eng, _ = newC(t)
-	withClock(c)
-	finish(c)
+	// Clear mask while it builds: nothing is installed
+	c, eng = start(0, func(uint64) *engine.Frame { return live })
 	c.clearMask()
-	for range 3 {
-		c.masterMaskFrame(live)
-	}
-	if eng.Snapshot().MaskSet {
-		t.Fatal("Clear mask while the master waited: its mask was built anyway")
+	if built(eng) {
+		t.Fatal("Clear mask while the master's mask was built: installed anyway")
 	}
 }
 

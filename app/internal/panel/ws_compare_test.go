@@ -80,13 +80,20 @@ func TestMasterStacksStoresAndTests(t *testing.T) {
 		t.Fatalf("progress %d/%d", n, of)
 	}
 	r.eng.set(func(st *engine.Stats) { st.MaskPass, st.MaskFail = 9, 2 })
+	c.mu.Lock()
+	c.maskN = 8
+	c.mu.Unlock()
 	r.show(toneFrame("block average 64/64 (waveform aligned)"))
-	// the mask waits for a live capture: it is built in the geometry the test judges
+	// the mask is built from the live captures after the master
 	if st := r.eng.Snapshot(); st.MaskSet || c.View().Cmp.Rows[cmpMask].Info != "building..." {
 		t.Fatalf("before a live capture: mask %v, row %+v", st.MaskSet, c.View().Cmp.Rows[cmpMask])
 	}
-	for range 3 { // the live geometry holds: the mask is built in it
+	for range 200 {
+		if r.eng.Snapshot().MaskSet {
+			break
+		}
 		r.show(toneFrame(""))
+		time.Sleep(15 * time.Millisecond)
 	}
 	st := r.eng.Snapshot()
 	if c.stack != nil || !c.RefView()[0].Show || !st.MaskSet || st.MaskMode != 1 || st.AcqMode != 0 || st.AvgCount != 4 ||
