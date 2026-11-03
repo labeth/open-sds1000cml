@@ -155,9 +155,12 @@ func TestSweepPlan(t *testing.T) {
 	if n["vdiv"] != 2*(2*(1+len(vdivs))+2) || n["tdiv"] != len(tdivs)+1 || n["coupling"] != 6 || n["bwl"] != 4 {
 		t.Fatalf("steps by group %v", n)
 	}
-	st := scpiState{Answers: map[string]string{"*IDN?": "Siglent", "C1:VDIV?": "C1:VDIV 1.00E+00V", "TDIV?": "[timeout]", "BWL?": "BWL C1,OFF,C2,OFF"}}
+	st := scpiState{Answers: map[string]string{
+		"*IDN?": "Siglent", "C1:VDIV?": "C1:VDIV 1.00E+00V", "TDIV?": "[timeout]", "BWL?": "BWL C1,OFF,C2,OFF",
+		"C1:ATTN?": "C1:ATTN 10", "TRDL?": "Undefined header", "MSIZ?": "",
+	}}
 	got := strings.Join(restoreCmds(st), ";")
-	if got != "C1:VDIV 1.00E+00V;BWL C1,OFF,C2,OFF" {
+	if got != "C1:ATTN 10;C1:VDIV 1.00E+00V;BWL C1,OFF,C2,OFF" { // the probe factor before the V/div it scales
 		t.Fatalf("restore %q", got)
 	}
 }

@@ -12,10 +12,11 @@ import (
 
 // stateQueries read the factory app's settings: the identity first, then
 // every setting the sweep changes, so the answers can be sent back as
-// commands to put the scope as it was.
+// commands to put the scope as it was - in this order: the probe factor
+// before the V/div and offset it scales.
 var stateQueries = []string{
 	"*IDN?", "*OPT?",
-	"C1:VDIV?", "C2:VDIV?", "C1:OFST?", "C2:OFST?", "C1:CPL?", "C2:CPL?", "C1:ATTN?", "C2:ATTN?",
+	"C1:ATTN?", "C2:ATTN?", "C1:CPL?", "C2:CPL?", "C1:VDIV?", "C2:VDIV?", "C1:OFST?", "C2:OFST?",
 	"BWL?", "C1:TRA?", "C2:TRA?", "TDIV?", "TRDL?", "TRMD?", "TRSE?", "C1:TRLV?", "C2:TRLV?",
 	"C1:TRSL?", "C2:TRSL?", "C1:TRCP?", "C2:TRCP?", "ACQW?", "AVGA?", "MSIZ?",
 }
@@ -132,13 +133,16 @@ func readState(c *vxi11.Client) scpiState {
 }
 
 // restoreCmds are the commands that put back the settings in st: each
-// state answer of a setting the sweep changes is a valid command as it stands.
+// state answer of a setting the sweep changes is a valid command as it
+// stands. An answer that does not start with its query's header is an error
+// text ("Undefined header"), not a setting, and is not sent back.
 // TRLC-LINKS: REQ-SDS-285
 func restoreCmds(st scpiState) []string {
 	var out []string
 	for _, q := range stateQueries {
 		ans := st.Answers[q]
-		if strings.HasPrefix(q, "*") || ans == "" || strings.HasPrefix(ans, "[") {
+		head := strings.TrimSuffix(q, "?")
+		if strings.HasPrefix(q, "*") || !strings.HasPrefix(ans, head+" ") {
 			continue
 		}
 		out = append(out, ans)

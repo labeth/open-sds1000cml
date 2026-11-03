@@ -54,6 +54,9 @@ func Run(args []string, stderr io.Writer) int {
 	out := fs.String("out", "", "where the archive goes (empty: the stick's root, above the program's directory)")
 	wait := fs.Duration("wait", 150*time.Second, "how long to wait for the factory app's SCPI server")
 	dwell := fs.Duration("dwell", 700*time.Millisecond, "how long each sweep step is held (active)")
+	steps := fs.Int("steps", 0, "run only the first steps of the sweep (active; 0: all)")
+	limit := fs.Duration("limit", 20*time.Minute, "the longest the active sweep runs before it puts the settings back")
+	pid := fs.Int("pid", 0, "trace this process instead of the factory app (active)")
 	if err := fs.Parse(args); err != nil {
 		return 2
 	}
@@ -72,7 +75,10 @@ func Run(args []string, stderr io.Writer) int {
 	if *out == "" {
 		*out = filepath.Dir(dir)
 	}
-	c := &collection{self: self, mode: *mode, outDir: *out, wait: *wait, dwell: *dwell, status: filepath.Join(*out, "sds-diag-status.txt")}
+	c := &collection{
+		self: self, mode: *mode, outDir: *out, wait: *wait, dwell: *dwell, steps: *steps, limit: *limit, pid: *pid,
+		status: filepath.Join(*out, "sds-diag-status.txt"),
+	}
 	if err := c.run(); err != nil {
 		c.say("FAILED: %v", err)
 		_, _ = fmt.Fprintln(stderr, "sdsdiag:", err)
@@ -84,7 +90,9 @@ func Run(args []string, stderr io.Writer) int {
 // collection is one run of the collector.
 type collection struct {
 	self, mode, outDir, status string
-	wait, dwell                time.Duration
+	wait, dwell, limit         time.Duration
+	steps                      int // the sweep's first steps only (0: all)
+	pid                        int // the process to trace (0: the factory app)
 	summary                    []string
 }
 
@@ -131,6 +139,10 @@ func (c *collection) run() error {
 	ps := collectProcs(a)
 	pid := factoryPID(ps)
 	c.note("factory app pid: %d", pid)
+	if c.pid != 0 {
+		pid = c.pid
+		c.note("traced instead: pid %d", pid)
+	}
 	c.note("fpga: %s", collectFPGA(a))
 	c.note("screen: %s", collectScreen(a, "start"))
 
@@ -171,10 +183,14 @@ func (c *collection) run() error {
 }
 
 // sweepTime is about how long the active sweep takes: each step's trace
-// window, the dwell and the read-back.
+// window, the dwell and the read-back, at most the limit.
 // TRLC-LINKS: REQ-SDS-285
 func (c *collection) sweepTime() time.Duration {
-	return time.Duration(len(SweepSteps())) * (c.dwell + 1500*time.Millisecond)
+	n := len(SweepSteps())
+	if c.steps > 0 {
+		n = min(n, c.steps)
+	}
+	return min(time.Duration(n)*(c.dwell+1500*time.Millisecond), c.limit)
 }
 
 // sweep steps the factory app through SweepSteps, each step in a register
@@ -191,14 +207,36 @@ func (c *collection) sweep(a *Archive, vx *vxi11.Client, pid int, st scpiState) 
 		return errors.New("no factory app running: nothing to trace")
 	}
 	var log strings.Builder
-	fmt.Fprintf(&log, "# step t_us cmd | the factory app's answer to the step's query | trace window\n")
-	for i, s := range SweepSteps() {
+	fmt.Fprintf(&log, "# step t_us cmd | the factory app's answer to the step's query | ms | trace window\n")
+	steps := SweepSteps()
+	if c.steps > 0 && c.steps < len(steps) {
+		steps = steps[:c.steps]
+	}
+	end := time.Now().Add(c.limit)
+	for i, s := range steps {
+		if time.Now().After(end) {
+			fmt.Fprintf(&log, "# the sweep's %v ran out after %d of %d steps\n", c.limit, i, len(steps))
+			c.note("sweep: cut short after %d of %d steps (the %v limit)", i, len(steps), c.limit)
+			break
+		}
+		if i%10 == 0 {
+			c.say("active: step %d of %d", i, len(steps))
+		}
 		file := filepath.Join(c.outDir, fmt.Sprintf(".sds-diag-step-%03d.gz", i))
+		t0 := time.Now()
 		t := monoMicros()
-		werr := c.window(pid, file, func() error { return vx.Send(s.Cmd) })
-		time.Sleep(c.dwell)
-		ans, qerr := vx.Query(queryOf(s.Cmd))
-		fmt.Fprintf(&log, "%03d %d %s | %s %s | %s\n", i, t, s.Cmd, strings.TrimSpace(ans), errText(qerr), errText(werr))
+		var ans string
+		var qerr error
+		werr := c.window(pid, file, func() error {
+			if err := vx.Send(s.Cmd); err != nil {
+				return err
+			}
+			time.Sleep(c.dwell)
+			ans, qerr = vx.Query(queryOf(s.Cmd)) // answered: the factory app has taken the step
+			return nil
+		})
+		fmt.Fprintf(&log, "%03d %d %s | %s %s | %d | %s\n", i, t, s.Cmd, strings.TrimSpace(ans), errText(qerr),
+			time.Since(t0).Milliseconds(), errText(werr))
 		a.AddFile(fmt.Sprintf("trace/steps/%03d-%s.txt.gz", i, s.Group), file, 64<<20)
 		_ = os.Remove(file)
 	}
@@ -221,12 +259,16 @@ func (c *collection) sweep(a *Archive, vx *vxi11.Client, pid int, st scpiState) 
 	return nil
 }
 
-// window runs send while a tracer child traces the factory app: the child
-// attaches, says ready, then ends a moment after the factory app's register
-// writes stop (at most a few seconds later). Its exit detaches the factory app.
+// window runs step while a tracer child traces the factory app: the child
+// attaches and says ready, step runs (the command and its read-back), and
+// 300 ms later the child is told to stop; its exit detaches the factory app.
 // TRLC-LINKS: REQ-SDS-285
-func (c *collection) window(pid int, file string, send func() error) error {
-	tr := exec.Command(c.self, "trace", strconv.Itoa(pid), "3000", file, "300") //nolint:gosec,noctx // G204: this program as the tracer; it ends by itself within 3 s
+func (c *collection) window(pid int, file string, step func() error) error {
+	tr := exec.Command(c.self, "trace", strconv.Itoa(pid), "30000", file, "0") //nolint:gosec,noctx // G204: this program as the tracer; it ends on "stop" or by itself within 30 s
+	in, err := tr.StdinPipe()
+	if err != nil {
+		return err
+	}
 	out, err := tr.StdoutPipe()
 	if err != nil {
 		return err
@@ -234,44 +276,42 @@ func (c *collection) window(pid int, file string, send func() error) error {
 	if err := tr.Start(); err != nil {
 		return err
 	}
+	done := make(chan error, 1)
+	stop := func() error {
+		_, _ = io.WriteString(in, "stop\n")
+		_ = in.Close()
+		select {
+		case err := <-done:
+			return err
+		case <-time.After(10 * time.Second):
+			_ = tr.Process.Kill() // a tracer's exit detaches and resumes the factory app
+			<-done                //nolint:errcheck // the killed tracer's exit status says nothing new
+			return errors.New("the tracer did not stop: killed")
+		}
+	}
 	ready := make(chan bool, 1)
 	go func() {
 		line, _ := bufio.NewReader(out).ReadString('\n')
 		ready <- strings.TrimSpace(line) == "ready"
 		_, _ = io.Copy(io.Discard, out)
+		done <- tr.Wait()
 	}()
 	select {
 	case ok := <-ready:
 		if !ok {
-			_ = tr.Wait()
+			_ = stop()
 			return errors.New("the tracer did not attach")
 		}
 	case <-time.After(5 * time.Second):
-		_ = tr.Process.Kill()
-		_ = tr.Wait()
+		_ = stop()
 		return errors.New("the tracer did not attach in 5 s")
 	}
-	sent := make(chan error, 1)
-	go func() { sent <- send() }()
-	done := make(chan error, 1)
-	go func() { done <- tr.Wait() }()
-	var werr error
-	select {
-	case werr = <-done:
-	case <-time.After(8 * time.Second):
-		_ = tr.Process.Kill() // a tracer's exit detaches and resumes the factory app
-		werr = errors.New("the tracer did not end: killed")
-		<-done //nolint:errcheck // the killed tracer's exit status says nothing new
+	serr := step()
+	time.Sleep(300 * time.Millisecond)
+	if err := stop(); err != nil {
+		return err
 	}
-	select {
-	case err := <-sent:
-		if werr == nil {
-			werr = err
-		}
-	case <-time.After(15 * time.Second):
-		werr = errors.New("the command got no answer in 15 s")
-	}
-	return werr
+	return serr
 }
 
 // queryOf is the query that reads back what cmd set: its header with a "?".
@@ -324,9 +364,14 @@ func traceChild(args []string, stderr io.Writer) int {
 		_, _ = fmt.Fprintln(stderr, "sdsdiag trace: pid, millis and quiet-millis are numbers")
 		return 2
 	}
+	stop := make(chan struct{})
+	go func() { // "stop" (or the parent's end of stdin) ends the window
+		_, _ = bufio.NewReader(os.Stdin).ReadString('\n')
+		close(stop)
+	}()
 	o := TraceOpts{
 		For: time.Duration(ms) * time.Millisecond, Out: args[2], MaxLines: 2_000_000,
-		QuietAfterWrite: time.Duration(quiet) * time.Millisecond, Ready: os.Stdout,
+		QuietAfterWrite: time.Duration(quiet) * time.Millisecond, Ready: os.Stdout, Stop: stop,
 	}
 	if err := Trace(pid, o); err != nil {
 		_, _ = fmt.Fprintln(stderr, "sdsdiag trace:", err)

@@ -104,6 +104,11 @@ func Trace(pid int, o TraceOpts) error {
 		if o.QuietAfterWrite > 0 && !t.lastWrite.IsZero() && time.Since(t.lastWrite) > o.QuietAfterWrite {
 			break
 		}
+		select {
+		case <-o.Stop:
+			return nil
+		default:
+		}
 		var ws syscall.WaitStatus
 		tid, err := syscall.Wait4(-1, &ws, syscall.WALL, nil)
 		if err != nil {
@@ -139,7 +144,7 @@ func (t *tracer) step(tid int, ws syscall.WaitStatus) {
 		case ip == 0:
 			t.counts[nr]++
 			var regs syscall.PtraceRegs
-			if recorded(nr) && getRegs(tid, &regs) == nil {
+			if recorded(nr) && argRegs(tid, nr, &regs) == nil {
 				t.entry[tid] = regs
 			}
 		default:
@@ -219,20 +224,25 @@ func (t *tracer) exit(tid int, in, out syscall.PtraceRegs) {
 	}
 }
 
-// getRegs reads thread tid's user registers word by word (PTRACE_PEEKUSER):
-// PTRACE_GETREGS fails with EIO on the scope's 3.2 kernel.
+// argRegs reads the argument registers syscall nr needs at its entry, word
+// by word (PTRACE_PEEKUSER; PTRACE_GETREGS fails with EIO on the scope's 3.2
+// kernel): r0..r2 for most calls, r0..r5 for mmap2. Every word is a ptrace
+// request while the factory app waits, and it polls its registers thousands
+// of times a second.
 // TRLC-LINKS: REQ-SDS-285
-func getRegs(tid int, r *syscall.PtraceRegs) error {
-	b := make([]byte, 4*len(r.Uregs))
-	n, err := unix.PtracePeekUser(tid, 0, b)
-	if err != nil {
-		return err
+func argRegs(tid int, nr uint32, r *syscall.PtraceRegs) error {
+	n := 3
+	if nr == sysMmap2 {
+		n = 6
 	}
-	for i := range r.Uregs {
-		if 4*i+4 <= n {
-			r.Uregs[i] = binary.LittleEndian.Uint32(b[4*i:])
+	for i := range n {
+		v, err := peekReg(tid, i)
+		if err != nil {
+			return err
 		}
+		r.Uregs[i] = v
 	}
+	r.Uregs[7] = nr
 	return nil
 }
 
