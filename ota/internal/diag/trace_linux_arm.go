@@ -14,16 +14,19 @@ import (
 	"strings"
 	"syscall"
 	"time"
+
+	"golang.org/x/sys/unix"
 )
 
 // ARM EABI syscall numbers the trace records.
 const (
-	sysRead  = 3
-	sysWrite = 4
-	sysOpen  = 5
-	sysClose = 6
-	sysIoctl = 54
-	sysMmap2 = 192
+	sysRead   = 3
+	sysWrite  = 4
+	sysOpen   = 5
+	sysClose  = 6
+	sysIoctl  = 54
+	sysMmap2  = 192
+	sysOpenat = 322
 )
 
 // gpmcRead and gpmcWrite are the factory GPMC driver's ioctl requests on its
@@ -39,7 +42,6 @@ type tracer struct {
 	out    *bufio.Writer
 	fdPath map[uint32]string
 	entry  map[int]syscall.PtraceRegs // a thread's registers at its syscall's entry
-	inSys  map[int]bool
 	tids   map[int]bool
 	lines  int
 	counts map[uint32]int
@@ -60,7 +62,7 @@ func Trace(pid int, d time.Duration, out string, maxLines int) error {
 	gz := gzip.NewWriter(f)
 	t := &tracer{
 		pid: pid, out: bufio.NewWriterSize(gz, 1<<20), fdPath: map[uint32]string{},
-		entry: map[int]syscall.PtraceRegs{}, inSys: map[int]bool{}, tids: map[int]bool{}, counts: map[uint32]int{},
+		entry: map[int]syscall.PtraceRegs{}, tids: map[int]bool{}, counts: map[uint32]int{},
 	}
 	defer func() {
 		_, _ = fmt.Fprintf(t.out, "# end: %d lines, %d threads, calls by number %v\n", t.lines, len(t.tids), t.counts)
@@ -115,14 +117,30 @@ func (t *tracer) step(tid int, ws syscall.WaitStatus) {
 	sig := 0
 	switch s := ws.StopSignal(); {
 	case s == syscall.SIGTRAP|0x80:
-		var regs syscall.PtraceRegs
-		if syscall.PtraceGetRegs(tid, &regs) == nil {
-			if t.inSys[tid] {
-				t.exit(tid, t.entry[tid], regs)
-			} else {
+		// ARM says which stop this is in ip (r12): 0 at a syscall's entry, 1
+		// at its exit. A thread attached inside a syscall stops at its exit
+		// first; counting stops would read every call after it backwards.
+		// Two words a stop (ip and the call's number in r7); the full set only
+		// for a call the trace records: every stop holds the factory app up.
+		ip, err1 := peekReg(tid, 12)
+		nr, err2 := peekReg(tid, 7)
+		switch {
+		case err1 != nil || err2 != nil:
+		case ip == 0:
+			t.counts[nr]++
+			var regs syscall.PtraceRegs
+			if recorded(nr) && getRegs(tid, &regs) == nil {
 				t.entry[tid] = regs
 			}
-			t.inSys[tid] = !t.inSys[tid]
+		default:
+			if in, ok := t.entry[tid]; ok {
+				delete(t.entry, tid)
+				if r0, err := peekReg(tid, 0); err == nil {
+					var out syscall.PtraceRegs
+					out.Uregs[0] = r0
+					t.exit(tid, in, out)
+				}
+			}
 		}
 	case ws.TrapCause() == syscall.PTRACE_EVENT_CLONE:
 		if n, err := syscall.PtraceGetEventMsg(tid); err == nil {
@@ -141,17 +159,19 @@ func (t *tracer) step(tid int, ws syscall.WaitStatus) {
 // TRLC-LINKS: REQ-SDS-285
 func (t *tracer) exit(tid int, in, out syscall.PtraceRegs) {
 	nr := in.Uregs[7]
-	t.counts[nr]++
 	ret := int32(out.Uregs[0]) //nolint:gosec // G115: the syscall's signed return in r0
 	a0, a1, a2 := in.Uregs[0], in.Uregs[1], in.Uregs[2]
 	now := monoMicros()
 	switch nr {
-	case sysOpen:
-		path := t.cstring(tid, a0)
+	case sysOpen, sysOpenat:
+		path, flags := t.cstring(tid, a0), a1
+		if nr == sysOpenat {
+			path, flags = t.cstring(tid, a1), a2
+		}
 		if ret >= 0 {
 			t.fdPath[uint32(ret)] = path
 		}
-		t.line("%d %d open %q flags=%#x ret=%d", now, tid, path, a1, ret)
+		t.line("%d %d open %q flags=%#x ret=%d", now, tid, path, flags, ret)
 	case sysClose:
 		if p, ok := t.fdPath[a0]; ok && strings.HasPrefix(p, "/dev/") {
 			t.line("%d %d close %d %s ret=%d", now, tid, a0, p, ret)
@@ -184,6 +204,43 @@ func (t *tracer) exit(tid int, in, out syscall.PtraceRegs) {
 		t.line("%d %d %s %s len=%d ret=%d data=%s", now, tid, map[uint32]string{sysRead: "read", sysWrite: "write"}[nr],
 			p, a2, ret, t.bytes(tid, a1, min(n, 64)))
 	}
+}
+
+// getRegs reads thread tid's user registers word by word (PTRACE_PEEKUSER):
+// PTRACE_GETREGS fails with EIO on the scope's 3.2 kernel.
+// TRLC-LINKS: REQ-SDS-285
+func getRegs(tid int, r *syscall.PtraceRegs) error {
+	b := make([]byte, 4*len(r.Uregs))
+	n, err := unix.PtracePeekUser(tid, 0, b)
+	if err != nil {
+		return err
+	}
+	for i := range r.Uregs {
+		if 4*i+4 <= n {
+			r.Uregs[i] = binary.LittleEndian.Uint32(b[4*i:])
+		}
+	}
+	return nil
+}
+
+// peekReg reads register i of thread tid (PTRACE_PEEKUSER).
+// TRLC-LINKS: REQ-SDS-285
+func peekReg(tid, i int) (uint32, error) {
+	var b [4]byte
+	if _, err := unix.PtracePeekUser(tid, uintptr(4*i), b[:]); err != nil {
+		return 0, err
+	}
+	return binary.LittleEndian.Uint32(b[:]), nil
+}
+
+// recorded reports whether the trace records syscall nr.
+// TRLC-LINKS: REQ-SDS-285
+func recorded(nr uint32) bool {
+	switch nr {
+	case sysRead, sysWrite, sysOpen, sysOpenat, sysClose, sysIoctl, sysMmap2:
+		return true
+	}
+	return false
 }
 
 // path is the target of the traced process's descriptor fd, cached.
