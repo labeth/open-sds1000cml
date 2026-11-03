@@ -2,7 +2,7 @@
  "panel_chain": "0011111100111111001111111111111111111111001111111111111100111111",
  "trigger_ball": "A12",
  "trigger_ball_c2": "",
- "gpio113_ball": "A12",
+ "gpio113_ball": "",
  "ehrpwm_ball": "",
  "arm": [
   "fb fb0 DA8xx FB Drv",
