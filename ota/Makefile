@@ -11,6 +11,8 @@ BUILT ?= $(shell date -u -d "@$(SOURCE_DATE_EPOCH)" +%Y-%m-%dT%H:%M:%SZ 2>/dev/n
 else
 BUILT ?= $(shell date -u +%Y-%m-%dT%H:%M:%SZ)
 endif
+# -buildvcs=false on every build: the version and commit are stamped here, so a binary
+# carries no VCS state and builds the same in a CI checkout, a worktree or a plain tree.
 LDFLAGS := -s -w \
   -X github.com/labeth/open-sds1000cml/ota/internal/buildinfo.Version=$(VERSION) \
   -X github.com/labeth/open-sds1000cml/ota/internal/buildinfo.Commit=$(COMMIT) \
@@ -24,15 +26,15 @@ all: agent otactl
 
 agent:
 	CGO_ENABLED=0 GOOS=linux GOARCH=arm GOARM=7 \
-	  go build -trimpath -ldflags "$(LDFLAGS)" -o $(DIST)/agent-arm ./cmd/agent
+	  go build -trimpath -buildvcs=false -ldflags "$(LDFLAGS)" -o $(DIST)/agent-arm ./cmd/agent
 
 otactl:
-	CGO_ENABLED=0 go build -trimpath -ldflags "$(LDFLAGS)" -o $(DIST)/otactl ./cmd/otactl
+	CGO_ENABLED=0 go build -trimpath -buildvcs=false -ldflags "$(LDFLAGS)" -o $(DIST)/otactl ./cmd/otactl
 
 # The diagnostics stick's collector (diagstick/README.txt), for the scope.
 sdsdiag:
 	CGO_ENABLED=0 GOOS=linux GOARCH=arm GOARM=7 \
-	  go build -trimpath -ldflags "$(LDFLAGS)" -o $(DIST)/sdsdiag-arm ./cmd/sdsdiag
+	  go build -trimpath -buildvcs=false -ldflags "$(LDFLAGS)" -o $(DIST)/sdsdiag-arm ./cmd/sdsdiag
 
 # The diagnostics stick as a zip whose contents go on a stick's root
 # (DIAG_ZIP names it); reproducible as mkstick's.

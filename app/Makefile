@@ -11,6 +11,8 @@ BUILT ?= $(shell date -u -d "@$(SOURCE_DATE_EPOCH)" +%Y-%m-%dT%H:%M:%SZ 2>/dev/n
 else
 BUILT ?= $(shell date -u +%Y-%m-%dT%H:%M:%SZ)
 endif
+# -buildvcs=false on every build: the version and commit are stamped here, so a binary
+# carries no VCS state and builds the same in a CI checkout, a worktree or a plain tree.
 LDFLAGS := -s -w \
   -X github.com/labeth/open-sds1000cml/app/internal/buildinfo.Version=$(VERSION) \
   -X github.com/labeth/open-sds1000cml/app/internal/buildinfo.Commit=$(COMMIT) \
@@ -52,7 +54,7 @@ app:
 	    { echo "app: $$f is $$s bytes, not an EP4CE10 .rbf"; exit 1; }; \
 	  cp "$$f" internal/fpgaload/$$n.rbf; done
 	CGO_ENABLED=0 GOOS=linux GOARCH=arm GOARM=7 \
-	  go build -trimpath -tags "$(TAGS)" -ldflags "$(LDFLAGS)" -o $(DIST)/app-arm ./cmd/app
+	  go build -trimpath -buildvcs=false -tags "$(TAGS)" -ldflags "$(LDFLAGS)" -o $(DIST)/app-arm ./cmd/app
 	@echo "app: $(DIST)/app-arm embeds $(foreach i,$(IMAGES),$(lastword $(subst :, ,$(i))))"
 
 # app-release: the same build (the name the stick and release scripts use).

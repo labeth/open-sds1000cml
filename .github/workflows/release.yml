@@ -60,7 +60,7 @@ jobs:
           for t in linux/amd64 linux/arm64 darwin/amd64 darwin/arm64 windows/amd64; do
             os=${t%/*}; arch=${t#*/}; ext=""; [ "$os" = windows ] && ext=.exe
             echo "building otactl-$os-$arch$ext"
-            CGO_ENABLED=0 GOOS=$os GOARCH=$arch go build -trimpath -ldflags "$LD" \
+            CGO_ENABLED=0 GOOS=$os GOARCH=$arch go build -trimpath -buildvcs=false -ldflags "$LD" \
               -o "$GITHUB_WORKSPACE/dist/otactl-${os}-${arch}${ext}" ./cmd/otactl
           done
 
