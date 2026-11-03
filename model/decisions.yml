@@ -2839,7 +2839,7 @@ decisions:
   consequences:
   - One boot of the stick says which converters, front ends and clocks the board has, and whether this firmware
     runs on it as it stands.
-  - The scope needs a power-cycle after the stick: the factory app is gone until then.
+  - The scope needs a power-cycle after the stick, which leaves the factory app stopped until then.
   - The probe images ship in the diagnostics zip; balls.txt is the census's one list of balls, copied into the
     collector.
 
