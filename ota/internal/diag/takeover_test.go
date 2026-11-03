@@ -406,27 +406,29 @@ func TestKinIsTheParentChain(t *testing.T) {
 	}
 }
 
-// TestCensusOfTheSDS1102CMLPlus: the census the takeover stage took on an
-// SDS1102CML+ booted cold under the factory firmware judges every part
-// present.
+// TestCensusOfTheSDS1102CMLPlus: the censuses the takeover stage took on an
+// SDS1102CML+ booted cold under the factory firmware, in two sessions (the
+// second after the full sweep), judge every part present.
 // TRLC-LINKS: REQ-SDS-288
 func TestCensusOfTheSDS1102CMLPlus(t *testing.T) {
-	var cs [2]Census
-	for i, b := range []string{"probe", "probepull"} {
-		data, err := os.ReadFile("testdata/census-sds1102cml-" + b + ".json")
-		if err != nil {
-			t.Fatal(err)
+	for _, run := range []string{"", "2-"} {
+		var cs [2]Census
+		for i, b := range []string{"probe", "probepull"} {
+			data, err := os.ReadFile("testdata/census-sds1102cml-" + run + b + ".json")
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := json.Unmarshal(data, &cs[i]); err != nil {
+				t.Fatal(err)
+			}
 		}
-		if err := json.Unmarshal(data, &cs[i]); err != nil {
-			t.Fatal(err)
+		if cs[0].Pull || !cs[1].Pull {
+			t.Fatal("the builds' pull-up flags")
 		}
-	}
-	if cs[0].Pull || !cs[1].Pull {
-		t.Fatal("the builds' pull-up flags")
-	}
-	for _, v := range verdicts(probeBalls(), cs[0], cs[1]) {
-		if v.Verdict != vPresent {
-			t.Errorf("%s: %s %s", v.Part, v.Verdict, v.Detail)
+		for _, v := range verdicts(probeBalls(), cs[0], cs[1]) {
+			if v.Verdict != vPresent {
+				t.Errorf("session %q: %s: %s %s", run, v.Part, v.Verdict, v.Detail)
+			}
 		}
 	}
 }

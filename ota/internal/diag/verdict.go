@@ -10,7 +10,8 @@ import (
 )
 
 // probeReferenceText is the SDS1102CML+'s static balls as the probe image saw
-// them (ball, name, class), what another board's census is compared with.
+// them (ball, name, class: low, high, toggles, or any for a line that keeps
+// its last level), what another board's census is compared with.
 //
 //go:embed probe_reference.txt
 var probeReferenceText string
@@ -249,7 +250,7 @@ func (j *judge) statics() {
 			}
 			n++
 			c := staticClass(j.main.Off[i], stateOr(j.open.Off, i))
-			if r := reference[b.Ball]; c != r {
+			if r := reference[b.Ball]; c != r && (r != "any" || c == "toggles") {
 				diffs = append(diffs, fmt.Sprintf("%s %s %s (%s on the SDS1102CML+)", b.Ball, b.Name, c, r))
 			}
 		}
