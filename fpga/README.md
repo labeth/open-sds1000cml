@@ -221,8 +221,17 @@ in clk cycles) records each ball's ever-0, ever-1 and live level (registers
 80, 96 and 112 on, sixteen balls a register), and eight channels (64-71 the
 ball) count the ball's rising edges on the ball itself and the clk cycles it
 was high (32-47). Register 18 reads 0x5052, 19 the ball count and the pull-up
-build, 20 bit 1 the encode PLL's lock. `tb_probe.v` checks the counts and
-flags and that every leg stays off until turned on.
+build, 20 bit 1 the encode PLL's lock. On asking, the image also drives what
+the acquisition images drive: an SRAM test that fills every word through the
+address counter and reads it back (register 26, counts at 72-79), the panel
+chain's scan (bits at 12-15) and the key interrupt pulse on F1 (register 25),
+and D1, D2, G2 and A11 at the images' levels. Each pair's lanes are registered
+on its capture clock and held on asking (register 5, codes at 0-4: a stopped
+converter's lanes read 1, so codes are read running), and pair E1's two cores
+are captured at 100 MS/s around a chosen ball's rising edge (registers 6-8).
+`tb_probe.v` checks the counts, flags, held codes, edge capture, panel scan,
+key interrupt and held balls, and that every leg stays off until turned on;
+`tb_sram.v` the SRAM test on a fitted, a missing and a stuck-address SRAM.
 
 ## Source layout
 

@@ -66,4 +66,5 @@ set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to enc_n[*]
 set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to ball[*]
 set_instance_assignment -name CURRENT_STRENGTH_NEW "MINIMUM CURRENT" -to enc_p[*]
 set_instance_assignment -name CURRENT_STRENGTH_NEW "MINIMUM CURRENT" -to enc_n[*]
-# build.ts adds each ball[i] of balls.txt, and in the pull-up build their weak pull-ups.
+# build.ts adds each ball[i] of balls.txt (the six clock inputs as clkin[k]), and in the
+# pull-up build the weak pull-ups.

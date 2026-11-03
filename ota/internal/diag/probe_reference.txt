@@ -1,6 +1,7 @@
 # The SDS1102CML+'s static balls as the probe image saw them with the encode legs off: low (low with
 # the weak pull-up on), high (high with it, driven or pulled up or open), toggles, or any (the line keeps
-# the level last driven on it: K2 read high after one factory session and low after another). The
+# the level last driven on it: K2 and G1, the SRAM counter's clock and enable, read high after one
+# factory session and low after another; K1 with them). The
 # takeover stage compares another board's census with these. ball, name, class.
 J6 sram.dq0 high
 F5 sram.dq1 high
@@ -34,8 +35,8 @@ T2 sram.dq28 high
 R4 sram.dq29 high
 T4 sram.dq30 high
 F7 sram.dq31 high
-G1 sram.enable high
-K1 sram.direction high
+G1 sram.enable any
+K1 sram.direction any
 K2 sram.clock any
 J2 panel.load high
 F2 panel.clock high

@@ -262,13 +262,15 @@ func (p *probe) moved(legs uint16, codes [][2]uint16, followed bool) ([]bool, er
 	return out, nil
 }
 
-// The offset DAC codes of the census: both ends of the DAC put each
-// channel's converters at their rails (every code bit flips between them),
-// the middle codes through mid-scale.
+// The offset DAC codes of the census. The SDS1102CML+'s DAC moves the input
+// steadily over 0x0c00..0x4800 only (below 0x0b00 it wraps to the other rail;
+// from about 0x4800 up the converters sit at one rail): its ends put each
+// channel's converters at the two rails at every V/div (every code bit flips
+// between them), the codes between through mid-scale.
 const (
-	dacLow  = 0x0000
-	dacMid  = 0x8000
-	dacHigh = 0xffff
+	dacLow  = 0x0c00
+	dacMid  = 0x2800
+	dacHigh = 0x4800
 )
 
 // runCensus is the census on a loaded probe image: every ball with the legs
@@ -319,7 +321,7 @@ func runCensus(b regBus, n int, sleep func(time.Duration)) Census {
 		return fail(err)
 	}
 	step("legs on: flags and rates")
-	sweep := [][2]uint16{{dacLow, dacLow}, {0x4000, 0x4000}, {dacMid, dacMid}, {0xc000, 0xc000}, {dacHigh, dacHigh}}
+	sweep := [][2]uint16{{dacLow, dacLow}, {0x1800, 0x1800}, {dacMid, dacMid}, {0x3800, 0x3800}, {dacHigh, dacHigh}}
 	if cs.Moved, err = p.moved(allLegs, sweep, false); err != nil {
 		return fail(err)
 	}

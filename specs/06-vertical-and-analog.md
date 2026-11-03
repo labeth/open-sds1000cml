@@ -326,8 +326,8 @@ an offset-only change writes only the offset DAC + run-word re-assert.
 
 ## 6. Coupling and GND — what is real on this clone
 
-The relay word carries per-channel coupling bits, but their electrical effect on this clone is
-limited. Program them for parity, but do not assume hardware AC/GND behaviour:
+The relay word carries per-channel coupling bits. What each does electrically was measured with the
+1 kHz probe-compensation square on the probe (the diagnostics stick's takeover stage):
 
 - **DC coupling (bit 3):** set for DC. Coupling selection rides byte 0: **bit 3 = DC** (`0x2d`),
   **bit 1 = GND** (`0x27`), both clear = AC (`0x25`). It is not just a coupling capacitor select; it
@@ -340,29 +340,30 @@ limited. Program them for parity, but do not assume hardware AC/GND behaviour:
   low selector `0x13` (`0x20100026`) + high selector `0x33` (`0x20100066`). The 16-bit value encodes
   the coupling sense: **`0xb851` = DC** (captured `0x12`=`0x51`, `0x32`=`0xb8`), `0xced9` = the
   non-DC (AC/GND) sense. A factory-firmware-parity coupling change emits relay byte 0 (bit 3 / bit 1) **and**
-  this companion pair. **Open:** which of AC vs GND maps to `0xced9` is not separately captured (only
-  the DC value `0xb851` is observed on the bus); treat `0xced9` as "the non-DC sense".
-- **AC coupling (bit 1 cleared / bit 3 cleared):** there is **no hardware high-pass** engaged on
-  this clone. If AC (DC-blocking) behaviour is required, it must be a **software** DC-removal filter
-  on the captured samples.
-- **GND coupling (bit 1):** the GND relay is **populated and effective** when the **absolute** relay
-  word is emitted — GND = the AC baseline **with bit 1 set and bit 3 clear** (CH1 byte `0x27`, full
-  word `0x70ad27`), and the live ADC then reads a third distinct code band (DC / GND / AC give three
-  separate code clusters). The earlier "inert / unpopulated" verdict was a **read-modify-write
-  artifact** that left bit 3 set alongside bit 1; always emit the absolute word, never RMW. (There is
-  separately no digital channel-ground in the GPMC plane: the PLANE-A mux CS1 `0x22`, values 0–3,
-  does **not** zero the ADC — it is the engine-safe trigger-input mux, not a channel ground. A pure
-  software GND display remains a valid fallback, but the relay bit itself works.)
+  this companion pair. The factory firmware's trace for `C1:CPL A1M`, `GND` and `D1M` shows `0xb851`
+  written to both channels' pairs in all three, so its value does not follow the coupling there;
+  `0xced9` as "the non-DC sense" is not seen on the bus.
+- **AC coupling (bit 1 cleared / bit 3 cleared):** clearing bit 3 **does block DC**. Measured with the
+  1 kHz probe-compensation square on C1 (diagnostics stick): in AC the square's middle moves by about
+  half its amplitude, to ground (60 codes for a 158-code square at 50 mV/div, 4 for 8 at 1 V/div),
+  while a channel with nothing on its probe does not move. The firmware still keeps the relay in DC
+  and does AC as a **software** DC-removal filter on the captured samples, which is what its
+  calibration and trigger mapping assume.
+- **GND coupling (bit 1):** with bit 1 set and bit 3 clear (CH1 byte `0x27`, full word `0x70ad27`)
+  the 1 kHz square is still on the converters, at the AC level: the bit does not ground the input.
+  The factory firmware writes no relay word for `C1:CPL GND`; it grounds in its FPGA (CS1 `0x21`, and
+  CS3 `0x16`/`0x36`), as its trace shows. Always emit the absolute word, never RMW. The PLANE-A mux
+  CS1 `0x22`, values 0–3, does **not** zero the ADC (it is the engine-safe trigger-input mux, not a
+  channel ground); a software GND display is the firmware's GND.
 - **Bandwidth limit (bit 0):** drives the BWL relay (1 = full BW / OFF, 0 = 20 MHz limit / ON), and
   is the **only** register it writes — the BWL handler has no direct FPGA/CS3 writer of its own.
   Toggling `C1:BWL ON`↔`OFF` flips CH1 byte 0 `0x2c`↔`0x2d`. BWL can also re-trim the V/div gain (the
   firmware re-runs the V/div gain apply on a BWL change via the force-BWL-on-by-V/div path), so
   re-emit the gain ladder after a BWL toggle.
 
-**Open:** the on-clone *electrical* effectiveness of the BWL relay (whether the 20 MHz roll-off is
-physically present on this clone) is not measured — only the relay-bit write (byte 0 bit 0) is
-established. Treat the analog roll-off as best-effort until validated; if a hard 20 MHz limit is
-required, apply a software low-pass as a fallback.
+**Measured:** the 20 MHz limit is electrically present: with it on, the 1 kHz square's 10–90 % edge
+takes about 19 ns, against about 10 ns with it off (C1, equivalent-time edge captures by the
+diagnostics stick).
 
 ## 7. Load-bearing constraints
 

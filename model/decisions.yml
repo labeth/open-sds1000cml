@@ -2096,7 +2096,7 @@ decisions:
   title: Place an AC-coupled source's trigger level on the AC trace
   status: accepted
   date: '2026-10-07'
-  context: AC coupling has no hardware high-pass on this unit (spec 06); the display removes each frame's mean and
+  context: AC coupling is in software on this unit (the relay stays in DC, spec 06); the display removes each frame's mean and
     the offset. The fabric trigger still compares the raw DC codes against a level computed as if the trace were DC,
     so with CH1 AC-coupled a 0 V level on the centred 3.3 V UART trace never triggered (WAIT) and
     any level was misplaced by the signal's DC.

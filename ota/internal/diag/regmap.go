@@ -18,8 +18,9 @@ type regUse struct {
 	steps         map[int]bool    // steps that wrote it
 }
 
-// regMap is the factory app's register traffic by plane and selector: the
-// FPGA side of the board as its factory firmware drives it.
+// regMap is the factory app's register traffic by plane and selector, and
+// its SPI transfers by device: the FPGA and front end of the board as its
+// factory firmware drives them.
 type regMap map[string]*regUse
 
 // addTrace counts the GPMC lines of one step's trace file (gzip'd).
@@ -36,12 +37,20 @@ func (m regMap) addTrace(step int, path string) error {
 	}
 	sc := bufio.NewScanner(gz)
 	for sc.Scan() {
-		// "<t> <tid> gpmc <R|W> <plane> <sel> <val> ret=<r>"
+		// "<t> <tid> gpmc <R|W> <plane> <sel> <val> ret=<r>", or an SPI
+		// transfer "<t> <tid> spi <device> tx=<hex>", counted as a write of
+		// its bytes to the device
 		fs := strings.Fields(sc.Text())
+		if len(fs) == 5 && fs[2] == "spi" {
+			fs = []string{fs[0], fs[1], "gpmc", "W", "SPI", fs[3], strings.TrimPrefix(fs[4], "tx=")}
+		}
 		if len(fs) < 7 || fs[2] != "gpmc" {
 			continue
 		}
 		key := "CS" + fs[4] + " " + fs[5]
+		if fs[4] == "SPI" {
+			key = fs[5]
+		}
 		u := m[key]
 		if u == nil {
 			u = &regUse{values: map[string]bool{}, steps: map[int]bool{}}

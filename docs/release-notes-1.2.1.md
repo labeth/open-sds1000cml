@@ -19,13 +19,23 @@ byte anywhere.
   * **active:** which FPGA registers the factory firmware writes for each setting while the stick
     steps the factory app through them, summarised as a register map, with the settings put back
     afterwards;
-  * **takeover:** the stick stops the factory app, loads a probe image into the FPGA and judges which
-    converter cores, channel front ends and clocks the board has, and how its other balls compare
-    with the SDS1102CML+; then it runs this firmware's app on the board for a minute and a half.
+  * **takeover:** the stick stops the factory app and loads a probe image into the FPGA. It then
+    tests every part of the board that this firmware uses, and says whether each is fitted:
+    * the converters and their clocks;
+    * each channel's gain DAC, range relay, AC coupling, 20 MHz limit, offset DAC and trigger
+      comparator, with the probes on the scope's 1 kHz output;
+    * the sample memory;
+    * the panel's keys and key interrupt;
+    * the processor's devices;
+    * the other FPGA balls, against the SDS1102CML+.
+
+    Then it runs this firmware's app on the board for a minute and a half. The screen says DONE
+    when the file is on the stick.
 
   Its `README.txt` says how to use it and what to send. All three stages were run on an
   SDS1102CML+ under the factory firmware, which they judged fully fitted; this firmware's app came
-  up healthy in 2 s.
+  up healthy in 2 s. They also measured two corrections to spec 06: the relay's AC bit does block DC,
+  and its GND bit does not ground the input.
 * **The release rebuilds byte for byte.** The binaries carry no VCS stamp, so a checkout, a worktree
   or a plain copy of the tag build the same files as the release.
 * **The OTA agent's restore-factory command is gone.** It relaunched the factory app in place, which

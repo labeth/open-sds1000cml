@@ -65,6 +65,7 @@ func Run(args []string, stderr io.Writer) int {
 	steps := fs.Int("steps", 0, "run only the first steps of the sweep (active; 0: all)")
 	limit := fs.Duration("limit", 30*time.Minute, "the longest the active sweep runs before it puts the settings back")
 	pid := fs.Int("pid", 0, "trace this process instead of the factory app (active)")
+	hold := fs.Duration("hold", 30*time.Minute, "how long the DONE screen is kept over the factory app's")
 	if err := fs.Parse(args); err != nil {
 		return 2
 	}
@@ -84,12 +85,13 @@ func Run(args []string, stderr io.Writer) int {
 		*out = filepath.Dir(dir)
 	}
 	c := &collection{
-		self: self, mode: *mode, outDir: *out, wait: *wait, dwell: *dwell, steps: *steps, limit: *limit, pid: *pid,
+		self: self, mode: *mode, outDir: *out, wait: *wait, dwell: *dwell, steps: *steps, limit: *limit, pid: *pid, hold: *hold,
 		status: filepath.Join(*out, "sds-diag-status.txt"),
 	}
 	if err := c.run(); err != nil {
 		c.say("FAILED: %v", err)
 		_, _ = fmt.Fprintln(stderr, "sdsdiag:", err)
+		c.doneScreen(false, []string{err.Error(), "see sds-diag-status.txt on the stick"})
 		return 1
 	}
 	return 0
@@ -102,6 +104,9 @@ type collection struct {
 	steps                      int  // the sweep's first steps only (0: all)
 	pid                        int  // the process to trace (0: the factory app)
 	sweepDone                  bool // the factory app ran on through the sweep and answered after the restore
+	tookOver                   bool // the takeover stage stopped the factory app
+	hold                       time.Duration
+	inventory                  []string // the ARM's devices (armInventory)
 	summary                    []string
 }
 
@@ -142,6 +147,10 @@ func (c *collection) run() error {
 
 	c.say("system")
 	collectSystem(a)
+	c.inventory = armInventory("/")
+	a.AddText("system/arm_inventory.txt", strings.Join(c.inventory, "\n")+"\n")
+	av := armVerdict(c.inventory, loadBoardReference().ARM)
+	c.note("arm devices: %s: %s", av.Verdict, av.Detail)
 	c.say("firmware files")
 	collectFirmware(a, firmwareRoots)
 	c.say("processes")
@@ -170,6 +179,7 @@ func (c *collection) run() error {
 	}
 	_ = os.WriteFile(filepath.Join(c.outDir, strings.TrimSuffix(name, ".tar.gz")+".txt"), []byte(strings.Join(c.summary, "\n")+"\n"), 0o644) //nolint:gosec // G306: the summary the owner reads on the stick
 	c.say("DONE: send %s to the project (it holds this scope's firmware files: send it privately)", name)
+	c.doneScreen(true, []string{name, "switch the scope off", "and take the stick out"})
 	return nil
 }
 

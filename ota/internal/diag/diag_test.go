@@ -249,7 +249,7 @@ func TestRegisterMap(t *testing.T) {
 	m := regMap{}
 	for i, body := range []string{
 		"# pid 534\n1 619 gpmc R 1 0x0039 0x0000 ret=0\n2 620 gpmc W 3 0x0012 0x00d9 ret=0\n",
-		"3 620 gpmc W 3 0x0012 0x00ce ret=0\n4 619 ioctl /dev/fb0 req=0x4606 arg=- ret=0\n",
+		"3 620 gpmc W 3 0x0012 0x00ce ret=0\n4 619 ioctl /dev/fb0 req=0x4606 arg=- ret=0\n5 619 spi /dev/spidev1.0 tx=2dad7000\n",
 	} {
 		if err := m.addTrace(i, write(fmt.Sprintf("s%d.gz", i), body)); err != nil {
 			t.Fatal(err)
@@ -259,6 +259,9 @@ func TestRegisterMap(t *testing.T) {
 	txt := m.text(steps)
 	if u := m["CS3 0x0012"]; u == nil || u.writes != 2 || len(u.values) != 2 || !u.steps[0] || !u.steps[1] {
 		t.Fatalf("CS3 0x12: %+v", u)
+	}
+	if u := m["/dev/spidev1.0"]; u == nil || u.writes != 1 || !u.values["2dad7000"] || !u.steps[1] {
+		t.Fatalf("the relay word: %+v", u)
 	}
 	if u := m["CS1 0x0039"]; u == nil || u.reads != 1 || u.writes != 0 {
 		t.Fatalf("CS1 0x39: %+v", u)

@@ -213,6 +213,20 @@ func (t *tracer) exit(tid int, in, out syscall.PtraceRegs) {
 			}
 		}
 		t.line("%d %d ioctl %s req=%#x arg=%s ret=%d", now, tid, p, a1, t.bytes(tid, a2, 32), ret)
+		// SPI_IOC_MESSAGE(n): each spi_ioc_transfer names its transmit
+		// buffer by address (tx_buf at 0, len at 16), so the bytes the
+		// factory app sent (relay words, gain codes) are read from it
+		if strings.HasPrefix(p, "/dev/spidev") && a1&0xc000ffff == 0x40006b00 {
+			n := (a1 >> 16 & 0x3fff) / 32
+			for i := range min(n, 8) {
+				tr := make([]byte, 32)
+				if _, err := syscall.PtracePeekData(tid, uintptr(a2+32*i), tr); err != nil {
+					break
+				}
+				l := min(binary.LittleEndian.Uint32(tr[16:]), 64)
+				t.line("%d %d spi %s tx=%s", now, tid, p, t.bytes(tid, binary.LittleEndian.Uint32(tr[0:]), l))
+			}
+		}
 	case sysRead, sysWrite:
 		p := t.path(a0)
 		if !strings.HasPrefix(p, "/dev/spidev") && !strings.HasPrefix(p, "/dev/i2c") && !strings.HasPrefix(p, "/dev/tty") {

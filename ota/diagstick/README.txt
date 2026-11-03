@@ -15,15 +15,19 @@ How to use it
 -------------
 1. Format a USB stick as MBR + FAT32 (one partition) and extract this zip onto
    its root, so that startup.sh and the sds-diag folder are at the top.
-2. With the scope off and nothing on the probes, plug the stick in, power
-   the scope on and leave it until sds-diag-status.txt says DONE (about 30
-   minutes; see "What it does" below). Open the file on a computer to look:
-   take the stick out only when the scope is off, or when it says DONE.
-3. Turn the scope off and take the stick out. On the stick you find:
+2. Connect both probes (1x or 10x, either) to the scope's 1 kHz probe
+   compensation output: each probe tip on the output, each ground clip on its
+   ground. The stick uses that square wave as a known signal to test the
+   gain, coupling and trigger circuits. Connect nothing else.
+3. With the scope off, plug the stick in, power the scope on and leave it
+   until the screen shows DONE in green (about 30 minutes; see "What it does"
+   below). FAILED in red says what went wrong. sds-diag-status.txt on the
+   stick says what it is doing.
+4. Turn the scope off and take the stick out. On the stick you find:
      sds-diag-<mac>-auto-1.tar.gz      the file to send
      sds-diag-<mac>-auto-1.txt         a short summary
      sds-diag-status.txt               what it did (ends with DONE)
-4. Send the .tar.gz to the project, privately (an issue on
+5. Send the .tar.gz to the project, privately (an issue on
    https://github.com/labeth/open-sds1000cml/issues says how). It holds copies
    of your scope's firmware and calibration files.
 
@@ -44,23 +48,26 @@ sds-diag/MODE says how far it goes. It comes set to "auto":
    V/div on both channels, couplings, offsets, bandwidth limit, timebases up
    to 100 ms/div, trigger and acquisition modes. The relays click, the screen
    changes and the scope answers its keys slowly for about twenty minutes
-   (never more than thirty); then it puts your settings back.
+   (never more than thirty); then it puts your settings back. The 1 kHz
+   signal on the probes does no harm.
 4. A second check: the factory app took every step and runs on, the FPGA's
    configuration port is where this project loads its images, the factory
    FPGA image is for the same FPGA. If any check fails it stops here.
-5. The takeover stage (about five minutes): it stops the factory app, loads
-   the project's probe image into the FPGA (every ball an input but the
-   processor's bus and the converters' clocks) and records what each ball of
-   the FPGA is connected to: which converters are fitted, whether each
-   channel's front end moves them, the clocks, the memory and panel lines.
-   Then it runs the project's own firmware for a minute and a half and
-   records what it does. The screen freezes, then shows the project's
-   firmware; the keys do nothing.
+5. The takeover stage (about ten minutes): it stops the factory app, loads
+   the project's probe image into the FPGA and tests each part of the board
+   the project's firmware uses, saying for each whether it is fitted: the
+   converters and their clocks, each channel's gain, range and coupling
+   relays, bandwidth limit and offset, the trigger level and comparator, the
+   sample memory, the front panel's keys and key interrupt, the processor's
+   lines to the FPGA, and the processor's own devices (network, USB and the
+   rest). The relays click and the panel LEDs light one by one. Then it runs
+   the project's own firmware for a minute and a half and records what it
+   does. The keys do nothing during this stage.
 
-Leave the scope alone until sds-diag-status.txt says DONE: switching off
-earlier loses the file and can leave your settings changed. Have nothing
-connected to the probes. After DONE, switch the scope off, take the stick
-out, and the factory firmware starts as always at the next power-on.
+Leave the scope alone until the screen says DONE: switching off earlier
+loses the file and can leave your settings changed. After DONE, switch the
+scope off, take the stick out, and the factory firmware starts as always at
+the next power-on.
 
 To stop after the active stage, replace "auto" in sds-diag/MODE with "active"
 in a text editor before you boot; to run only the read-only stage, with

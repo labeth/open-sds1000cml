@@ -4607,6 +4607,68 @@ requirements:
   - test
   verificationCriteria: on an SDS1102CML+ the archive holds the app's log, its status and screen, and the summary says
     it reported health.
+- id: REQ-SDS-290
+  title: Diagnostics front end and trigger tests
+  text: The instrument shall, from the diagnostics stick's takeover stage with the probe image running, judge for each
+    channel whether its gain DAC, range relay, AC coupling, GND relay bit, 20 MHz bandwidth limit and offset DAC act on
+    its converters, and which FPGA ball its trigger comparator drives, using the 1 kHz probe compensation square on
+    the probes.
+  status: draft
+  category: functional
+  sourceRefs:
+  - CODE-OTA-INTERNAL-DIAG-ANALOG-GO
+  - CODE-OTA-INTERNAL-DIAG-SPI-GO
+  - CODE-OTA-INTERNAL-DIAG-BOARDVERDICT-GO
+  - CODE-OTA-INTERNAL-DIAG-TAKEOVER-GO
+  - CODE-FPGA-IMAGES-PROBE-PROBE-TOP-V
+  appliesTo:
+  - FU-OTA-DIAG
+  - FU-RTL-PROBE
+  verificationMethods:
+  - test
+  verificationCriteria: on an SDS1102CML+ with the 1 kHz square on C1 both channels' gain DAC and range relay (47x
+    against spec 06's 44x), C1's AC coupling, bandwidth limit (the edge 10 ns to 19 ns) and comparator (ball A12) are
+    judged present; spec 06's reference relay words are the words written; modelled channels without a gain DAC or AC
+    coupling and a missing square are judged so.
+  notes: Codes are held from one instant of the running converters (a stopped converter's lanes read 1). The offset
+    DAC injects ahead of the gain stage, so the codes an offset step moves follow the gain with no signal. The edge is
+    sampled in equivalent time by captures triggered asynchronously by the comparator.
+- id: REQ-SDS-291
+  title: Diagnostics memory, panel and processor tests
+  text: The instrument shall, from the diagnostics stick's takeover stage, judge whether the SRAM stores every word
+    through its address counter, whether the front panel's key chain answers and its key interrupt reaches the
+    processor, which FPGA balls the processor's gpio113 and eHRPWM outputs reach, and which of the SDS1102CML+'s
+    processor devices are missing or extra, and light the panel LEDs one by one.
+  status: draft
+  category: functional
+  sourceRefs:
+  - CODE-OTA-INTERNAL-DIAG-BOARDTESTS-GO
+  - CODE-OTA-INTERNAL-DIAG-BOARDVERDICT-GO
+  - CODE-FPGA-IMAGES-PROBE-PROBE-TOP-V
+  appliesTo:
+  - FU-OTA-DIAG
+  - FU-RTL-PROBE
+  verificationMethods:
+  - test
+  verificationCriteria: on an SDS1102CML+ the SRAM, key chain and key interrupt are judged present and the processor's
+    devices equal the reference; the SRAM test's simulation passes a fitted model and fails a missing one and one with
+    an address line stuck; a modelled open key chain, an SRAM that answers nothing and a missing network interface are
+    judged so.
+- id: REQ-SDS-292
+  title: Diagnostics DONE screen
+  text: The instrument shall, when the diagnostics stick has finished, flush the stick and show DONE, or FAILED with
+    the reason, on its screen.
+  status: draft
+  category: functional
+  sourceRefs:
+  - CODE-OTA-INTERNAL-DIAG-DONESCREEN-GO
+  - CODE-OTA-INTERNAL-DIAG-DIAG-GO
+  appliesTo:
+  - FU-OTA-DIAG
+  verificationMethods:
+  - test
+  verificationCriteria: the DONE screen draws its word white on green over the whole framebuffer page; on an SDS1102CML+
+    the screen shows DONE after the run.
 - id: REQ-SDS-286
   title: Diagnostics archive
   text: The instrument shall, from the diagnostics stick, leave one archive on the stick with a manifest of every

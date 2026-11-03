@@ -111,16 +111,33 @@ active stage) or `passive`.
   coupling, offset, bandwidth limit, timebase, trigger and acquisition setting over SCPI, summarised
   as `trace/register_map.txt`; then it sends the saved settings back. The tracer is a child process:
   when it exits, the kernel detaches the factory app, and SIGCONT resumes it.
-- **Takeover**, after a second gate (`takeover/gate.json`: the sweep done and the factory app running
-  on, CS3 0x07 reading the configured fabric, an EP4CE10 factory image, the stick's files), stops
+- **Takeover**, after a second gate (`takeover/gate.json`: the factory app running on through the
+  sweep, CS3 0x07 reading the configured fabric, an EP4CE10 factory image, the stick's files), stops
   the factory app as `otactl takeover` does (STOP, the fill counter frozen, SIGKILL, the watchdog
   acquired) and loads the probe image (ADR-DIAG-PROBE, [`fpga/images/probe`](../fpga/images/probe)),
-  without and then with the weak pull-ups. From the census of every ball (levels and edges with the
-  encode legs off and on, which balls follow each leg and each channel's offset DAC) `probe/report.txt`
-  judges each converter core, front end, clock and group of static balls present, absent, partial or
-  different from the SDS1102CML+ (`internal/diag/probe_reference.txt`). Then it runs the stick's app
-  for 90 s as the agent would, with `app/` holding its log, status and screens, and disarms the
-  watchdog. The scope needs a power-cycle afterwards.
+  without and then with the weak pull-ups.
+  - **Ball census:** levels and edges with the encode legs off and on, and which balls follow each
+    leg and each channel's offset DAC.
+  - **Board tests** (`probe/board_tests.json`), with the probes on the 1 kHz probe compensation
+    square:
+    - the gain DAC and range relay (the codes an offset step moves, against V/div);
+    - AC coupling (the square's DC blocked);
+    - the GND bit;
+    - the 20 MHz limit (the square's edge, captured in equivalent time);
+    - each channel's trigger comparator (the ball that toggles on the square across the level DAC);
+    - the SRAM (every word through the address counter);
+    - the panel chain and key interrupt (SIGIO on `/dev/fpga_key`);
+    - the processor's gpio113 and eHRPWM lines;
+    - the I2C addresses that answer;
+    - the LED walk.
+
+  `probe/report.txt` judges each part present, absent, partial or different from the SDS1102CML+
+  (`internal/diag/probe_reference.txt`, `board_reference.json`). Then it runs the stick's app for
+  90 s as the agent would, with `app/` holding its log, status and screens, disarms the watchdog and
+  shows DONE on the screen. The scope needs a power-cycle afterwards.
+
+The stick shows DONE (or FAILED with the reason) on the screen once the archive is on the stick
+(`-hold` keeps it over the factory app's screen when no takeover ran).
 
 ## Making a boot stick
 

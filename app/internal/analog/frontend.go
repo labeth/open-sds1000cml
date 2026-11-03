@@ -61,15 +61,11 @@ func Vdiv(idx int) float64 {
 }
 
 // Coupling modes. On this clone coupling is modelled in SOFTWARE (the display
-// path), not driven on the relay — deliberately, because the relay buys nothing
-// here: its coupling bit selects a different offset-cal baseline (~36 codes), NOT
-// a coupling cap, so there is no hardware high-pass to gain (spec 06 §6); GND
-// grounds only with a companion CS3 config-plane write. Both are reproducible
-// with the usual disciplines (emit the relay carrying BOTH channels' seeded bytes
-// — a gain collapse only happens re-emitting from the un-seeded boot state; stage
-// the CS3 companion single-owner), but pointless without a real DC block. So the
-// relay stays DC; AC = software DC-removal, GND = a flat ground trace. See
-// CoupleDisplay. A physical series cap is the route to a true hardware high-pass.
+// path), not driven on the relay: the relay's AC bit does block DC (spec 06 §6),
+// but the calibration and the trigger mapping are made with the relay in DC,
+// and its GND bit does not ground the input (the factory firmware grounds in its
+// FPGA). So the relay stays DC; AC = software DC-removal, GND = a flat ground
+// trace. See CoupleDisplay.
 const (
 	CplDC  = 0
 	CplAC  = 1
@@ -78,8 +74,7 @@ const (
 
 // channelByte builds a relay channel byte (spec 06 §4.2): bit0 BWL(1=off,
 // full bandwidth), bit2 coarse range, bit3 DC, bit5 always 1, bit7 CH2 address
-// bit. Coupling is software (there is no hardware high-pass, spec 06 §6), so
-// the relay stays DC.
+// bit. Coupling is software (see the coupling modes), so the relay stays DC.
 // TRLC-LINKS: REQ-SDS-015
 func channelByte(idx int, ch2, bwl bool) uint8 {
 	b := uint8(0x20 | 0x01 | 0x08) // bit5 | BWL off | bit3 DC
@@ -207,7 +202,7 @@ func (f *FrontEnd) Coupling(ch int) int {
 
 // CoupleDisplay applies a coupling mode's software transform to a copy of sig
 // for the display and measurements: DC passes through unchanged; AC removes the
-// DC component (mean → mid-scale — there is no hardware high-pass, spec 06 §6);
+// DC component (mean → mid-scale: the relay stays in DC, spec 06 §6);
 // GND shows a flat trace at mid-scale (the ground reference). The input is never
 // mutated (it is shared with trigger/decode). Callers zero the channel's offset
 // for AC/GND so the ground marker sits at the centred baseline.

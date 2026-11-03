@@ -127,9 +127,17 @@ const probeLines=image.probe ? readFileSync(join(root,image.dir,'balls.txt'),'ut
 const probeBalls=probeLines.map(l=>l[0]);
 if(image.probe){
  if(probeBalls.at(-1)!=='M2' || probeBalls.length>255)throw Error('balls.txt must end with M2 and list at most 255 balls');
+ // probe_top.v drives its tests' balls by these indexes.
+ const fixed:Record<number,string>={80:'sram.dq0',112:'sram.enable',113:'sram.direction',114:'sram.clock',115:'panel.load',116:'panel.clock',
+  117:'panel.data',118:'panel.irq',119:'other.d1',120:'other.d2',121:'other.g2',122:'other.a11'};
+ for(const [i,name] of Object.entries(fixed))if(probeLines[Number(i)]?.[1]!==name)throw Error(`balls.txt line ${i} is not ${name}`);
  const qsf=readFileSync(join(root,image.dir,'project.qsf'),'utf8').trimEnd().split('\n');
- probeBalls.slice(0,-1).forEach((b,i)=>qsf.push(`set_location_assignment PIN_${b} -to ball[${i}]`));
- if(image.pull)probeLines.slice(0,-1).forEach((l,i)=>{if(l[2]!=='clkin')qsf.push(`set_instance_assignment -name WEAK_PULL_UP_RESISTOR ON -to ball[${i}]`);});
+ // The six clock inputs, last before M2, are probe_top's clkin port.
+ const clkin=probeLines.length-7;
+ if(probeLines.slice(clkin,-1).some(l=>l[2]!=='clkin') || probeLines.slice(0,clkin).some(l=>l[2]==='clkin'))throw Error('balls.txt must list the six clkin balls last before M2');
+ probeBalls.slice(0,-1).forEach((b,i)=>qsf.push(`set_location_assignment PIN_${b} -to ${i<clkin ? `ball[${i}]` : `clkin[${i-clkin}]`}`));
+ qsf.push('set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to clkin[*]');
+ if(image.pull)probeLines.slice(0,clkin).forEach((l,i)=>qsf.push(`set_instance_assignment -name WEAK_PULL_UP_RESISTOR ON -to ball[${i}]`));
  project('bench.qsf',qsf.join('\n')+'\n');
  project('bench.sdc',readFileSync(join(root,image.dir,'project.sdc'),'utf8'));
  defines=[];

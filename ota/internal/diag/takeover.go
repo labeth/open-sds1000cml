@@ -207,6 +207,7 @@ func (c *collection) takeoverStage(a *Archive, vx *vxi11.Client, pid int) {
 		return
 	}
 	defer wd.Disarm()
+	c.tookOver = true
 	balls := probeBalls()
 	var census [2]Census
 	for i, f := range []string{probeRBF, probePullRBF} {
@@ -223,15 +224,129 @@ func (c *collection) takeoverStage(a *Archive, vx *vxi11.Client, pid int) {
 		a.AddJSON("probe/census-"+strings.TrimSuffix(f, ".rbf")+".json", census[i])
 	}
 	vs := verdicts(balls, census[0], census[1])
+	if census[1].Error == "" && len(census[1].Off) == len(balls) {
+		c.say("takeover: the front end, trigger, SRAM and panel (the panel LEDs light one by one)")
+		t := c.boardTests(bus, balls, vs, logf)
+		a.AddJSON("probe/board_tests.json", t)
+		vs = append(vs, boardVerdicts(t, c.inventory)...)
+	}
 	a.AddJSON("probe/verdicts.json", vs)
 	a.AddJSON("probe/balls.json", balls)
 	a.AddText("probe/report.txt", verdictText(vs, balls, census[0], census[1]))
 	for _, v := range vs {
-		if v.Verdict != vPresent || strings.HasPrefix(v.Part, "converter") {
-			c.note("probe: %s: %s", v.Part, v.Verdict)
-		}
+		c.note("probe: %s: %s", v.Part, v.Verdict)
 	}
 	c.say("takeover: this firmware's app on the board (%v)", appRun)
 	c.note("%s", c.runApp(a, filepath.Join(dir, stickApp)))
 	c.note("screen with the app: %s", collectScreen(a, "app"))
+}
+
+// boardTests runs, on the pull-up probe image, the tests that drive the
+// board as the acquisition images and the factory firmware do: each
+// channel's front end, the trigger comparator, the SRAM, the panel chain and
+// key interrupt, the ARM's outputs to the FPGA and the LED walk. vs names
+// the converter cores present.
+// TRLC-LINKS: REQ-SDS-290, REQ-SDS-291
+func (c *collection) boardTests(bus regBus, balls []Ball, vs []Verdict, logf func(string, ...any)) BoardTests {
+	var t BoardTests
+	p, _, err := openProbe(bus, len(balls), time.Sleep)
+	if err != nil {
+		t.Error = err.Error()
+		return t
+	}
+	defer func() {
+		_ = bus.Write(planeCS1, prLegs, 0)
+		_ = bus.Write(planeCS1, prCtl, 0)
+		_ = setOffsetDAC(bus, 0, dacMid)
+		_ = setOffsetDAC(bus, 1, dacMid)
+	}()
+	// D1, D2, G2 and A11 as the acquisition images hold them, every
+	// converter running
+	_ = bus.Write(planeCS1, prCtl, ctlOthers)
+	_ = bus.Write(planeCS1, prLegs, allLegs)
+	bn := &bench{b: bus, p: p, cores: map[string][]int{}, sleep: time.Sleep, log: logf}
+	for _, v := range vs {
+		core, ok := strings.CutPrefix(v.Part, "converter ")
+		if !ok || v.Verdict != vPresent {
+			continue
+		}
+		for i, b := range balls {
+			if strings.HasPrefix(b.Name, core+".") {
+				bn.cores[core] = append(bn.cores[core], i)
+			}
+		}
+		ch := int(core[len(core)-1] - '1')
+		bn.chans[ch] = append(bn.chans[ch], core)
+	}
+	sp, err := openFrontEnd()
+	if err != nil {
+		t.FrontEnd[0].Error, t.FrontEnd[1].Error = err.Error(), err.Error()
+	} else {
+		defer sp.Close()
+		bn.f = sp
+		for ch := range 2 {
+			if len(bn.chans[ch]) == 0 {
+				t.FrontEnd[ch].Error = "no converter of the channel is present"
+				continue
+			}
+			t.FrontEnd[ch] = bn.frontEndTests(ch)
+		}
+		// both channels at their signal detents, centred there
+		var det [2]int
+		var centre [2]uint16
+		for ch := range 2 {
+			det[ch], centre[ch] = 6, dacMid
+			for d, dt := range detents {
+				if fr := t.FrontEnd[ch]; dt.vdiv == fr.Signal && d < len(fr.Detents) && fr.Detents[d].Error == "" {
+					det[ch], centre[ch] = d, fr.Detents[d].Center
+				}
+			}
+		}
+		t.Trigger = bn.triggerTests(balls, det, centre)
+		for ch := range 2 {
+			t.Edges[ch] = bn.edges(balls, t.Trigger, ch, det[ch], centre[ch])
+		}
+	}
+	logf("front end and trigger measured")
+	t.SRAM = p.sramTest()
+	logf("sram: %+v", t.SRAM)
+	t.Panel = p.panelTests()
+	logf("panel: %+v", t.Panel)
+	t.GPIO113, t.PWM = p.armOutputs(balls)
+	t.I2C = i2cScan()
+	logf("i2c answers: %v", t.I2C)
+	logf("gpio113 %+v pwm %+v", t.GPIO113, t.PWM)
+	if err := ledWalk(bus, time.Sleep); err != nil {
+		logf("leds: %v", err)
+	}
+	return t
+}
+
+// edges runs the edge tests on channel ch: its pair E1 core, triggered by its
+// comparator at the middle of the levels where it toggled on the square.
+// TRLC-LINKS: REQ-SDS-290
+func (bn *bench) edges(balls []Ball, tr TriggerResult, ch, det int, centre uint16) EdgeResult {
+	core := []string{"E1.CH1", "E1.CH2"}[ch]
+	if _, ok := bn.cores[core]; !ok {
+		return EdgeResult{Error: "converter " + core + " is not present"}
+	}
+	b := tr.Comparator[ch]
+	if b == "" {
+		return EdgeResult{Error: "no trigger comparator for the channel"}
+	}
+	ball := slices.IndexFunc(balls, func(x Ball) bool { return x.Ball == b })
+	p := tr.Patterns[b][0]
+	var band []int
+	for i := 1; i < len(p); i++ {
+		if p[i] == '~' {
+			band = append(band, i)
+		}
+	}
+	if ball < 0 || len(band) == 0 {
+		return EdgeResult{Error: "the comparator's levels are not known"}
+	}
+	level := uint16(min(band[len(band)/2]*2048, 0xffff)) //nolint:gosec // G115: a DAC code
+	r := bn.edgeTests(ch, ball, det, centre, level)
+	r.Ball = b
+	return r
 }
