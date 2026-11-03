@@ -10,10 +10,8 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
-	"syscall"
 	"time"
 
-	"github.com/labeth/open-sds1000cml/ota/internal/gpmc"
 	"github.com/labeth/open-sds1000cml/ota/internal/slots"
 )
 
@@ -62,7 +60,6 @@ func init() {
 	// takeover / recovery
 	register("takeover", hTakeover)
 	register("untakeover", hUntakeover)
-	register("restore-factory", hRestoreFactory)
 	register("probe", hProbe)
 	register("reboot", hReboot)
 }
@@ -403,14 +400,10 @@ func hTakeover(a *Agent, args json.RawMessage) (any, error) {
 	return res, nil
 }
 
-// hProbe is the read-only first-session diagnostic: it never touches the bus
-// unless asked, and never kills anything. It reports the device environment
-// (via otactl probe) so the operator can confirm it before takeover.
 // hUntakeover hands control back: stop+kill the supervised app, clear the
-// persisted taken_over flag, and disarm the watchdog — so a subsequent reboot
-// boots the factory app normally. It does NOT itself restore the factory app
-// (use restore-factory or reboot). This is what makes a takeover test fully
-// reversible.
+// persisted taken_over flag, and disarm the watchdog — so the next power-on
+// boots the factory app normally (with the stick out). The factory app comes
+// back only from a power-on: relaunched in place it does not drive the scope.
 // TRLC-LINKS: REQ-SDS-120
 func hUntakeover(a *Agent, _ json.RawMessage) (any, error) {
 	_ = a.ctlRequest(opStop, 8*time.Second) // pause supervisor + terminate the app
@@ -419,81 +412,13 @@ func hUntakeover(a *Agent, _ json.RawMessage) (any, error) {
 	}
 	a.clearFails()
 	a.wd.Disarm()
-	a.event("untakeover", map[string]any{"note": "control released; reboot or restore-factory to bring the vendor app back"})
+	a.event("untakeover", map[string]any{"note": "control released; power the scope off and on to bring the vendor app back"})
 	return map[string]any{"taken_over": false, "watchdog_disarmed": true}, nil
 }
 
-// hRestoreFactory re-launches the vendor app in place (best-effort), so the
-// scope can be recovered without a reboot after a takeover test. It execs the
-// factory binary as a child of the agent (inheriting the still-open boot fds)
-// from its normal working directory. Reboot is the reliable fallback if the
-// vendor app does not cleanly re-drive from a mid-session restart.
-// TRLC-LINKS: REQ-SDS-120
-func hRestoreFactory(a *Agent, args json.RawMessage) (any, error) {
-	p, _ := decodeArgs[struct {
-		Path       string `json:"path"`
-		Dir        string `json:"dir"`
-		ReleaseFDs bool   `json:"release_fds"`
-		LaunchOpt
-	}](args)
-	if p.Path == "" {
-		p.Path = "/usr/bin/siglent/SDS1000_arm.app"
-	}
-	if p.Dir == "" {
-		p.Dir = "/usr/bin/siglent"
-	}
-	if st := a.st.get(); st.TakenOver {
-		return nil, errors.New("still taken over — run untakeover first so the supervisor doesn't fight the factory app for the bus")
-	}
-	if _, err := os.Stat(p.Path); err != nil {
-		return nil, fmt.Errorf("restore-factory: %s not found: %w", p.Path, err)
-	}
-	// The agent inherited the boot app's /dev/Gpmc and FPGA-key fds and holds them for the
-	// life of the process -- across untakeover too, since untakeover only stops OUR app.  The
-	// vendor binary is not a script (it is ELF; the mount/upgrade chatter comes from inside
-	// it), and it claims the bus device after that setup phase.  While we hold the fd it
-	// cannot, which is consistent with what we see: it runs to the end of its setup and then
-	// exits without a word.  Release them first when asked, so the vendor gets the bus back.
-	if p.ReleaseFDs {
-		a.releaseBootFDs()
-	}
-	pid, err := a.launchDetached(p.Path, p.Dir, p.LaunchOpt)
-	if err != nil {
-		return nil, err
-	}
-	a.event("restore-factory", map[string]any{
-		"path": p.Path, "pid": pid, "console": p.Console,
-		"inherit": p.Inherit, "setsid": p.Setsid, "boot_env": p.BootEnv, "release_fds": p.ReleaseFDs,
-	})
-	return map[string]any{
-		"launched": p.Path, "pid": pid, "console": p.Console,
-		"inherit": p.Inherit, "setsid": p.Setsid, "boot_env": p.BootEnv, "release_fds": p.ReleaseFDs,
-		"note": "if the display does not return, reboot",
-	}, nil
-}
-
-// releaseBootFDs closes the inherited Gpmc and FPGA-key descriptors so the
-// vendor app can claim the bus. It holds tkMu (no takeover reads them
-// meanwhile) and fdMu (status and probe).
-// TRLC-LINKS: REQ-SDS-120
-func (a *Agent) releaseBootFDs() {
-	a.tkMu.Lock()
-	defer a.tkMu.Unlock()
-	a.fdMu.Lock()
-	defer a.fdMu.Unlock()
-	for name, fd := range map[string]*int{"gpmc": &a.gpmcFD, "fpga_key": &a.fpgaKeyFD} {
-		if *fd >= 0 {
-			if err := syscall.Close(*fd); err != nil {
-				a.log.Printf("restore-factory: close %s fd %d: %v", name, *fd, err)
-			} else {
-				a.log.Printf("restore-factory: released %s fd %d", name, *fd)
-			}
-			*fd = -1
-		}
-	}
-	a.gpmc = gpmc.NewReader(-1)
-}
-
+// hProbe is the read-only first-session diagnostic: it never touches the bus
+// unless asked, and never kills anything. It reports the device environment
+// (via otactl probe) so the operator can confirm it before takeover.
 // TRLC-LINKS: REQ-SDS-114
 func hProbe(a *Agent, args json.RawMessage) (any, error) {
 	p, _ := decodeArgs[struct {

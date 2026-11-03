@@ -125,7 +125,7 @@ func TestFullCommandSurfaceRoundTrip(t *testing.T) {
 		`{"cmd":"agent.restart"}`,
 		`{"cmd":"takeover","args":{"dry_run":true,"force":false}}`,
 		`{"cmd":"untakeover"}`,
-		`{"cmd":"restore-factory","args":{"dir":"/usr/bin/siglent","path":"/usr/bin/siglent/SDS1000_arm.app"}}`,
+		`{"cmd":"probe","args":{"read_gpmc":true}}`,
 		`{"cmd":"probe","args":{"read_gpmc":false}}`,
 		`{"cmd":"reboot","args":{"confirm":true}}`,
 	}

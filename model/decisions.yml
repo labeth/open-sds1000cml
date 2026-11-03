@@ -2806,3 +2806,19 @@ decisions:
     references shared between packages); the acquisition worker is the same binary started by the app.
   - A crash-looping confirmed slot no longer falls to a stand-in that only reported health; the agent's own OTA
     service is the recovery path, as it already was past the backstop.
+- id: ADR-DIAG-STICK
+  title: A diagnostics stick for other SDS1000 variants
+  status: accepted
+  date: '2026-11-03'
+  context: Porting the firmware to another population of the board (an SDS1000DL+, another variant) needs what that
+    board is and how its factory firmware drives it, and the project has no such scope. ADR-ONE-APP allows one app
+    and no second program on the scope's stick.
+  decision: The diagnostics stick is a product of its own, never on the firmware's stick - its own startup.sh, the
+    sdsdiag program and a MODE file, released as a separate zip. It runs only under the factory firmware it studies,
+    reads by default, and in its active stage traces the factory app's device syscalls while driving the factory app's
+    own settings over SCPI; it loads no FPGA image and writes nothing but the stick.
+  consequences:
+  - The owner of another variant sends one archive.
+  - The active stage clicks the scope's relays through every setting and is run only when the project asks, after the
+    passive archive showed the board.
+

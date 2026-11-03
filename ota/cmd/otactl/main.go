@@ -81,24 +81,23 @@ var localCommands = map[string]func(c *cli, rest []string) error{
 // deviceCommands are the commands that talk to one device's agent. A command
 // in neither table is sent to the agent as a raw RPC with no arguments.
 var deviceCommands = map[string]func(c *cli, dc *otactl.Client, rest []string) error{
-	"ping":            rpcNoArgs("ping"),
-	"status":          rpcNoArgs("status"),
-	"help":            rpcNoArgs("help"),
-	"commands":        rpcNoArgs("help"),
-	"untakeover":      rpcNoArgs("untakeover"),
-	"probe":           cmdProbe,
-	"logs":            cmdLogs,
-	"exec":            cmdExec,
-	"sh":              cmdSh,
-	"takeover":        cmdTakeover,
-	"restore-factory": cmdRestoreFactory,
-	"app":             cmdApp,
-	"activate":        cmdActivate,
-	"reboot":          cmdReboot,
-	"put":             cmdPut,
-	"get":             cmdGet,
-	"update-app":      cmdUpdateApp,
-	"update-agent":    cmdUpdateAgent,
+	"ping":         rpcNoArgs("ping"),
+	"status":       rpcNoArgs("status"),
+	"help":         rpcNoArgs("help"),
+	"commands":     rpcNoArgs("help"),
+	"untakeover":   rpcNoArgs("untakeover"),
+	"probe":        cmdProbe,
+	"logs":         cmdLogs,
+	"exec":         cmdExec,
+	"sh":           cmdSh,
+	"takeover":     cmdTakeover,
+	"app":          cmdApp,
+	"activate":     cmdActivate,
+	"reboot":       cmdReboot,
+	"put":          cmdPut,
+	"get":          cmdGet,
+	"update-app":   cmdUpdateApp,
+	"update-agent": cmdUpdateAgent,
 }
 
 // run parses the global flags, runs one command and returns the exit code.
@@ -219,21 +218,6 @@ func cmdTakeover(c *cli, dc *otactl.Client, rest []string) error {
 	return c.callPrint(dc, "takeover", map[string]any{
 		"dry_run": has(rest, "--dry-run"), "force": has(rest, "--force"),
 	})
-}
-
-// cmdRestoreFactory takes optional JSON choosing the console the vendor UI
-// is launched on, e.g. restore-factory '{"console":"/dev/console","setsid":true}'.
-// TRLC-LINKS: REQ-SDS-120, REQ-SDS-175
-func cmdRestoreFactory(c *cli, dc *otactl.Client, rest []string) error {
-	var rfArgs any
-	if len(rest) > 0 && rest[0] != "" {
-		var m map[string]any
-		if err := json.Unmarshal([]byte(rest[0]), &m); err != nil {
-			return usageError{fmt.Sprintf("restore-factory: args must be JSON: %v", err)}
-		}
-		rfArgs = m
-	}
-	return c.callPrint(dc, "restore-factory", rfArgs)
 }
 
 // TRLC-LINKS: REQ-SDS-117, REQ-SDS-175
@@ -643,8 +627,6 @@ COMMANDS
   sh <script...>            run a /bin/sh script on the device
   takeover [--dry-run|--force]   inherit-then-kill the factory app
   untakeover                release control (clear taken_over + disarm wd)
-  restore-factory [json]    re-launch the vendor app in place (post-test); optional
-                            {"console":"/dev/console","setsid":true,"inherit":true,"no_pgid":true}
   scpi <cmd>                raw VXI-11 SCPI to the instrument (e.g. scpi "*IDN?")
   app start|stop|restart    app lifecycle (after takeover)
   activate <A|B>            set active app slot + restart

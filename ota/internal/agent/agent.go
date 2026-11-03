@@ -60,10 +60,9 @@ type Agent struct {
 	wd    *watchdog.Device
 	log   *log.Logger
 
-	// Inherited boot descriptors (raw ints; never closed, never wrapped
-	// except by restore-factory's release). The release writes them holding
-	// tkMu and fdMu: the takeover reads them under tkMu, status and probe
-	// through bootFDs and reader.
+	// Inherited boot descriptors (raw ints; never closed, never wrapped):
+	// the takeover reads them under tkMu, status and probe through bootFDs
+	// and reader under fdMu.
 	fdMu      sync.Mutex
 	gpmcFD    int
 	fpgaKeyFD int

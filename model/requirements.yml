@@ -2177,22 +2177,17 @@ requirements:
     active/intent markers and Stop notification. Copy-mode and omitted-digest fixtures record limits. The test hook
     captures process exit; no real agent replacement or payload launch occurs.
 - id: REQ-SDS-120
-  title: Agent factory recovery controls
-  text: The instrument shall provide untakeover and factory-launch recovery controls.
+  title: Agent untakeover control
+  text: The instrument shall provide an untakeover control that hands the scope back to the factory app at the next power-on.
   status: draft
   category: functional
   sourceRefs:
   - CODE-OTA-INTERNAL-AGENT-HANDLERS-GO
-  - CODE-OTA-INTERNAL-AGENT-EXEC-GO
   appliesTo:
   - FU-OTA-AGENT
   notes: Untakeover ignores stop-request failure, clears persisted takeover flags, resets the failure count and disarms
-    the watchdog; it does not relaunch the factory program. Restore ignores argument decode errors, rejects TakenOver
-    and checks target existence. Optional descriptor release marks both retained descriptors unavailable even after
-    close failure and does not restore them if launch fails. Detached launch defaults to null stdin and inherited
-    stdout/stderr with a new process group; console, inherited stdin, session and PID-1 environment options alter
-    that behavior. No ExtraFiles list is supplied; retained-descriptor inheritance depends on existing descriptor
-    flags. A returned PID proves only Start succeeded, not factory initialization or recovery.
+    the watchdog; it does not relaunch the factory program. The factory program is not relaunched in place by any
+    control - a relaunch does not drive the scope - so it comes back only from a power-on.
   verificationMethods:
   - inspection
   - test
@@ -4503,3 +4498,63 @@ requirements:
   verificationCriteria: a 16-bit 1 kHz sine reads 1 kHz at its level with distortion under -80 dB and about 15 bits,
     one with a harmonic 40 dB under it a THD of -40 dB, a record too short says so; on the scope a bench I2S sine
     reads its frequency and level.
+- id: REQ-SDS-284
+  title: Diagnostics stick, passive stage
+  text: The diagnostics stick shall, booted under the factory firmware, record the board's kernel, devices, pin
+    multiplexing, processes, factory firmware files, FPGA version register, the factory app's settings and its screen
+    without writing anything but the stick.
+  status: draft
+  category: functional
+  sourceRefs:
+  - CODE-OTA-INTERNAL-DIAG-DIAG-GO
+  - CODE-OTA-INTERNAL-DIAG-SYSTEM-GO
+  - CODE-OTA-INTERNAL-DIAG-FIRMWARE-GO
+  - CODE-OTA-INTERNAL-DIAG-PROCS-GO
+  - CODE-OTA-INTERNAL-DIAG-FPGA-GO
+  - CODE-OTA-INTERNAL-DIAG-SCPI-GO
+  - CODE-OTA-INTERNAL-DIAG-SCREEN-GO
+  - CODE-OTA-CMD-SDSDIAG-MAIN-GO
+  appliesTo:
+  - FU-OTA-DIAG
+  verificationMethods:
+  - test
+  verificationCriteria: on an SDS1102CML+ booted cold under the factory firmware with the stick, the archive holds the
+    factory app's descriptors and maps, the version register 0x0052, the factory app's identity and settings and its
+    screen, with no collector errors.
+  notes: Only the factory fabric's plain registers are read (version, status, fill), never a sample port. Files up to
+    1 MiB are stored whole (the factory bitstream, calibration and config), larger ones by their first 4 KiB with a
+    SHA-256 of the whole.
+- id: REQ-SDS-285
+  title: Diagnostics stick, active stage
+  text: The diagnostics stick shall, when its MODE file says active, record the factory app's device syscalls while
+    it steps the factory app through every V/div, coupling, offset, bandwidth limit, timebase, trigger and acquisition
+    setting over SCPI, and then put the factory app's settings back.
+  status: draft
+  category: functional
+  sourceRefs:
+  - CODE-OTA-INTERNAL-DIAG-DIAG-GO
+  - CODE-OTA-INTERNAL-DIAG-SCPI-GO
+  - CODE-OTA-INTERNAL-DIAG-TRACE-LINUX-ARM-GO
+  - CODE-OTA-INTERNAL-DIAG-MEM-GO
+  - CODE-OTA-INTERNAL-DIAG-CLOCK-GO
+  appliesTo:
+  - FU-OTA-DIAG
+  verificationMethods:
+  - test
+  verificationCriteria: on an SDS1102CML+ booted cold under the factory firmware, the trace holds the factory app's
+    GPMC register reads and writes with each sweep step's time, and the settings read afterwards equal those before.
+  notes: The tracer is a child process; its exit detaches and resumes the factory app's threads. No FPGA image is
+    loaded and no flash is written.
+- id: REQ-SDS-286
+  title: Diagnostics archive
+  text: The diagnostics stick shall leave one archive on the stick, with a manifest of every member, the collectors'
+    errors and a summary, and a status file saying when it is done.
+  status: draft
+  category: functional
+  sourceRefs:
+  - CODE-OTA-INTERNAL-DIAG-ARCHIVE-GO
+  - CODE-OTA-INTERNAL-DIAG-DIAG-GO
+  appliesTo:
+  - FU-OTA-DIAG
+  verificationMethods:
+  - test

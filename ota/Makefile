@@ -18,7 +18,7 @@ LDFLAGS := -s -w \
 
 DIST := dist
 
-.PHONY: all agent otactl test vet dist clean
+.PHONY: all agent otactl sdsdiag diag-zip test vet dist clean
 
 all: agent otactl
 
@@ -28,6 +28,17 @@ agent:
 
 otactl:
 	CGO_ENABLED=0 go build -trimpath -ldflags "$(LDFLAGS)" -o $(DIST)/otactl ./cmd/otactl
+
+# The diagnostics stick's collector (diagstick/README.txt), for the scope.
+sdsdiag:
+	CGO_ENABLED=0 GOOS=linux GOARCH=arm GOARM=7 \
+	  go build -trimpath -ldflags "$(LDFLAGS)" -o $(DIST)/sdsdiag-arm ./cmd/sdsdiag
+
+# The diagnostics stick as a zip whose contents go on a stick's root
+# (DIAG_ZIP names it); reproducible as mkstick's.
+DIAG_ZIP ?= $(DIST)/open-sds1000cml-$(VERSION)-diagnostics.zip
+diag-zip: sdsdiag
+	./mkdiagstick.sh $(DIST)/sdsdiag-arm $(DIAG_ZIP)
 
 test:
 	go test ./...

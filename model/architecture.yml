@@ -282,6 +282,17 @@ architecture:
     prose: 'Keeps boot GPMC/key descriptors live as raw integers across app launches.'
     tags:
     - source-backed
+  - id: FU-OTA-DIAG
+    name: Diagnostics stick
+    group: FG-OTA
+    prose: 'ota/internal/diag, cmd/sdsdiag and ota/diagstick: the diagnostics stick an owner of another SDS1000 variant
+      boots under the factory firmware. A passive stage reads the kernel, sysfs, debugfs, processes, the factory
+      firmware files, the FPGA version register through the inherited descriptor, the factory app''s settings over
+      SCPI and its screen; an active stage, only when MODE asks for it, reads the SoC''s pad and GPMC configuration and
+      traces the factory app''s device syscalls while it steps the app through its settings over SCPI, then puts them
+      back. One archive on the stick holds it all.'
+    tags:
+    - source-backed
   - id: FU-OTA-GPMC
     name: Ota Gpmc
     group: FG-OTA

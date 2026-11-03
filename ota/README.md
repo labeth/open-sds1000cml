@@ -77,7 +77,7 @@ otactl power -shelly <plug-ip> cycle               # mains power-cycle through a
 ```
 
 `otactl` with no command lists them all (`exec`, `sh`, `put`, `get`, `app start|stop|restart`,
-`untakeover`, `restore-factory`, `reboot`, `discover`, `watch`, `version`) and the global flags
+`untakeover`, `reboot`, `discover`, `watch`, `version`) and the global flags
 (`-tcp`, `-nats`/`-device`, `-shelly`, `-stage`, `-timeout`). Uploads stage on the stick
 (`agent-slots/staging`), as the scope's root file system, `/tmp` included, is read-only.
 
