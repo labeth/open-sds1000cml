@@ -6,10 +6,13 @@ its factory firmware drives it, so the project can support your model (for
 example an SDS1000DL+ or another SDS1000 variant).
 
 It runs alongside the factory firmware, and at the end takes the scope over for
-a few minutes. It does not install anything and does not write to the
-oscilloscope's own memory: every file it writes is on this stick, and the FPGA
-images it loads last only until the power goes off. Switch the scope off and
-on with the stick out and it is as before.
+a few minutes. It does not install anything and writes no file of its own
+outside this stick; the FPGA images it loads last only until the power goes
+off. The factory firmware itself keeps saving its front-panel setup as it
+always does: the stick steps through the settings and puts them back, so the
+saved setup can come back slightly different (an offset rounded, for
+example). The calibration is not touched. Switch the scope off and on with
+the stick out and it runs the factory firmware as before.
 
 How to use it
 -------------
