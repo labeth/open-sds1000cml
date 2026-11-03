@@ -34,6 +34,7 @@ type fakeBoard struct {
 // newFakeBoard is the SDS1102CML+ as the probe sees it: the balls its
 // reference names low held low, the clock inputs it names high held high
 // (they take no pull-up), the others open.
+// TRLC-LINKS: REQ-SDS-288
 func newFakeBoard(pull bool) *fakeBoard {
 	f := &fakeBoard{
 		balls: probeBalls(), pull: pull, absent: map[string]bool{}, noFront: map[int]bool{}, held: map[string]bool{},
@@ -51,6 +52,7 @@ func newFakeBoard(pull bool) *fakeBoard {
 }
 
 // lane is the core and bit of a converter lane ball.
+// TRLC-LINKS: REQ-SDS-288
 func lane(b Ball) (core string, bit int, ok bool) {
 	if b.Group != "adc" {
 		return "", 0, false
@@ -61,6 +63,7 @@ func lane(b Ball) (core string, bit int, ok bool) {
 
 // coreCode is a core's code at its channel's DAC: the rails at the DAC's
 // ends, mid-scale (0x7f/0x80, every bit flipping) between.
+// TRLC-LINKS: REQ-SDS-288
 func (f *fakeBoard) coreCode(core string, alt bool) uint8 {
 	ch := int(core[len(core)-1] - '1')
 	d := f.dac[ch]
@@ -80,6 +83,7 @@ func (f *fakeBoard) coreCode(core string, alt bool) uint8 {
 }
 
 // level is ball i's level at one instant of a gate.
+// TRLC-LINKS: REQ-SDS-288
 func (f *fakeBoard) level(i int, alt bool) (v, toggles bool) {
 	b := f.balls[i]
 	if hz, ok := f.clocks[b.Ball]; ok {
@@ -103,6 +107,7 @@ func (f *fakeBoard) level(i int, alt bool) (v, toggles bool) {
 	return f.pull && b.Group != "clkin", false // open: the pull-up, or low
 }
 
+// TRLC-LINKS: REQ-SDS-288
 func (f *fakeBoard) Read(plane uint8, sel uint16) (uint16, error) {
 	if plane == planeCS3 {
 		return cfgNSTATUS | cfgCONFDONE, nil
@@ -150,6 +155,7 @@ func (f *fakeBoard) Read(plane uint8, sel uint16) (uint16, error) {
 	return 0, nil
 }
 
+// TRLC-LINKS: REQ-SDS-288
 func (f *fakeBoard) Write(plane uint8, sel, val uint16) error {
 	if plane == planeCS3 {
 		switch sel {
@@ -191,6 +197,7 @@ func (f *fakeBoard) Write(plane uint8, sel, val uint16) error {
 }
 
 // TestProbeBallsMatchTheImage keeps the census list equal to the FPGA's.
+// TRLC-LINKS: REQ-SDS-288
 func TestProbeBallsMatchTheImage(t *testing.T) {
 	b, err := os.ReadFile("../../../fpga/images/probe/balls.txt")
 	if err != nil {
@@ -223,6 +230,7 @@ func TestProbeBallsMatchTheImage(t *testing.T) {
 }
 
 // censusPair is the census of both builds on boards set up by setup.
+// TRLC-LINKS: REQ-SDS-288
 func censusPair(setup func(*fakeBoard)) (Census, Census) {
 	nap := func(time.Duration) {}
 	var out [2]Census
@@ -235,6 +243,7 @@ func censusPair(setup func(*fakeBoard)) (Census, Census) {
 }
 
 // verdictOf is the verdict of part.
+// TRLC-LINKS: REQ-SDS-288
 func verdictOf(t *testing.T, vs []Verdict, part string) Verdict {
 	t.Helper()
 	for _, v := range vs {
@@ -248,6 +257,7 @@ func verdictOf(t *testing.T, vs []Verdict, part string) Verdict {
 
 // TestCensusOfTheFullBoard: every converter, both front ends and the
 // reference clock of the SDS1102CML+ are present.
+// TRLC-LINKS: REQ-SDS-288
 func TestCensusOfTheFullBoard(t *testing.T) {
 	open, pull := censusPair(func(*fakeBoard) {})
 	if open.Error != "" || pull.Error != "" {
@@ -280,6 +290,7 @@ func TestCensusOfTheFullBoard(t *testing.T) {
 // TestCensusFindsWhatIsMissing: a board without converter pair E3, without
 // channel 2's front end, and with something on a ball the SDS1102CML+
 // leaves open.
+// TRLC-LINKS: REQ-SDS-288
 func TestCensusFindsWhatIsMissing(t *testing.T) {
 	open, pull := censusPair(func(f *fakeBoard) {
 		f.absent["E3.CH1"], f.absent["E3.CH2"] = true, true
@@ -305,6 +316,7 @@ func TestCensusFindsWhatIsMissing(t *testing.T) {
 }
 
 // TestCensusNeedsTheProbeImage: another image answering is no census.
+// TRLC-LINKS: REQ-SDS-288
 func TestCensusNeedsTheProbeImage(t *testing.T) {
 	cs := runCensus(regFunc(func(uint8, uint16) (uint16, error) { return 0x0052, nil }), 140, func(time.Duration) {})
 	if !strings.Contains(cs.Error, "does not answer") {
@@ -319,11 +331,15 @@ func TestCensusNeedsTheProbeImage(t *testing.T) {
 // regFunc is a read-only regBus.
 type regFunc func(uint8, uint16) (uint16, error)
 
+// TRLC-LINKS: REQ-SDS-288
 func (r regFunc) Read(p uint8, s uint16) (uint16, error) { return r(p, s) }
-func (r regFunc) Write(uint8, uint16, uint16) error      { return errors.New("read only") }
+
+// TRLC-LINKS: REQ-SDS-288
+func (r regFunc) Write(uint8, uint16, uint16) error { return errors.New("read only") }
 
 // TestConfigureShiftsLSBFirst: nCONFIG low then high, each byte's bits LSB
 // first on DATA0 with a DCLK pulse, 128 clocks after, and CONF_DONE waited.
+// TRLC-LINKS: REQ-SDS-288
 func TestConfigureShiftsLSBFirst(t *testing.T) {
 	f := newFakeBoard(false)
 	rbf := make([]byte, 1024)
@@ -354,6 +370,7 @@ func TestConfigureShiftsLSBFirst(t *testing.T) {
 // TestTakeoverGate: the gate passes only with the poke done and the factory
 // app running on, the configuration port configured, an EP4CE10 factory
 // image and the stick's files.
+// TRLC-LINKS: REQ-SDS-288
 func TestTakeoverGate(t *testing.T) {
 	good := takeoverInput{
 		sweepDone: true, alive: true, cfg: 0x00c2, factoryRBF: []int64{factoryRBFLen},
@@ -378,6 +395,7 @@ func TestTakeoverGate(t *testing.T) {
 
 // TestKinIsTheParentChain: this test's parent is kin, a missing process is
 // not.
+// TRLC-LINKS: REQ-SDS-288
 func TestKinIsTheParentChain(t *testing.T) {
 	self := os.Getpid()
 	if !kin(self, os.Getppid()) {
@@ -391,6 +409,7 @@ func TestKinIsTheParentChain(t *testing.T) {
 // TestCensusOfTheSDS1102CMLPlus: the census the takeover stage took on an
 // SDS1102CML+ booted cold under the factory firmware judges every part
 // present.
+// TRLC-LINKS: REQ-SDS-288
 func TestCensusOfTheSDS1102CMLPlus(t *testing.T) {
 	var cs [2]Census
 	for i, b := range []string{"probe", "probepull"} {

@@ -24,6 +24,14 @@
 //   0x40+c   RW channel c's ball index
 //   0x50+w   the balls 16w..16w+15 ever 0; 0x60+w ever 1; 0x70+w the live level
 `timescale 1ns/1ps
+// build.ts defines both from balls.txt and the build; these are balls.txt's
+// count and the build without the pull-ups.
+`ifndef BALLS
+`define BALLS 140
+`endif
+`ifndef PULL
+`define PULL 1'b0
+`endif
 
 // TRLC-LINKS: REQ-SDS-288
 module probe_top(
@@ -32,6 +40,7 @@ module probe_top(
 );
  localparam N=`BALLS;
  localparam CH=8;
+ localparam PULLED=`PULL;
  wire [N-1:0] in={mclk_in,ball};
 
  wire wc,rp,drive;wire [7:0] ws,rs;wire [15:0] wd;wire [1:0] aux;reg [15:0] rd;
@@ -112,7 +121,7 @@ module probe_top(
   rd=16'h0000;
   case(rs)
    8'h12:rd=16'h5052;
-   8'h13:rd={N[7:0],7'b0,`PULL};
+   8'h13:rd={N[7:0],7'b0,PULLED};
    8'h14:rd={14'b0,locked,running|clear};
    8'h16:rd=gate_len[15:0];
    8'h17:rd={8'b0,gate_len[23:16]};

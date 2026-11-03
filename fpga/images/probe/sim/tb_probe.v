@@ -26,12 +26,13 @@ module tb;
  // Ball 0 a 10.6 MHz clock, ball 1 held high, ball 2 held low, ball 3 toggled once.
  always @* ball[0]=fast;
  reg [15:0] v,lo,hi;
+ localparam [7:0] NB=`BALLS;
  integer edges,highs,k;
  initial begin
   ball[1]=1;ball[2]=0;ball[3]=0;
   #200;
   host.read(7'h12,v);if(v!==16'h5052)$fatal(1,"identity %h",v);
-  host.read(7'h13,v);if(v!=={8'd`BALLS,8'h01})$fatal(1,"balls/pull %h",v);
+  host.read(7'h13,v);if(v!=={NB,8'h01})$fatal(1,"balls/pull %h",v);
   #600;
   host.read(7'h14,v);if(v[1]!==1'b1)$fatal(1,"pll not locked %h",v);
   if(ep!==5'b0 || en!==5'b0)$fatal(1,"a leg runs while off");
