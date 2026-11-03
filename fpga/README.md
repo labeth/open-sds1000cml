@@ -1,18 +1,20 @@
 # FPGA images
 
-Eight images for the EP4CE10F17C8. The app embeds them and loads the one a
-feature needs; `general` is the power-on image. Every trigger is decided in
-the FPGA; the app only places the trigger point on the event.
+Nine images for the EP4CE10F17C8. The app embeds them all (`make app` in
+[`../app`](../app/README.md)) and loads the one a feature needs; `general` is
+the power-on image. Every trigger is decided in the FPGA; the app only places
+the trigger point on the event.
 
 | Image | Adds |
 |---|---|
 | `general` | UART, I²C and SPI triggers; precision decimation |
 | `packet` | ARINC 429, CAN and FlexRay triggers; box decimation |
-| `frame` | MIL-1553, SENT and USB low-speed triggers; box decimation |
+| `frame` | MIL-1553, SENT and USB (low and full speed) triggers; box decimation |
 | `line` | Manchester trigger; box decimation |
-| `qualify` | pulse width, slope time and video line triggers, and the zone trigger (four zones around the edge); the symbol trigger for buses of timed pulses (LIN, DMX512, Modbus, 1-Wire, WS281x, DHT, CEC, J1850, IR, DALI, USB PD, S/PDIF, PS/2, SWD, MDIO, Wiegand); precision decimation, or picking on asking |
+| `qualify` | pulse width, slope time and video line triggers, and the zone trigger (four zones around the edge); the symbol trigger for the buses of timed pulses (every protocol but the ten above and MIDI); precision decimation, or picking on asking |
 | `stacking` | FPGA super-resolution stacking engine |
-| `stream` | continuous capture for gap-free roll: decimated or peak-detect (bucket min/max) words, buffered in the SRAM ("drum") and streamed to the host through two ping-pong banks |
+| `stream` | continuous capture for gap-free roll and SOUND: decimated or peak-detect (bucket min/max) words, buffered in the SRAM ("drum") and streamed to the host through two ping-pong banks |
+| `bits` | the stream image with digital words (each line sliced at its level, sixteen periods a word) for the decoded stream of the symbol trigger's buses, and the record as an analog history ring beside it |
 | `fast` | SPI (to a 125 MHz clock), UART (to 62.5 MBd) and I²C (to high-speed mode) decoded and triggered on the samples, with the sequence trigger; decimation by picking |
 
 Every trigger fires at every timebase: the edge trigger, the protocol
@@ -40,31 +42,29 @@ The board around the FPGA (balls, clocks, ADCs, SRAM, GPMC bus, panel,
 configuration) is specified in
 [`../specs/12-fpga-board-interface.md`](../specs/12-fpga-board-interface.md).
 
-## Stream image
+## Stream images
 
-The SRAM has no address bus, only a forward-stepping counter, so
-`images/stream/stream_drum.v` serves it like a drum: words gather in an
-on-chip FIFO, are written as bursts (16 junk words, data, a gap) where the
-counter passes the write head, and each burst is read back whole into a host
-bank where it passes the read head; descriptors record each burst. The
-control and its block RAMs run at 125 MHz (block RAM cannot run at 250 MHz);
-thin register stages on the 250 MHz clock pair words with the transport.
+The SRAM has no address bus, only a forward-stepping counter (which its
+enable held low clears), so `images/stream/stream_drum.v` serves it like a
+drum (ADR-STREAM-DRUM): while the host keeps up, words go from an on-chip
+FIFO straight into a free host bank; when the host holds both banks they
+spill into a ring in the SRAM, written as bursts (16 junk words, data, a gap)
+where the counter passes the write head and read back whole into a host bank
+where it passes the read head, the counter rewinding rather than riding a lap
+of the whole SRAM. Descriptors record each burst. The control and its block
+RAMs run at 125 MHz (block RAM cannot run at 250 MHz); thin register stages
+on the 250 MHz clock pair words with the transport. A lost word raises a
+sticky fault (register 32 names its source), never a silent gap.
 
-Measured on the instrument (every word of a counter source
-checked): loss-free at decimation ×512 (978,000 words/s, 3.9 MB/s) and
-×1024; at ×1024 a single 900 ms host stall is absorbed and a 1.2 s stall is
-reported as a fault. Reading back what was just written costs one lap of
-the counter (2.1 ms), so the FIFO must hold a lap of input: ×256 (4.2k words
-a lap, 7.8 MB/s) is beyond both the FIFO and the GPMC bus (about 5.1 MB/s).
-
-A stream need not step in powers of two: the peak bucket and the digital
-period take a pace of any whole number of raw words (4 ns; register 29 the
-low 16 bits, 30 the high 4, latched while idle; register 65 reads 0x5241 and
-66/67 the pace back; 0 keeps the decimation's power of two), so a stream's
-word rate runs up to what the host bus drains. The counter source's ramp
-takes its own pace, a word every N core clocks (register 46, read back at
-68; 0 paces it by the decimator), to measure the bus's ceiling with every
-word checked.
+The stream's word rate is bounded by what the host bus drains through its
+pauses: the app plans no stream past `decode.StreamBusWords` (2.61M words a
+second). A stream need not step in powers of two: the peak bucket and the
+digital period take a pace of any whole number of raw words (4 ns; register
+29 the low 16 bits, 30 the high 4, latched while idle; register 65 reads
+0x5241 and 66/67 the pace back; 0 keeps the decimation's power of two). The
+counter source's ramp takes its own pace, a word every N core clocks
+(register 46, read back at 68; 0 paces it by the decimator), to measure the
+bus's ceiling with every word checked.
 
 While the drum streams, the trigger's edge comparator keeps running on the
 decimated words: `images/stream/stream_marks.v` counts the stream's words and
@@ -73,6 +73,19 @@ the trigger channel (register 19 bits 3 and 4 ask for them; registers 54..60
 read the capability 0x4D01, each direction's count and its newest word). The
 SOUND cycle view and its gate-armed envelope trigger on these marks
 (ADR-SOUND): the FPGA decides each crossing, the host only places it.
+
+The `bits` image (ADR-STREAM-BITS) carries `images/stream/stream_bits.v` in
+the peak reducer's place (the two do not fit together at 250 MHz): each
+channel's raw samples pass a Schmitt comparator at its line's level, and a
+period's bit is the level before it flipped when any sample in the period
+differs, so a pulse shorter than a period still shows; sixteen periods a line
+make a word. Asked by register 19 bit 5 it also runs ring mode
+(ADR-STREAM-RING, `images/stream/ring_stamp.v`): the stream stays on chip
+and the SRAM holds the record as an untriggered ring of precision words at
+its own decimation (register 21), each write stamped with its raw-word time
+on the stream's clock; the host's stop freezes it (registers 62/63 the
+newest word's time, 61 reads 0x5247), and the app shows the frame the
+decoder stopped on in its history.
 
 Board facts the drum relies on (also modelled in `images/stream/sim/`): read
 words arrive one pulse late (READ_DELAY 1), so a fresh read starts 17 words
@@ -151,9 +164,6 @@ the same edges, events and matches on the same clocks;
 `images/fast/sim/tb_top_fast.v` checks the image's top level (registers over
 GPMC, both channels, the events and the trigger) against the models.
 
-The fast image: 8,825 logic elements of 10,320 (86 %), 327,520 memory bits,
-seed 2, worst internal slack 0.121 ns.
-
 ## Qualify image
 
 `images/qualify/qual_trigger.v` measures a pulse's width between edges at
@@ -173,10 +183,12 @@ point back onto the edge. Registers 21, 22, 24 and 26-28 hold the qualifier,
 83-92 and 69-73 the zones; register 74 reads 0x5154 and 75 the kinds.
 
 `images/qualify/symbol_trigger.v` (ADR-SYMBOL-TRIGGER) triggers the serial
-buses of timed pulses: LIN, DMX512 and Modbus RTU characters after their
-break or gap, 1-Wire, WS281x, DHT, HDMI-CEC, J1850 VPW, IR NEC and SIRC pulse
-widths, RC-5, RC-6 and DALI Manchester, USB Power Delivery and S/PDIF
-biphase mark, PS/2, SWD, MDIO and Wiegand clocked lines. On the 125 MHz
+buses of timed pulses, every protocol without a receiver of its own:
+characters after a break or gap (LIN, DMX512, Modbus RTU), pulse widths
+(1-Wire, WS281x, DHT, CEC, J1850, the IR codes), Manchester and biphase mark
+(RC-5, RC-6, DALI, USB Power Delivery, S/PDIF), clocked lines (PS/2, SWD,
+MDIO, SD card, PDI, cJTAG) and the rest of the protocol list in the top
+[README](../README.md#serial-protocols). On the 125 MHz
 receiver clock, line A (the trigger channel at register 7's level) and line B
 (the other channel at register 59's) are sliced from the raw samples. Each run
 of the run line (A, or A and B) counts floor((W-1)/2^p) prescaled clocks and,
@@ -195,34 +207,40 @@ phase and K, 98 the table-loaded flag, 99 the table address, 100 an entry,
 101-104 the pattern, 105-108 the mask); register 76 reads 0x5359 and 78
 counts the matches. The app's Go model (`app/internal/decode/symbol_trigger.go`)
 is the block clock for clock (`tb_symbol_trigger.v`), and
-`tb_top_qualify.v` checks it through the image's top level. The qualify
-image: 9,124 logic elements of 10,320 (88 %), seed 20, worst internal slack 0.028 ns.
+`tb_top_qualify.v` checks it through the image's top level.
 
 ## Source layout
 
 | Path | Used by |
 |---|---|
 | `common/` | every image: acquisition top (`top.v`, image features selected by defines), SRAM record and transport, ADC unpack and interleave, front-panel scan, clocks, GPMC slave, ADC lane inputs |
-| `trigger/` | general, packet, line, qualify and fast: decoded-event queue and transport, sequence trigger, sample timeline, envelope recall, and the shared Quartus project (`project.qsf`, `project.sdc`) |
-| `images/<image>/` | that image only: its decoders or engine (stacking also has its own Quartus project; stream and qualify also use the general image's precision decimator) |
+| `trigger/` | every image but stacking: decoded-event queue and transport, sequence trigger, sample timeline, envelope recall, and the shared Quartus project (`project.qsf`, `project.sdc`) |
+| `images/<dir>/` | that image's decoders or engine; `frame` takes its sources from `packet/` and `line/`, `bits` from `stream/` (stacking also has its own Quartus project; stream, bits and qualify also use the general image's precision decimator) |
 | `*/sim/` | testbenches for the sources beside them |
 | `bitstreams/` | the shipping images and `images.json` (seed and sha256 of each) |
 
 ## Build
 
 ```sh
-node --experimental-strip-types fpga/build.ts --image=general|packet|line|qualify|stacking|stream|fast [--seed=N] [--prepare-only] [--install]
+node --experimental-strip-types fpga/build.ts --image=general|packet|frame|line|qualify|stacking|stream|bits|fast [--seed=N] [--prepare-only] [--install]
 ```
 
 Builds into `fpga/out/<image>/` with Quartus 21.1 Lite (`QUARTUS_BIN`, default
 `~/intelFPGA_lite/21.1/quartus/bin`). A build publishes only if timing passes;
 the stacking image also checks ADC input registers, pin placement and memory.
-The default seed is the shipping one, so a plain build reproduces the
-committed bitstream bit for bit. `--install` copies a passing build into
-`bitstreams/` and updates `images.json`.
+Each build writes `image.json` beside its `bench.rbf` (seed, sha256, worst
+internal slack, the inputs' hashes). The default seed is the shipping one
+(`bitstreams/images.json`), so a plain build reproduces the committed
+bitstream bit for bit. `--install` copies a passing build into `bitstreams/`
+and updates `images.json`. One Quartus flow runs at a time (a lock in
+`/tmp`). The images ship compressed (about half an uncompressed image's 368,011
+bytes), which halves an image switch.
 
 ## Simulate
 
-`fpga/sim.sh` runs the self-checking testbenches with iverilog. Testbenches
-driven by fixtures from the app's Go reference models run in the app's
-`go test` (internal/decode, internal/superres, internal/sramcapture).
+`fpga/sim.sh` runs the self-checking testbenches under `*/sim` and
+`images/*/sim` with iverilog. Testbenches a Go test names (driven by fixtures
+from the app's Go reference models, and the images' top levels) run in the
+app's `go test` instead (internal/decode, internal/engine, internal/superres,
+internal/sramcapture); the top-level simulations (`*TopRTL`) take minutes each
+and run in CI's rtl-sim lane.

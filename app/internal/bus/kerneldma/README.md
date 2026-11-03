@@ -1,66 +1,37 @@
-# Experimental kernel EDMA foundation
+# Experimental kernel EDMA driver
 
-This is experimental and is not used by the normal application. The full
-`acq_dma` module has now been exercised through the inherited GPMC descriptor,
-including synchronous SRAM recall and a background coherent-RAM stream queue.
-Long /256 and /512 streams still overrun the FPGA transfer banks; this is not
-a qualified continuous capture path. See `validation/2026-09-14-kernel-stream/`.
+Experimental; the app does not load or use it (it drains the FPGA with the user-space EDMA path and
+[`../dcinv`](../dcinv/README.md)). `../kernel_dma_linux.go` (`EnableKernelDMA`, `StartKernelStream`)
+is its Go side.
 
-## Verified foundation
+* `acq_dma_test.c` (`acq_dma_test.ko`, prebuilt): a one-shot RAM-only check of the running kernel's
+  EDMA API. It allocates two coherent buffers, requests EDMA channel 40, transfers a 16 KiB pattern,
+  waits for the completion interrupt, compares every byte and frees everything; a successful `insmod`
+  means it passed. It touches no GPMC descriptor and no FPGA.
+* `acq_dma.c` (built only with `EXPERIMENTAL_GPMC_DMA=1`): the `/dev/acq_dma` drain. It binds a
+  reference to the app's inherited GPMC fd (it never opens or closes GPMC) and offers synchronous
+  SRAM recall and a background coherent-RAM stream queue. Long streams at decimation 256 and 512
+  overran the FPGA's transfer banks: it is not a qualified continuous capture path.
 
-The one-shot test allocates two coherent RAM buffers, requests EDMA channel 40
-through the kernel API, transfers a nontrivial 16 KiB pattern, waits for the
-completion interrupt, compares every byte, then frees both channel and buffers.
-A successful insmod proves the test passed; any allocation, transfer, timeout,
-status or comparison error fails module initialization. It has no GPMC accesses
-and never opens or closes a GPMC descriptor. Three subsequent unload/reload
-cycles also passed, followed by a successful final unload.
+## Build
 
-Test module SHA256:
-`896b2c298937b9843ade81005b59c10ba3fb0335a3d6f3ccdccf3fbdf303b062`.
-All device staging was under `/dev` (RAM). The currently loaded FPGA remains the
-experimental 8192-word-buffer revision 11 image. No persistent internal writes.
+Against Linux 3.2 headers (linux-3.2 from kernel.org; `edma-3.2.h` is the GPLv2 TI DaVinci EDMA
+header of that release), with an ARM GCC 4.9 such as the Android NDK/AOSP prebuilt
+`arm-linux-androideabi-4.9`:
 
-## Build compatibility
+```sh
+make -C <linux-3.2> M=$PWD ARCH=arm CROSS_COMPILE=<prefix> modules   # EXPERIMENTAL_GPMC_DMA=1 adds acq_dma.ko
+```
 
-Source headers: Linux 3.2 from
-https://cdn.kernel.org/pub/linux/kernel/v3.x/linux-3.2.tar.xz.
-The copied `edma-3.2.h` is the GPLv2 TI DaVinci EDMA header from that release.
-Compiler: the Android NDK/AOSP prebuilt ARM GCC 4.9
-(`prebuilts/gcc/linux-x86/arm/arm-linux-androideabi-4.9/bin/arm-linux-androideabi-gcc`).
-Kernel work directory: `/tmp/acq-kernel-build/linux-3.2`.
+The kernel tree must match the unit's: after `oldconfig`/`modules_prepare`, set `UTS_RELEASE` in
+`include/generated/utsrelease.h` to `"3.2.0+"` and `MODULE_ARCH_VERMAGIC_ARMVSN` in
+`arch/arm/include/asm/module.h` to `"ARMv7 "`, build the host tools with
+`HOSTCFLAGS="-fcommon -Wno-error"`, and disable `CONFIG_SECURITY` so `file.private_data` sits at
+offset 104 (`acq_dma.c` checks the file and misc-device offsets it uses with `BUILD_BUG_ON`). The
+symbol CRCs come from the running kernel's CRC table (the saved compressed kernel image does not
+match the running one).
 
-Use the archived `kernel.config` and `Module.symvers` in
-`validation/2026-09-14-kernel-dma/`. After oldconfig/modules_prepare, set
-`include/generated/utsrelease.h` to `#define UTS_RELEASE "3.2.0+"` and set
-`MODULE_ARCH_VERMAGIC_ARMVSN` in `arch/arm/include/asm/module.h` to `"ARMv7 "`.
-Build host tools with `HOSTCFLAGS="-fcommon -Wno-error"`.
-Build modules using the normal kernel `make -C KDIR M=THIS_DIRECTORY ARCH=arm
-CROSS_COMPILE=... modules` command. Default builds only the RAM self-test.
-`EXPERIMENTAL_GPMC_DMA=1` additionally builds the experimental stream driver.
+`-fno-pic -fno-pie` (in the Makefile) is essential: without it the compiler emits `R_ARM_REL32`,
+which Linux 3.2's ARM module loader rejects.
 
-`-fno-pic -fno-pie` is essential: the Android compiler otherwise emits
-R_ARM_REL32, which Linux 3.2's ARM loader does not handle. The initial test
-module was rejected as invalid format before initialization. The corrected
-module uses only supported relocations. Its vermagic, 328-byte module structure,
-init offset 0xbc and exit offset 0x140 match the saved vendor module. The older
-dcinv module's exit offset differs; it remains marked permanent on the device.
-
-## CRC evidence and limits
-
-The saved compressed kernel image did not match running symbol addresses and
-was rejected as a CRC source. The running `/proc/kallsyms` locates its CRC table
-at virtual c037a40c..c037e8dc. A read-only RAM helper mapped physical
-8037a000..8037f000. It extracted 4404 CRCs; all 174 comparable saved-module CRCs
-matched. Fourteen other saved CRCs refer to other loadable modules.
-
-Fresh genksyms probes match the kernel's completion, mutex and five used EDMA
-API signatures. The device/file-related probes differ, so a matching imported
-CRC alone must not be taken as proof of those structure layouts. The loaded
-self-test uses a null device pointer and no file/device structures. Its used
-synchronization and EDMA structures have matching probe CRCs. For the full drain, subsequent runtime/vendor disassembly checked the used
-file and misc-device offsets, now enforced by BUILD_BUG_ON. Disable
-CONFIG_SECURITY to match file.private_data at offset 104; the newer config is
-archived in `validation/2026-09-14-kernel-stream/kernel.config`. The old config
-and self-test binary remain historical evidence. Matching these used offsets
-and successful tests do not establish every possible kernel ABI interaction.
+Loading a module is volatile (RAM only); a power cycle clears it.

@@ -10,7 +10,17 @@ The documentation of the firmware: an engineering model (schema version 2), with
 | `architecture.yml` | functional units, hardware items and interfaces (`ENGMODEL-OWNER-UNIT` in the code) |
 | `behavior.yml` | runtime flows |
 | `views.yml` | architecture views |
-| `catalog.yml`, `compliance.yml`, `assurance.yml` | supporting catalogues and assurance records |
+| `catalog.yml`, `assurance.yml`, `compliance.yml` | supporting catalogue and assurance records (compliance is empty) |
+
+Every source file names its unit (`ENGMODEL-OWNER-UNIT`) and every function the requirements it
+serves (`TRLC-LINKS`). CI validates the model and those links across the repository with `engdoc` from
+[engineering-model-go](https://github.com/labeth/engineering-model-go), at the commit pinned in
+`.github/workflows/ci.yml`:
+
+```sh
+engdoc --model model/engmod.yml --requirements model/requirements.yml \
+  --design model/views.yml --code-root .. --out /tmp/ARCHITECTURE.adoc
+```
 
 Changes to behaviour go through the model first: record the decision in
 `decisions.yml`, then change the code.
