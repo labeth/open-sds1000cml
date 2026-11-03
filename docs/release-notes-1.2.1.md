@@ -14,10 +14,12 @@ byte anywhere.
   the board). Booted under the factory firmware it installs nothing and writes only to the stick: it
   leaves one archive with the scope's processor, kernel, devices and pin multiplexing, the factory
   app's devices and memory map, the factory firmware files (with the FPGA image and calibration), the
-  factory app's settings and its screen. Its `README.txt` says how to use it and what to send. An
-  active stage, run only when the project asks, also records which registers the factory firmware
-  writes for each setting while the stick steps the scope through them, and then puts the settings
-  back. It was run on an SDS1102CML+ booted cold under the factory firmware.
+  factory app's settings and its screen. Then, if a gate finds the scope is one it was made for (an
+  AM335x running the SDS1000 factory app, the FPGA answering, a Siglent SDS1000 identity), an active
+  stage records which FPGA registers the factory firmware writes for each setting while the stick
+  steps the scope through them, summarises them as a register map, and puts the settings back. Its
+  `README.txt` says how to use it and what to send. Both stages were run on an SDS1102CML+ booted
+  cold under the factory firmware.
 * **The release rebuilds byte for byte.** The binaries carry no VCS stamp, so a checkout, a worktree
   or a plain copy of the tag build the same files as the release.
 * **The OTA agent's restore-factory command is gone.** It relaunched the factory app in place, which
@@ -32,5 +34,5 @@ the app and the agent are the same apart from the removed command.
 ## Known limitations
 
 As in [1.2](release-notes-1.2.md#known-limitations). The diagnostics stick's active stage keeps the
-scope slow to answer its keys for about fifteen minutes, and stops at 100 ms/div: traced at 1 s/div
+scope slow to answer its keys for about twenty minutes, and stops at 100 ms/div: traced at 1 s/div
 the factory app of an SDS1102CML+ exits.

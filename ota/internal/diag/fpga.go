@@ -21,12 +21,12 @@ var plainRegs = []uint16{gpmc.SelVersion, gpmc.SelStatus, gpmc.SelStatus + 1, gp
 // /dev/Gpmc descriptor the stick's shell inherited (a fresh open faults),
 // the fill counter a few times to show whether acquisition runs.
 // TRLC-LINKS: REQ-SDS-284
-func collectFPGA(a *Archive) string {
+func collectFPGA(a *Archive) (summary string, ver uint16, ok bool) {
 	var b strings.Builder
 	fd := fdinherit.Find("/dev/Gpmc")
 	fmt.Fprintf(&b, "inherited /dev/Gpmc fd: %d\n", fd)
 	fmt.Fprintf(&b, "inherited /dev/fpga_key fd: %d\n", fdinherit.Find("/dev/fpga_key"))
-	summary := "no inherited /dev/Gpmc"
+	summary = "no inherited /dev/Gpmc"
 	if fd >= 0 {
 		r := gpmc.NewReader(fd)
 		for _, sel := range plainRegs {
@@ -34,6 +34,7 @@ func collectFPGA(a *Archive) string {
 			fmt.Fprintf(&b, "CS1 0x%02x = 0x%04x %v\n", sel, v, errText(err))
 			if sel == gpmc.SelVersion {
 				summary = fmt.Sprintf("version register 0x%04x (0x%04x on the SDS1102CML+)", v, gpmc.VersionMagic)
+				ver, ok = v, err == nil
 			}
 		}
 		for range 5 {
@@ -43,7 +44,7 @@ func collectFPGA(a *Archive) string {
 		}
 	}
 	a.AddText("fpga/registers.txt", b.String())
-	return summary
+	return summary, ver, ok
 }
 
 // errText is err's text, or "" for nil.

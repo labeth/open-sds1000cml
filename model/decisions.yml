@@ -2819,6 +2819,6 @@ decisions:
     own settings over SCPI; it loads no FPGA image and writes nothing but the stick.
   consequences:
   - The owner of another variant sends one archive.
-  - The active stage clicks the scope's relays through every setting and is run only when the project asks, after the
-    passive archive showed the board.
+  - The stick's default auto mode runs the active stage after the passive one only when a gate finds the scope is one
+    it was made for; passive runs only the read-only stage.
 

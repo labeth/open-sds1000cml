@@ -13,30 +13,39 @@ How to use it
 -------------
 1. Format a USB stick as MBR + FAT32 (one partition) and extract this zip onto
    its root, so that startup.sh and the sds-diag folder are at the top.
-2. With the scope off, plug the stick in, power the scope on and leave it for
-   three minutes. The scope boots and works as usual meanwhile.
+2. With the scope off and nothing on the probes, plug the stick in, power
+   the scope on and leave it until sds-diag-status.txt says DONE (about 25
+   minutes; see "What it does" below).
 3. Turn the scope off and take the stick out. On the stick you find:
-     sds-diag-<mac>-passive-1.tar.gz   the file to send
-     sds-diag-<mac>-passive-1.txt      a short summary
+     sds-diag-<mac>-auto-1.tar.gz      the file to send
+     sds-diag-<mac>-auto-1.txt         a short summary
      sds-diag-status.txt               what it did (ends with DONE)
 4. Send the .tar.gz to the project, privately (an issue on
    https://github.com/labeth/open-sds1000cml/issues says how). It holds copies
    of your scope's firmware and calibration files.
 
-The active stage (only when the project asks for it)
-----------------------------------------------------
-Once the project has looked at the first file, it may ask for the active
-stage. It records which registers the factory firmware writes for each
-setting, while the stick steps the scope through its settings by itself:
-every V/div on both channels, couplings, offsets, bandwidth limit,
-timebases, trigger and acquisition modes. The relays click, the screen
-changes and the scope answers its keys slowly for about fifteen minutes
-(never more than twenty-five); then it puts your settings back. Leave it
-alone until sds-diag-status.txt says DONE: switching off earlier loses the
-file and leaves your settings changed.
+What it does, in one boot
+-------------------------
+sds-diag/MODE says how far it goes. It comes set to "auto":
 
-To run it, open sds-diag/MODE on the stick in a text editor, replace
-"passive" with "active", save, and repeat steps 2-4 with the scope's inputs
-unconnected (nothing on the probes). The file is then named ...-active-1.tar.gz.
+1. The read-only stage (about a minute): the board's processor, kernel,
+   devices and pin multiplexing, the factory app's devices and memory map,
+   the factory firmware files (with the FPGA image and the calibration), the
+   factory app's settings and its screen.
+2. A check that the scope is one the next stage was made for: an AM335x
+   running the SDS1000 factory app, the FPGA answering a register read, a
+   Siglent SDS1000-series identity, settings answered in the expected form.
+   If any check fails it stops here, and the summary says which one.
+3. The active stage: it records which FPGA registers the factory firmware
+   writes for each setting, while the stick steps the scope through every
+   V/div on both channels, couplings, offsets, bandwidth limit, timebases up
+   to 100 ms/div, trigger and acquisition modes. The relays click, the screen
+   changes and the scope answers its keys slowly for about twenty minutes
+   (never more than twenty-five); then it puts your settings back.
 
-Change MODE back to "passive" afterwards.
+Leave the scope alone until sds-diag-status.txt says DONE: switching off
+earlier loses the file and can leave your settings changed. Have nothing
+connected to the probes.
+
+To run only the read-only stage, replace "auto" in sds-diag/MODE with
+"passive" in a text editor before you boot.

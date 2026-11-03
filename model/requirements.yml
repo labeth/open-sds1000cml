@@ -4545,6 +4545,24 @@ requirements:
     GPMC register reads and writes with each sweep step's time, and the settings read afterwards equal those before.
   notes: The tracer is a child process; its exit detaches and resumes the factory app's threads. No FPGA image is
     loaded and no flash is written.
+- id: REQ-SDS-287
+  title: Diagnostics gate before the active stage
+  text: The instrument shall, from the diagnostics stick in its auto mode, run the active stage only when the passive
+    stage found an AM335x running the SDS1000 factory app on /dev/Gpmc, an FPGA register read through the inherited
+    descriptor, a Siglent SDS1000-series identity and settings answered in the form the sweep restores, and say which
+    check failed otherwise.
+  status: draft
+  category: functional
+  sourceRefs:
+  - CODE-OTA-INTERNAL-DIAG-GATE-GO
+  - CODE-OTA-INTERNAL-DIAG-DIAG-GO
+  appliesTo:
+  - FU-OTA-DIAG
+  verificationMethods:
+  - test
+  verificationCriteria: an SDS1102CML+ as the passive stage saw it passes whatever its FPGA version; another CPU, no
+    factory app, no /dev/Gpmc, an unreadable FPGA, another identity or headerless answers each stop the gate and are
+    named.
 - id: REQ-SDS-286
   title: Diagnostics archive
   text: The instrument shall, from the diagnostics stick, leave one archive on the stick with a manifest of every

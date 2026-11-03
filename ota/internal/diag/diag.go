@@ -28,8 +28,12 @@ import (
 	"github.com/labeth/open-sds1000cml/ota/internal/vxi11"
 )
 
-// The modes a stick runs in: MODE on the stick names one.
+// The modes a stick runs in: MODE on the stick names one. Auto (the
+// default) runs the passive stage, then the active stage when the gate finds
+// the scope is one it understands; active runs it after passive without the
+// gate; passive never does.
 const (
+	ModeAuto    = "auto"
 	ModePassive = "passive"
 	ModeActive  = "active"
 )
@@ -51,7 +55,7 @@ func Run(args []string, stderr io.Writer) int {
 	}
 	fs := flag.NewFlagSet("sdsdiag", flag.ContinueOnError)
 	fs.SetOutput(stderr)
-	mode := fs.String("mode", "", "passive or active (empty: the MODE file next to the program)")
+	mode := fs.String("mode", "", "auto, passive or active (empty: the MODE file next to the program; auto if none)")
 	out := fs.String("out", "", "where the archive goes (empty: the stick's root, above the program's directory)")
 	wait := fs.Duration("wait", 150*time.Second, "how long to wait for the factory app's SCPI server")
 	dwell := fs.Duration("dwell", 700*time.Millisecond, "how long each sweep step is held (active)")
@@ -70,8 +74,8 @@ func Run(args []string, stderr io.Writer) int {
 	if *mode == "" {
 		*mode = strings.TrimSpace(readStr(filepath.Join(dir, "MODE")))
 	}
-	if *mode != ModeActive {
-		*mode = ModePassive
+	if *mode != ModeActive && *mode != ModePassive {
+		*mode = ModeAuto
 	}
 	if *out == "" {
 		*out = filepath.Dir(dir)
@@ -144,30 +148,12 @@ func (c *collection) run() error {
 		pid = c.pid
 		c.note("traced instead: pid %d", pid)
 	}
-	c.note("fpga: %s", collectFPGA(a))
+	fpgaNote, fpgaVer, fpgaOK := collectFPGA(a)
+	c.note("fpga: %s", fpgaNote)
 	c.note("screen: %s", collectScreen(a, "start"))
 
 	c.say("waiting for the factory app's SCPI server")
-	vx, err := dialFactory(c.wait)
-	if err != nil {
-		a.Errorf("scpi: %v", err)
-		c.note("scpi: %v", err)
-	} else {
-		st := readState(vx)
-		a.AddJSON("scpi/state.json", st)
-		c.note("identity: %s", st.Answers["*IDN?"])
-		if c.mode == ModeActive {
-			c.say("active: SoC registers")
-			collectMem(a, c.self)
-			c.say("active: the settings sweep with the register trace (about %d s)", int(c.sweepTime().Seconds()))
-			if err := c.sweep(a, vx, pid, st); err != nil {
-				a.Errorf("sweep: %v", err)
-				c.note("sweep: %v", err)
-			}
-			c.note("screen after: %s", collectScreen(a, "end"))
-		}
-		vx.Close()
-	}
+	c.scpiStages(a, ps, pid, fpgaOK, fpgaVer)
 	errs := a.Errors()
 	c.note("collector errors: %d (errors.txt)", len(errs))
 	a.AddText("summary.txt", strings.Join(c.summary, "\n")+"\n")
@@ -181,6 +167,46 @@ func (c *collection) run() error {
 	_ = os.WriteFile(filepath.Join(c.outDir, strings.TrimSuffix(name, ".tar.gz")+".txt"), []byte(strings.Join(c.summary, "\n")+"\n"), 0o644) //nolint:gosec // G306: the summary the owner reads on the stick
 	c.say("DONE: send %s to the project (it holds this scope's firmware files: send it privately)", name)
 	return nil
+}
+
+// scpiStages reads the factory app's settings over SCPI and, when the mode
+// and the gate allow it, runs the active stage.
+// TRLC-LINKS: REQ-SDS-284, REQ-SDS-285, REQ-SDS-287
+func (c *collection) scpiStages(a *Archive, ps []Proc, pid int, fpgaOK bool, fpgaVer uint16) {
+	vx, err := dialFactory(c.wait)
+	if err != nil {
+		a.Errorf("scpi: %v", err)
+		c.note("scpi: %v", err)
+		return
+	}
+	defer vx.Close()
+	st := readState(vx)
+	a.AddJSON("scpi/state.json", st)
+	c.note("identity: %s", st.Answers["*IDN?"])
+	active := c.mode == ModeActive
+	if c.mode == ModeAuto {
+		checks := Gate(gateInput{cpuinfo: readStr("/proc/cpuinfo"), procs: ps, pid: pid, fpgaOK: fpgaOK, fpgaVer: fpgaVer, scpi: &st})
+		a.AddJSON("gate.json", checks)
+		ok, why := passed(checks)
+		if ok {
+			c.note("gate: every check passed - the active stage runs")
+		} else {
+			c.note("gate: the active stage does not run (%s)", why)
+			c.say("passive only: %s", why)
+		}
+		active = ok
+	}
+	if !active {
+		return
+	}
+	c.say("active: SoC registers")
+	collectMem(a, c.self)
+	c.say("active: the settings sweep with the register trace (about %d s)", int(c.sweepTime().Seconds()))
+	if err := c.sweep(a, vx, pid, st); err != nil {
+		a.Errorf("sweep: %v", err)
+		c.note("sweep: %v", err)
+	}
+	c.note("screen after: %s", collectScreen(a, "end"))
 }
 
 // sweepTime is about how long the active sweep takes: each step's trace
@@ -213,6 +239,7 @@ func (c *collection) sweep(a *Archive, vx *vxi11.Client, pid int, st scpiState) 
 	if c.steps > 0 && c.steps < len(steps) {
 		steps = steps[:c.steps]
 	}
+	regs := regMap{}
 	end := time.Now().Add(c.limit)
 	for i, s := range steps {
 		if time.Now().After(end) {
@@ -234,6 +261,9 @@ func (c *collection) sweep(a *Archive, vx *vxi11.Client, pid int, st scpiState) 
 		fmt.Fprintf(&log, "%03d %d %s | %s %s | %d | %s\n", i, t, s.Cmd, strings.TrimSpace(ans), errText(qerr),
 			time.Since(t0).Milliseconds(), errText(werr))
 		a.AddFile(fmt.Sprintf("trace/steps/%03d-%s.txt.gz", i, s.Group), file, 64<<20)
+		if err := regs.addTrace(i, file); err != nil {
+			a.Errorf("register map, step %d: %v", i, err)
+		}
 		_ = os.Remove(file)
 		if errors.Is(werr, errStopped) {
 			fmt.Fprintf(&log, "# the factory app did not run on after step %d: the sweep ends here\n", i)
@@ -247,6 +277,8 @@ func (c *collection) sweep(a *Archive, vx *vxi11.Client, pid int, st scpiState) 
 		time.Sleep(200 * time.Millisecond)
 	}
 	a.AddText("trace/steps.txt", log.String())
+	a.AddText("trace/register_map.txt", regs.text(steps))
+	c.note("registers the factory app used: %d (trace/register_map.txt)", len(regs))
 	a.AddJSON("trace/sweep.json", SweepSteps())
 	after := readState(vx)
 	a.AddJSON("scpi/state_after.json", after)
