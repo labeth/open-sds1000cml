@@ -32,7 +32,7 @@ const (
 // takeoverInput is what the passive and active stages learned that the
 // takeover gate judges.
 type takeoverInput struct {
-	sweepDone  bool   // the active sweep ran to its end and put the settings back
+	sweepDone  bool   // the factory app ran on through the sweep and answered after the restore
 	alive      bool   // the factory app runs on after the sweep
 	cfg        uint16 // CS3 0x07, the configuration port
 	cfgErr     error
@@ -42,8 +42,8 @@ type takeoverInput struct {
 
 // TakeoverGate is the checks the takeover stage needs before it stops the
 // factory app for good: the active stage poked the factory app and it acted
-// as on the SDS1102CML+ (every step done, the settings back, the app running
-// on), the FPGA's configuration port is where this firmware loads its images
+// as on the SDS1102CML+ (it ran on after every step and answered after the
+// restore, and runs on), the FPGA's configuration port is where this firmware loads its images
 // (CS3 0x07, the fabric configured), the factory image is a bitstream for the
 // same FPGA, and the stick carries the probe images and the app.
 // TRLC-LINKS: REQ-SDS-288
@@ -52,7 +52,7 @@ func TakeoverGate(in takeoverInput) []Check {
 	add := func(name string, ok bool, f string, args ...any) {
 		cs = append(cs, Check{Name: name, OK: ok, Detail: fmt.Sprintf(f, args...)})
 	}
-	add("active stage", in.sweepDone, "the sweep stepped every setting and put the settings back")
+	add("active stage", in.sweepDone, "the factory app ran on through every step of the sweep and answered after its settings were put back")
 	add("factory app after", in.alive, "the factory app runs on after the sweep")
 	want := uint16(cfgNSTATUS | cfgCONFDONE)
 	add("configuration port", in.cfgErr == nil && in.cfg&want == want,

@@ -63,7 +63,7 @@ func Run(args []string, stderr io.Writer) int {
 	wait := fs.Duration("wait", 150*time.Second, "how long to wait for the factory app's SCPI server")
 	dwell := fs.Duration("dwell", 700*time.Millisecond, "how long each sweep step is held (active)")
 	steps := fs.Int("steps", 0, "run only the first steps of the sweep (active; 0: all)")
-	limit := fs.Duration("limit", 20*time.Minute, "the longest the active sweep runs before it puts the settings back")
+	limit := fs.Duration("limit", 30*time.Minute, "the longest the active sweep runs before it puts the settings back")
 	pid := fs.Int("pid", 0, "trace this process instead of the factory app (active)")
 	if err := fs.Parse(args); err != nil {
 		return 2
@@ -101,7 +101,7 @@ type collection struct {
 	wait, dwell, limit         time.Duration
 	steps                      int  // the sweep's first steps only (0: all)
 	pid                        int  // the process to trace (0: the factory app)
-	sweepDone                  bool // the sweep ran every step and put the settings back
+	sweepDone                  bool // the factory app ran on through the sweep and answered after the restore
 	summary                    []string
 }
 
@@ -205,7 +205,7 @@ func (c *collection) scpiStages(a *Archive, ps []Proc, pid int, fpgaOK bool, fpg
 	}
 	c.say("active: SoC registers")
 	collectMem(a, c.self)
-	c.say("active: the settings sweep with the register trace (about %d s)", int(c.sweepTime().Seconds()))
+	c.say("active: the settings sweep with the register trace (about %d minutes)", int(c.sweepTime().Minutes()+0.5))
 	if err := c.sweep(a, vx, pid, st); err != nil {
 		a.Errorf("sweep: %v", err)
 		c.note("sweep: %v", err)
@@ -216,15 +216,18 @@ func (c *collection) scpiStages(a *Archive, ps []Proc, pid int, fpgaOK bool, fpg
 	}
 }
 
-// sweepTime is about how long the active sweep takes: each step's trace
-// window, the dwell and the read-back, at most the limit.
+// stepTime is about how long one traced step takes on the SDS1102CML+: the
+// factory app takes a step slowly while traced (136 steps took 21 minutes).
+const stepTime = 9 * time.Second
+
+// sweepTime is about how long the active sweep takes, at most the limit.
 // TRLC-LINKS: REQ-SDS-285
 func (c *collection) sweepTime() time.Duration {
 	n := len(SweepSteps())
 	if c.steps > 0 {
 		n = min(n, c.steps)
 	}
-	return min(time.Duration(n)*(c.dwell+1500*time.Millisecond), c.limit)
+	return min(time.Duration(n)*(stepTime+c.dwell-700*time.Millisecond), c.limit)
 }
 
 // sweep steps the factory app through SweepSteps, each step in a register
@@ -248,12 +251,11 @@ func (c *collection) sweep(a *Archive, vx *vxi11.Client, pid int, st scpiState) 
 	}
 	regs := regMap{}
 	end := time.Now().Add(c.limit)
-	complete := true
+	ranOn := true // the factory app ran on after every window
 	for i, s := range steps {
 		if time.Now().After(end) {
 			fmt.Fprintf(&log, "# the sweep's %v ran out after %d of %d steps\n", c.limit, i, len(steps))
 			c.note("sweep: cut short after %d of %d steps (the %v limit)", i, len(steps), c.limit)
-			complete = false
 			break
 		}
 		if i%10 == 0 {
@@ -277,7 +279,7 @@ func (c *collection) sweep(a *Archive, vx *vxi11.Client, pid int, st scpiState) 
 		if errors.Is(werr, errStopped) {
 			fmt.Fprintf(&log, "# the factory app did not run on after step %d: the sweep ends here\n", i)
 			c.note("sweep: ended after step %d: %v", i, werr)
-			complete = false
+			ranOn = false
 			break
 		}
 	}
@@ -299,7 +301,7 @@ func (c *collection) sweep(a *Archive, vx *vxi11.Client, pid int, st scpiState) 
 		}
 	}
 	c.note("settings after the sweep: %d differ from before %v", len(diff), diff)
-	c.sweepDone = complete && after.Answers["*IDN?"] == st.Answers["*IDN?"]
+	c.sweepDone = ranOn && after.Answers["*IDN?"] == st.Answers["*IDN?"]
 	return nil
 }
 

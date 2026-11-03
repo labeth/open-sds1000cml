@@ -44,7 +44,7 @@ sds-diag/MODE says how far it goes. It comes set to "auto":
    V/div on both channels, couplings, offsets, bandwidth limit, timebases up
    to 100 ms/div, trigger and acquisition modes. The relays click, the screen
    changes and the scope answers its keys slowly for about twenty minutes
-   (never more than twenty-five); then it puts your settings back.
+   (never more than thirty); then it puts your settings back.
 4. A second check: the factory app took every step and runs on, the FPGA's
    configuration port is where this project loads its images, the factory
    FPGA image is for the same FPGA. If any check fails it stops here.
