@@ -63,6 +63,7 @@ func TestCodeLevelsFindsTheSquare(t *testing.T) {
 // the square's size follows V/div with the gain DAC, without it does not
 // (and the offset's code step 50/(K·V/div), K 4392 per volt sensitive and
 // 100 attenuated).
+// TRLC-LINKS: REQ-SDS-290
 func ladder(gain bool, square float64) FrontEndResult {
 	var r FrontEndResult
 	for _, d := range detents {
@@ -92,6 +93,7 @@ func ladder(gain bool, square float64) FrontEndResult {
 }
 
 // verdictIn is part's verdict in vs.
+// TRLC-LINKS: REQ-SDS-290
 func verdictIn(t *testing.T, vs []Verdict, part string) Verdict {
 	t.Helper()
 	for _, v := range vs {
