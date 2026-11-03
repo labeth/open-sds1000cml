@@ -13,12 +13,13 @@ import (
 // stateQueries read the factory app's settings: the identity first, then
 // every setting the sweep changes, so the answers can be sent back as
 // commands to put the scope as it was - in this order: the probe factor
-// before the V/div and offset it scales.
+// before the V/div and offset it scales, the averaging count before the
+// acquisition mode (setting the count switches the factory app to Average).
 var stateQueries = []string{
 	"*IDN?", "*OPT?",
 	"C1:ATTN?", "C2:ATTN?", "C1:CPL?", "C2:CPL?", "C1:VDIV?", "C2:VDIV?", "C1:OFST?", "C2:OFST?",
 	"BWL?", "C1:TRA?", "C2:TRA?", "TDIV?", "TRDL?", "TRMD?", "TRSE?", "C1:TRLV?", "C2:TRLV?",
-	"C1:TRSL?", "C2:TRSL?", "C1:TRCP?", "C2:TRCP?", "ACQW?", "AVGA?", "MSIZ?",
+	"C1:TRSL?", "C2:TRSL?", "C1:TRCP?", "C2:TRCP?", "AVGA?", "ACQW?", "MSIZ?",
 }
 
 // infoQueries are read once for the record and never restored.
@@ -101,12 +102,13 @@ type scpiState struct {
 }
 
 // dialFactory connects to the factory app's VXI-11 server on this scope,
-// waiting up to wait for it to come up after boot.
+// waiting up to wait for it to come up after boot. A call may take up to 15
+// s: in a trace window the factory app answers late.
 // TRLC-LINKS: REQ-SDS-284
 func dialFactory(wait time.Duration) (*vxi11.Client, error) {
 	end := time.Now().Add(wait)
 	for {
-		c, err := vxi11.Dial("127.0.0.1", 5*time.Second)
+		c, err := vxi11.Dial("127.0.0.1", 15*time.Second)
 		if err == nil {
 			return c, nil
 		}

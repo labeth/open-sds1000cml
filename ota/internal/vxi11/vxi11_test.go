@@ -298,3 +298,38 @@ func TestRPCReplyLengthsAreBounded(t *testing.T) {
 		t.Errorf("a 2 GiB fragment: %v, want it refused by size", err)
 	}
 }
+
+// staleReplies answers one call with n late replies to earlier calls (other
+// xids) and then its own; it returns what the call got.
+// TRLC-LINKS: REQ-SDS-100
+func staleReplies(t *testing.T, n int) ([]byte, error) {
+	t.Helper()
+	cli, srv := net.Pipe()
+	defer func() { _ = cli.Close() }()
+	go func() {
+		defer func() { _ = srv.Close() }()
+		call, err := readRecord(srv)
+		if err != nil {
+			return
+		}
+		xid := callXID(call)
+		for i := range n {
+			writeRecord(srv, acceptedReply(xid-uint32(i)-1, []byte("old!")))
+		}
+		writeRecord(srv, acceptedReply(xid, []byte("mine")))
+	}()
+	return rpcCall(cli, 2*time.Second, coreProg, coreVers, procDeviceRead, nil)
+}
+
+// A reply to an earlier call that timed out is read past: the late answer of
+// one slow call does not misread every call after it. Past maxStale of them
+// the call fails.
+// TRLC-LINKS: REQ-SDS-100
+func TestLateRepliesAreReadPast(t *testing.T) {
+	if res, err := staleReplies(t, 2); err != nil || string(res) != "mine" {
+		t.Fatalf("after two late replies: %q %v", res, err)
+	}
+	if _, err := staleReplies(t, maxStale+1); err == nil || !strings.Contains(err.Error(), "xid mismatch") {
+		t.Fatalf("after %d late replies: %v", maxStale+1, err)
+	}
+}

@@ -228,14 +228,9 @@ func (c *collection) sweep(a *Archive, vx *vxi11.Client, pid int, st scpiState) 
 		t := monoMicros()
 		var ans string
 		var qerr error
-		werr := c.window(pid, file, func() error {
-			if err := vx.Send(s.Cmd); err != nil {
-				return err
-			}
-			time.Sleep(c.dwell)
-			ans, qerr = vx.Query(queryOf(s.Cmd)) // answered: the factory app has taken the step
-			return nil
-		})
+		werr := c.window(pid, file, func() error { return vx.Send(s.Cmd) })
+		time.Sleep(c.dwell)
+		ans, qerr = vx.Query(queryOf(s.Cmd))
 		fmt.Fprintf(&log, "%03d %d %s | %s %s | %d | %s\n", i, t, s.Cmd, strings.TrimSpace(ans), errText(qerr),
 			time.Since(t0).Milliseconds(), errText(werr))
 		a.AddFile(fmt.Sprintf("trace/steps/%03d-%s.txt.gz", i, s.Group), file, 64<<20)
@@ -265,12 +260,15 @@ func (c *collection) sweep(a *Archive, vx *vxi11.Client, pid int, st scpiState) 
 	return nil
 }
 
-// window runs step while a tracer child traces the factory app: the child
-// attaches and says ready, step runs (the command and its read-back), and
-// 300 ms later the child is told to stop; its exit detaches the factory app.
+// window sends cmd while a tracer child traces the factory app: the child
+// attaches and says ready, cmd goes out, and the child ends 1 s after the
+// factory app's last register write (or after 5 s, or when told to stop
+// once the command was answered with no write). Traced, the factory app takes
+// a V/div step slowly; the rest of the step, and its answer, run untraced.
+// The child's exit detaches the factory app; resume makes it run on.
 // TRLC-LINKS: REQ-SDS-285
-func (c *collection) window(pid int, file string, step func() error) error {
-	tr := exec.Command(c.self, "trace", strconv.Itoa(pid), "30000", file, "0") //nolint:gosec,noctx // G204: this program as the tracer; it ends on "stop" or by itself within 30 s
+func (c *collection) window(pid int, file string, send func() error) error {
+	tr := exec.Command(c.self, "trace", strconv.Itoa(pid), "5000", file, "1000") //nolint:gosec,noctx // G204: this program as the tracer; it ends by itself within 5 s
 	in, err := tr.StdinPipe()
 	if err != nil {
 		return err
@@ -283,18 +281,6 @@ func (c *collection) window(pid int, file string, step func() error) error {
 		return err
 	}
 	done := make(chan error, 1)
-	stop := func() error {
-		_, _ = io.WriteString(in, "stop\n")
-		_ = in.Close()
-		select {
-		case err := <-done:
-			return err
-		case <-time.After(10 * time.Second):
-			_ = tr.Process.Kill() // a tracer's exit detaches and resumes the factory app
-			<-done                //nolint:errcheck // the killed tracer's exit status says nothing new
-			return errors.New("the tracer did not stop: killed")
-		}
-	}
 	ready := make(chan bool, 1)
 	go func() {
 		line, _ := bufio.NewReader(out).ReadString('\n')
@@ -302,26 +288,54 @@ func (c *collection) window(pid int, file string, step func() error) error {
 		_, _ = io.Copy(io.Discard, out)
 		done <- tr.Wait()
 	}()
+	stopTracer := func() {
+		_, _ = io.WriteString(in, "stop\n")
+		_ = in.Close()
+	}
+	wait := func() error {
+		select {
+		case err := <-done:
+			return err
+		case <-time.After(20 * time.Second):
+			_ = tr.Process.Kill() // a tracer's exit detaches the factory app
+			<-done                //nolint:errcheck // the killed tracer's exit status says nothing new
+			return errors.New("the tracer did not end: killed")
+		}
+	}
 	select {
 	case ok := <-ready:
 		if !ok {
-			_ = stop()
-			return errors.New("the tracer did not attach")
+			stopTracer()
+			_ = wait()
+			return errors.Join(errors.New("the tracer did not attach"), resume(pid))
 		}
 	case <-time.After(5 * time.Second):
-		_ = stop()
-		return errors.New("the tracer did not attach in 5 s")
+		stopTracer()
+		_ = wait()
+		return errors.Join(errors.New("the tracer did not attach in 5 s"), resume(pid))
 	}
-	serr := step()
-	time.Sleep(300 * time.Millisecond)
-	werr := stop()
+	sent := make(chan error, 1)
+	go func() { sent <- send() }()
+	var serr error
+	var werr error
+	select {
+	case werr = <-done: // writes seen, then quiet: the window is over
+	case serr = <-sent: // answered first (a step that writes nothing, or writes before it answers)
+		time.Sleep(300 * time.Millisecond)
+		stopTracer()
+		werr = wait()
+	}
 	if err := resume(pid); err != nil {
 		return err
 	}
-	if werr != nil {
-		return werr
+	if serr == nil {
+		select {
+		case serr = <-sent:
+		case <-time.After(20 * time.Second):
+			serr = errors.New("the command got no answer in 20 s")
+		}
 	}
-	return serr
+	return errors.Join(werr, serr)
 }
 
 // errStopped is a factory app that is gone or stays stopped after a window:

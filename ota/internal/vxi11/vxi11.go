@@ -66,27 +66,13 @@ func (x *xdrBuf) opaque(p []byte) *xdrBuf {
 	return x
 }
 
-// rpcCall sends one record-marked AUTH_NULL call and returns the result bytes
-// (after the accepted-reply header) or an error.
+// maxStale is how many late replies to earlier calls a call reads past.
+const maxStale = 8
+
+// readRPCRecord reads one record-marked RPC message, concatenating its fragments.
 // TRLC-LINKS: REQ-SDS-100
-func rpcCall(conn net.Conn, timeout time.Duration, prog, vers, proc uint32, args []byte) ([]byte, error) {
-	xid := uint32(time.Now().UnixNano()) //nolint:gosec // any 32 bits that differ per call make an xid; the clock's low bits do
-	// The record mark is reserved at the front and filled in last: the call
-	// is built and written as one buffer.
-	msg := xdrBuf{b: make([]byte, 4, 4+40+len(args))}
-	msg.u32(xid).u32(0 /*CALL*/).u32(2 /*rpcvers*/).u32(prog).u32(vers).u32(proc)
-	msg.u32(0).u32(0) // cred AUTH_NULL
-	msg.u32(0).u32(0) // verf AUTH_NULL
-	msg.b = append(msg.b, args...)
-	binary.BigEndian.PutUint32(msg.b[:4], 0x80000000|uint32(len(msg.b)-4)) //nolint:gosec // one call's record, a SCPI line long
-
-	_ = conn.SetDeadline(time.Now().Add(timeout))
+func readRPCRecord(conn net.Conn) ([]byte, error) {
 	var rm [4]byte
-	if _, err := conn.Write(msg.b); err != nil {
-		return nil, fmt.Errorf("vxi11: write: %w", err)
-	}
-
-	// Read record-marked reply, concatenating fragments.
 	var reply []byte
 	for {
 		if _, err := io.ReadFull(conn, rm[:]); err != nil {
@@ -103,14 +89,49 @@ func rpcCall(conn net.Conn, timeout time.Duration, prog, vers, proc uint32, args
 			return nil, fmt.Errorf("vxi11: read fragment: %w", err)
 		}
 		if h&0x80000000 != 0 {
-			break
+			return reply, nil
 		}
 	}
-	if len(reply) < 24 {
-		return nil, fmt.Errorf("vxi11: short reply (%d bytes)", len(reply))
+}
+
+// rpcCall sends one record-marked AUTH_NULL call and returns the result bytes
+// (after the accepted-reply header) or an error.
+// TRLC-LINKS: REQ-SDS-100
+func rpcCall(conn net.Conn, timeout time.Duration, prog, vers, proc uint32, args []byte) ([]byte, error) {
+	xid := uint32(time.Now().UnixNano()) //nolint:gosec // any 32 bits that differ per call make an xid; the clock's low bits do
+	// The record mark is reserved at the front and filled in last: the call
+	// is built and written as one buffer.
+	msg := xdrBuf{b: make([]byte, 4, 4+40+len(args))}
+	msg.u32(xid).u32(0 /*CALL*/).u32(2 /*rpcvers*/).u32(prog).u32(vers).u32(proc)
+	msg.u32(0).u32(0) // cred AUTH_NULL
+	msg.u32(0).u32(0) // verf AUTH_NULL
+	msg.b = append(msg.b, args...)
+	binary.BigEndian.PutUint32(msg.b[:4], 0x80000000|uint32(len(msg.b)-4)) //nolint:gosec // one call's record, a SCPI line long
+
+	_ = conn.SetDeadline(time.Now().Add(timeout))
+	if _, err := conn.Write(msg.b); err != nil {
+		return nil, fmt.Errorf("vxi11: write: %w", err)
 	}
-	if got := binary.BigEndian.Uint32(reply[0:4]); got != xid {
-		return nil, errors.New("vxi11: xid mismatch")
+
+	// A reply whose xid is not this call's answers an earlier call that timed
+	// out: it is read past, so one slow answer does not misread every call
+	// after it.
+	var reply []byte
+	for stale := 0; ; stale++ {
+		r, err := readRPCRecord(conn)
+		if err != nil {
+			return nil, err
+		}
+		if len(r) < 24 {
+			return nil, fmt.Errorf("vxi11: short reply (%d bytes)", len(r))
+		}
+		if binary.BigEndian.Uint32(r[0:4]) == xid {
+			reply = r
+			break
+		}
+		if stale >= maxStale {
+			return nil, errors.New("vxi11: xid mismatch")
+		}
 	}
 	if binary.BigEndian.Uint32(reply[4:8]) != 1 { // REPLY
 		return nil, errors.New("vxi11: not a reply")
