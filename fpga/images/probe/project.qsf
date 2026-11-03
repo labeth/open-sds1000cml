@@ -1,0 +1,69 @@
+set_global_assignment -name FAMILY "Cyclone IV E"
+set_global_assignment -name DEVICE EP4CE10F17C8
+set_global_assignment -name TOP_LEVEL_ENTITY probe_top
+set_global_assignment -name PROJECT_OUTPUT_DIRECTORY output_files
+set_global_assignment -name NUM_PARALLEL_PROCESSORS 2
+set_global_assignment -name RESERVE_ALL_UNUSED_PINS "AS INPUT TRI-STATED"
+set_global_assignment -name RESERVE_ALL_UNUSED_PINS_NO_OUTPUT_GND "AS INPUT TRI-STATED"
+set_global_assignment -name RESERVE_FLASH_NCE_AFTER_CONFIGURATION "USE AS REGULAR IO"
+set_global_assignment -name CYCLONEII_RESERVE_NCEO_AFTER_CONFIGURATION "USE AS REGULAR IO"
+set_global_assignment -name SDC_FILE bench.sdc
+set_global_assignment -name SEED 1
+set_global_assignment -name VERILOG_FILE bench.v
+set_global_assignment -name VERILOG_FILE gpmc_slave.v
+set_global_assignment -name VERILOG_FILE adc_pll.v
+set_global_assignment -name VERILOG_FILE ddio_pair.v
+set_location_assignment PIN_A10 -to gpmc_d[0]
+set_location_assignment PIN_B9 -to gpmc_d[1]
+set_location_assignment PIN_A9 -to gpmc_d[2]
+set_location_assignment PIN_B8 -to gpmc_d[3]
+set_location_assignment PIN_A8 -to gpmc_d[4]
+set_location_assignment PIN_B7 -to gpmc_d[5]
+set_location_assignment PIN_A7 -to gpmc_d[6]
+set_location_assignment PIN_B6 -to gpmc_d[7]
+set_location_assignment PIN_A6 -to gpmc_d[8]
+set_location_assignment PIN_D6 -to gpmc_d[9]
+set_location_assignment PIN_C6 -to gpmc_d[10]
+set_location_assignment PIN_B5 -to gpmc_d[11]
+set_location_assignment PIN_A5 -to gpmc_d[12]
+set_location_assignment PIN_F6 -to gpmc_d[13]
+set_location_assignment PIN_D5 -to gpmc_d[14]
+set_location_assignment PIN_E5 -to gpmc_d[15]
+set_location_assignment PIN_B4 -to nCS1
+set_location_assignment PIN_E6 -to nOE
+set_location_assignment PIN_B10 -to nWE
+set_location_assignment PIN_C3 -to sel[2]
+set_location_assignment PIN_D4 -to sel[3]
+set_location_assignment PIN_A3 -to sel[4]
+set_location_assignment PIN_B3 -to sel[5]
+set_location_assignment PIN_A4 -to sel[6]
+set_location_assignment PIN_C2 -to clk
+set_location_assignment PIN_M2 -to mclk_in
+set_location_assignment PIN_A2 -to gpmc_a2
+set_location_assignment PIN_B1 -to gpmc_b1
+set_location_assignment PIN_K8 -to enc_p[0]
+set_location_assignment PIN_M8 -to enc_n[0]
+set_location_assignment PIN_C14 -to enc_p[1]
+set_location_assignment PIN_D14 -to enc_n[1]
+set_location_assignment PIN_K9 -to enc_p[2]
+set_location_assignment PIN_L10 -to enc_n[2]
+set_location_assignment PIN_L8 -to enc_p[3]
+set_location_assignment PIN_M7 -to enc_n[3]
+set_location_assignment PIN_K10 -to enc_p[4]
+set_location_assignment PIN_L9 -to enc_n[4]
+set_location_assignment PIN_M2 -to mclk_in
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to gpmc_d[*]
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to nCS1
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to nOE
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to nWE
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to sel[*]
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to gpmc_a2
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to gpmc_b1
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to clk
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to mclk_in
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to enc_p[*]
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to enc_n[*]
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to ball[*]
+set_instance_assignment -name CURRENT_STRENGTH_NEW "MINIMUM CURRENT" -to enc_p[*]
+set_instance_assignment -name CURRENT_STRENGTH_NEW "MINIMUM CURRENT" -to enc_n[*]
+# build.ts adds each ball[i] of balls.txt, and in the pull-up build their weak pull-ups.

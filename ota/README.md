@@ -97,18 +97,30 @@ make -C ota test
 never on this firmware's stick (ADR-DIAG-STICK). The factory firmware runs its `startup.sh`, which
 starts `sds-diag/sdsdiag` in the background 20 s after boot; it writes one
 `sds-diag-<mac>-<mode>-<n>.tar.gz`, a summary and `sds-diag-status.txt` to the stick's root.
+`sds-diag/MODE` is `auto` (every stage, each after its gate, the default), `active` (stops after the
+active stage) or `passive`.
 
-- **Passive** (`sds-diag/MODE` = `passive`, the default) only reads: `/proc`, the boot log, sysfs and
-  debugfs (pin mux, GPIO), `/dev`, every process with its descriptors and maps, the factory firmware
-  tree (files up to 1 MiB whole, larger ones by their head and SHA-256), the FPGA's plain registers
-  through the inherited `/dev/Gpmc`, the factory app's settings over VXI-11, and the screen.
-- **Active** (`MODE` = `active`) adds the SoC's pad, GPMC and clock configuration through read-only
-  `/dev/mem` mappings (each region in a child process: a gated block's bus error ends only that child)
-  and a ptrace trace of the factory app's device syscalls (`/dev/Gpmc` reads and writes decoded,
-  opens, mmap2, SPI/I2C reads and writes) while the stick steps the factory app through every V/div,
-  coupling, offset, bandwidth limit, timebase, trigger and acquisition setting over SCPI; it then
-  sends the saved settings back. The tracer is a child process: when it exits, the kernel detaches
-  and resumes the factory app.
+- **Passive** only reads: `/proc`, the boot log, sysfs and debugfs (pin mux, GPIO), `/dev`, every
+  process with its descriptors and maps, the factory firmware tree (files up to 1 MiB whole, larger
+  ones by their head and SHA-256), the FPGA's plain registers through the inherited `/dev/Gpmc`, the
+  factory app's settings over VXI-11, and the screen.
+- **Active**, after a gate (`gate.json`: an AM335x running the SDS1000 factory app on `/dev/Gpmc`,
+  the FPGA answering, a Siglent SDS1000 identity, settings in the form the sweep restores), adds the
+  SoC's pad, GPMC and clock configuration through read-only `/dev/mem` mappings and a ptrace trace of
+  the factory app's device syscalls while the stick steps the factory app through every V/div,
+  coupling, offset, bandwidth limit, timebase, trigger and acquisition setting over SCPI, summarised
+  as `trace/register_map.txt`; then it sends the saved settings back. The tracer is a child process:
+  when it exits, the kernel detaches the factory app, and SIGCONT resumes it.
+- **Takeover**, after a second gate (`takeover/gate.json`: the sweep done and the factory app running
+  on, CS3 0x07 reading the configured fabric, an EP4CE10 factory image, the stick's files), stops
+  the factory app as `otactl takeover` does (STOP, the fill counter frozen, SIGKILL, the watchdog
+  acquired) and loads the probe image (ADR-DIAG-PROBE, [`fpga/images/probe`](../fpga/images/probe)),
+  without and then with the weak pull-ups. From the census of every ball (levels and edges with the
+  encode legs off and on, which balls follow each leg and each channel's offset DAC) `probe/report.txt`
+  judges each converter core, front end, clock and group of static balls present, absent, partial or
+  different from the SDS1102CML+ (`internal/diag/probe_reference.txt`). Then it runs the stick's app
+  for 90 s as the agent would, with `app/` holding its log, status and screens, and disarms the
+  watchdog. The scope needs a power-cycle afterwards.
 
 ## Making a boot stick
 

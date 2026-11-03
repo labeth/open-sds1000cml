@@ -37,10 +37,12 @@ sdsdiag:
 	  go build -trimpath -buildvcs=false -ldflags "$(LDFLAGS)" -o $(DIST)/sdsdiag-arm ./cmd/sdsdiag
 
 # The diagnostics stick as a zip whose contents go on a stick's root
-# (DIAG_ZIP names it); reproducible as mkstick's.
+# (DIAG_ZIP names it); reproducible as mkstick's. It carries the probe
+# images and the app for its takeover stage.
 DIAG_ZIP ?= $(DIST)/open-sds1000cml-$(VERSION)-diagnostics.zip
 diag-zip: sdsdiag
-	./mkdiagstick.sh $(DIST)/sdsdiag-arm $(DIAG_ZIP)
+	$(MAKE) -C ../app app
+	./mkdiagstick.sh $(DIST)/sdsdiag-arm ../app/dist/app-arm ../fpga/bitstreams/probe.rbf ../fpga/bitstreams/probepull.rbf $(DIAG_ZIP)
 
 test:
 	go test ./...

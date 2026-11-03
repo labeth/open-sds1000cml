@@ -3,10 +3,12 @@
 // Package diag is the diagnostics stick's collector: booted by the factory
 // firmware on another SDS1000 variant, it leaves one archive of what that
 // board is and does, for a port of this firmware to its population. The
-// passive stage only reads; the active stage, run only when asked, traces
-// the factory app's register traffic while it steps the factory app through
-// its settings over SCPI, and puts the settings back. Neither loads an FPGA
-// image or writes the instrument's flash.
+// passive stage only reads; the active stage traces the factory app's
+// register traffic while it steps the factory app through its settings over
+// SCPI, and puts the settings back; the takeover stage stops the factory app,
+// takes a census of every FPGA ball with the probe image, and runs this
+// firmware's app on the board. Each runs only when the checks before it
+// pass. Nothing writes the instrument's flash; the FPGA images are volatile.
 package diag
 
 import (
@@ -30,8 +32,9 @@ import (
 
 // The modes a stick runs in: MODE on the stick names one. Auto (the
 // default) runs the passive stage, then the active stage when the gate finds
-// the scope is one it understands; active runs it after passive without the
-// gate; passive never does.
+// the scope is one it understands, then the takeover stage when its own gate
+// passes; active runs the active stage after passive without the gate, and
+// stops there; passive runs neither.
 const (
 	ModeAuto    = "auto"
 	ModePassive = "passive"
@@ -55,7 +58,7 @@ func Run(args []string, stderr io.Writer) int {
 	}
 	fs := flag.NewFlagSet("sdsdiag", flag.ContinueOnError)
 	fs.SetOutput(stderr)
-	mode := fs.String("mode", "", "auto, passive or active (empty: the MODE file next to the program; auto if none)")
+	mode := fs.String("mode", "", "auto (every stage, each gated), active (passive and active) or passive (empty: the MODE file next to the program; auto if none)")
 	out := fs.String("out", "", "where the archive goes (empty: the stick's root, above the program's directory)")
 	wait := fs.Duration("wait", 150*time.Second, "how long to wait for the factory app's SCPI server")
 	dwell := fs.Duration("dwell", 700*time.Millisecond, "how long each sweep step is held (active)")
@@ -96,8 +99,9 @@ func Run(args []string, stderr io.Writer) int {
 type collection struct {
 	self, mode, outDir, status string
 	wait, dwell, limit         time.Duration
-	steps                      int // the sweep's first steps only (0: all)
-	pid                        int // the process to trace (0: the factory app)
+	steps                      int  // the sweep's first steps only (0: all)
+	pid                        int  // the process to trace (0: the factory app)
+	sweepDone                  bool // the sweep ran every step and put the settings back
 	summary                    []string
 }
 
@@ -207,6 +211,9 @@ func (c *collection) scpiStages(a *Archive, ps []Proc, pid int, fpgaOK bool, fpg
 		c.note("sweep: %v", err)
 	}
 	c.note("screen after: %s", collectScreen(a, "end"))
+	if c.mode == ModeAuto {
+		c.takeoverStage(a, vx, pid)
+	}
 }
 
 // sweepTime is about how long the active sweep takes: each step's trace
@@ -241,10 +248,12 @@ func (c *collection) sweep(a *Archive, vx *vxi11.Client, pid int, st scpiState) 
 	}
 	regs := regMap{}
 	end := time.Now().Add(c.limit)
+	complete := true
 	for i, s := range steps {
 		if time.Now().After(end) {
 			fmt.Fprintf(&log, "# the sweep's %v ran out after %d of %d steps\n", c.limit, i, len(steps))
 			c.note("sweep: cut short after %d of %d steps (the %v limit)", i, len(steps), c.limit)
+			complete = false
 			break
 		}
 		if i%10 == 0 {
@@ -268,6 +277,7 @@ func (c *collection) sweep(a *Archive, vx *vxi11.Client, pid int, st scpiState) 
 		if errors.Is(werr, errStopped) {
 			fmt.Fprintf(&log, "# the factory app did not run on after step %d: the sweep ends here\n", i)
 			c.note("sweep: ended after step %d: %v", i, werr)
+			complete = false
 			break
 		}
 	}
@@ -289,6 +299,7 @@ func (c *collection) sweep(a *Archive, vx *vxi11.Client, pid int, st scpiState) 
 		}
 	}
 	c.note("settings after the sweep: %d differ from before %v", len(diff), diff)
+	c.sweepDone = complete && after.Answers["*IDN?"] == st.Answers["*IDN?"]
 	return nil
 }
 

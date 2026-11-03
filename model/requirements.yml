@@ -4563,6 +4563,50 @@ requirements:
   verificationCriteria: an SDS1102CML+ as the passive stage saw it passes whatever its FPGA version; another CPU, no
     factory app, no /dev/Gpmc, an unreadable FPGA, another identity or headerless answers each stop the gate and are
     named.
+- id: REQ-SDS-288
+  title: Diagnostics takeover stage and ball census
+  text: The instrument shall, from the diagnostics stick in its auto mode after the active stage, when the factory app
+    took every step and runs on, the configuration port reads the configured fabric and the factory FPGA image is an
+    EP4CE10's, stop the factory app, load the probe image without and with the weak pull-ups, and judge from the
+    census of every FPGA ball which converter cores, channel front ends and clocks of the SDS1102CML+'s population
+    are present, absent or partial.
+  status: draft
+  category: functional
+  sourceRefs:
+  - CODE-OTA-INTERNAL-DIAG-TAKEOVER-GO
+  - CODE-OTA-INTERNAL-DIAG-BUS-GO
+  - CODE-OTA-INTERNAL-DIAG-CENSUS-GO
+  - CODE-OTA-INTERNAL-DIAG-VERDICT-GO
+  - CODE-OTA-INTERNAL-DIAG-DIAG-GO
+  - CODE-FPGA-IMAGES-PROBE-PROBE-TOP-V
+  - CODE-FPGA-BUILD-TS
+  appliesTo:
+  - FU-OTA-DIAG
+  - FU-RTL-PROBE
+  verificationMethods:
+  - test
+  verificationCriteria: on an SDS1102CML+ booted cold under the factory firmware, every converter core, both front
+    ends, the reference clock and the encode PLL are judged present; a modelled board without a converter pair, a
+    front end or with a driven unused ball is judged so; the probe image's simulation counts a ball's edges and high
+    time and keeps every leg off until turned on.
+  notes: The probe image drives the ARM bus only during a read and each encode leg only when the host turns it on.
+    The loads are volatile; the factory firmware comes back at the next power-on.
+- id: REQ-SDS-289
+  title: Diagnostics run of this firmware's app
+  text: The instrument shall, from the diagnostics stick's takeover stage, run this firmware's app on the board for a
+    minute and a half as the agent runs it, and record its log, whether and when it reported health, and its status
+    and screen.
+  status: draft
+  category: functional
+  sourceRefs:
+  - CODE-OTA-INTERNAL-DIAG-APPRUN-GO
+  - CODE-OTA-INTERNAL-DIAG-TAKEOVER-GO
+  appliesTo:
+  - FU-OTA-DIAG
+  verificationMethods:
+  - test
+  verificationCriteria: on an SDS1102CML+ the archive holds the app's log, its status and screen, and the summary says
+    it reported health.
 - id: REQ-SDS-286
   title: Diagnostics archive
   text: The instrument shall, from the diagnostics stick, leave one archive on the stick with a manifest of every

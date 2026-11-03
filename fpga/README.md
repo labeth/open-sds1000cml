@@ -209,20 +209,35 @@ counts the matches. The app's Go model (`app/internal/decode/symbol_trigger.go`)
 is the block clock for clock (`tb_symbol_trigger.v`), and
 `tb_top_qualify.v` checks it through the image's top level.
 
+## Probe images
+
+`probe` and `probepull` (`images/probe/probe_top.v`) are not the app's: the
+diagnostics stick loads them on another population of the board
+(ADR-DIAG-PROBE). They drive only the ARM bus and the ten encode legs, each
+off until register 24 turns it on; every other ball of `balls.txt` is an
+input, and `probepull` turns its weak pull-up on (all but the dedicated clock
+inputs, which have none). A gate (register 21 starts it, 22 and 23 its length
+in clk cycles) records each ball's ever-0, ever-1 and live level (registers
+80, 96 and 112 on, sixteen balls a register), and eight channels (64-71 the
+ball) count the ball's rising edges on the ball itself and the clk cycles it
+was high (32-47). Register 18 reads 0x5052, 19 the ball count and the pull-up
+build, 20 bit 1 the encode PLL's lock. `tb_probe.v` checks the counts and
+flags and that every leg stays off until turned on.
+
 ## Source layout
 
 | Path | Used by |
 |---|---|
 | `common/` | every image: acquisition top (`top.v`, image features selected by defines), SRAM record and transport, ADC unpack and interleave, front-panel scan, clocks, GPMC slave, ADC lane inputs |
 | `trigger/` | every image but stacking: decoded-event queue and transport, sequence trigger, sample timeline, envelope recall, and the shared Quartus project (`project.qsf`, `project.sdc`) |
-| `images/<dir>/` | that image's decoders or engine; `frame` takes its sources from `packet/` and `line/`, `bits` from `stream/` (stacking also has its own Quartus project; stream, bits and qualify also use the general image's precision decimator) |
+| `images/<dir>/` | that image's decoders or engine; `frame` takes its sources from `packet/` and `line/`, `bits` from `stream/` (stacking also has its own Quartus project; stream, bits and qualify also use the general image's precision decimator); `probe/` is the diagnostics stick's census image with its own project and top |
 | `*/sim/` | testbenches for the sources beside them |
-| `bitstreams/` | the shipping images and `images.json` (seed and sha256 of each) |
+| `bitstreams/` | the shipping images, the two probe images and `images.json` (seed and sha256 of each) |
 
 ## Build
 
 ```sh
-node --experimental-strip-types fpga/build.ts --image=general|packet|frame|line|qualify|stacking|stream|bits|fast [--seed=N] [--prepare-only] [--install]
+node --experimental-strip-types fpga/build.ts --image=general|packet|frame|line|qualify|stacking|stream|bits|fast|probe|probepull [--seed=N] [--prepare-only] [--install]
 ```
 
 Builds into `fpga/out/<image>/` with Quartus 21.1 Lite (`QUARTUS_BIN`, default

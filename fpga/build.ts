@@ -1,7 +1,7 @@
 // ENGMODEL-OWNER-UNIT: FU-FPGA-BUILD
 // Builds one FPGA image for the EP4CE10F17C8 with headless Quartus 21.1 Lite:
 //
-//   node --experimental-strip-types fpga/build.ts --image=general|packet|frame|line|qualify|stacking|stream|bits|fast [--seed=N] [--prepare-only] [--install]
+//   node --experimental-strip-types fpga/build.ts --image=general|packet|frame|line|qualify|stacking|stream|bits|fast|probe|probepull [--seed=N] [--prepare-only] [--install]
 //
 // Every image is common/ (the acquisition top, SRAM record and transport, ADC
 // interleave, panel scan, clocks and GPMC) plus its own decoders or engine.
@@ -23,7 +23,7 @@ const args=process.argv.slice(2);
 const flag=(f:string)=>args.includes(f);
 const value=(k:string)=>args.find(a=>a.startsWith(k+'='))?.slice(k.length+1);
 if(args.some(a=>!['--prepare-only','--install'].includes(a) && !/^--image=\w+$/.test(a) && !/^--seed=\d+$/.test(a)))
- throw Error('usage: build.ts --image=general|packet|frame|line|qualify|stacking|stream|bits|fast [--seed=N] [--prepare-only] [--install]');
+ throw Error('usage: build.ts --image=general|packet|frame|line|qualify|stacking|stream|bits|fast|probe|probepull [--seed=N] [--prepare-only] [--install]');
 
 // box: decimation by box averages (common/box_decim.v) where the precision
 // filter does not fit, so the record spans slow timebases' screens and the
@@ -33,7 +33,7 @@ if(args.some(a=>!['--prepare-only','--install'].includes(a) && !/^--image=\w+$/.
 // seed of 38 beside the box averages.
 // pickAlt: the precision filter, and picking every 2^n-th sample on asking
 // (register 18 bit 5), for BUS's sampled records on the qualify image.
-type Image={dir:string,files:string[],defines:string[],seed:number,trigger:boolean,precision:boolean,bare?:boolean,box?:boolean,pick?:boolean,pickAlt?:boolean};
+type Image={dir:string,files:string[],defines:string[],seed:number,trigger:boolean,precision:boolean,bare?:boolean,box?:boolean,pick?:boolean,pickAlt?:boolean,probe?:boolean,pull?:boolean};
 // Shared by every image (the stacking build used the same PLL text).
 const common=['record.v','transport.v','adc_unpack.v','interleave.v','panel_scan.v','pll.v','adc_pll.v',
  'gpmc_slave.v','ddio_pair.v','lane_in.v','lanemap_seed.vh'];
@@ -78,6 +78,11 @@ const images:Record<string,Image>={
  // ADR-SYMBOL-TRIGGER: and the serial buses of timed pulses (symbol_trigger.v),
  // whose frames take milliseconds and want the long decimated records.
  qualify:{dir:'images/qualify',files:['qual_trigger.v','zone_qual.v','sum_edge_pair.v','symbol_trigger.v','general/precision.v','general/precision_tail.v'],defines:['QUAL_TRIGGER','SYMBOL_TRIGGER'],seed:52,trigger:true,precision:true,bare:true,pickAlt:true},
+ // ADR-DIAG-PROBE: the diagnostics stick's census images (probe_top.v): every
+ // ball but the ARM bus and the encode legs an input, without and with the
+ // weak pull-ups, for what another population of the board connects.
+ probe:{dir:'images/probe',files:[],defines:[],seed:1,trigger:false,precision:false,probe:true},
+ probepull:{dir:'images/probe',files:[],defines:[],seed:1,trigger:false,precision:false,probe:true,pull:true},
  stacking:{dir:'images/stacking',files:['stack_engine_port.v','stack_edge_accumulator.v','stack_edge_hits.v','stack_tiled_accumulator.v',
   'stack_tile_access.v','stack_tile_transfer.v','stack_state_tile.v','stack_resample_store.v','stack_resample.v','stack_positions.v',
   'stack_interpolate.v','stack_accumulate.v','stack_bin_writer.v','stack_record_cache.v'],defines:[],seed:220,trigger:false,precision:false},
@@ -115,7 +120,20 @@ for(const f of image.trigger ? trigger : [])copy(join(root,'trigger',f),f);
 for(const f of image.files)copy(f.includes('/') ? join(root,'images',f) : join(root,image.dir,f),imageFile(f));
 
 let defines:string[];
-if(image.trigger){
+// The probe's census balls (balls.txt): ball[i] for all but the last, M2,
+// which is the image's mclk_in.
+// The dedicated clock inputs (group clkin) have no weak pull-up.
+const probeLines=image.probe ? readFileSync(join(root,image.dir,'balls.txt'),'utf8').split('\n').filter(l=>l && !l.startsWith('#')).map(l=>l.split(' ')) : [];
+const probeBalls=probeLines.map(l=>l[0]);
+if(image.probe){
+ if(probeBalls.at(-1)!=='M2' || probeBalls.length>255)throw Error('balls.txt must end with M2 and list at most 255 balls');
+ const qsf=readFileSync(join(root,image.dir,'project.qsf'),'utf8').trimEnd().split('\n');
+ probeBalls.slice(0,-1).forEach((b,i)=>qsf.push(`set_location_assignment PIN_${b} -to ball[${i}]`));
+ if(image.pull)probeLines.slice(0,-1).forEach((l,i)=>{if(l[2]!=='clkin')qsf.push(`set_instance_assignment -name WEAK_PULL_UP_RESISTOR ON -to ball[${i}]`);});
+ project('bench.qsf',qsf.join('\n')+'\n');
+ project('bench.sdc',readFileSync(join(root,image.dir,'project.sdc'),'utf8'));
+ defines=[];
+}else if(image.trigger){
  // The shared trigger project lists every decoder; keep this image's files only.
  const listed=new Set(['pll.v','adc_pll.v','bench.v','gpmc_slave.v','ddio_pair.v','lane_in.v','record.v','transport.v','adc_unpack.v',
   'interleave.v','panel_scan.v',...sources]);
@@ -166,8 +184,8 @@ if(image.trigger){
  project('bench.sdc',readFileSync(join(root,image.dir,'project.sdc'),'utf8'));
  defines=['INTERLEAVE','BURST_RECALL','HOST_READ_FIX','STACK_ENGINE'];
 }
-const top=readFileSync(join(root,'common','top.v'),'utf8');
-writeFileSync(join(out,'bench.v'),defines.map(d=>'`define '+d+'\n').join('')+'`define BENCH_MHZ 250\n'+top);
+if(image.probe)writeFileSync(join(out,'bench.v'),`\`define BALLS ${probeBalls.length}\n\`define PULL 1'b${image.pull ? 1 : 0}\n`+readFileSync(join(root,image.dir,'probe_top.v'),'utf8'));
+else writeFileSync(join(out,'bench.v'),defines.map(d=>'`define '+d+'\n').join('')+'`define BENCH_MHZ 250\n'+readFileSync(join(root,'common','top.v'),'utf8'));
 inputs['bench.v']=sha(readFileSync(join(out,'bench.v')));
 writeFileSync(join(out,'bench.qpf'),'PROJECT_REVISION = "bench"\n');
 writeFileSync(join(out,'inputs.json'),JSON.stringify(inputs,null,2)+'\n');
@@ -195,8 +213,9 @@ run('quartus_asm',['bench']);
 // about half the bits switches in half the time (the shifting is the load).
 run('quartus_cpf',['-c','-o','bitstream_compression=on','output_files/bench.sof','bench.rbf']);
 const rbfSize=statSync(join(out,'bench.rbf')).size;
-if(rbfSize<92002 || rbfSize>=368011)throw Error('Unexpected FPGA image size '+rbfSize);
-if(!image.trigger)auditStacking();
+// The probe is small, and compresses well below the acquisition images.
+if(rbfSize<(image.probe ? 16384 : 92002) || rbfSize>=368011)throw Error('Unexpected FPGA image size '+rbfSize);
+if(!image.trigger && !image.probe)auditStacking();
 const rbfSha=sha(readFileSync(join(out,'bench.rbf')));
 writeFileSync(join(out,'image.json'),JSON.stringify({image:name,seed,sha256:rbfSha,minimumInternalSlackNs:Math.min(...slack),inputs},null,2)+'\n');
 // One atomic pointer publishes the image and its provenance together.

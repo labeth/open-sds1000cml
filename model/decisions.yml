@@ -2816,9 +2816,30 @@ decisions:
   decision: The diagnostics stick is a product of its own, never on the firmware's stick - its own startup.sh, the
     sdsdiag program and a MODE file, released as a separate zip. It runs only under the factory firmware it studies,
     reads by default, and in its active stage traces the factory app's device syscalls while driving the factory app's
-    own settings over SCPI; it loads no FPGA image and writes nothing but the stick.
+    own settings over SCPI; it writes nothing but the stick, and the FPGA images of its takeover stage
+    (ADR-DIAG-PROBE) are volatile.
   consequences:
   - The owner of another variant sends one archive.
   - The stick's default auto mode runs the active stage after the passive one only when a gate finds the scope is one
     it was made for; passive runs only the read-only stage.
+
+- id: ADR-DIAG-PROBE
+  title: The diagnostics stick takes the scope over and censuses the FPGA's balls
+  status: accepted
+  date: '2026-11-03'
+  context: The variants are the SDS1102CML+'s board with components left off. What the factory app writes does not
+    say which converters, front ends, memory or clocks are fitted; only the FPGA's balls do, and the factory image
+    is not ours to read them through.
+  decision: After the active stage, and only when a second gate finds the factory app acted as on the SDS1102CML+
+    and the configuration port and FPGA part are the same, the stick stops the factory app as the agent's takeover
+    does and loads a probe image that drives only the ARM bus and the encode legs. Without and with the weak
+    pull-ups it records each ball's levels and edges with the legs off and on, and which balls follow each leg and
+    each channel's offset DAC; from these it judges each part of the SDS1102CML+'s population present, absent or
+    partial. Then it runs this firmware's app on the board for a minute and a half.
+  consequences:
+  - One boot of the stick says which converters, front ends and clocks the board has, and whether this firmware
+    runs on it as it stands.
+  - The scope needs a power-cycle after the stick: the factory app is gone until then.
+  - The probe images ship in the diagnostics zip; balls.txt is the census's one list of balls, copied into the
+    collector.
 

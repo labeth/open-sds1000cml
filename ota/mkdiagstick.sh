@@ -1,11 +1,16 @@
 #!/bin/sh
-# mkdiagstick.sh <sdsdiag-arm> <out.zip>: the diagnostics stick's zip. Its
-# contents go on the root of an MBR + FAT32 stick: startup.sh, README.txt and
-# sds-diag/ (the collector and its MODE). With SOURCE_DATE_EPOCH set, every
-# entry carries that time, so two builds of a tree are byte-identical.
+# mkdiagstick.sh <sdsdiag-arm> <app-arm> <probe.rbf> <probepull.rbf> <out.zip>:
+# the diagnostics stick's zip. Its contents go on the root of an MBR + FAT32
+# stick: startup.sh, README.txt and sds-diag/ (the collector, its MODE, and
+# for the takeover stage the probe images and the app). With SOURCE_DATE_EPOCH
+# set, every entry carries that time, so two builds of a tree are
+# byte-identical.
 set -eu
 bin=$1
-out=$2
+app=$2
+probe=$3
+probepull=$4
+out=$5
 here=$(cd "$(dirname "$0")" && pwd)
 repo=$(cd "$here/.." && pwd)
 mkdir -p "$(dirname "$out")"
@@ -17,9 +22,12 @@ cp "$here/diagstick/startup.sh" "$staging/startup.sh"
 cp "$here/diagstick/README.txt" "$staging/README.txt"
 cp "$here/diagstick/MODE" "$staging/sds-diag/MODE"
 cp "$bin" "$staging/sds-diag/sdsdiag"
+cp "$app" "$staging/sds-diag/app"
+cp "$probe" "$staging/sds-diag/probe.rbf"
+cp "$probepull" "$staging/sds-diag/probepull.rbf"
 cp "$repo/LICENSE" "$staging/LICENSE.txt"
 cp "$repo/SAFETY.txt" "$staging/SAFETY.txt"
-chmod 0755 "$staging/startup.sh" "$staging/sds-diag/sdsdiag"
+chmod 0755 "$staging/startup.sh" "$staging/sds-diag/sdsdiag" "$staging/sds-diag/app"
 if [ -n "${SOURCE_DATE_EPOCH:-}" ]; then
   ts=$(date -u -d "@$SOURCE_DATE_EPOCH" +%Y%m%d%H%M.%S 2>/dev/null || date -u -r "$SOURCE_DATE_EPOCH" +%Y%m%d%H%M.%S)
   ( cd "$staging" && TZ=UTC find . -mindepth 1 -exec touch -t "$ts" {} + )

@@ -288,9 +288,11 @@ architecture:
     prose: 'ota/internal/diag, cmd/sdsdiag and ota/diagstick: the diagnostics stick an owner of another SDS1000 variant
       boots under the factory firmware. A passive stage reads the kernel, sysfs, debugfs, processes, the factory
       firmware files, the FPGA version register through the inherited descriptor, the factory app''s settings over
-      SCPI and its screen; an active stage, only when MODE asks for it, reads the SoC''s pad and GPMC configuration and
-      traces the factory app''s device syscalls while it steps the app through its settings over SCPI, then puts them
-      back. One archive on the stick holds it all.'
+      SCPI and its screen; an active stage, after a gate, reads the SoC''s pad and GPMC configuration and traces the
+      factory app''s device syscalls while it steps the app through its settings over SCPI, then puts them back; a
+      takeover stage, after a second gate, stops the factory app, takes a census of every FPGA ball with the probe
+      image (FU-RTL-PROBE) to judge which parts of the population are fitted, and runs this firmware''s app on the
+      board. One archive on the stick holds it all.'
     tags:
     - source-backed
   - id: FU-OTA-GPMC
@@ -470,6 +472,15 @@ architecture:
       saturating at 0xFFFF, latches at the window end and restarts (DIAG LANE_TOG). The design muxes the selected
       LANE_IDX signal into it; a reading is valid two windows (2 x 65536 clk cycles) after LANE_IDX changes. One
       counter instead of 116 keeps the diagnostics under ~300 LEs.'
+    tags:
+    - source-backed
+  - id: FU-RTL-PROBE
+    name: Probe census image
+    group: FG-RTL
+    prose: 'fpga/images/probe: the diagnostics stick''s census image, built without and with the weak pull-ups. It
+      drives only the ARM bus and the ten encode legs (each off until the host turns it on); every other ball of
+      balls.txt is an input. A gate records each ball''s ever-0, ever-1 and live level, and eight channels count a
+      chosen ball''s rising edges on the ball itself and its high time on clk.'
     tags:
     - source-backed
   - id: FU-RTL-COMMON-TESTS

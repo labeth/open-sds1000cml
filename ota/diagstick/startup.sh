@@ -4,9 +4,10 @@
 # background and returns at once, so the factory firmware boots as always; the
 # collector waits for the factory app, then leaves one archive on the stick.
 #
-# It only reads, unless sds-diag/MODE says "active" (see README.txt). It never
-# loads an FPGA image and never writes the instrument's flash; the only files
-# it writes are on this stick.
+# What it does is set by sds-diag/MODE (see README.txt): the read-only stage,
+# then, when checks pass, the active stage and the takeover stage, whose FPGA
+# images last until the power goes off. It never writes the instrument's
+# flash; the only files it writes are on this stick.
 
 USB=/usr/bin/siglent/usr/media/U-disk0
 [ -x "$USB/sds-diag/sdsdiag" ] || USB=$(dirname "$0")
