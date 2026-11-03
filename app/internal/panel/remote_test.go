@@ -197,7 +197,7 @@ func TestCompareStabilityLeavesTheSeqAlone(t *testing.T) {
 	}
 	for range 8 {
 		step()
-		r.show(noiseFrame(rng))
+		r.show(freeRunFrame(rng))
 	}
 	if !strings.Contains(c.View().Cmp.Again, "needs a stable trigger") {
 		t.Fatalf("the LCD's pane: %q", c.View().Cmp.Again)

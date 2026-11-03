@@ -92,12 +92,12 @@ type anaState struct {
 	curOK    [2]bool
 
 	// COMPARE
-	stabPrev []float64
-	stabRes  []bool
-	stabKey  stabK
-	stabFed  frameKey  // the frame tested last
-	stabAt   time.Time // when it was tested
-	refDiff  [2]refDiffResult
+	stabLows, stabHighs []float64 // the last tested capture's column extremes
+	stabRes             []bool
+	stabKey             stabK
+	stabFed             frameKey  // the frame tested last
+	stabAt              time.Time // when it was tested
+	refDiff             [2]refDiffResult
 }
 
 // refDiffResult is a reference against the live trace.

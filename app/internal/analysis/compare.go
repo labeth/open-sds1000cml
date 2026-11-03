@@ -43,55 +43,66 @@ func RefDiff(live, ref []float64, tolDiv float64) (maxAbs, rms, pctWithin float6
 	return maxAbs, math.Sqrt(ss / float64(cnt)), 100 * float64(within) / float64(cnt)
 }
 
-// Repeats reports whether two consecutive captures of the trigger source
-// repeat, by the mask build's rule (panel/mask.go, engine
-// BuildMaskFromEnvelope): every sample of each lies within +-tolDiv of the
-// other's min/max envelope over +-slack samples. A sample that is a gap, one
-// of the first or last slack samples, or one whose envelope window touches a
-// gap, is not judged (an unobserved mask
-// column always passes: a transition may hide in the gap); captures of
-// different lengths or without a judged sample do not repeat. A master
-// averaged from captures that fail this is a smear.
+// RepeatsBand reports whether two consecutive captures of the trigger
+// source repeat, each read as column extremes (lo, hi per column), by the mask
+// build's rule: each capture's column midpoints lie within +-tolDiv of the
+// band the other covers over +-slack columns, from its lowest low to its
+// highest high. A probe's ringing after an edge, a sample or two deep and
+// caught at another depth or in the next column by another capture, widens
+// the band where it rings and moves no midpoint out of it; a capture on
+// another phase still puts a flat stretch where the other has the other
+// level. A column that is a gap, one of the first or last slack columns, or
+// one whose band window touches a gap, is not judged (a transition may hide
+// there); captures of different lengths or without a judged column do not
+// repeat. A master averaged from captures that fail this is a smear.
 // TRLC-LINKS: REQ-SDS-218
-func Repeats(prev, cur []float64, tolDiv float64, slack int) bool {
-	if len(prev) != len(cur) || len(cur) == 0 || !(tolDiv >= 0) {
+func RepeatsBand(prevLo, prevHi, curLo, curHi []float64, tolDiv float64, slack int) bool {
+	n := len(curLo)
+	if n == 0 || len(curHi) != n || len(prevLo) != n || len(prevHi) != n || !(tolDiv >= 0) {
 		return false
 	}
 	slack = max(0, slack)
-	a := within(cur, prev, tolDiv, slack)
-	b := within(prev, cur, tolDiv, slack)
+	mid := func(lo, hi []float64) []float64 {
+		m := make([]float64, n)
+		for i := range m {
+			m[i] = (lo[i] + hi[i]) / 2
+		}
+		return m
+	}
+	a := within(mid(curLo, curHi), prevLo, prevHi, tolDiv, slack)
+	b := within(mid(prevLo, prevHi), curLo, curHi, tolDiv, slack)
 	return a > 0 && b > 0
 }
 
-// within tests every sample of x against env's sliding min/max over
-// +-slack samples, dilated by tol. It returns the number of samples tested,
-// or -1 at the first one outside.
+// within tests every sample of x against the sliding min of envLo and max of
+// envHi over +-slack samples, dilated by tol. It returns the number of samples
+// tested, or -1 at the first one outside.
 // TRLC-LINKS: REQ-SDS-218
-func within(x, env []float64, tol float64, slack int) int {
-	n := len(env)
-	// monotonic deques of indices into env: front = the window's min / max
+func within(x, envLo, envHi []float64, tol float64, slack int) int {
+	n := len(envLo)
+	// monotonic deques of indices into the envelopes: front = the window's min / max
 	minQ := make([]int, 0, 64)
 	maxQ := make([]int, 0, 64)
-	next := 0 // the next env index to enter the window
-	gaps := 0 // gaps of env inside the window
+	next := 0 // the next index to enter the window
+	gaps := 0 // gaps of the envelopes inside the window
 	tested := 0
 	for i, v := range x {
 		for ; next < n && next <= i+slack; next++ {
-			e := env[next]
-			if math.IsNaN(e) {
+			lo, hi := envLo[next], envHi[next]
+			if math.IsNaN(lo) || math.IsNaN(hi) {
 				gaps++
 				continue
 			}
-			for len(minQ) > 0 && env[minQ[len(minQ)-1]] >= e {
+			for len(minQ) > 0 && envLo[minQ[len(minQ)-1]] >= lo {
 				minQ = minQ[:len(minQ)-1]
 			}
 			minQ = append(minQ, next)
-			for len(maxQ) > 0 && env[maxQ[len(maxQ)-1]] <= e {
+			for len(maxQ) > 0 && envHi[maxQ[len(maxQ)-1]] <= hi {
 				maxQ = maxQ[:len(maxQ)-1]
 			}
 			maxQ = append(maxQ, next)
 		}
-		if out := i - slack - 1; out >= 0 && math.IsNaN(env[out]) {
+		if out := i - slack - 1; out >= 0 && (math.IsNaN(envLo[out]) || math.IsNaN(envHi[out])) {
 			gaps-- // left the window
 		}
 		for len(minQ) > 0 && minQ[0] < i-slack {
@@ -106,7 +117,7 @@ func within(x, env []float64, tol float64, slack int) int {
 		if end := min(slack, (n-1)/2); i < end || i >= n-end || math.IsNaN(v) || gaps > 0 || len(minQ) == 0 {
 			continue
 		}
-		if v < env[minQ[0]]-tol || v > env[maxQ[0]]+tol {
+		if v < envLo[minQ[0]]-tol || v > envHi[maxQ[0]]+tol {
 			return -1
 		}
 		tested++

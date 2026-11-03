@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/labeth/open-sds1000cml/app/internal/analog"
+	"github.com/labeth/open-sds1000cml/app/internal/analysis"
 	"github.com/labeth/open-sds1000cml/app/internal/dsp"
 	"github.com/labeth/open-sds1000cml/app/internal/engine"
 	"github.com/labeth/open-sds1000cml/app/internal/panel/framecalc"
@@ -49,13 +50,17 @@ type stackState struct {
 // stabCols is the repeat test's resolution: screen columns compared.
 const stabCols = 400
 
-// screenDivs maps a channel's window onto cols columns in divisions at the
-// live scale (column extremes' midpoint, as the trace draws them).
+// screenExtremes maps a channel's window onto cols columns in divisions at
+// the live scale: each column's lowest and highest sample, as the trace draws
+// them. The repeat test holds each capture's column midpoints against the
+// band the other's extremes cover (analysis.RepeatsBand): a probe's
+// few-nanosecond ringing after an edge, caught at another depth or in the
+// next column by another capture, widens the band and moves no midpoint out.
 // TRLC-LINKS: REQ-SDS-218
-func screenDivs(f *engine.Frame, s *sv, ch, cols int) []float64 {
+func screenExtremes(f *engine.Frame, s *sv, ch, cols int) (lows, highs []float64) {
 	valid := framecalc.Valid(f)
 	if ch == 1 && len(f.C2) < valid {
-		return nil
+		return nil, nil
 	}
 	g := geom{valid: valid, winCols: f.WinCols, edgeX: f.EdgeX, sampleS: f.SampleS}
 	left, win := windowOf(g, s)
@@ -63,15 +68,15 @@ func screenDivs(f *engine.Frame, s *sv, ch, cols int) []float64 {
 	if s.cpl[ch] != analog.CplDC {
 		sig = analog.CoupleDisplay(sig, s.cpl[ch])
 	}
-	z := float64(max(analog.Detents[s.vidx[ch]].Zoom, 1))
-	out := make([]float64, cols)
+	z := float64(max(analog.Detents[s.vidx[ch]].Zoom, 1)) / 25
+	lows, highs = make([]float64, cols), make([]float64, cols)
 	// Column x ends where x+1 starts: one floor a column, and from a
 	// non-negative left the floor is the conversion's truncation (no float
 	// compare, which stalls this core's pipeline).
 	pos := func(x int) float64 { return left + float64(x)*float64(win)/float64(cols) }
 	trunc := left >= 0 && pos(cols) < 1<<31
 	next := floorInt(pos(0))
-	for x := range out {
+	for x := range lows {
 		start := next
 		if trunc {
 			next = int(pos(x + 1))
@@ -81,10 +86,9 @@ func screenDivs(f *engine.Frame, s *sv, ch, cols int) []float64 {
 		lo := clampInt(start, 0, valid-1)
 		hi := clampInt(next-1, lo, valid-1)
 		mn, mx := dsp.MinMax8(sig[lo : hi+1])
-		out[x] = (float64(mn)+float64(mx))/2 - 128
-		out[x] = out[x] * z / 25
+		lows[x], highs[x] = (float64(mn)-128)*z, (float64(mx)-128)*z
 	}
-	return out
+	return lows, highs
 }
 
 // floorInt is int(math.Floor(v)) for the sample position of a screen
@@ -162,33 +166,34 @@ func stabKey(s *sv) stabK {
 func (c *Controller) stabFrame(a *anaState, s *sv, f *engine.Frame) {
 	src := s.st.TrigSource & 1
 	if s.st.AcqMode == engine.AcqAverage || !s.chDisp[src] || f.IsEnv {
-		a.stabPrev = nil
+		a.stabLows, a.stabHighs = nil, nil
 		return
 	}
 	if k := stabKey(s); k != a.stabKey {
-		a.stabKey, a.stabPrev, a.stabRes, a.stabFed = k, nil, nil, frameKey{}
+		a.stabKey, a.stabLows, a.stabHighs, a.stabRes, a.stabFed = k, nil, nil, nil, frameKey{}
 	}
 	now := c.now()
-	if d := now.Sub(a.stabAt); a.stabPrev != nil && d >= 0 && d < stabEvery {
+	if d := now.Sub(a.stabAt); a.stabLows != nil && d >= 0 && d < stabEvery {
 		return // tested a moment ago
 	}
 	if seen(&a.stabFed, keyOf(f)) {
 		return // tested already
 	}
 	a.stabAt = now
-	cur := screenDivs(f, s, src, stabCols)
-	if cur == nil {
+	lows, highs := screenExtremes(f, s, src, stabCols)
+	if lows == nil {
 		return
 	}
-	if a.stabPrev != nil {
+	if a.stabLows != nil {
 		win := max(f.WinCols, 1)
 		slack := max(1, int(math.Round(6*float64(stabCols)/float64(win))))
-		a.stabRes = append(a.stabRes, anaRepeats(a.stabPrev, cur, 0.25, slack))
+		ok := analysis.RepeatsBand(a.stabLows, a.stabHighs, lows, highs, 0.25, slack)
+		a.stabRes = append(a.stabRes, ok)
 		if len(a.stabRes) > stabN {
 			a.stabRes = a.stabRes[len(a.stabRes)-stabN:]
 		}
 	}
-	a.stabPrev = cur
+	a.stabLows, a.stabHighs = lows, highs
 }
 
 // stabVerdict is how many of the last captures repeated; ok is false while

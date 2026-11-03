@@ -63,9 +63,3 @@ func anaHarmonics(ps []Peak, f0 float64) THD { return analysis.Harmonics(ps, f0)
 func anaRefDiff(live, ref []float64, tolDiv float64) (maxAbs, rms, pct float64) {
 	return analysis.RefDiff(live, ref, tolDiv)
 }
-
-// anaRepeats reports whether cur repeats prev (the mask build's rule).
-// TRLC-LINKS: REQ-SDS-218
-func anaRepeats(prev, cur []float64, tolDiv float64, slack int) bool {
-	return analysis.Repeats(prev, cur, tolDiv, slack)
-}

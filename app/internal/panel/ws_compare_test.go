@@ -12,12 +12,15 @@ import (
 	"github.com/labeth/open-sds1000cml/app/internal/panel/wsview"
 )
 
-// noiseFrame is a capture that does not repeat: a random C1.
+// freeRunFrame is a capture that does not repeat: the tone as a free-running
+// trigger shows it, at another phase each capture.
 // TRLC-LINKS: REQ-SDS-218
-func noiseFrame(rng *rand.Rand) *engine.Frame {
+func freeRunFrame(rng *rand.Rand) *engine.Frame {
 	f := toneFrame("")
+	k := 200 + rng.Intn(1600) // a 4000-sample period: 0.05 to 0.45 of it off
+	sig := append([]uint8(nil), f.C1...)
 	for i := range f.C1 {
-		f.C1[i] = uint8(40 + rng.Intn(170))
+		f.C1[i] = sig[(i+k)%len(sig)]
 	}
 	return f
 }
@@ -42,7 +45,7 @@ func TestMasterRefusedWhileTheSourceDoesNotRepeat(t *testing.T) {
 	step := stabSpaced(c)
 	for range 8 {
 		step()
-		r.show(noiseFrame(rng))
+		r.show(freeRunFrame(rng))
 	}
 	if !strings.Contains(c.View().Cmp.Again, "needs a stable trigger") {
 		t.Fatalf("again: %q", c.View().Cmp.Again)
@@ -258,5 +261,43 @@ func TestCompareRefStoredWhileStopped(t *testing.T) {
 	row := c.View().Cmp.Rows[cmpRefA]
 	if row.Extra != "max|d| 0V  rms 0V  100.0% in 0.5div" {
 		t.Fatalf("REF A stored from the capture on screen: %q", row.Extra)
+	}
+}
+
+// spikeFrame is a 20000-sample square wave, 50 samples a repeat-test column,
+// whose falling edges sit jitter samples after a column boundary, each
+// followed 5 samples later by a probe's 2-sample undershoot to 0.
+// TRLC-LINKS: REQ-SDS-218
+func spikeFrame(jitter int) *engine.Frame {
+	f := toneFrame("")
+	for i := range f.C1 {
+		ph := (i - jitter) % 2000
+		v := uint8(60)
+		if ph >= 1000 {
+			v = 196
+		}
+		f.C1[i] = v
+	}
+	for e := 2000 + jitter; e+7 < len(f.C1); e += 2000 { // a falling edge at e
+		f.C1[e+5], f.C1[e+6] = 0, 0
+	}
+	return f
+}
+
+// The ringing after an edge that jitters across a column boundary lands in
+// the edge's column in one capture and in the next in another: the repeat
+// test still sees a capture that repeats.
+// TRLC-LINKS: REQ-SDS-218
+func TestRingingAcrossAColumnStillRepeats(t *testing.T) {
+	r := newViewRig(t)
+	c := r.c
+	press(t, c, "f5")
+	step := stabSpaced(c)
+	for i := range 12 {
+		step()
+		r.show(spikeFrame([]int{-8, -2}[i%2])) // the spike at -3 or +3 about the boundary
+	}
+	if again := c.View().Cmp.Again; !strings.HasSuffix(again, "stack master") {
+		t.Fatalf("again: %q, caption %q", again, func() string { s, _ := c.RepeatCaption(); return s }())
 	}
 }

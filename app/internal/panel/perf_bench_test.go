@@ -788,7 +788,7 @@ func BenchmarkSRFrameCopyRef(b *testing.B) {
 
 // The COMPARE repeat test maps both channels onto 400 columns a frame.
 // TRLC-LINKS: REQ-SDS-218
-func BenchmarkScreenDivs(b *testing.B) {
+func BenchmarkScreenExtremes(b *testing.B) {
 	f := &engine.Frame{C1: make([]uint8, 14000), C2: make([]uint8, 14000), Valid: 14000, WinCols: 1400, SampleS: 2e-9}
 	for i := range f.C1 {
 		f.C1[i] = uint8(128 + 60*((i/90)%2*2-1) + i%5)
@@ -796,8 +796,8 @@ func BenchmarkScreenDivs(b *testing.B) {
 	}
 	s := &sv{probe: [2]float64{1, 1}, vidx: [2]int{10, 10}}
 	for b.Loop() {
-		screenDivs(f, s, 0, stabCols)
-		screenDivs(f, s, 1, stabCols)
+		screenExtremes(f, s, 0, stabCols)
+		screenExtremes(f, s, 1, stabCols)
 	}
 }
 
