@@ -14,7 +14,7 @@ How to use it
 1. Format a USB stick as MBR + FAT32 (one partition) and extract this zip onto
    its root, so that startup.sh and the sds-diag folder are at the top.
 2. With the scope off, plug the stick in, power the scope on and leave it for
-   five minutes. The scope boots and works as usual meanwhile.
+   three minutes. The scope boots and works as usual meanwhile.
 3. Turn the scope off and take the stick out. On the stick you find:
      sds-diag-<mac>-passive-1.tar.gz   the file to send
      sds-diag-<mac>-passive-1.txt      a short summary
@@ -29,8 +29,11 @@ Once the project has looked at the first file, it may ask for the active
 stage. It records which registers the factory firmware writes for each
 setting, while the stick steps the scope through its settings by itself:
 every V/div on both channels, couplings, offsets, bandwidth limit,
-timebases, trigger and acquisition modes. The relays click and the screen
-changes for about four minutes. Afterwards it puts your settings back.
+timebases, trigger and acquisition modes. The relays click, the screen
+changes and the scope answers its keys slowly for about fifteen minutes
+(never more than twenty-five); then it puts your settings back. Leave it
+alone until sds-diag-status.txt says DONE: switching off earlier loses the
+file and leaves your settings changed.
 
 To run it, open sds-diag/MODE on the stick in a text editor, replace
 "passive" with "active", save, and repeat steps 2-4 with the scope's inputs

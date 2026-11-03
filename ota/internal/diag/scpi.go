@@ -34,8 +34,10 @@ type Step struct {
 // vdivs are the V/div detents the sweep sets at the probe's 1x and 10x.
 var vdivs = []string{"2MV", "5MV", "10MV", "20MV", "50MV", "100MV", "200MV", "500MV", "1V", "2V", "5V", "10V"}
 
-// tdivs are the timebases the sweep sets: each band of the acquisition.
-var tdivs = []string{"1NS", "2NS", "5NS", "10NS", "20NS", "50NS", "100NS", "200NS", "500NS", "1US", "10US", "100US", "1MS", "10MS", "100MS", "1S", "10S"}
+// tdivs are the timebases the sweep sets: each band of the acquisition up to
+// 100 ms/div. The roll timebases are left out: traced at 1 s/div the factory
+// app of an SDS1102CML+ exits.
+var tdivs = []string{"1NS", "2NS", "5NS", "10NS", "20NS", "50NS", "100NS", "200NS", "500NS", "1US", "10US", "100US", "1MS", "10MS", "100MS"}
 
 // SweepSteps is the active sweep: every V/div at both probe factors, the
 // couplings, the bandwidth limit, offsets and the channel on and off for each
