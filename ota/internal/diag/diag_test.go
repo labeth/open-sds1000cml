@@ -175,3 +175,15 @@ func TestTraceOnlyOnARM(t *testing.T) {
 		t.Fatalf("trace off ARM: %v", err)
 	}
 }
+
+// A process's state comes from /proc: this test's own is running or
+// sleeping, a pid no process has reads as gone.
+// TRLC-LINKS: REQ-SDS-285
+func TestProcState(t *testing.T) {
+	if st := procState(os.Getpid()); st != "R" && st != "S" {
+		t.Fatalf("own state %q", st)
+	}
+	if st := procState(1 << 30); st != "" {
+		t.Fatalf("no such pid: %q", st)
+	}
+}

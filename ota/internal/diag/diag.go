@@ -21,6 +21,7 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/labeth/open-sds1000cml/ota/internal/buildinfo"
@@ -239,6 +240,11 @@ func (c *collection) sweep(a *Archive, vx *vxi11.Client, pid int, st scpiState) 
 			time.Since(t0).Milliseconds(), errText(werr))
 		a.AddFile(fmt.Sprintf("trace/steps/%03d-%s.txt.gz", i, s.Group), file, 64<<20)
 		_ = os.Remove(file)
+		if errors.Is(werr, errStopped) {
+			fmt.Fprintf(&log, "# the factory app did not run on after step %d: the sweep ends here\n", i)
+			c.note("sweep: ended after step %d: %v", i, werr)
+			break
+		}
 	}
 	fmt.Fprintf(&log, "# restore\n")
 	for _, cmd := range restoreCmds(st) {
@@ -308,10 +314,51 @@ func (c *collection) window(pid int, file string, step func() error) error {
 	}
 	serr := step()
 	time.Sleep(300 * time.Millisecond)
-	if err := stop(); err != nil {
+	werr := stop()
+	if err := resume(pid); err != nil {
 		return err
 	}
+	if werr != nil {
+		return werr
+	}
 	return serr
+}
+
+// errStopped is a factory app that is gone or stays stopped after a window:
+// the sweep ends there and the settings are put back.
+var errStopped = errors.New("the factory app did not run on after the trace window")
+
+// resume makes sure the factory app runs on after a trace window. Attaching
+// stops every thread with SIGSTOP, which starts a stop of the whole thread
+// group; the tracer's exit detaches the threads but leaves that group stop
+// in place, and the factory app would stay frozen. SIGCONT ends it, as strace
+// does when it detaches from a process it stopped.
+// TRLC-LINKS: REQ-SDS-285
+func resume(pid int) error {
+	for range 20 {
+		_ = syscall.Kill(pid, syscall.SIGCONT)
+		switch procState(pid) {
+		case "":
+			return errStopped // gone
+		case "T", "t":
+			time.Sleep(50 * time.Millisecond)
+		default:
+			return nil
+		}
+	}
+	return errStopped
+}
+
+// procState is the state letter of /proc/pid/stat ("R", "S", "T", ...), or
+// "" when the process is gone.
+// TRLC-LINKS: REQ-SDS-285
+func procState(pid int) string {
+	st := readStr(fmt.Sprintf("/proc/%d/stat", pid))
+	i := strings.LastIndexByte(st, ')') // the name in parentheses can hold spaces
+	if i < 0 || i+2 >= len(st) {
+		return ""
+	}
+	return st[i+2 : i+3]
 }
 
 // queryOf is the query that reads back what cmd set: its header with a "?".
