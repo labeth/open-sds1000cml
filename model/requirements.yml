@@ -4500,9 +4500,9 @@ requirements:
     reads its frequency and level.
 - id: REQ-SDS-284
   title: Diagnostics stick, passive stage
-  text: The diagnostics stick shall, booted under the factory firmware, record the board's kernel, devices, pin
-    multiplexing, processes, factory firmware files, FPGA version register, the factory app's settings and its screen
-    without writing anything but the stick.
+  text: The instrument shall, booted under the factory firmware from the diagnostics stick, record the board's kernel,
+    devices, pin multiplexing, processes, factory firmware files, FPGA version register, the factory app's settings
+    and its screen without writing anything but the stick.
   status: draft
   category: functional
   sourceRefs:
@@ -4526,9 +4526,9 @@ requirements:
     SHA-256 of the whole.
 - id: REQ-SDS-285
   title: Diagnostics stick, active stage
-  text: The diagnostics stick shall, when its MODE file says active, record the factory app's device syscalls while
-    it steps the factory app through every V/div, coupling, offset, bandwidth limit, timebase, trigger and acquisition
-    setting over SCPI, and then put the factory app's settings back.
+  text: The instrument shall, from the diagnostics stick whose MODE file says active, record the factory app's device
+    syscalls while it steps the factory app through every V/div, coupling, offset, bandwidth limit, timebase, trigger
+    and acquisition setting over SCPI, and then put the factory app's settings back.
   status: draft
   category: functional
   sourceRefs:
@@ -4547,8 +4547,8 @@ requirements:
     loaded and no flash is written.
 - id: REQ-SDS-286
   title: Diagnostics archive
-  text: The diagnostics stick shall leave one archive on the stick, with a manifest of every member, the collectors'
-    errors and a summary, and a status file saying when it is done.
+  text: The instrument shall, from the diagnostics stick, leave one archive on the stick with a manifest of every
+    member, the collectors' errors and a summary, and a status file saying when it is done.
   status: draft
   category: functional
   sourceRefs:
@@ -4558,3 +4558,5 @@ requirements:
   - FU-OTA-DIAG
   verificationMethods:
   - test
+  verificationCriteria: the archive lists every member with its size and SHA-256, a member past the size cap is listed
+    as not stored while the manifest and the error list are always stored, and the status file ends with DONE.
