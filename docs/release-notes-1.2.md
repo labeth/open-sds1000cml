@@ -52,8 +52,18 @@ power-cycle, and the factory firmware is back.
   no longer counts the frame it starts inside as errors; `/api/record.bin` serves records finer than
   32 ns at 20 to 200 µs/div; about one stream start in a hundred no longer ends in the FPGA's FIFO
   fault (the stream's FPGA image goes straight back to its write head when a due trip finds the
-  host holding both banks); typed match text keeps an escaped quote as one quote; diagnostic
-  requests' counts are bounded.
+  host holding both banks); typed match text keeps an escaped quote as one quote.
+* **Hardening from a review of all the Go code** against the Go community's coding guidelines
+  (golangci-lint now runs in CI and finds nothing in either module): the web server bounds a
+  request's headers to 10 s, so a client that never finishes one no longer holds a connection; a
+  SCPI (VXI-11) client writing without end no longer grows the app's memory; an oversized VXI-11
+  read count or reply length can no longer crash the agent; a knob turn sent from the web page with
+  a huge step count turns the right way; a failed write of the agent's takeover state no longer
+  takes the bus without the watchdog; four races in the agent (uploads, restore-factory, the
+  watchdog's start, the status reads) are closed.
+* **One app, one path.** The app has no alternative capture modes, environment switches or
+  diagnostic pages any more, and the stick carries no emergency app: what ships is the path the
+  scope runs and the tests cover.
 
 ## Install
 
@@ -132,9 +142,8 @@ settings tab (the Help key), at the end of the web UI's status line and in `/api
 * **SCPI identity:** `*IDN?` answers as the factory firmware does, so Siglent scripts that check it
   keep working; the firmware's own version is on the SYS tab and in `/api/status`.
 * **Network security:** the web UI (8080), SCPI (VXI-11) and the agent's control port (5900) have
-  no authentication. Anyone who can reach the scope can control it (the web server includes
-  diagnostic pages that read and write the FPGA's registers), and port 5900 runs commands on it as
-  root. Use the scope on a trusted network only. `OTA_LISTEN=127.0.0.1:5900` in
+  no authentication. Anyone who can reach the scope can control it, a web page open in a browser
+  on the same network included, and port 5900 runs commands on it as root. Use the scope on a trusted network only. `OTA_LISTEN=127.0.0.1:5900` in
   `ota/agent.env` closes port 5900 to the network (updates then go by the stick).
 
 ## Reporting issues
