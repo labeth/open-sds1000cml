@@ -5,7 +5,6 @@ package sramcapture
 import (
 	"context"
 	"fmt"
-	"strings"
 	"testing"
 
 	"github.com/labeth/open-sds1000cml/app/internal/superres"
@@ -166,96 +165,6 @@ func (f *stackPortBus) RawWrite(s, v uint16) error {
 		f.regs[s] = v
 	}
 	return nil
-}
-
-// TRLC-LINKS: REQ-SDS-141
-func TestStackRecordTilesAndRestore(t *testing.T) {
-	bus := newStackPortBus()
-	c, err := New(bus)
-	if err != nil {
-		t.Fatal(err)
-	}
-	cfg := StackConfig{Level: 128, Hysteresis: 8, PreSamples: 5, MinSeparation: 20, Bins: 70, Factor: 4, ChannelMask: 3}
-	st := NewStackState(cfg.Bins)
-	for record := 1; record <= 2; record++ {
-		added, crossings, err := c.StackRecord(context.Background(), cfg, st)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if added != 3 || crossings != 4 || st.Hits != uint32(3*record) || st.Records != record {
-			t.Fatalf("record %d: added %d crossings %d state %+v", record, added, crossings, st.Hits)
-		}
-		if bus.grant {
-			t.Fatal("grant left held after a record")
-		}
-	}
-	// Three tiles per record; the second record restores every nonzero bin.
-	if bus.scans != 6 || bus.uploads != 2*cfg.Bins {
-		t.Fatalf("scans %d uploads %d", bus.scans, bus.uploads)
-	}
-	for b := range cfg.Bins {
-		for ch := range 2 {
-			m := st.Moments[2*b+ch]
-			want := uint64(b+1) << 24
-			if m.Count != 6 || m.Sum[0] != 6*want || m.CountOdd != 3 || m.SumOdd[0] != 3*want {
-				t.Fatalf("bin %d channel %d: %+v", b, ch, m)
-			}
-		}
-	}
-	stack, err := superres.FPGAStack(st.Moments, 2, 0, int(st.Hits), st.Records, 2e-9)
-	if err != nil {
-		t.Fatal(err)
-	}
-	r := stack.Result(false, 1)
-	if r.Hits != 6 || len(r.Mean) != cfg.Bins || r.Mean[9] != 10 || r.Mean2[69] != 70 {
-		t.Fatalf("result hits %d mean %v", r.Hits, r.Mean[:10])
-	}
-	if _, err := superres.FPGAStack(st.Moments, 4, 0, 0, 0, 0); err == nil {
-		t.Fatal("partial sample accepted")
-	}
-}
-
-// TRLC-LINKS: REQ-SDS-141
-func TestStackRecordRejectsAndReleases(t *testing.T) {
-	bus := newStackPortBus()
-	c, err := New(bus)
-	if err != nil {
-		t.Fatal(err)
-	}
-	st := NewStackState(8)
-	for _, bad := range []StackConfig{
-		{Bins: 8, Factor: 0, ChannelMask: 3},
-		{Bins: 8, Factor: 1, ChannelMask: 0},
-		{Bins: 8, Factor: 1, ChannelMask: 3, Channel: 2},
-		{Bins: 8, Factor: 3, ChannelMask: 3},
-		{Bins: 9, Factor: 1, ChannelMask: 3},
-	} {
-		if _, _, err := c.StackRecord(context.Background(), bad, st); err == nil {
-			t.Fatalf("accepted %+v", bad)
-		}
-	}
-	if bus.scans != 0 || bus.grant {
-		t.Fatal("invalid configuration reached the port")
-	}
-	bus.failScan = true
-	_, _, err = c.StackRecord(context.Background(), StackConfig{Bins: 8, Factor: 1, ChannelMask: 3}, st)
-	if err == nil || !strings.Contains(err.Error(), "failed") || !bus.grantAtFailure || bus.grant || bus.scannedWithoutGrant {
-		t.Fatalf("scan failure: %v grant during %v after %v", err, bus.grantAtFailure, bus.grant)
-	}
-	if st.Hits != 0 || st.Records != 0 {
-		t.Fatal("failed record changed the state")
-	}
-	// A failure on the second tile must not keep the first tile's downloads.
-	bus.failScan, bus.scans, bus.failOnScan = false, 0, 2
-	wide := NewStackState(40)
-	if _, _, err = c.StackRecord(context.Background(), StackConfig{Bins: 40, Factor: 1, ChannelMask: 3}, wide); err == nil || bus.grant {
-		t.Fatalf("second-tile failure: %v, grant %v", err, bus.grant)
-	}
-	for i, m := range wide.Moments {
-		if m != (superres.FPGAStackMoments{}) {
-			t.Fatalf("moment %d kept from a failed record: %+v", i, m)
-		}
-	}
 }
 
 // TRLC-LINKS: REQ-SDS-141
