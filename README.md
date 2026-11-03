@@ -488,6 +488,18 @@ name the controller's and the agent's. Every `otactl` command (status, logs, tak
 the firmware version, what happened, and the logs from the stick (`ota/logs/agent.log`,
 `ota/logs/boot.log`, `ota/logs/firstboot.log`).
 
+## Other SDS1000 models
+
+The firmware supports the SDS1000CML+ (tested on the SDS1102CML+). To help support another model
+(an SDS1000DL+ or another SDS1000 variant), use the diagnostics stick,
+`open-sds1000cml-<version>-diagnostics.zip` from the release. It runs alongside the factory firmware
+without installing anything: extract it onto a FAT32 stick, boot the scope with it, and send the
+`sds-diag-….tar.gz` it leaves on the stick. Its `README.txt` says how, and what the file holds: the
+board's processor, kernel, devices and pin multiplexing, the factory app's devices and memory map,
+the factory firmware files (including the FPGA image and calibration), the factory app's settings
+and its screen. Only when the project asks, an active stage also records which registers the factory
+firmware writes for each setting while the stick steps the scope through them.
+
 ## Documentation
 
 The engineering model is the documentation: requirements, architecture, behaviour and design

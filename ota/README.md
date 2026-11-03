@@ -87,8 +87,28 @@ otactl power -shelly <plug-ip> cycle               # mains power-cycle through a
 make -C ota agent    # dist/agent-arm (static ARMv7)
 make -C ota otactl   # dist/otactl for this computer
 make -C ota dist     # both, and the stick tree under dist/stick (agent slots, no app)
+make -C ota diag-zip # the diagnostics stick zip (sdsdiag + diagstick/), see below
 make -C ota test
 ```
+
+## The diagnostics stick
+
+`cmd/sdsdiag` (`internal/diag`) with `diagstick/` is a stick of its own for other SDS1000 variants,
+never on this firmware's stick (ADR-DIAG-STICK). The factory firmware runs its `startup.sh`, which
+starts `sds-diag/sdsdiag` in the background 20 s after boot; it writes one
+`sds-diag-<mac>-<mode>-<n>.tar.gz`, a summary and `sds-diag-status.txt` to the stick's root.
+
+- **Passive** (`sds-diag/MODE` = `passive`, the default) only reads: `/proc`, the boot log, sysfs and
+  debugfs (pin mux, GPIO), `/dev`, every process with its descriptors and maps, the factory firmware
+  tree (files up to 1 MiB whole, larger ones by their head and SHA-256), the FPGA's plain registers
+  through the inherited `/dev/Gpmc`, the factory app's settings over VXI-11, and the screen.
+- **Active** (`MODE` = `active`) adds the SoC's pad, GPMC and clock configuration through read-only
+  `/dev/mem` mappings (each region in a child process: a gated block's bus error ends only that child)
+  and a ptrace trace of the factory app's device syscalls (`/dev/Gpmc` reads and writes decoded,
+  opens, mmap2, SPI/I2C reads and writes) while the stick steps the factory app through every V/div,
+  coupling, offset, bandwidth limit, timebase, trigger and acquisition setting over SCPI; it then
+  sends the saved settings back. The tracer is a child process: when it exits, the kernel detaches
+  and resumes the factory app.
 
 ## Making a boot stick
 

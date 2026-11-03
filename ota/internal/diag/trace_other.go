@@ -4,13 +4,10 @@
 
 package diag
 
-import (
-	"errors"
-	"time"
-)
+import "errors"
 
 // Trace needs the 32-bit ARM syscall registers: on another build it says so.
 // TRLC-LINKS: REQ-SDS-285
-func Trace(_ int, _ time.Duration, _ string, _ int) error {
+func Trace(_ int, _ TraceOpts) error {
 	return errors.New("trace: the register trace runs on the scope's 32-bit ARM only")
 }

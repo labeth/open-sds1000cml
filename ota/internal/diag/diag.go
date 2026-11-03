@@ -10,6 +10,7 @@
 package diag
 
 import (
+	"bufio"
 	"errors"
 	"flag"
 	"fmt"
@@ -169,42 +170,37 @@ func (c *collection) run() error {
 	return nil
 }
 
-// sweepTime is about how long the active sweep takes.
+// sweepTime is about how long the active sweep takes: each step's trace
+// window, the dwell and the read-back.
 // TRLC-LINKS: REQ-SDS-285
 func (c *collection) sweepTime() time.Duration {
-	return time.Duration(len(SweepSteps())) * (c.dwell + 300*time.Millisecond)
+	return time.Duration(len(SweepSteps())) * (c.dwell + 1500*time.Millisecond)
 }
 
-// sweep steps the factory app through SweepSteps while a child process traces
-// its syscalls, logs each step's time and the setting the factory app reports
-// back, then puts the settings back as they were.
+// sweep steps the factory app through SweepSteps, each step in a register
+// trace window of its own: a tracer child attaches, the step's command goes
+// out, and the tracer ends once the factory app has written its registers
+// and gone quiet (or after a few seconds). The factory app polls its
+// registers thousands of times a second, and traced through a whole sweep it
+// had no time left to answer SCPI; between windows it runs untraced. The
+// read-back query and the restore of the saved settings run untraced, and the
+// settings are read again at the end to show they are back.
 // TRLC-LINKS: REQ-SDS-285
 func (c *collection) sweep(a *Archive, vx *vxi11.Client, pid int, st scpiState) error {
 	if pid == 0 {
 		return errors.New("no factory app running: nothing to trace")
 	}
-	traceFile := filepath.Join(c.outDir, ".sds-diag-trace.gz")
-	defer func() { _ = os.Remove(traceFile) }()
-	d := c.sweepTime() + 20*time.Second
-	tr := exec.Command(c.self, "trace", strconv.Itoa(pid), strconv.Itoa(int(d.Seconds())), traceFile) //nolint:gosec,noctx // G204: this program as the tracer; it ends after d by itself
-	trOut, _ := os.CreateTemp(c.outDir, ".sds-diag-trace-log")
-	if trOut != nil {
-		tr.Stdout, tr.Stderr = trOut, trOut
-		defer func() { _ = os.Remove(trOut.Name()) }()
-	}
-	if err := tr.Start(); err != nil {
-		return err
-	}
-	time.Sleep(3 * time.Second) // every thread attached before the first step
 	var log strings.Builder
-	fmt.Fprintf(&log, "# t_us cmd | the factory app's answer to the step's query\n")
-	for _, s := range SweepSteps() {
+	fmt.Fprintf(&log, "# step t_us cmd | the factory app's answer to the step's query | trace window\n")
+	for i, s := range SweepSteps() {
+		file := filepath.Join(c.outDir, fmt.Sprintf(".sds-diag-step-%03d.gz", i))
 		t := monoMicros()
-		err := vx.Send(s.Cmd)
+		werr := c.window(pid, file, func() error { return vx.Send(s.Cmd) })
 		time.Sleep(c.dwell)
-		q := queryOf(s.Cmd)
-		ans, qerr := vx.Query(q)
-		fmt.Fprintf(&log, "%d %s | %s %s %s\n", t, s.Cmd, strings.TrimSpace(ans), errText(err), errText(qerr))
+		ans, qerr := vx.Query(queryOf(s.Cmd))
+		fmt.Fprintf(&log, "%03d %d %s | %s %s | %s\n", i, t, s.Cmd, strings.TrimSpace(ans), errText(qerr), errText(werr))
+		a.AddFile(fmt.Sprintf("trace/steps/%03d-%s.txt.gz", i, s.Group), file, 64<<20)
+		_ = os.Remove(file)
 	}
 	fmt.Fprintf(&log, "# restore\n")
 	for _, cmd := range restoreCmds(st) {
@@ -213,23 +209,69 @@ func (c *collection) sweep(a *Archive, vx *vxi11.Client, pid int, st scpiState) 
 	}
 	a.AddText("trace/steps.txt", log.String())
 	a.AddJSON("trace/sweep.json", SweepSteps())
+	after := readState(vx)
+	a.AddJSON("scpi/state_after.json", after)
+	var diff []string
+	for _, q := range stateQueries {
+		if st.Answers[q] != after.Answers[q] {
+			diff = append(diff, fmt.Sprintf("%s %q -> %q", q, st.Answers[q], after.Answers[q]))
+		}
+	}
+	c.note("settings after the sweep: %d differ from before %v", len(diff), diff)
+	return nil
+}
+
+// window runs send while a tracer child traces the factory app: the child
+// attaches, says ready, then ends a moment after the factory app's register
+// writes stop (at most a few seconds later). Its exit detaches the factory app.
+// TRLC-LINKS: REQ-SDS-285
+func (c *collection) window(pid int, file string, send func() error) error {
+	tr := exec.Command(c.self, "trace", strconv.Itoa(pid), "3000", file, "300") //nolint:gosec,noctx // G204: this program as the tracer; it ends by itself within 3 s
+	out, err := tr.StdoutPipe()
+	if err != nil {
+		return err
+	}
+	if err := tr.Start(); err != nil {
+		return err
+	}
+	ready := make(chan bool, 1)
+	go func() {
+		line, _ := bufio.NewReader(out).ReadString('\n')
+		ready <- strings.TrimSpace(line) == "ready"
+		_, _ = io.Copy(io.Discard, out)
+	}()
+	select {
+	case ok := <-ready:
+		if !ok {
+			_ = tr.Wait()
+			return errors.New("the tracer did not attach")
+		}
+	case <-time.After(5 * time.Second):
+		_ = tr.Process.Kill()
+		_ = tr.Wait()
+		return errors.New("the tracer did not attach in 5 s")
+	}
+	sent := make(chan error, 1)
+	go func() { sent <- send() }()
 	done := make(chan error, 1)
 	go func() { done <- tr.Wait() }()
+	var werr error
 	select {
-	case err := <-done:
-		if err != nil {
-			a.Errorf("trace: %v", err)
-		}
-	case <-time.After(d + time.Minute):
+	case werr = <-done:
+	case <-time.After(8 * time.Second):
 		_ = tr.Process.Kill() // a tracer's exit detaches and resumes the factory app
-		a.Errorf("trace: the tracer did not finish: killed")
+		werr = errors.New("the tracer did not end: killed")
+		<-done //nolint:errcheck // the killed tracer's exit status says nothing new
 	}
-	if trOut != nil {
-		_ = trOut.Close()
-		a.AddFile("trace/tracer.log", trOut.Name(), 1<<20)
+	select {
+	case err := <-sent:
+		if werr == nil {
+			werr = err
+		}
+	case <-time.After(15 * time.Second):
+		werr = errors.New("the command got no answer in 15 s")
 	}
-	a.AddFile("trace/syscalls.txt.gz", traceFile, 256<<20)
-	return nil
+	return werr
 }
 
 // queryOf is the query that reads back what cmd set: its header with a "?".
@@ -267,20 +309,26 @@ func cpuLine() string {
 	return strings.Join(parts, ", ") + " (" + runtime.GOARCH + ")"
 }
 
-// traceChild is "sdsdiag trace pid seconds file".
+// traceChild is "sdsdiag trace pid millis file quiet-millis": one trace
+// window, "ready" on stdout once attached.
 // TRLC-LINKS: REQ-SDS-285
 func traceChild(args []string, stderr io.Writer) int {
-	if len(args) != 3 {
-		_, _ = fmt.Fprintln(stderr, "usage: sdsdiag trace pid seconds file")
+	if len(args) != 4 {
+		_, _ = fmt.Fprintln(stderr, "usage: sdsdiag trace pid millis file quiet-millis")
 		return 2
 	}
 	pid, err1 := strconv.Atoi(args[0])
-	secs, err2 := strconv.Atoi(args[1])
-	if err1 != nil || err2 != nil {
-		_, _ = fmt.Fprintln(stderr, "sdsdiag trace: pid and seconds are numbers")
+	ms, err2 := strconv.Atoi(args[1])
+	quiet, err3 := strconv.Atoi(args[3])
+	if err1 != nil || err2 != nil || err3 != nil {
+		_, _ = fmt.Fprintln(stderr, "sdsdiag trace: pid, millis and quiet-millis are numbers")
 		return 2
 	}
-	if err := Trace(pid, time.Duration(secs)*time.Second, args[2], 4_000_000); err != nil {
+	o := TraceOpts{
+		For: time.Duration(ms) * time.Millisecond, Out: args[2], MaxLines: 2_000_000,
+		QuietAfterWrite: time.Duration(quiet) * time.Millisecond, Ready: os.Stdout,
+	}
+	if err := Trace(pid, o); err != nil {
 		_, _ = fmt.Fprintln(stderr, "sdsdiag trace:", err)
 		return 1
 	}

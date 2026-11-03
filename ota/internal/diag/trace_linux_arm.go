@@ -44,16 +44,20 @@ type tracer struct {
 	entry  map[int]syscall.PtraceRegs // a thread's registers at its syscall's entry
 	tids   map[int]bool
 	lines  int
-	counts map[uint32]int
+	// lastWrite is when the last GPMC register write was seen
+	lastWrite time.Time
+	counts    map[uint32]int
 }
 
-// Trace attaches to every thread of pid for d and writes one line per
-// recorded syscall to out (gzip'd): the time on CLOCK_MONOTONIC in
-// microseconds, the thread, the call, its device and its decoded arguments.
-// It returns when d has passed; its caller exits right after, and the kernel
-// detaches and resumes every thread with it, so no thread is left stopped.
+// Trace attaches to every thread of pid and writes one line per recorded
+// syscall to o.Out (gzip'd): the time on CLOCK_MONOTONIC in microseconds, the
+// thread, the call, its device and its decoded arguments. It returns after
+// o.For, or once a GPMC register write was seen and o.QuietAfterWrite passed
+// without another; its caller exits right after, and the kernel detaches and
+// resumes every thread with it, so no thread is left stopped.
 // TRLC-LINKS: REQ-SDS-285
-func Trace(pid int, d time.Duration, out string, maxLines int) error {
+func Trace(pid int, o TraceOpts) error {
+	d, out, maxLines := o.For, o.Out, o.MaxLines
 	runtime.LockOSThread()   // ptrace requests come from the attaching thread
 	f, err := os.Create(out) //nolint:gosec // G304: the trace file on the stick
 	if err != nil {
@@ -92,8 +96,14 @@ func Trace(pid int, d time.Duration, out string, maxLines int) error {
 		return fmt.Errorf("trace: no thread of %d attached", pid)
 	}
 	_, _ = fmt.Fprintf(t.out, "# pid %d threads %d start %d\n", pid, len(t.tids), monoMicros())
+	if o.Ready != nil {
+		_, _ = fmt.Fprintln(o.Ready, "ready")
+	}
 	end := time.Now().Add(d)
 	for time.Now().Before(end) && t.lines < maxLines && len(t.tids) > 0 {
+		if o.QuietAfterWrite > 0 && !t.lastWrite.IsZero() && time.Since(t.lastWrite) > o.QuietAfterWrite {
+			break
+		}
 		var ws syscall.WaitStatus
 		tid, err := syscall.Wait4(-1, &ws, syscall.WALL, nil)
 		if err != nil {
@@ -189,6 +199,9 @@ func (t *tracer) exit(tid int, in, out syscall.PtraceRegs) {
 			b := make([]byte, 6)
 			if _, err := syscall.PtracePeekData(tid, uintptr(a2), b); err == nil {
 				op := map[uint32]string{gpmcRead: "R", gpmcWrite: "W"}[a1]
+				if a1 == gpmcWrite {
+					t.lastWrite = time.Now()
+				}
 				t.line("%d %d gpmc %s %d %#04x %#04x ret=%d", now, tid, op, b[0],
 					binary.LittleEndian.Uint16(b[2:]), binary.LittleEndian.Uint16(b[4:]), ret)
 				return

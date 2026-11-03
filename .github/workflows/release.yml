@@ -64,15 +64,20 @@ jobs:
               -o "$GITHUB_WORKSPACE/dist/otactl-${os}-${arch}${ext}" ./cmd/otactl
           done
 
+      - name: Build the diagnostics stick zip (sdsdiag, ARMv7)
+        working-directory: ota
+        run: make diag-zip DIAG_ZIP="$GITHUB_WORKSPACE/dist/open-sds1000cml-${GITHUB_REF_NAME}-diagnostics.zip"
+
       - name: Package + checksums
         run: |
           cp LICENSE SAFETY.txt THIRD_PARTY_LICENSES.txt dist/
           cd dist
           # fail loudly if the zip is missing/empty (guards against a silent build slip)
           test -s open-sds1000cml-*-usb.zip || { echo "::error::USB zip missing or empty"; exit 1; }
+          test -s open-sds1000cml-*-diagnostics.zip || { echo "::error::diagnostics zip missing or empty"; exit 1; }
           # checksum EVERY uploaded artifact (zip + controllers + license/safety
           # text), so `sha256sum -c SHA256SUMS` verifies the whole download set
-          sha256sum open-sds1000cml-*-usb.zip otactl-* LICENSE SAFETY.txt THIRD_PARTY_LICENSES.txt > SHA256SUMS
+          sha256sum open-sds1000cml-*-usb.zip open-sds1000cml-*-diagnostics.zip otactl-* LICENSE SAFETY.txt THIRD_PARTY_LICENSES.txt > SHA256SUMS
 
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2
@@ -81,6 +86,7 @@ jobs:
           generate_release_notes: true
           files: |
             dist/open-sds1000cml-*-usb.zip
+            dist/open-sds1000cml-*-diagnostics.zip
             dist/otactl-*
             dist/SHA256SUMS
             dist/LICENSE
@@ -99,5 +105,7 @@ jobs:
             Verify a download: `sha256sum -c SHA256SUMS` (Linux) / `shasum -a 256 -c SHA256SUMS` (macOS) / `CertUtil -hashfile <file> SHA256` (Windows), against `SHA256SUMS`.
 
             Host controller: grab the matching `otactl-<os>-<arch>` (first run: macOS `chmod +x … && xattr -d com.apple.quarantine …`; Linux `chmod +x …`; Windows SmartScreen → *More info → Run anyway*). The README's *Install, update and remove* section covers updating, rolling back and removing the firmware; `docs/` has the release notes and known limitations.
+
+            Own another SDS1000 model (an SDS1000DL+ or another variant)? `open-sds1000cml-${{ github.ref_name }}-diagnostics.zip` is a stick that runs alongside the factory firmware and records what the project needs to support it; its `README.txt` says how to use it and what to send.
 
             > ⚠️ Experimental firmware for the SDS1000CML+ series only. It takes over **whatever** SDS1000CML+ you boot it in, at every boot with the stick in; take the stick out for the factory firmware. No warranty.

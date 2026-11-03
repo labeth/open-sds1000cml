@@ -168,7 +168,7 @@ func TestTraceOnlyOnARM(t *testing.T) {
 	if runtime.GOARCH == "arm" {
 		t.Skip("on ARM the tracer runs")
 	}
-	if err := Trace(1, 0, filepath.Join(t.TempDir(), "x"), 1); err == nil || !strings.Contains(err.Error(), "ARM") {
+	if err := Trace(1, TraceOpts{Out: filepath.Join(t.TempDir(), "x")}); err == nil || !strings.Contains(err.Error(), "ARM") {
 		t.Fatalf("trace off ARM: %v", err)
 	}
 }
