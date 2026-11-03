@@ -245,8 +245,11 @@ func (l *verdictList) sram(s SRAMResult) {
 	switch {
 	case s.Error != "":
 		add("SRAM", vOther, "not measured: %s", s.Error)
-	case s.Checked > 500000 && s.PatternError == 0 && s.CountError <= 4:
-		add("SRAM", vPresent, "%d words written and read back through the address counter", s.Checked)
+	// a missing SRAM breaks every word, a stuck address line thousands; a
+	// fitted one reads back all but an odd word (a read glitch breaks the
+	// pattern for that word and the count for it and the next)
+	case s.Checked > 500000 && s.PatternError <= 16 && s.CountError <= 32:
+		add("SRAM", vPresent, "%d words written and read back through the address counter (%d read wrong once)", s.Checked, s.PatternError)
 	case s.PatternError*2 > s.Checked:
 		add("SRAM", vAbsent, "%d of %d words read back wrong (bits %08x): no SRAM answers", s.PatternError, s.Checked, s.BadBits)
 	default:

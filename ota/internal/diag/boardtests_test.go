@@ -275,3 +275,37 @@ func TestBoardTestsOfTheSDS1102CMLPlus(t *testing.T) {
 		}
 	}
 }
+
+// TestFullRunOfTheSDS1102CMLPlus: the census and board tests of a complete
+// run of the stick (the 136-step sweep, then the takeover) on an SDS1102CML+
+// with the 1 kHz square on C1 judge every part present but those C2's
+// missing square leaves untested; its SRAM read one word wrong once, and
+// twelve of its data lines held low.
+// TRLC-LINKS: REQ-SDS-288, REQ-SDS-290, REQ-SDS-291
+func TestFullRunOfTheSDS1102CMLPlus(t *testing.T) {
+	var open, pull Census
+	var bt BoardTests
+	for f, v := range map[string]any{"census-probe": &open, "census-probepull": &pull, "board_tests": &bt} {
+		data, err := os.ReadFile("testdata/full-sds1102cml-" + f + ".json")
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := json.Unmarshal(data, v); err != nil {
+			t.Fatal(err)
+		}
+	}
+	inv, err := os.ReadFile("testdata/full-sds1102cml-arm_inventory.txt")
+	if err != nil {
+		t.Fatal(err)
+	}
+	vs := append(verdicts(probeBalls(), open, pull), boardVerdicts(bt, strings.Split(strings.TrimSpace(string(inv)), "\n"))...)
+	for _, v := range vs {
+		switch {
+		case v.Part == "channel 2 1 kHz input", strings.HasSuffix(v.Part, " bandwidth"):
+		case strings.HasPrefix(v.Part, "channel 2 ") && v.Verdict == vOther && strings.Contains(v.Detail, "not tested"):
+		case strings.HasPrefix(v.Part, "ARM gpio113") || strings.HasPrefix(v.Part, "ARM eHRPWM"):
+		case v.Verdict != vPresent:
+			t.Errorf("%s: %s %s", v.Part, v.Verdict, v.Detail)
+		}
+	}
+}

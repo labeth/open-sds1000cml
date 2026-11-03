@@ -13,7 +13,7 @@ always brings back the factory firmware.
 > [SAFETY.txt](SAFETY.txt)).
 
 To try it, see [Install, update and remove](#install-update-and-remove); what each release adds and
-its known limitations are in the release notes ([1.2.1](docs/release-notes-1.2.1.md), [1.2](docs/release-notes-1.2.md)).
+its known limitations are in the release notes ([1.2.2](docs/release-notes-1.2.2.md), [1.2.1](docs/release-notes-1.2.1.md), [1.2](docs/release-notes-1.2.md)).
 
 ## In action
 

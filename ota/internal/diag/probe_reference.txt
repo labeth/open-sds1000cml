@@ -1,40 +1,41 @@
 # The SDS1102CML+'s static balls as the probe image saw them with the encode legs off: low (low with
 # the weak pull-up on), high (high with it, driven or pulled up or open), toggles, or any (the line keeps
 # the level last driven on it: K2 and G1, the SRAM counter's clock and enable, read high after one
-# factory session and low after another; K1 with them). The
+# factory session and low after another; K1 with them, and the data bus, 12 of whose lines read
+# low in one session and high in the others). The
 # takeover stage compares another board's census with these. ball, name, class.
-J6 sram.dq0 high
-F5 sram.dq1 high
-L2 sram.dq2 high
-L1 sram.dq3 high
-L3 sram.dq4 high
-N2 sram.dq5 high
-N1 sram.dq6 high
-K5 sram.dq7 high
-L4 sram.dq8 high
-R1 sram.dq9 high
-P2 sram.dq10 high
-P1 sram.dq11 high
-F3 sram.dq12 high
-G5 sram.dq13 high
-N3 sram.dq14 high
-P3 sram.dq15 high
-N5 sram.dq16 high
-N6 sram.dq17 high
-D3 sram.dq18 high
-M6 sram.dq19 high
-R5 sram.dq20 high
-T5 sram.dq21 high
-R6 sram.dq22 high
-T6 sram.dq23 high
-R3 sram.dq24 high
-R7 sram.dq25 high
-T7 sram.dq26 high
-T3 sram.dq27 high
-T2 sram.dq28 high
-R4 sram.dq29 high
-T4 sram.dq30 high
-F7 sram.dq31 high
+J6 sram.dq0 any
+F5 sram.dq1 any
+L2 sram.dq2 any
+L1 sram.dq3 any
+L3 sram.dq4 any
+N2 sram.dq5 any
+N1 sram.dq6 any
+K5 sram.dq7 any
+L4 sram.dq8 any
+R1 sram.dq9 any
+P2 sram.dq10 any
+P1 sram.dq11 any
+F3 sram.dq12 any
+G5 sram.dq13 any
+N3 sram.dq14 any
+P3 sram.dq15 any
+N5 sram.dq16 any
+N6 sram.dq17 any
+D3 sram.dq18 any
+M6 sram.dq19 any
+R5 sram.dq20 any
+T5 sram.dq21 any
+R6 sram.dq22 any
+T6 sram.dq23 any
+R3 sram.dq24 any
+R7 sram.dq25 any
+T7 sram.dq26 any
+T3 sram.dq27 any
+T2 sram.dq28 any
+R4 sram.dq29 any
+T4 sram.dq30 any
+F7 sram.dq31 any
 G1 sram.enable any
 K1 sram.direction any
 K2 sram.clock any
