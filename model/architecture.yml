@@ -68,9 +68,7 @@ architecture:
       optional cache invalidation; invalidate errors are ignored and the documented fresh-buffer fallback is not
       qualified as coherent. Frozen-record windows and test-source checks support timing sweeps and persisted
       boot timing, with conditional restoration and fake-register verification. Read-only region mappings can
-      still have device read side effects. Experimental kernel DMA retains an inherited descriptor reference and
-      coherent-memory stream banks; host tests establish wrapper ownership guards, not module ABI or
-      sustained-stream qualification.'
+      still have device read side effects.'
     tags:
     - source-backed
   - id: FU-APP-CAL

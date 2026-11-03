@@ -31,20 +31,13 @@ func (e *Engine) flushLEDs() {
 
 // serviceCommands flushes staged work at the frame boundary — the engine is
 // armed+filling here, never inside a halt window. Snapshot+clear under the
-// mutex; bus writes with it released. Order: diagnostic Exec requests, the
-// LED latch, the offset DACs, then the trigger words.
+// mutex; bus writes with it released. Order: the LED latch, the offset DACs,
+// then the trigger words.
 // TRLC-LINKS: REQ-SDS-001
 func (e *Engine) serviceCommands() {
 	// The stages are timed for a decoded session's service figures only:
 	// without one a frame reads no clock here.
 	var stage time.Time
-	if e.decodedSession != nil {
-		stage = time.Now()
-	}
-	e.serviceExec()
-	if e.decodedSession != nil {
-		e.decodedService.maxExec = max(e.decodedService.maxExec, time.Since(stage))
-	}
 	if e.sram != nil {
 		if e.decodedSession != nil {
 			stage = time.Now()

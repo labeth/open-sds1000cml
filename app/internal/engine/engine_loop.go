@@ -60,14 +60,12 @@ func (e *Engine) Run() {
 		return
 	}
 	if err := e.checkIdentity(); err != nil {
-		// Not the default image: refuse to drive, but keep servicing Exec so
-		// the diagnostic block can still read the fabric (bring-up).
-		e.logf("engine: identity gate failed (%v) — refusing to drive; diag Exec stays serviced", err)
+		// Not the default image: refuse to drive and park until stopped.
+		e.logf("engine: identity gate failed (%v) — refusing to drive", err)
 		e.mu.Lock()
 		e.stats.Wedged = true
 		e.mu.Unlock()
 		for !e.stopReq.Load() {
-			e.serviceExec()
 			e.clk.Sleep(100 * time.Millisecond)
 		}
 		return

@@ -153,7 +153,7 @@ func runParity(t *testing.T, gateLo, gateHi int) {
 		return b
 	}
 	if !st.SeedRefGate(u8(frames[0].C1), u8(frames[0].C2), frames[0].EdgeX, gateLo, gateHi) {
-		t.Fatal("Go SeedRef failed")
+		t.Fatal("Go SeedRefGate failed")
 	}
 	if !js.SeedOk {
 		t.Fatal("JS seed failed")

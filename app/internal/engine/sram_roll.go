@@ -118,10 +118,6 @@ func (e *Engine) rollActive() bool {
 // TRLC-LINKS: REQ-SDS-010, REQ-SDS-035
 func (e *Engine) SetRollStream(on bool) { e.rollStream.Store(on) }
 
-// RollStream reports SetRollStream.
-// TRLC-LINKS: REQ-SDS-010
-func (e *Engine) RollStream() bool { return e.rollStream.Load() }
-
 // rollView is the scrolling ring: the newest sample last.
 type rollView struct {
 	plan     rollPlan

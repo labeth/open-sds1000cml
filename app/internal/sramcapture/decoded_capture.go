@@ -19,7 +19,7 @@ type RecordIdentity struct {
 
 // DecodedCapture separates continuous decoded output from later raw retrieval.
 // The acquisition owner must serialize StartDecodedCapture with other arm calls.
-// Streaming and WaitRetained can run concurrently. Neither automatically rearms.
+// Nothing here rearms the acquisition.
 // TRLC-LINKS: REQ-SDS-013
 type DecodedCapture struct {
 	capture  *Capture
@@ -84,44 +84,6 @@ func (c *Capture) StartDecodedCapture(ctx context.Context, cfg Config) (*Decoded
 		case <-ctx.Done():
 			timer.Stop()
 			return nil, ctx.Err()
-		case <-timer.C:
-		}
-	}
-}
-
-// Stream emits only decoded ABI records, including loss markers, until context
-// cancellation or transport failure. The caller controls writer deadlines.
-// TRLC-LINKS: REQ-SDS-013
-func (s *DecodedCapture) Stream(ctx context.Context, dst io.Writer) (uint64, error) {
-	return s.capture.DrainDecodedEvents(ctx, s.Identity.Epoch, dst)
-}
-
-// WaitRetained waits independently of the stream writer, then checks identity.
-// It rejects a later acquisition rather than attributing its raw data to this one.
-// TRLC-LINKS: REQ-SDS-013
-func (s *DecodedCapture) WaitRetained(ctx context.Context) (Metadata, error) {
-	for {
-		if err := ctx.Err(); err != nil {
-			return Metadata{}, err
-		}
-		m, err := s.capture.Status()
-		if err != nil {
-			return m, err
-		}
-		if !m.HasRecordIdentity || m.EventEpoch != s.Identity.Epoch || m.RecordID != s.Identity.Record {
-			return Metadata{}, errors.New("sramcapture: retained record identity changed")
-		}
-		if m.DataFault {
-			return Metadata{}, errors.New("sramcapture: retained record has an acquisition data fault")
-		}
-		if m.Frozen && m.Ready && !m.Running {
-			return m, nil
-		}
-		timer := time.NewTimer(100 * time.Microsecond)
-		select {
-		case <-ctx.Done():
-			timer.Stop()
-			return Metadata{}, ctx.Err()
 		case <-timer.C:
 		}
 	}

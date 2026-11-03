@@ -217,9 +217,6 @@ func TestStreamBytePathPreservesFractionAndRetainsFaultedBank(t *testing.T) {
 		if e != nil {
 			t.Fatal(e)
 		}
-		if e = c.PrepareStream(); e != nil {
-			t.Fatal(e)
-		}
 		var out bytes.Buffer
 		_, e = c.DrainStream(context.Background(), 0, &out)
 		if fault {
@@ -244,9 +241,6 @@ func TestStreamLargeBanksUseAdvertisedCapacity(t *testing.T) {
 	}
 	c, e := New(&streamByteFake{&streamDMAFake{b}})
 	if e != nil {
-		t.Fatal(e)
-	}
-	if e = c.PrepareStream(); e != nil {
 		t.Fatal(e)
 	}
 	var out bytes.Buffer

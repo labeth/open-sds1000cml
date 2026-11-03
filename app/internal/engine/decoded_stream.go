@@ -238,20 +238,6 @@ func (e *Engine) FreezeDecodedStream(ctx context.Context, id sramcapture.RecordI
 	return meta, adopted, nil
 }
 
-// EndDecodedStream freezes the record (when adopt) and ends the capture.
-// TRLC-LINKS: REQ-SDS-013, REQ-SDS-018
-func (e *Engine) EndDecodedStream(ctx context.Context, id sramcapture.RecordIdentity, adopt bool) (sramcapture.Metadata, bool, error) {
-	var meta sramcapture.Metadata
-	var adopted bool
-	if adopt {
-		var err error
-		if meta, adopted, err = e.FreezeDecodedStream(ctx, id); err != nil {
-			return meta, false, err
-		}
-	}
-	return meta, adopted, e.EndDecodedCapture(ctx, id)
-}
-
 // HoldDecodedImage keeps the loaded image while a decoded stream ends to be
 // started again (another stop, another bus) - at most a few seconds, until
 // the next stream's capture begins: between the two the acquisition loop

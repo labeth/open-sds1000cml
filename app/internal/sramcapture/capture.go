@@ -1039,7 +1039,7 @@ func (c *Capture) RecallForward(ctx context.Context, offset, count uint32, dst i
 }
 
 // RecordRead is one window of a record read by RecallReadsOf: Count buckets
-// of Bucket words from word Offset reduced as RecallEnvelope does, or Count
+// of Bucket words from word Offset reduced as recallEnvelope does, or Count
 // words raw (Bucket 0) as RecallForward does on a revision 10 fabric and
 // Recall otherwise, written to Dst.
 // TRLC-LINKS: REQ-SDS-010, REQ-SDS-033

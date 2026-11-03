@@ -42,13 +42,6 @@ func (st *Stack) drizzleHit(ch int, sig []float32, p float64, odd bool) {
 	}
 }
 
-// SeedRef locks the frozen frame as the reference with an AUTO gate (active
-// region, narrowed to one period if periodic). See SeedRefGate for manual gates.
-// TRLC-LINKS: REQ-SDS-141
-func (st *Stack) SeedRef(sig1, sig2 []uint8, edgeX float64) bool {
-	return st.SeedRefGate(sig1, sig2, edgeX, -1, -1)
-}
-
 // SeedRefGate locks the frozen frame as the reference and installs the gate. A
 // gateLo<gateHi with gateLo>=0 is a manual gate; otherwise the gate is
 // auto-derived. Returns false if the frame is unusable (flat/clipped/no feature).
@@ -178,7 +171,7 @@ func gainOffset(ref []float32, sig []uint8, lag, wLo, wHi int) (g, b float64) {
 // Feed runs the gated multi-hit pipeline for one frame: find EVERY occurrence of
 // the gate feature, then sub-sample align + drift-normalize + drizzle each onto
 // the L·K grid (both channels at the align channel's positions). Zero occurrences
-// → the frame is rejected. Returns "stacked:<n>" | "rejected:<why>". SeedRef must
+// → the frame is rejected. Returns "stacked:<n>" | "rejected:<why>". SeedRefGate must
 // have run first. Mirrors srGateFeed.
 // TRLC-LINKS: REQ-SDS-141
 func (st *Stack) Feed(sig1, sig2 []uint8, edgeX float64) string {

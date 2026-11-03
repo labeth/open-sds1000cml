@@ -42,7 +42,8 @@ type wr struct {
 	val   uint16
 }
 
-// fakeBus models the acq2 default fabric well enough to drive the FSM: the
+// fakeBus models the register-drained fabric of the iface schema
+// (sds1000cml-default v3) well enough to drive the FSM: the
 // identity registers answer the schema, STATUS_A/FILL respond to the armed
 // state, BURST_REMAIN/BURST serve the programmed record only after HALT (or
 // continuously in STREAM mode), and every write is recorded for order

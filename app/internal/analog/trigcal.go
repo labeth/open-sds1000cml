@@ -108,12 +108,3 @@ func (f *FrontEnd) SetTrigCalDetent(ch, detent int, c TrigCal) {
 	f.trigCal[ch&1][detent] = c
 	f.mu.Unlock()
 }
-
-// TrigCalTable returns a copy of the full per-channel, per-detent cal (for
-// persistence).
-// TRLC-LINKS: REQ-SDS-098
-func (f *FrontEnd) TrigCalTable() [2][numDetents]TrigCal {
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	return f.trigCal
-}

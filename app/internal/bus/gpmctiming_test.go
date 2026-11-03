@@ -30,9 +30,6 @@ func TestCS1TimingFieldCodec(t *testing.T) {
 	if err := n.Validate(); err != nil {
 		t.Fatalf("valid timing refused: %v", err)
 	}
-	if FactoryCS1Timing.ReadTicks() != 36 {
-		t.Fatalf("ReadTicks = %d, want 36 (31 + gap 5 = the 360 ns/word of the R0 report at 100 MHz)", FactoryCS1Timing.ReadTicks())
-	}
 }
 
 // TRLC-LINKS: REQ-SDS-131

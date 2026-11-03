@@ -148,10 +148,6 @@ func StartNoteCodeBytes(text []byte) uint32 {
 	return 0
 }
 
-// Proto is the transcript's protocol.
-// TRLC-LINKS: REQ-SDS-018
-func (t *Transcript) Proto() int { return t.proto }
-
 // Count is the lines held; Base the absolute index of the oldest; Next the
 // index the next line will get.
 // TRLC-LINKS: REQ-SDS-018

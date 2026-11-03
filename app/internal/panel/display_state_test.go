@@ -73,7 +73,7 @@ func TestDisplayStateAccessors(t *testing.T) {
 		t.Fatal("SetCursorsOn(true)")
 	}
 	c.SetMeasOn(true)
-	if d, _ := c.Snapshot(); !c.MeasOn() || !d.ShowMeas {
+	if d, _ := c.Snapshot(); !d.ShowMeas {
 		t.Fatal("SetMeasOn(true)")
 	}
 }

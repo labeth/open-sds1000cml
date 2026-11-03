@@ -17,8 +17,9 @@ import (
 	"github.com/labeth/open-sds1000cml/app/internal/sramcapture"
 )
 
-// Register bindings: every fabric selector, opcode and field comes from the
-// generated iface package (schema sds1000cml-default v2, workplan §2). The
+// Register bindings: every fabric selector, opcode and field of the
+// register-drained path comes from the iface package (schema
+// sds1000cml-default v3); the SRAM images' come from sramcapture. The
 // only hand-written addresses are MAX V (CS3) front-end registers, which are
 // not part of the fabric schema and keep working under any Cyclone image.
 const (
@@ -525,8 +526,6 @@ type Engine struct {
 	sramJobs chan ownerJob
 	images   ImageSwitcher
 
-	// execReq carries diagnostic/owner-side work (Exec) to the owner goroutine.
-	execReq                   chan execReq
 	decodedRequests           chan ownerJob
 	decodedSession            *sramcapture.DecodedCapture // acquisition-owner fields
 	decodedBuffer             []sramcapture.DecodedEvent
@@ -651,7 +650,6 @@ func New(cfg Config) *Engine {
 		band:                  start,
 		prevKind:              start.Kind(),
 		done:                  make(chan struct{}),
-		execReq:               make(chan execReq, 8),
 		sramJobs:              make(chan ownerJob, 1),
 		decodedRequests:       make(chan ownerJob, 8),
 	}

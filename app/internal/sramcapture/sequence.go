@@ -93,14 +93,6 @@ func (c *Capture) SequenceOnly() (bool, error) {
 	return v == 0x534f, err
 }
 
-// SequenceOverflows reads the count of events dropped at a full queue.
-// TRLC-LINKS: REQ-SDS-013
-func (c *Capture) SequenceOverflows() (uint16, error) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	return c.read(120)
-}
-
 // TRLC-LINKS: REQ-SDS-013
 func (c *Capture) configureSequence(p SequenceTriggerConfig) error {
 	present, err := c.sequenceCapability()

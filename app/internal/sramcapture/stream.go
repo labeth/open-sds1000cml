@@ -58,22 +58,6 @@ func (c *Capture) StreamStatus() (StreamStatus, error) {
 	return decodeStreamStatus(v[1]), nil
 }
 
-// PrepareStream allocates and touches the host buffers before acquisition starts.
-// Call while idle so first-block allocation cannot consume the bank deadline.
-// TRLC-LINKS: REQ-SDS-035
-func (c *Capture) PrepareStream() error {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	rev, err := c.read(13)
-	if err != nil {
-		return err
-	}
-	if rev != 11 {
-		return errors.New("sramcapture: stream requires experimental revision 11")
-	}
-	return c.prepareStreamBuffers()
-}
-
 // TRLC-LINKS: REQ-SDS-035
 func (c *Capture) prepareStreamBuffers() error {
 	words, err := c.read(26)

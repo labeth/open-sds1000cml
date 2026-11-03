@@ -205,7 +205,7 @@ func TestDecodedReservedBatch(t *testing.T) {
 			b.data = append(b.data, data...)
 		}
 		c := &Capture{bus: b}
-		got, err := c.ReadDecodedEvents(7, 2)
+		got, err := c.ReadDecodedEventsInto(7, make([]DecodedEvent, 2))
 		if b.calls != 1 || len(b.data) != DecodedEventBytes || b.cursor != 0 {
 			t.Fatal("batch did not reserve exactly two records after rewind")
 		}
@@ -227,7 +227,7 @@ func TestDecodedReservedBatch(t *testing.T) {
 		if &got[0] != &storage[0] || owned[0].Sequence != 0 || owned[1].Sequence != 1 {
 			t.Fatal("caller storage was ignored or an owned batch was overwritten")
 		}
-		if _, err = c.ReadDecodedEvents(8, 256); err == nil {
+		if _, err = c.ReadDecodedEventsInto(8, make([]DecodedEvent, 256)); err == nil {
 			t.Fatal("stale epoch accepted")
 		}
 	}

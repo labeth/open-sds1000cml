@@ -1,5 +1,6 @@
-// Package fpgaload configures the acquisition Cyclone with the default acq2
-// image at boot: passive-serial reconfiguration of the volatile CRAM, bit-banged
+// Package fpgaload configures the acquisition Cyclone with the nine embedded
+// images (fpga/README.md), the general image at boot and the others when the
+// engine switches: passive-serial reconfiguration of the volatile CRAM, bit-banged
 // through the GPMC CS3 configuration port (workplan §4.1; fpga-specs 05 §3.1).
 //
 // The idea and the proven bit map come from owned-fpga app/internal/fpgaload
@@ -237,16 +238,6 @@ func configureOnce(p Port, rbf []byte, rev bool, o *Options) error {
 	}
 	v, _ := p.ReadCfg()
 	return fmt.Errorf("CONF_DONE not asserted within %v (port reads %#04x; 0x0040 = clocked but never configured, i.e. wrong bit order or corrupt image)", o.Timeout, v)
-}
-
-// Reader reads a CS1 register (bus.Dev.Read with plane 1 bound).
-// TRLC-LINKS: REQ-SDS-004
-type Reader func(sel uint16) (uint16, error)
-
-// Identity is the four identity words of a fabric.
-// TRLC-LINKS: REQ-SDS-004
-type Identity struct {
-	BuildLo, BuildHi, Version, Fabric uint16
 }
 
 // shiftAll shifts every bit MSB-first of the (bit-reversed) bytes: DATA0

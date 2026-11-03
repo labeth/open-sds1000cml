@@ -7,9 +7,10 @@ import "math"
 // Band is one row of the timebase ladder (app spec 04 §2). The row carries the
 // factory ladder's NOMINAL per-sample interval (class + 32-bit divisor, 10 ns
 // units; class 0x20 = 2 ns, 0x01 = 4 ns) as the label of what the band wants;
-// what the acq2 fabric is programmed with comes from Decim(): the nominal
-// interval quantised to the fabric base tick (baseTickNs, one encode sample at
-// the base rate). CaptureIntervalNs reports the interval actually delivered.
+// what the register-drained fabric is programmed with comes from Decim(): the
+// nominal interval quantised to the fabric base tick (baseTickNs, one encode
+// sample at the base rate). CaptureIntervalNs reports the interval actually
+// delivered.
 // TRLC-LINKS: REQ-SDS-010
 type Band struct {
 	TdivS float64 // nominal seconds/div label

@@ -53,7 +53,7 @@ func (e *Engine) callOwner(ctx context.Context, queue chan<- ownerJob, run func(
 	case <-ctx.Done():
 		return nil, ctx.Err()
 	case <-e.done:
-		return nil, ErrExecStopped
+		return nil, ErrStopped
 	}
 	select {
 	case r := <-job.done:
@@ -61,7 +61,7 @@ func (e *Engine) callOwner(ctx context.Context, queue chan<- ownerJob, run func(
 	case <-ctx.Done():
 		return nil, ctx.Err()
 	case <-e.done:
-		return nil, ErrExecStopped
+		return nil, ErrStopped
 	}
 }
 
@@ -96,15 +96,15 @@ const decodedOrphanAfter = 10 * time.Second
 // Fixed storage keeps service-gap diagnostics out of the allocator while the
 // FIFO is live. Report only after disabling the producer.
 type decodedServiceStats struct {
-	started, last                              time.Time
-	lastConsumer                               time.Time
-	maxConsumerGap                             time.Duration
-	maxBuffered                                int
-	maxExec, maxRequests, maxControl, maxPause time.Duration
-	maxGap, maxRead                            time.Duration
-	reads, events, lost, slow                  uint64
-	pauseTotal                                 uint64
-	gaps                                       [16]struct{ At, Gap time.Duration }
+	started, last                     time.Time
+	lastConsumer                      time.Time
+	maxConsumerGap                    time.Duration
+	maxBuffered                       int
+	maxRequests, maxControl, maxPause time.Duration
+	maxGap, maxRead                   time.Duration
+	reads, events, lost, slow         uint64
+	pauseTotal                        uint64
+	gaps                              [16]struct{ At, Gap time.Duration }
 }
 
 // decodedCall stages SRAM work on the existing acquisition owner. Cancellation
@@ -596,8 +596,8 @@ func (e *Engine) endDecoded(ctx context.Context, force bool) error {
 	var mem runtime.MemStats
 	runtime.ReadMemStats(&mem)
 	s := &e.decodedService
-	e.logf("decoded service: epoch=%d reads=%d events=%d lost=%d max_gap=%s max_read=%s gc_pause=%s slow_gaps=%d first=%v buffered_peak=%d consumer_gap=%s exec=%s requests=%s controls=%s pause=%s", id.Epoch, s.reads, s.events, s.lost, s.maxGap, s.maxRead, time.Duration(mem.PauseTotalNs-s.pauseTotal), s.slow, s.gaps[:min(s.slow, uint64(len(s.gaps)))], s.maxBuffered, s.maxConsumerGap, s.maxExec, s.maxRequests, s.maxControl, s.maxPause) //nolint:gosec // G115: GC pause nanoseconds of one session, far below 2^63
-	e.SetRunning(false)                                                                                                                                                                                                                                                                                                                                                                                                                               // keeps the status in step: streaming is not RUN
+	e.logf("decoded service: epoch=%d reads=%d events=%d lost=%d max_gap=%s max_read=%s gc_pause=%s slow_gaps=%d first=%v buffered_peak=%d consumer_gap=%s requests=%s controls=%s pause=%s", id.Epoch, s.reads, s.events, s.lost, s.maxGap, s.maxRead, time.Duration(mem.PauseTotalNs-s.pauseTotal), s.slow, s.gaps[:min(s.slow, uint64(len(s.gaps)))], s.maxBuffered, s.maxConsumerGap, s.maxRequests, s.maxControl, s.maxPause) //nolint:gosec // G115: GC pause nanoseconds of one session, far below 2^63
+	e.SetRunning(false)                                                                                                                                                                                                                                                                                                                                                                                                            // keeps the status in step: streaming is not RUN
 	return nil
 }
 

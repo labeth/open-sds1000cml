@@ -51,7 +51,8 @@ func (b *decodedTestBus) Read(_ uint8, s uint16) (uint16, error) {
 		}
 		return 0, nil
 	case 59:
-		data, _ := (sramcapture.DecodedEvent{Epoch: 7, Sequence: b.sequence, Protocol: 1, Kind: sramcapture.EventData, Value: b.sequence}).MarshalBinary()
+		data := make([]byte, sramcapture.DecodedEventBytes)
+		_ = sramcapture.DecodedEvent{Epoch: 7, Sequence: b.sequence, Protocol: 1, Kind: sramcapture.EventData, Value: b.sequence}.MarshalTo(data)
 		word := binary.LittleEndian.Uint16(data[b.cursor*2:])
 		b.cursor++
 		if b.cursor == 16 {

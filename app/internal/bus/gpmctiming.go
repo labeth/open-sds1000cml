@@ -1,21 +1,16 @@
 // GPMC CS1 read timing (AM335x TRM 7.1.5 GPMC_CONFIG2..6; fpga-specs 10 §4.3,
-// 12 §5.5) and the timing sweep of rung R1 (06-TIERS §0, §6).
+// 12 §5.5).
 //
 // The bootloader leaves CS1 at RDCYCLETIME 31 / RDACCESSTIME 13 (the "factory"
 // timing, ~360 ns per word at the shipped cycle gap). The fabric's read
 // through-path budget is 30 ns (default.sdc: RDACCESSTIME >= OEONTIME + 3
-// ticks at 100 MHz), so the controller can go markedly faster — but only the
-// ramp harness can prove it: a too-early latch is invisible on flat data. The
-// sweep here lowers RDACCESSTIME, then RDCYCLETIME (with OEOFFTIME and
-// CSRDOFFTIME tracking the cycle end), optionally CYCLE2CYCLEDELAY, draining
-// a frozen TSRC ramp record at every setting in alternating blocks against the
-// starting timing, and records the floor (last clean value) of every knob.
-// The chosen timing is one tick above the floor on every knob. Nothing here
-// is persisted or kept applied: the sweep is a step machine (Sweeper.Step),
-// every step is one bounded Engine.Exec that restores the timing it started
-// from before it returns, so the health token keeps beating and no step can
-// strand the controller at a candidate; persistence and the boot-time gate
-// are in gpmcpersist.go.
+// ticks at 100 MHz), so the controller can go markedly faster — but only a
+// counting record can prove it: a too-early latch is invisible on flat data.
+// At startup on a revision 10 image with the EDMA drain, before the engine
+// owns CS1, the app applies a faster read timing through the timing port,
+// verifies the SRAM transport on a full counter record, and restores (and
+// verifies) the starting timing when that check fails (app's
+// applySRAMReadTiming). Nothing here is persisted.
 //
 // The write-side fields, CONFIG1 (WAIT monitoring, device size) and CONFIG7
 // (the CS1 base address) are never touched. Only CS1 is ever written — never
@@ -46,8 +41,8 @@ const (
 	fabricReadTicks = 3
 )
 
-// CS1Timing is the CS1 timing configuration: the four words the sweep may
-// change (CONFIG2/4/5/6) plus CONFIG1/3/7 as read, for the report.
+// CS1Timing is the CS1 timing configuration: the four words the startup
+// timing may change (CONFIG2/4/5/6) plus CONFIG1/3/7 as read, for the report.
 // TRLC-LINKS: REQ-SDS-131
 type CS1Timing struct {
 	Config1 uint32 `json:"config1"`
@@ -129,10 +124,6 @@ func (t CS1Timing) SameCSEn() bool { return bits(t.Config6, 7, 1) == 1 }
 // TRLC-LINKS: REQ-SDS-131
 func (t CS1Timing) WrAccess() uint32 { return bits(t.Config6, 24, 5) }
 
-// Turnaround is the bus turnaround time (BUSTURNAROUND), in GPMC clocks.
-// TRLC-LINKS: REQ-SDS-131
-func (t CS1Timing) Turnaround() uint32 { return bits(t.Config6, 0, 4) }
-
 // WithRdAccess is a copy of t with the read access time set to v (masked to the field).
 // TRLC-LINKS: REQ-SDS-131
 func (t CS1Timing) WithRdAccess(v uint32) CS1Timing { setBits(&t.Config5, 16, 5, v); return t }
@@ -140,10 +131,6 @@ func (t CS1Timing) WithRdAccess(v uint32) CS1Timing { setBits(&t.Config5, 16, 5,
 // WithRdCycle is a copy of t with the read cycle time set to v (masked to the field).
 // TRLC-LINKS: REQ-SDS-131
 func (t CS1Timing) WithRdCycle(v uint32) CS1Timing { setBits(&t.Config5, 0, 5, v); return t }
-
-// WithOEOn is a copy of t with the output-enable assertion time set to v (masked to the field).
-// TRLC-LINKS: REQ-SDS-131
-func (t CS1Timing) WithOEOn(v uint32) CS1Timing { setBits(&t.Config4, 0, 4, v); return t }
 
 // WithOEOff is a copy of t with the output-enable deassertion time set to v (masked to the field).
 // TRLC-LINKS: REQ-SDS-131
@@ -205,14 +192,9 @@ func (t CS1Timing) String() string {
 	return string(b)
 }
 
-// ReadTicks is the nominal FCLK ticks per read cycle including the gap (the
-// quantity the ns/word measurement scales with).
-// TRLC-LINKS: REQ-SDS-131
-func (t CS1Timing) ReadTicks() uint32 { return t.RdCycle() + t.Gap() }
-
 // Validate checks the read-side relations the controller and the fabric need
 // (TRM 7.1.3.3 read timing; default.sdc's through-path budget). The write
-// side is not checked: the sweep never changes it.
+// side is not checked: the startup timing never changes it.
 // TRLC-LINKS: REQ-SDS-131
 func (t CS1Timing) Validate() error {
 	c, a, oeOn, oeOff, csOn, csOff := t.RdCycle(), t.RdAccess(), t.OEOn(), t.OEOff(), t.CSOn(), t.CSRdOff()

@@ -4,7 +4,6 @@ package engine
 
 import (
 	"errors"
-	"fmt"
 	"time"
 
 	"github.com/labeth/open-sds1000cml/app/internal/bus"
@@ -204,70 +203,8 @@ func (e *Engine) checkIdentity() error {
 	return iface.CheckIdentity(lo, hi, ver, fab)
 }
 
-// ---- diagnostic access through the owner ----
-
-// ErrExecTimeout is returned by Exec when the owner did not reach a service
-// point within the timeout (a long capture, or a stopped engine mid-sleep).
-var ErrExecTimeout = errors.New("engine: exec timeout (owner busy)")
-
-// ErrExecStopped is returned when the engine has exited.
-var ErrExecStopped = errors.New("engine: stopped")
-
-// TRLC-LINKS: REQ-SDS-001, REQ-SDS-127
-type execReq struct {
-	fn   func(bus.Bus) error
-	done chan error
-}
-
-// Exec runs fn on the owner goroutine with the bus — the ONE door through
-// which the diagnostic block (or anything else) reaches the fabric. It runs
-// at the next service point: the frame boundary, the mid-frame pumps of the
-// long envelope/roll loops, the STOP sleep, and the parked states (identity
-// failure), so diagnostics work on a fabric the engine refuses to drive. fn
-// must not block. The result (or ErrExecTimeout) is returned to the caller.
-// TRLC-LINKS: REQ-SDS-001, REQ-SDS-127
-func (e *Engine) Exec(fn func(bus.Bus) error, timeout time.Duration) error {
-	if e.sram != nil {
-		return errors.New("legacy fabric diagnostics unavailable on SRAM ABI")
-	}
-	req := execReq{fn: fn, done: make(chan error, 1)}
-	select {
-	case e.execReq <- req:
-	case <-e.done:
-		return ErrExecStopped
-	case <-time.After(timeout):
-		return ErrExecTimeout
-	}
-	select {
-	case err := <-req.done:
-		return err
-	case <-e.done:
-		return ErrExecStopped
-	case <-time.After(timeout):
-		return ErrExecTimeout
-	}
-}
-
-// serviceExec drains every queued Exec request (owner goroutine only).
-// TRLC-LINKS: REQ-SDS-001, REQ-SDS-127
-func (e *Engine) serviceExec() {
-	for {
-		select {
-		case req := <-e.execReq:
-			func() {
-				defer func() {
-					if r := recover(); r != nil {
-						req.done <- fmt.Errorf("engine: exec panic: %v", r)
-					}
-				}()
-				req.done <- req.fn(e.b)
-			}()
-			e.beatN.Add(1)
-		default:
-			return
-		}
-	}
-}
+// ErrStopped is returned when the engine has exited.
+var ErrStopped = errors.New("engine: stopped")
 
 // ---- wedge ladder ----
 

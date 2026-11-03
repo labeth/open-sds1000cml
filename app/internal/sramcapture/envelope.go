@@ -57,26 +57,6 @@ func (c *Capture) envelopeCapabilityOf(revision uint16) (bool, error) {
 	return v == 0x454e, err
 }
 
-// RecallEnvelope reduces the frozen record window [offset, offset+buckets*bucket)
-// words to buckets entries in the FPGA: per bucket and channel the minimum and
-// maximum, in the record's own word format. Raw records give one word per
-// bucket, {max2,max1,min2,min1} — two raw samples (min, max) per channel —
-// and need an even bucket count. Q8.8 records give two words, the minima then
-// the maxima. The deep record stays in SRAM for full recall.
-// TRLC-LINKS: REQ-SDS-010, REQ-SDS-033
-func (c *Capture) RecallEnvelope(ctx context.Context, offset, bucket, buckets uint32, dst io.Writer) (Metadata, error) {
-	if err := ctx.Err(); err != nil {
-		return Metadata{}, err
-	}
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	m, err := c.status()
-	if err != nil {
-		return m, err
-	}
-	return m, c.recallEnvelope(ctx, m, offset, bucket, buckets, dst)
-}
-
 // recallEnvelope reduces the window of the record m, read just now, into dst.
 // Called with c.mu held.
 // TRLC-LINKS: REQ-SDS-010, REQ-SDS-033

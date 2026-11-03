@@ -125,14 +125,6 @@ func (c *Controller) SetCursorsOn(on bool) {
 	c.pushLEDs()
 }
 
-// MeasOn reports whether the measurement panel is shown.
-// TRLC-LINKS: REQ-SDS-136
-func (c *Controller) MeasOn() bool {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	return c.showMeas
-}
-
 // SetMeasOn shows or hides the measurement panel (SCPI PACU adds a
 // measurement to the display).
 // TRLC-LINKS: REQ-SDS-136

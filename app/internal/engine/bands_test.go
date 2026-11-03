@@ -17,9 +17,9 @@ func TestPlanTdivLadder(t *testing.T) {
 		drain      int
 		winCols    int
 	}{
-		// The acq2 default image delivers 5 ns/sample (200 MHz, one core per
-		// channel) on every row nominally faster than that: the screen holds
-		// 10·tdiv/5 ns samples until interleave lands (WP4).
+		// The register-drained fabric (the iface schema) delivers 5 ns/sample
+		// (200 MHz, one core per channel) on every row nominally faster than
+		// that: the screen holds 10·tdiv/5 ns samples.
 		{1e-9, 0x20, 0x0000, true, maxRecordCols, 2},
 		{25e-9, 0x20, 0x0000, true, maxRecordCols, 50},
 		{200e-9, 0x20, 0x0000, true, maxRecordCols, 400},

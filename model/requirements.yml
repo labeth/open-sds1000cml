@@ -38,7 +38,6 @@ requirements:
   - CODE-OTA-INTERNAL-FDINHERIT-FDINHERIT-GO
   - CODE-APP-INTERNAL-BUS-BUS-GO
   - CODE-APP-INTERNAL-BUS-BUS-TEST-GO
-  - CODE-APP-INTERNAL-BUS-KERNEL-DMA-LINUX-GO
   appliesTo:
   - FU-APP-APP
   - FU-OTA-FDINHERIT
@@ -1465,7 +1464,6 @@ requirements:
   - CODE-APP-INTERNAL-BUS-BUS-TEST-GO
   - CODE-APP-INTERNAL-BUS-DCINV-GO
   - CODE-APP-INTERNAL-BUS-DCINV-TEST-GO
-  - CODE-APP-INTERNAL-BUS-KERNEL-DMA-LINUX-GO
   - CODE-APP-INTERNAL-BUS-DCINV-README-MD
   appliesTo:
   - FU-APP-BUS
@@ -2420,27 +2418,6 @@ requirements:
   verificationCriteria: 'Host fakes do not establish physical GPMC, cache, DMA or module qualification.'
   notes: Read-only mappings can still cause device read side effects. Peek offsets are not checked against decoded
     region size; no physical region survey was run.
-- id: REQ-SDS-134
-  title: Exclusive experimental kernel DMA session
-  text: The instrument shall exclude competing userspace bus operations while an experimental kernel stream owns
-    the inherited GPMC descriptor.
-  status: draft
-  category: functional
-  sourceRefs:
-  - CODE-APP-INTERNAL-BUS-BUS-GO
-  - CODE-APP-INTERNAL-BUS-KERNEL-DMA-LINUX-GO
-  - CODE-APP-INTERNAL-BUS-KERNEL-DMA-LINUX-TEST-GO
-  - CODE-APP-INTERNAL-BUS-KERNELDMA-ACQ-DMA-C
-  - CODE-APP-INTERNAL-BUS-KERNELDMA-ACQ-DMA-TEST-C
-  - CODE-APP-INTERNAL-BUS-KERNELDMA-README-MD
-  appliesTo:
-  - FU-APP-BUS
-  verificationMethods:
-  - inspection
-  - test
-  verificationCriteria: 'Host fakes do not establish physical GPMC, cache, DMA or module qualification.'
-  notes: Ownership guards have host tests; the kernel worker, IRQ path, ABI layout and sustained stream are inspection-only
-    in this model batch. Explicit close is required after EOF.
 - id: REQ-SDS-135
   title: Panel event dispatch and indicators
   text: The instrument shall translate matrix edges and queued named actions into instrument commands, resynchronize

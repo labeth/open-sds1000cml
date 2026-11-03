@@ -1,9 +1,12 @@
-// Package bus is the app's GPMC register-access layer for the acq2 default
-// fabric (the acq2 analysis branch §2, fpga-specs 10/12). It owns the
-// boot-inherited /dev/Gpmc fd, the 6-byte ioctl wire encoding, and the EDMA
-// fast drain of the pop-on-read BURST port. Register MEANING comes from the
-// generated iface package: which selectors exist and which are writable is
-// schema-derived, never a hand-maintained range.
+// Package bus is the app's GPMC register-access layer (fpga-specs 10/12). It
+// owns the boot-inherited /dev/Gpmc fd, the 6-byte ioctl wire encoding, the
+// EDMA fast drain of the pop-on-read ports and the acquisition worker that
+// takes the bus over at startup. The nine FPGA images (fpga/README.md) are
+// driven through RawWrite and the checked pops by sramcapture, which owns
+// their register map. Write's guard and the BURST drain come from the iface
+// package, the register-drained fabric the engine's offline fake models:
+// which of its selectors exist and which are writable is schema-derived,
+// never a hand-maintained range.
 //
 // Planes: CS1 is the Cyclone (our fabric, 128 selectors at CS1 base + 2N);
 // CS3 is the MAX V CPLD (front-end DACs, the LED latch and the configuration
@@ -11,8 +14,8 @@
 // never written here: only fpgaload's reload path may touch it (workplan §4.4).
 //
 // Every method on *Dev must be called from the single engine-owner goroutine
-// only. The package does not enforce that; the engine does (Engine.Exec is the
-// door for everyone else).
+// only, once the engine runs. The package does not enforce that; the engine
+// does, and nothing else is handed the bus.
 // ENGMODEL-OWNER-UNIT: FU-APP-BUS
 package bus
 
@@ -25,9 +28,9 @@ import (
 	"github.com/labeth/open-sds1000cml/app/internal/iface"
 )
 
-// Bus is the register surface the acquisition engine (and, through
-// Engine.Exec, the diagnostic block) drives. Implementations: *Dev (real
-// hardware) and the engine's offline fake fabric.
+// Bus is the register surface the acquisition engine and its SRAM capture
+// drive. Implementations: *Dev (real hardware) and the engine's offline fake
+// fabric.
 // TRLC-LINKS: REQ-SDS-129
 type Bus interface {
 	// Read reads one 16-bit register. plane is PlaneCS1 or PlaneCS3.
@@ -72,10 +75,9 @@ const (
 // for the whole process tree).
 // TRLC-LINKS: REQ-SDS-129
 type Dev struct {
-	fd        int
-	remote    *workerClient
-	kernelDMA *kernelDMADrainer
-	edma      *edmaDrainer // nil → ioctl drains
+	fd     int
+	remote *workerClient
+	edma   *edmaDrainer // nil → ioctl drains
 }
 
 // New wraps the inherited /dev/Gpmc fd. It only constructs: at cold boot the
@@ -111,13 +113,10 @@ func encode(plane uint8, sel, val uint16) [6]byte {
 	return [6]byte{plane, 0, byte(sel & 0xff), byte(sel >> 8), byte(val & 0xff), byte(val >> 8)}
 }
 
-// TRLC-LINKS: REQ-SDS-129, REQ-SDS-134
+// TRLC-LINKS: REQ-SDS-129
 func (d *Dev) ioctl(req uintptr, b *[6]byte) error {
 	if d.remote != nil {
 		return d.workerIOCTL(req, b)
-	}
-	if d.kernelDMA != nil && d.kernelDMA.streaming {
-		return errors.New("bus: kernel stream owns GPMC until CloseKernelDMA")
 	}
 	// These six-byte ioctls perform one bounded register transaction, not a
 	// blocking stream read. Keep the Go execution slot across the call so a
@@ -240,17 +239,13 @@ func (d *Dev) FastDrain() bool {
 // the fabric identity is verified (the BURST port exists only on our image).
 // Any failure keeps the ioctl drain (logged through logf, non-fatal). Returns
 // whether EDMA is active; idempotent.
-// TRLC-LINKS: REQ-SDS-081, REQ-SDS-131, REQ-SDS-134
+// TRLC-LINKS: REQ-SDS-081, REQ-SDS-131
 func (d *Dev) EnableEDMA(maxWords int, logf func(string, ...any)) bool {
 	if d.remote != nil {
 		return d.remote.fast
 	}
 	if logf == nil {
 		logf = func(string, ...any) {}
-	}
-	if d.kernelDMA != nil {
-		logf("bus: kernel DMA already owns EDMA")
-		return false
 	}
 	if d.edma != nil {
 		return true
@@ -278,7 +273,7 @@ func (d *Dev) EnableEDMA(maxWords int, logf func(string, ...any)) bool {
 
 // PopWordsChecked reads an explicitly selected pop port. A partially completed
 // DMA must be rewound by its owner; falling back here would silently skip data.
-// TRLC-LINKS: REQ-SDS-081, REQ-SDS-129, REQ-SDS-134
+// TRLC-LINKS: REQ-SDS-081, REQ-SDS-129
 func (d *Dev) PopWordsChecked(sel uint16, dst []uint16) error {
 	if d.remote != nil {
 		data := make([]byte, len(dst)*2)
@@ -295,19 +290,6 @@ func (d *Dev) PopWordsChecked(sel uint16, dst []uint16) error {
 	}
 	if sel > 127 {
 		return fmt.Errorf("bus: invalid pop selector %d", sel)
-	}
-	if d.kernelDMA != nil {
-		if len(dst)*2 > len(d.kernelDMA.bytes) {
-			return errors.New("bus: kernel DMA size exceeds buffer")
-		}
-		b := d.kernelDMA.bytes[:len(dst)*2]
-		if err := d.kernelDMA.pop(sel, b); err != nil {
-			return err
-		}
-		for i := range dst {
-			dst[i] = uint16(b[i*2]) | uint16(b[i*2+1])<<8
-		}
-		return nil
 	}
 	if d.edma != nil {
 		if !d.edma.drainWords(uint32(cs1PhysBase)+uint32(sel)*2, dst, len(dst)) {
@@ -327,7 +309,7 @@ func (d *Dev) PopWordsChecked(sel uint16, dst []uint16) error {
 
 // PopBytesChecked preserves the little-endian DMA bytes without a word roundtrip.
 // As with PopWordsChecked, a partial failure must not fall back or retry blindly.
-// TRLC-LINKS: REQ-SDS-081, REQ-SDS-129, REQ-SDS-134
+// TRLC-LINKS: REQ-SDS-081, REQ-SDS-129
 func (d *Dev) PopBytesChecked(sel uint16, dst []byte) error {
 	if sel > 127 || len(dst)%2 != 0 {
 		return errors.New("bus: invalid byte pop selector/length")
@@ -341,9 +323,6 @@ func (d *Dev) PopBytesChecked(sel uint16, dst []byte) error {
 			return errors.New("bus: short worker pop (consumption uncertain)")
 		}
 		return err
-	}
-	if d.kernelDMA != nil {
-		return d.kernelDMA.pop(sel, dst)
 	}
 	if d.edma != nil {
 		if !d.edma.drainBytes(uint32(cs1PhysBase)+uint32(sel)*2, dst) {

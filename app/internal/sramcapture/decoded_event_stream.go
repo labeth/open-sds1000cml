@@ -111,26 +111,17 @@ func (c *Capture) ReadDecodedEvent(epoch uint32) (event DecodedEvent, available 
 	return event, true, nil
 }
 
-// ReadDecodedEvents reserves only complete host-FIFO records and drains them in
-// one checked DMA. A failed batch is never retried because consumption is unknown.
-// The acquisition owner serializes this operation with enable, rearm and recall.
-// TRLC-LINKS: REQ-SDS-013
-func (c *Capture) ReadDecodedEvents(epoch uint32, limit int) ([]DecodedEvent, error) {
-	return c.readDecodedEvents(epoch, limit, nil)
-}
-
-// ReadDecodedEventsInto uses caller-owned event storage. The returned slice
-// aliases dst; it remains valid until the caller reuses that storage.
-// TRLC-LINKS: REQ-SDS-013
-func (c *Capture) ReadDecodedEventsInto(epoch uint32, dst []DecodedEvent) ([]DecodedEvent, error) {
-	return c.readDecodedEvents(epoch, len(dst), dst)
-}
-
 // DecodedBatchMax is the most events one read returns (one worker packet).
 const DecodedBatchMax = 2048
 
+// ReadDecodedEventsInto reserves only complete host-FIFO records, at most
+// len(dst), and drains them in one checked DMA into caller-owned storage. A
+// failed batch is never retried because consumption is unknown. The returned
+// slice aliases dst; it remains valid until the caller reuses that storage.
+// The acquisition owner serializes this operation with enable, rearm and recall.
 // TRLC-LINKS: REQ-SDS-013
-func (c *Capture) readDecodedEvents(epoch uint32, limit int, dst []DecodedEvent) ([]DecodedEvent, error) {
+func (c *Capture) ReadDecodedEventsInto(epoch uint32, dst []DecodedEvent) ([]DecodedEvent, error) {
+	limit := len(dst)
 	// A direct FIFO read returns at most its 512-entry depth; the isolated
 	// worker hands over up to DecodedBatchMax from its ring per packet.
 	if limit < 1 || limit > DecodedBatchMax {
@@ -154,12 +145,7 @@ func (c *Capture) readDecodedEvents(epoch uint32, limit int, dst []DecodedEvent)
 				return nil, errors.New("sramcapture: invalid isolated event batch")
 			}
 			c.beats.Add(uint64(n/2 + 1))
-			events := dst
-			if events == nil {
-				events = make([]DecodedEvent, n/DecodedEventBytes)
-			} else {
-				events = events[:n/DecodedEventBytes]
-			}
+			events := dst[:n/DecodedEventBytes]
 			for i := range events {
 				event, err := ParseDecodedEvent(data[i*DecodedEventBytes : (i+1)*DecodedEventBytes])
 				if err != nil {
@@ -185,9 +171,6 @@ func (c *Capture) readDecodedEvents(epoch uint32, limit int, dst []DecodedEvent)
 		event, available, err := c.ReadDecodedEvent(epoch)
 		if err != nil || !available {
 			return nil, err
-		}
-		if dst == nil {
-			return []DecodedEvent{event}, nil
 		}
 		dst[0] = event
 		return dst[:1], nil
@@ -253,12 +236,7 @@ func (c *Capture) readDecodedEvents(epoch uint32, limit int, dst []DecodedEvent)
 			binary.LittleEndian.PutUint16(data[i:], v)
 		}
 	}
-	events := dst
-	if events == nil {
-		events = make([]DecodedEvent, n)
-	} else {
-		events = events[:n]
-	}
+	events := dst[:n]
 	for i := range events {
 		event, err := ParseDecodedEvent(data[i*DecodedEventBytes : (i+1)*DecodedEventBytes])
 		if err != nil {

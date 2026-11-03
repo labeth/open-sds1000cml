@@ -100,9 +100,6 @@ func (d *Dev) StartWorker(executable string, logf func(string, ...any)) error {
 	if d.remote != nil {
 		return errors.New("bus: worker already owns GPMC")
 	}
-	if d.kernelDMA != nil {
-		return errors.New("bus: kernel DMA already owns hardware")
-	}
 	pair, err := syscall.Socketpair(syscall.AF_UNIX, syscall.SOCK_SEQPACKET|syscall.SOCK_CLOEXEC, 0)
 	if err != nil {
 		return err

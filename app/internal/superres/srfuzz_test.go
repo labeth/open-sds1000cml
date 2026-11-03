@@ -38,7 +38,7 @@ func TestSuperresFuzzNoPanic(t *testing.T) {
 			// vary the seeding path: plain ref, gated ref, or none
 			switch rng.Intn(3) {
 			case 0:
-				st.SeedRef(sig(n), sig(n), edge)
+				st.SeedRefGate(sig(n), sig(n), edge, -1, -1)
 			case 1:
 				st.SeedRefGate(sig(n), sig(n), edge, gLo, gHi)
 			}

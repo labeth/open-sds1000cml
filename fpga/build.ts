@@ -4,10 +4,12 @@
 //   node --experimental-strip-types fpga/build.ts --image=general|packet|frame|line|qualify|stacking|stream|bits|fast [--seed=N] [--prepare-only] [--install]
 //
 // Every image is common/ (the acquisition top, SRAM record and transport, ADC
-// interleave, panel scan, clocks and GPMC) plus its own decoders or engine:
-// general, packet and line add trigger/ (decoded events, sequence trigger,
-// envelope recall) and their protocol triggers; stacking adds the stacking
-// engine. The default seeds are the shipping images' (bitstreams/images.json).
+// interleave, panel scan, clocks and GPMC) plus its own decoders or engine.
+// Every image but stacking adds trigger/ (decoded events, sequence trigger,
+// envelope recall): general, packet, frame, line and fast with their protocol
+// triggers, stream and bits with the stream capture, qualify with the hardware
+// qualifiers and the symbol trigger. Stacking adds the stacking engine
+// instead. The default seeds are the shipping images' (bitstreams/images.json).
 // A build that fails timing or its checks never publishes. --install copies a
 // passing build into bitstreams/ and records it in the manifest.
 import {readFileSync,writeFileSync,copyFileSync,mkdirSync,mkdtempSync,openSync,closeSync,statSync,symlinkSync,renameSync,existsSync} from 'node:fs';
@@ -35,7 +37,7 @@ type Image={dir:string,files:string[],defines:string[],seed:number,trigger:boole
 // Shared by every image (the stacking build used the same PLL text).
 const common=['record.v','transport.v','adc_unpack.v','interleave.v','panel_scan.v','pll.v','adc_pll.v',
  'gpmc_slave.v','ddio_pair.v','lane_in.v','lanemap_seed.vh'];
-// Shared by the three trigger images.
+// Shared by every image but stacking.
 const trigger=['sample_timeline.v','event_sequence.v','envelope_reduce.v','decoded_event_queue.v','decoded_event_bridge.v',
  'decoded_event_reader.v','decoded_event_transport.v','decoded_event_port.v'];
 const images:Record<string,Image>={

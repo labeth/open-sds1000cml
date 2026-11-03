@@ -153,17 +153,17 @@ func TestSoundLCDKeyPausesThePage(t *testing.T) {
 	if on, _ := o.leased(); !on {
 		t.Fatal("the page did not lease the stream")
 	}
-	if n := pc.View().Notice; !strings.Contains(n, "web page is on SOUND") || !strings.Contains(n, "Press AUTO") {
-		t.Fatalf("the LCD's notice: %q", n)
+	if _, v := pc.Snapshot(); !strings.Contains(v.Notice, "web page is on SOUND") || !strings.Contains(v.Notice, "Press AUTO") {
+		t.Fatalf("the LCD's notice: %q", v.Notice)
 	}
 	soundBinHead(t, h, "/api/sound.bin?max=64&who=phone")
-	if n := pc.View().Notice; !strings.Contains(n, "a phone are on SOUND") {
-		t.Fatalf("the LCD's notice for the web page and the phone: %q", n)
+	if _, v := pc.Snapshot(); !strings.Contains(v.Notice, "a phone are on SOUND") {
+		t.Fatalf("the LCD's notice for the web page and the phone: %q", v.Notice)
 	}
 
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(rec, httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/api/panel", strings.NewReader(`{"button":"set50"}`)))
-	waitFor(t, "the LCD's key took the scope", pc.SoundPaused)
+	waitFor(t, "the LCD's key took the scope", func() bool { return soundJSON(t, h, "GET", "/api/sound", "")["paused"] == true })
 	_, before := o.leased()
 	hd := soundBinHead(t, h, "/api/sound.bin?max=64&wait=50")
 	if on, after := o.leased(); on || after != before || !hd.Paused || hd.N != 0 || hd.State != panel.SoundPausedText {
@@ -172,8 +172,8 @@ func TestSoundLCDKeyPausesThePage(t *testing.T) {
 	if rep := soundJSON(t, h, "GET", "/api/sound", ""); rep["paused"] != true || rep["paused_why"] != panel.SoundPausedText {
 		t.Fatalf("the report while paused: %v %v", rep["paused"], rep["paused_why"])
 	}
-	if n := pc.View().Notice; strings.Contains(n, "is on SOUND") {
-		t.Fatalf("the LCD still names a page: %q", n)
+	if _, v := pc.Snapshot(); strings.Contains(v.Notice, "is on SOUND") {
+		t.Fatalf("the LCD still names a page: %q", v.Notice)
 	}
 
 	if rep := soundJSON(t, h, "POST", "/api/sound", `{"action":"take_scope"}`); rep["paused"] != false {

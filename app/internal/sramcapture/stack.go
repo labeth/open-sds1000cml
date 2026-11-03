@@ -44,7 +44,6 @@ const (
 	selStackTemplateCap   = 124 // read: template capacity, 0 without qualifier
 
 	stackOpScan      = 1
-	stackOpPeek      = 2
 	stackOpTileRead  = 3
 	stackOpTileWrite = 4
 	stackOpReset     = 5
@@ -86,14 +85,6 @@ type StackState struct {
 	Hits      uint32
 	Crossings uint64
 	Records   int
-}
-
-// StackTileBins reports the loaded image's tile size, or 0 without stacking.
-// TRLC-LINKS: REQ-SDS-141
-func (c *Capture) StackTileBins() (int, error) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	return c.stackTileBins()
 }
 
 // TRLC-LINKS: REQ-SDS-141
@@ -202,31 +193,6 @@ func (c *Capture) stackGrant(ctx context.Context, on bool) error {
 			return fmt.Errorf("sramcapture: stack SRAM grant %v: %w", on, err)
 		}
 	}
-}
-
-// StackPeek returns {CH2[i+1], CH1[i+1], CH2[i], CH1[i]} read by the stacking
-// engine from the frozen record, for checking its addressing against recall.
-// TRLC-LINKS: REQ-SDS-141
-func (c *Capture) StackPeek(ctx context.Context, index uint32) (v uint32, err error) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	if err := c.stackGrant(ctx, true); err != nil {
-		return 0, err
-	}
-	// A grant that does not come back leaves the stacker holding the SRAM
-	// the record is recalled from: the peek says so, as StackRecord does.
-	defer func() {
-		if e := c.stackGrant(context.Background(), false); err == nil {
-			err = e
-		}
-	}()
-	if err := c.write32(selStackFirst, index); err != nil {
-		return 0, err
-	}
-	if err := c.stackOp(ctx, stackOpPeek, time.Second); err != nil {
-		return 0, err
-	}
-	return c.read32(selStackBins)
 }
 
 // StackRecord accumulates the frozen record into st. The FPGA finds hits and
@@ -597,25 +563,6 @@ func (c *Capture) StackScan(ctx context.Context, first, n int, initial uint32) (
 	}
 	rejected, err = c.read32(selStackRejected)
 	return hits, crossings, rejected, err
-}
-
-// StackUpload restores a previously downloaded tile after StackResetTile.
-// TRLC-LINKS: REQ-SDS-141
-func (c *Capture) StackUpload(ctx context.Context, src []superres.FPGAStackMoments) error {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	if len(src)%2 != 0 {
-		return errors.New("sramcapture: stack upload needs whole bins")
-	}
-	for i, m := range src {
-		if m.Count == 0 {
-			continue
-		}
-		if err := c.stackUpload(ctx, i/2, i%2, m); err != nil {
-			return err
-		}
-	}
-	return nil
 }
 
 // StackDownload reads the current tile's first len(dst)/2 bins, two channels

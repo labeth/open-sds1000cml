@@ -9,7 +9,7 @@ import (
 	"github.com/labeth/open-sds1000cml/app/internal/iface"
 )
 
-// The acq2 capture sequence (workplan §2, iface): RESET → RUN → DECIM →
+// The register-drained capture sequence (iface): RESET → RUN → DECIM →
 // PRETRIG/POSTTRIG → ACQ_CTRL/TRIG_LEVEL → GO → poll STATUS_A → HALT →
 // BURST_REMAIN → drain BURST (EDMA or ioctl) → GO (re-arm).
 

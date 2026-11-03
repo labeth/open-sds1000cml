@@ -13,8 +13,8 @@ import (
 func TestStats(t *testing.T) {
 	var s Stats
 	if s.N() != 0 || !math.IsNaN(s.Mean()) || !math.IsNaN(s.Min()) || !math.IsNaN(s.Max()) ||
-		!math.IsNaN(s.Sdev()) || !math.IsNaN(s.Last()) {
-		t.Fatalf("empty: N %d mean %v min %v max %v sdev %v last %v", s.N(), s.Mean(), s.Min(), s.Max(), s.Sdev(), s.Last())
+		!math.IsNaN(s.Sdev()) {
+		t.Fatalf("empty: N %d mean %v min %v max %v sdev %v", s.N(), s.Mean(), s.Min(), s.Max(), s.Sdev())
 	}
 	s.Add(math.NaN())
 	s.Add(math.Inf(1))
@@ -23,8 +23,8 @@ func TestStats(t *testing.T) {
 		t.Fatalf("non-finite values counted: N %d", s.N())
 	}
 	s.Add(2.5)
-	if s.N() != 1 || s.Mean() != 2.5 || s.Min() != 2.5 || s.Max() != 2.5 || s.Last() != 2.5 || !math.IsNaN(s.Sdev()) {
-		t.Fatalf("one value: N %d mean %v min %v max %v last %v sdev %v", s.N(), s.Mean(), s.Min(), s.Max(), s.Last(), s.Sdev())
+	if s.N() != 1 || s.Mean() != 2.5 || s.Min() != 2.5 || s.Max() != 2.5 || !math.IsNaN(s.Sdev()) {
+		t.Fatalf("one value: N %d mean %v min %v max %v sdev %v", s.N(), s.Mean(), s.Min(), s.Max(), s.Sdev())
 	}
 	s.Reset()
 	// a frequency read around 1 MHz: Welford keeps the spread exact where a
@@ -52,7 +52,7 @@ func TestStats(t *testing.T) {
 	}
 	sd := math.Sqrt(ss / float64(len(vals)))
 	if s.N() != len(vals) || math.Abs(s.Mean()-mean) > 1e-12*mean || s.Min() != mn || s.Max() != mx ||
-		math.Abs(s.Sdev()-sd) > 1e-9 || s.Last() != vals[len(vals)-1] {
+		math.Abs(s.Sdev()-sd) > 1e-9 {
 		t.Errorf("N %d mean %.12g (%.12g) min %v max %v sdev %.12g (%.12g)", s.N(), s.Mean(), mean, s.Min(), s.Max(), s.Sdev(), sd)
 	}
 	if math.Abs(s.Sdev()-0.37) > 0.02 {

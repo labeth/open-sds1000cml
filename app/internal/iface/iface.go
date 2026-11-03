@@ -1,10 +1,13 @@
 // Maintained by hand; the generator that once produced this file was removed.
 
-// Package iface is the app's view of the sds1000cml-default v3 fabric interface:
-// selectors, field masks/shifts and enum values, identity values, opcodes, DIAG
-// window indices, the register tables for tooling, and the Go models of every
-// drained word format (Model*, the rung R2b reference). The engine drives the
-// fabric through these — never through hand-packed selectors or masks.
+// Package iface is the register interface of the register-drained acquisition
+// fabric (schema sds1000cml-default v3): selectors, field masks/shifts and enum
+// values, identity values, opcodes, DIAG window indices, the register tables
+// for tooling, and the Go models of every drained word format (Model*). None
+// of the nine FPGA images (fpga/README.md) implements it: their register map
+// is sramcapture's. The engine's register-drained path and its offline fake
+// fabric use these, and bus takes its CS1 write guard and the BURST drain from
+// them — never hand-packed selectors or masks.
 package iface
 
 import "fmt"

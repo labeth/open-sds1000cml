@@ -364,14 +364,6 @@ func (s *soundSvc) remoteLease(who string, lease func()) bool {
 	return true
 }
 
-// remotePaused reports whether the pages' leases are refused now.
-// TRLC-LINKS: REQ-SDS-277
-func (s *soundSvc) remotePaused() bool {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	return !s.remoteOKLocked()
-}
-
 // remoteNotice is the LCD's notice while a page holds the stream and the
 // LCD shows another workspace ("" none): its captures wait.
 // TRLC-LINKS: REQ-SDS-277

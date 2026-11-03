@@ -64,10 +64,6 @@ type Display struct {
 // TRLC-LINKS: REQ-SDS-211, REQ-SDS-212
 func (c *Controller) Snapshot() (Display, wsview.View) { return c.displayAndView(c.snap()) }
 
-// View is the UI snapshot alone.
-// TRLC-LINKS: REQ-SDS-211
-func (c *Controller) View() wsview.View { return c.view(c.snap()) }
-
 // view builds the UI snapshot from one state read.
 // TRLC-LINKS: REQ-SDS-211, REQ-SDS-212
 func (c *Controller) view(s *sv) wsview.View {
