@@ -5,7 +5,7 @@ package engine
 import (
 	"testing"
 
-	"github.com/labeth/open-sds1000cml/app/internal/decode"
+	"github.com/labeth/open-dso-core/decode"
 )
 
 // Every symbol-trigger protocol's frames matched on their last unit, whole:

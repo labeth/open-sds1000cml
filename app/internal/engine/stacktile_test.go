@@ -4,7 +4,7 @@ import (
 	"math/rand"
 	"testing"
 
-	"github.com/labeth/open-sds1000cml/app/internal/superres"
+	"github.com/labeth/open-dso-core/superres"
 )
 
 // TRLC-LINKS: REQ-SDS-141

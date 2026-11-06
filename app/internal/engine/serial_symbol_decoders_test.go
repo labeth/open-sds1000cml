@@ -5,7 +5,7 @@ package engine
 import (
 	"testing"
 
-	"github.com/labeth/open-sds1000cml/app/internal/decode"
+	"github.com/labeth/open-dso-core/decode"
 )
 
 // The symbol trigger against the protocols' software decoders on the same

@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/labeth/open-sds1000cml/app/internal/testenv"
+	"github.com/labeth/open-dso-core/testenv"
 )
 
 // The web's Device screenshot (PRINT) says what the scope saved, as its LCD

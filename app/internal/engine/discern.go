@@ -5,7 +5,7 @@ package engine
 import (
 	"math"
 
-	"github.com/labeth/open-sds1000cml/app/internal/dsp"
+	"github.com/labeth/open-dso-core/dsp"
 )
 
 // Software edge discrimination and centring (spec 03 §7, spec 05 §3).

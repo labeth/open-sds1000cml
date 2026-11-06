@@ -2,7 +2,7 @@
 
 package engine
 
-import "github.com/labeth/open-sds1000cml/app/internal/decode"
+import "github.com/labeth/open-dso-core/decode"
 
 // physSymbolCases are synthetic buses of the sigrok protocols beyond the
 // first thirty with requests and the frames each must match (symbolCases):

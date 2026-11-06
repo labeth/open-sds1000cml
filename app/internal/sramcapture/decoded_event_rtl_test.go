@@ -9,7 +9,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/labeth/open-sds1000cml/app/internal/testenv"
+	"github.com/labeth/open-dso-core/testenv"
 )
 
 // TestDecodedEventRTL parses bytes produced by the actual queue/CDC/reader RTL,

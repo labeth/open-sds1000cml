@@ -31,7 +31,7 @@ import (
 	"github.com/labeth/open-sds1000cml/app/internal/settings"
 	"github.com/labeth/open-sds1000cml/app/internal/sramcapture"
 	"github.com/labeth/open-sds1000cml/app/internal/streamview"
-	"github.com/labeth/open-sds1000cml/app/internal/vxi11srv"
+	"github.com/labeth/open-dso-core/vxi11srv"
 	"github.com/labeth/open-sds1000cml/app/internal/web"
 )
 

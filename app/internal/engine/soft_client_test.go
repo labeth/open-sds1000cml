@@ -17,9 +17,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/labeth/open-sds1000cml/app/internal/decode"
+	"github.com/labeth/open-dso-core/decode"
 	"github.com/labeth/open-sds1000cml/app/internal/sramcapture"
-	"github.com/labeth/open-sds1000cml/app/internal/testenv"
+	"github.com/labeth/open-dso-core/testenv"
 )
 
 // rleWords undoes appendWordsRLE.

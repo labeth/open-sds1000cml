@@ -12,7 +12,7 @@ import (
 	"testing"
 
 	"github.com/labeth/open-sds1000cml/app/internal/sramcapture"
-	"github.com/labeth/open-sds1000cml/app/internal/testenv"
+	"github.com/labeth/open-dso-core/testenv"
 )
 
 // The bits image's top level in ring mode (ADR-STREAM-RING,

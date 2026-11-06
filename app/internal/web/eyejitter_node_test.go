@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/labeth/open-sds1000cml/app/internal/testenv"
+	"github.com/labeth/open-dso-core/testenv"
 )
 
 // TestEyejitterJS runs the eye-diagram/jitter engine (eyejitter.js) under node

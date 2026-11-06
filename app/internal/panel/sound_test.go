@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/labeth/open-sds1000cml/app/internal/engine"
-	"github.com/labeth/open-sds1000cml/app/internal/sound"
+	"github.com/labeth/open-dso-core/sound"
 )
 
 // soundEng is the panel's fake engine with an audio stream: two channels of

@@ -20,6 +20,20 @@ jobs:
         working-directory: ${{ matrix.module }}
     steps:
       - uses: actions/checkout@v4
+      # The app requires open-dso-core from ../../open-dso-core (app/go.mod's
+      # replace) until the core is released and pinned by tag.
+      - name: Check out open-dso-core
+        if: matrix.module == 'app'
+        uses: actions/checkout@v4
+        with:
+          repository: labeth/open-dso-core
+          ref: split
+          path: .dso-core
+          token: ${{ secrets.DSO_CORE_TOKEN || github.token }}
+      - name: Place open-dso-core next to the repository
+        if: matrix.module == 'app'
+        working-directory: ${{ github.workspace }}
+        run: mv .dso-core ../open-dso-core
 
       - uses: actions/setup-go@v5
         with:
@@ -40,6 +54,15 @@ jobs:
       - name: test
         run: go test -skip 'TopRTL' ./...
 
+      # The core's own suite, checked against this repository's FPGA sources
+      # and web UI (DSO_SCOPE_DIR).
+      - name: test open-dso-core
+        if: matrix.module == 'app'
+        working-directory: ${{ github.workspace }}/../open-dso-core
+        env:
+          DSO_SCOPE_DIR: ${{ github.workspace }}
+        run: go vet ./... && go test -skip 'TopRTL' ./...
+
   # golangci-lint with the repository's .golangci.yml (the linters, their
   # thresholds and each exception's reason live there).
   lint:
@@ -50,6 +73,20 @@ jobs:
         module: [app, ota]
     steps:
       - uses: actions/checkout@v4
+      # The app requires open-dso-core from ../../open-dso-core (app/go.mod's
+      # replace) until the core is released and pinned by tag.
+      - name: Check out open-dso-core
+        if: matrix.module == 'app'
+        uses: actions/checkout@v4
+        with:
+          repository: labeth/open-dso-core
+          ref: split
+          path: .dso-core
+          token: ${{ secrets.DSO_CORE_TOKEN || github.token }}
+      - name: Place open-dso-core next to the repository
+        if: matrix.module == 'app'
+        working-directory: ${{ github.workspace }}
+        run: mv .dso-core ../open-dso-core
       - uses: actions/setup-go@v5
         with:
           go-version-file: ${{ matrix.module }}/go.mod
@@ -72,6 +109,20 @@ jobs:
         working-directory: ${{ matrix.module }}
     steps:
       - uses: actions/checkout@v4
+      # The app requires open-dso-core from ../../open-dso-core (app/go.mod's
+      # replace) until the core is released and pinned by tag.
+      - name: Check out open-dso-core
+        if: matrix.module == 'app'
+        uses: actions/checkout@v4
+        with:
+          repository: labeth/open-dso-core
+          ref: split
+          path: .dso-core
+          token: ${{ secrets.DSO_CORE_TOKEN || github.token }}
+      - name: Place open-dso-core next to the repository
+        if: matrix.module == 'app'
+        working-directory: ${{ github.workspace }}
+        run: mv .dso-core ../open-dso-core
       - uses: actions/setup-go@v5
         with:
           go-version-file: ${{ matrix.module }}/go.mod
@@ -96,6 +147,18 @@ jobs:
       PW_VERSION: 1.58.2 # pin: cache key + reproducible lane (matches the dev machines)
     steps:
       - uses: actions/checkout@v4
+      # The app requires open-dso-core from ../../open-dso-core (app/go.mod's
+      # replace) until the core is released and pinned by tag.
+      - name: Check out open-dso-core
+        uses: actions/checkout@v4
+        with:
+          repository: labeth/open-dso-core
+          ref: split
+          path: .dso-core
+          token: ${{ secrets.DSO_CORE_TOKEN || github.token }}
+      - name: Place open-dso-core next to the repository
+        working-directory: ${{ github.workspace }}
+        run: mv .dso-core ../open-dso-core
 
       - uses: actions/setup-go@v5
         with:
@@ -140,7 +203,14 @@ jobs:
         env:
           CI_REQUIRE_BROWSER: "1"
           CI_REQUIRE_SIGROK: "1"
-        run: go test -timeout 25m ./internal/web/ ./internal/decode/ ./internal/superres/ ./internal/analysis/
+        run: go test -timeout 25m ./internal/web/
+      - name: core browser / node / JS-parity tests (skips are failures here)
+        working-directory: ${{ github.workspace }}/../open-dso-core
+        env:
+          CI_REQUIRE_BROWSER: "1"
+          CI_REQUIRE_SIGROK: "1"
+          DSO_SCOPE_DIR: ${{ github.workspace }}
+        run: go test -timeout 25m ./decode/ ./superres/ ./analysis/
 
   # Oracle lane: libsigrokdecode's protocol decoders (via sigrok-cli) act as
   # the reference implementation for the Go protocol decoders — the
@@ -154,6 +224,18 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      # The app requires open-dso-core from ../../open-dso-core (app/go.mod's
+      # replace) until the core is released and pinned by tag.
+      - name: Check out open-dso-core
+        uses: actions/checkout@v4
+        with:
+          repository: labeth/open-dso-core
+          ref: split
+          path: .dso-core
+          token: ${{ secrets.DSO_CORE_TOKEN || github.token }}
+      - name: Place open-dso-core next to the repository
+        working-directory: ${{ github.workspace }}
+        run: mv .dso-core ../open-dso-core
       - uses: actions/setup-go@v5
         with:
           go-version-file: app/go.mod
@@ -161,10 +243,11 @@ jobs:
       - name: Install sigrok-cli
         run: sudo apt-get update && sudo apt-get install -y --no-install-recommends sigrok-cli
       - name: sigrok-oracle decoder cross-check (skips are failures here)
-        working-directory: app
+        working-directory: ${{ github.workspace }}/../open-dso-core
         env:
           CI_REQUIRE_SIGROK: "1"
-        run: go test -timeout 10m -run 'TestOracle' -v ./internal/decode/ ./internal/analysis/
+          DSO_SCOPE_DIR: ${{ github.workspace }}
+        run: go test -timeout 10m -run 'TestOracle' -v ./decode/ ./analysis/
       # Ubuntu's sigrok has no ir_sirc, sae_j1850_vpw, sdq, pjdl, cjtag, caliper or
       # ir_irmp decoder, nor rc_encode's EV1527 coding, nor the stacked
       # ones added since 0.5 (ad5626, ad79x0, adxl345, i2cfilter, ltc242x,
@@ -185,14 +268,15 @@ jobs:
           mkdir -p "$RUNNER_TEMP/irmp"
           gcc -shared -fPIC -O2 $(pkg-config --cflags glib-2.0) $(python3-config --includes) -o "$RUNNER_TEMP/irmp/libirmp.so" "$RUNNER_TEMP/lsd/irmp/irmp-main-sharedlib.c" $(pkg-config --libs glib-2.0)
       - name: sigrok-oracle cross-check of the decoders newer than Ubuntu's sigrok
-        working-directory: app
+        working-directory: ${{ github.workspace }}/../open-dso-core
         env:
           CI_REQUIRE_SIGROK: "1"
+          DSO_SCOPE_DIR: ${{ github.workspace }}
         run: |
           set -o pipefail
           export SRD_DECODERS="$RUNNER_TEMP/lsd/decoders"
           export LD_LIBRARY_PATH="$RUNNER_TEMP/irmp${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
-          PATH="$GITHUB_WORKSPACE/tools/sigrok-oracle:$PATH" go test -count=1 -timeout 10m -run 'TestOracleIRSIRC|TestOracleJ1850|TestOracleSWIM|TestOracleSDCard|TestOracleSDQ|TestOraclePJDL|TestOracleCJTAG|TestOracleCaliper|TestOracleIRMP|TestOracleRCEncode|TestOracleLayer(AD5626|AD79x0|ADXL345|I2CFilter|LTC242x|LTC26x7|MAX72xx|MCP23008|MCP23017|NRF905|SBUS|ST25R39xx|AVRISP)$' -v ./internal/decode/ ./internal/analysis/ | tee "$RUNNER_TEMP/new.log"
+          PATH="$GITHUB_WORKSPACE/tools/sigrok-oracle:$PATH" go test -count=1 -timeout 10m -run 'TestOracleIRSIRC|TestOracleJ1850|TestOracleSWIM|TestOracleSDCard|TestOracleSDQ|TestOraclePJDL|TestOracleCJTAG|TestOracleCaliper|TestOracleIRMP|TestOracleRCEncode|TestOracleLayer(AD5626|AD79x0|ADXL345|I2CFilter|LTC242x|LTC26x7|MAX72xx|MCP23008|MCP23017|NRF905|SBUS|ST25R39xx|AVRISP)$' -v ./decode/ ./analysis/ | tee "$RUNNER_TEMP/new.log"
           ! grep -q -- '--- SKIP' "$RUNNER_TEMP/new.log"
 
   # Self-checking RTL testbenches (fpga/sim.sh); the fixture-driven ones run
@@ -201,6 +285,18 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      # The app requires open-dso-core from ../../open-dso-core (app/go.mod's
+      # replace) until the core is released and pinned by tag.
+      - name: Check out open-dso-core
+        uses: actions/checkout@v4
+        with:
+          repository: labeth/open-dso-core
+          ref: split
+          path: .dso-core
+          token: ${{ secrets.DSO_CORE_TOKEN || github.token }}
+      - name: Place open-dso-core next to the repository
+        working-directory: ${{ github.workspace }}
+        run: mv .dso-core ../open-dso-core
       - name: Install iverilog
         run: sudo apt-get update && sudo apt-get install -y --no-install-recommends iverilog
       # build.ts prepares each image's top level for the undeclared-net check
@@ -217,7 +313,12 @@ jobs:
           cache: false
       - name: Top-level simulations
         working-directory: app
-        run: go test -timeout 30m -run 'TopRTL' ./internal/engine/ ./internal/decode/
+        run: go test -timeout 30m -run 'TopRTL' ./internal/engine/
+      - name: Top-level simulations of the core decoders
+        working-directory: ${{ github.workspace }}/../open-dso-core
+        env:
+          DSO_SCOPE_DIR: ${{ github.workspace }}
+        run: go test -timeout 30m -run 'TopRTL' ./decode/
 
   # The engineering model (model/) must validate without errors: requirements,
   # catalog, and every function's TRLC-LINKS across the tree. engdoc exits
@@ -255,6 +356,18 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      # The app requires open-dso-core from ../../open-dso-core (app/go.mod's
+      # replace) until the core is released and pinned by tag.
+      - name: Check out open-dso-core
+        uses: actions/checkout@v4
+        with:
+          repository: labeth/open-dso-core
+          ref: split
+          path: .dso-core
+          token: ${{ secrets.DSO_CORE_TOKEN || github.token }}
+      - name: Place open-dso-core next to the repository
+        working-directory: ${{ github.workspace }}
+        run: mv .dso-core ../open-dso-core
       - uses: actions/setup-go@v5
         with:
           go-version-file: app/go.mod

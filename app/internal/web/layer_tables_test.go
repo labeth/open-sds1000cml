@@ -6,7 +6,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/labeth/open-sds1000cml/app/internal/analysis"
+	"github.com/labeth/open-dso-core/analysis"
 )
 
 // TestLayerTablesJS keeps layer_tables.js equal to the scope's layer tables,

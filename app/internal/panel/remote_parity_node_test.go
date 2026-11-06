@@ -13,7 +13,7 @@ import (
 	"testing"
 
 	"github.com/labeth/open-sds1000cml/app/internal/panel/wsview"
-	"github.com/labeth/open-sds1000cml/app/internal/testenv"
+	"github.com/labeth/open-dso-core/testenv"
 )
 
 // TestRemoteCoreParity: what the phone remote says before it sends a value

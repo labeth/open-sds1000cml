@@ -11,7 +11,7 @@ import (
 	"slices"
 	"time"
 
-	"github.com/labeth/open-sds1000cml/app/internal/dsp"
+	"github.com/labeth/open-dso-core/dsp"
 	"github.com/labeth/open-sds1000cml/app/internal/sramcapture"
 )
 

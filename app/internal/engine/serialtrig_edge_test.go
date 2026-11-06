@@ -5,7 +5,7 @@ package engine
 import (
 	"testing"
 
-	"github.com/labeth/open-sds1000cml/app/internal/decode"
+	"github.com/labeth/open-dso-core/decode"
 )
 
 // adversarial matchI2C span sequences (repeated-START, missing R/W, cross-txn data).

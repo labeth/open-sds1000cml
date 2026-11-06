@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/labeth/open-sds1000cml/app/internal/measure"
+	"github.com/labeth/open-dso-core/measure"
 )
 
 // A measurement's envelope timing is taken once for it and its scale: the

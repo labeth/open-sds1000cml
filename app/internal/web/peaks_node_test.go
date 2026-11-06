@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/labeth/open-sds1000cml/app/internal/testenv"
+	"github.com/labeth/open-dso-core/testenv"
 )
 
 // TestPeaksJS runs the browser FFT peak-detection/selection logic (peaks.js)

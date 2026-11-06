@@ -4,7 +4,7 @@ package panel
 
 import (
 	"github.com/labeth/open-sds1000cml/app/internal/analog"
-	"github.com/labeth/open-sds1000cml/app/internal/decode"
+	"github.com/labeth/open-dso-core/decode"
 )
 
 // DefaultSetup returns the instrument to its power-on setup (DEFAULT SETUP key,

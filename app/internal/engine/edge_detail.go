@@ -6,7 +6,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/labeth/open-sds1000cml/app/internal/measure"
+	"github.com/labeth/open-dso-core/measure"
 	"github.com/labeth/open-sds1000cml/app/internal/sramcapture"
 )
 

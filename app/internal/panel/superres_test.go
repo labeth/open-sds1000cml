@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/labeth/open-sds1000cml/app/internal/engine"
-	"github.com/labeth/open-sds1000cml/app/internal/superres"
+	"github.com/labeth/open-dso-core/superres"
 )
 
 // An FPGA stack reviews at the session's timebase: one screen of samples with

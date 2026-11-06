@@ -7,7 +7,7 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/labeth/open-sds1000cml/app/internal/testenv"
+	"github.com/labeth/open-dso-core/testenv"
 )
 
 // rigInverter is the display invert the CH tabs' Invert rows drive (SCPI's

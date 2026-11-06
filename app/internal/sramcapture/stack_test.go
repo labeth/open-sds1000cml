@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/labeth/open-sds1000cml/app/internal/superres"
+	"github.com/labeth/open-dso-core/superres"
 )
 
 // stackPortBus emulates stack_engine_port.v over a frozen revision-8 record.

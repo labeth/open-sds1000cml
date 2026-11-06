@@ -10,7 +10,7 @@ import (
 	"regexp"
 	"testing"
 
-	"github.com/labeth/open-sds1000cml/app/internal/testenv"
+	"github.com/labeth/open-dso-core/testenv"
 )
 
 // The stream and bits images' top levels stream the paced counter ramp

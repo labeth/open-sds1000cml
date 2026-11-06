@@ -10,7 +10,7 @@ import (
 	"testing"
 
 	"github.com/labeth/open-sds1000cml/app/internal/engine"
-	"github.com/labeth/open-sds1000cml/app/internal/testenv"
+	"github.com/labeth/open-dso-core/testenv"
 )
 
 // TestStackPerfBrowser guards the superres-view redraw hot path: with a large

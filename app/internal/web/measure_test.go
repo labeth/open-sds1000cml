@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	"github.com/labeth/open-sds1000cml/app/internal/engine"
-	"github.com/labeth/open-sds1000cml/app/internal/testenv"
+	"github.com/labeth/open-dso-core/testenv"
 )
 
 // Auto-measurement logic now lives in internal/measure (with its own thorough

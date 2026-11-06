@@ -10,7 +10,7 @@ import (
 	"testing"
 
 	"github.com/labeth/open-sds1000cml/app/internal/engine"
-	"github.com/labeth/open-sds1000cml/app/internal/testenv"
+	"github.com/labeth/open-dso-core/testenv"
 )
 
 // i2cWave renders one I2C transaction (START, addr 0x50 W, ACK, 0x00, ACK, 0xFF,

@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"github.com/labeth/open-sds1000cml/app/internal/sramcapture"
-	"github.com/labeth/open-sds1000cml/app/internal/superres"
+	"github.com/labeth/open-dso-core/superres"
 )
 
 // ImageSwitcher reconfigures the acquisition FPGA between the general image

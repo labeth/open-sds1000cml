@@ -9,7 +9,7 @@ import (
 	"testing"
 
 	"github.com/labeth/open-sds1000cml/app/internal/engine"
-	"github.com/labeth/open-sds1000cml/app/internal/testenv"
+	"github.com/labeth/open-dso-core/testenv"
 )
 
 // TestINVSBrowser drives invs_browser.mjs over the REAL ui.html + WebGL draw
