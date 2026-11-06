@@ -1,0 +1,74 @@
+=== GET /api/zones
+status 405
+header Content-Type: text/plain; charset=utf-8
+header X-Content-Type-Options: nosniff
+body: 10 bytes, sha256 978f7dd0de5d186d546284812c48fef9bc571fe48c5bfea755679017e070c2ba
+POST only
+
+=== POST /api/zones
+request body: [{"dt_lo_s":1e-6,"dt_hi_s":2e-6,"code_lo":-5,"code_hi":300,"avoid":true,"ch":3},{"dt_lo_s":0,"dt_hi_s":1,"code_lo":1,"code_hi":2},{},{},{}]
+status 200
+header Content-Type: application/json
+body: 22 bytes, sha256 50976cf212de7098952ac1c7ee92a44a25640c7a802944209cca994962d8761d
+{"ok":true,"zones":4}
+
+=== POST /api/zones
+request body: {
+status 200
+header Content-Type: application/json
+body: 30 bytes, sha256 08ecb40607204ea8301f8b7d992348f1a9c3e2b49f0d270242120872aa1c1b60
+{"err":"bad json","ok":false}
+
+=== GET /api/serial
+status 200
+header Content-Type: application/json
+body: 305 bytes, sha256 06bfad6b11cce7a478a2e757840036e65557ab937dc0bb03e89705766511a4a6
+{"mode":1,"ok":true,"params":{"spiClockHz":1000000,"fine":true,"spiDelayNs":3,"inverted":false,"proto":1,"chA":0,"chB":0,"baud":115200,"bits":8,"parity":"","cpol":false,"cpha":false,"msb":false,"ieee":false,"tickNs":0,"nibbles":0,"dataBaud":0,"threshold":0,"haveThr":false,"addr":-1,"rw":0,"bytes":[85]}}
+
+=== POST /api/serial
+request body: {"proto":99,"chA":2,"chB":3,"rw":5,"addr":200,"baud":-1,"bits":99,"bytes":[1,99999,-4],"spiClockHz":5}
+status 200
+header Content-Type: application/json
+body: 12 bytes, sha256 e5f1eb4d806641698a35efe20e098efd20d7d57a9b90ee69079d5bb650920726
+{"ok":true}
+
+=== POST /api/serial
+request body: {"proto":30,"bits":99,"bytes":[70000]}
+status 200
+header Content-Type: application/json
+body: 12 bytes, sha256 e5f1eb4d806641698a35efe20e098efd20d7d57a9b90ee69079d5bb650920726
+{"ok":true}
+
+=== POST /api/serial
+request body: {"proto":8,"bytes":[999999]}
+status 200
+header Content-Type: application/json
+body: 12 bytes, sha256 e5f1eb4d806641698a35efe20e098efd20d7d57a9b90ee69079d5bb650920726
+{"ok":true}
+
+=== POST /api/serial
+request body: x
+status 200
+header Content-Type: application/json
+body: 30 bytes, sha256 08ecb40607204ea8301f8b7d992348f1a9c3e2b49f0d270242120872aa1c1b60
+{"err":"bad json","ok":false}
+
+=== PUT /api/serial
+status 405
+header Content-Type: text/plain; charset=utf-8
+header X-Content-Type-Options: nosniff
+body: 17 bytes, sha256 d2f6fd88b6963f9402a0ed4b83b4b2786c959577986f92022a3f5a94338eb505
+GET or POST only
+
+=== GET /api/serial/protocols
+status 200
+header Content-Type: application/json
+body: 1330 bytes, sha256 208098476a7ff5b138f2c0cba8af0305e958bf2a837205f63296783ebe80239d
+[{"id":1,"name":"UART"},{"id":2,"name":"I²C"},{"id":3,"name":"SPI"},{"id":4,"name":"Manchester"},{"id":5,"name":"SENT"},{"id":6,"name":"CAN FD"},{"id":7,"name":"MIL-STD-1553"},{"id":8,"name":"ARINC 429"},{"id":9,"name":"USB LS"},{"id":10,"name":"FlexRay"},{"id":11,"name":"LIN"},{"id":12,"name":"DMX512"},{"id":13,"name":"MIDI"},{"id":14,"name":"Modbus RTU"},{"id":15,"name":"1-Wire"},{"id":16,"name":"WS281x"},{"id":17,"name":"DHT"},{"id":18,"name":"HDMI-CEC"},{"id":19,"name":"J1850 VPW"},{"id":20,"name":"IR NEC"},{"id":21,"name":"IR Sony"},{"id":22,"name":"IR RC-5"},{"id":23,"name":"IR RC-6"},{"id":24,"name":"DALI"},{"id":25,"name":"USB PD"},{"id":26,"name":"S/PDIF"},{"id":27,"name":"PS/2"},{"id":28,"name":"SWD"},{"id":29,"name":"MDIO"},{"id":30,"name":"Wiegand"},{"id":31,"name":"Quadrature"},{"id":32,"name":"Stepper"},{"id":33,"name":"PWM"},{"id":34,"name":"RC encode"},{"id":35,"name":"OOK"},{"id":36,"name":"Miller"},{"id":37,"name":"Morse"},{"id":38,"name":"DCF77"},{"id":39,"name":"EM4100"},{"id":40,"name":"EM4305"},{"id":41,"name":"T55xx"},{"id":42,"name":"SWIM"},{"id":43,"name":"SDQ"},{"id":44,"name":"PJON"},{"id":45,"name":"DSI"},{"id":46,"name":"Qi"},{"id":47,"name":"SD card"},{"id":48,"name":"PDI"},{"id":49,"name":"cJTAG"},{"id":50,"name":"Maple"},{"id":51,"name":"Caliper"},{"id":52,"name":"IR multi"}]
+
+=== GET /api/serial
+status 200
+header Content-Type: application/json
+body: 303 bytes, sha256 4750defd0dca6ab62d6da5c3e366874aeb198effa11ee5b95d4a22abc33bce5f
+{"mode":1,"ok":true,"params":{"spiClockHz":1000000,"fine":true,"spiDelayNs":3,"inverted":false,"proto":8,"chA":0,"chB":0,"baud":0,"bits":0,"parity":"","cpol":false,"cpha":false,"msb":false,"ieee":false,"tickNs":0,"nibbles":0,"dataBaud":0,"threshold":0,"haveThr":false,"addr":0,"rw":0,"bytes":[524287]}}
+

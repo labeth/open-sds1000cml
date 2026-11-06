@@ -1,0 +1,21 @@
+=== GET /api/sound.bin
+status 404
+header Content-Type: text/plain; charset=utf-8
+header X-Content-Type-Options: nosniff
+body: 16 bytes, sha256 fc44b4a2e5aedfb999350e0de96233685d00977072c512f664b76fded7e0f431
+no audio stream
+
+=== GET /api/sound/take.bin
+status 404
+header Content-Type: text/plain; charset=utf-8
+header X-Content-Type-Options: nosniff
+body: 16 bytes, sha256 fc44b4a2e5aedfb999350e0de96233685d00977072c512f664b76fded7e0f431
+no audio stream
+
+=== GET /api/sound
+status 404
+header Content-Type: text/plain; charset=utf-8
+header X-Content-Type-Options: nosniff
+body: 14 bytes, sha256 2dd197a694317a547624b4badf2e5ce63a42b4bdb90ed5091bdd25ae1427e613
+no SOUND here
+

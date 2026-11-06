@@ -1,0 +1,19 @@
+=== POST /api/mask
+request body: {"lo":[]}
+status 200
+header Content-Type: application/json
+body: 35 bytes, sha256 452ad3a91963a920083b4e5f26e99d83af60e0e354129edf656563e74ec28b5b
+{"cleared":true,"gen":1,"ok":true}
+
+=== GET /api/maskfail
+status 200
+header Content-Type: application/json
+body: 47 bytes, sha256 3ef058d8c2d4df075bdf594b7cbf306494e442deb10dad2fcb2ed5b2af1b6eec
+{"count":0,"err":"no such failure","ok":false}
+
+=== GET /api/bode
+status 200
+header Content-Type: application/json
+body: 56 bytes, sha256 67efcd3c93de0bc2081d999a09dcab7f64749b042f8cc6e7678fdbb830cb5620
+{"freq":[],"gain_db":[],"n":0,"ok":true,"phase_deg":[]}
+

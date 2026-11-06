@@ -1,0 +1,28 @@
+=== POST /api/panel
+request body: {"button":"F1","remote":true}
+status 200
+header Content-Type: application/json
+body: 12 bytes, sha256 e5f1eb4d806641698a35efe20e098efd20d7d57a9b90ee69079d5bb650920726
+{"ok":true}
+
+=== POST /api/panel
+request body: {"type":{"text":"1"}}
+status 200
+header Content-Type: application/json
+body: 30 bytes, sha256 629a5536dfd26bf9df04a1a5cbe0382883e5881d6516cda6ae8b0eaf7954af6a
+{"err":"no panel","ok":false}
+
+=== POST /api/panel
+request body: {"workspace":"bus"}
+status 200
+header Content-Type: application/json
+body: 32 bytes, sha256 2027b07392b85116f43d7e7f01bbe4c19e7917b263eff7ab5521ee305600c7c6
+{"error":"no panel","ok":false}
+
+=== POST /api/panel
+request body: {"button":"auto","for":"bus"}
+status 200
+header Content-Type: application/json
+body: 12 bytes, sha256 e5f1eb4d806641698a35efe20e098efd20d7d57a9b90ee69079d5bb650920726
+{"ok":true}
+

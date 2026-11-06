@@ -1,0 +1,36 @@
+=== GET /api/stream/lines
+status 404
+header Content-Type: text/plain; charset=utf-8
+header X-Content-Type-Options: nosniff
+body: 18 bytes, sha256 f9ed8ae3c540b38e89f27f227d2f55d461b54f872415b6b691aea355e3a48e8f
+no decoded stream
+
+=== GET /api/stream/lines.bin
+status 404
+header Content-Type: text/plain; charset=utf-8
+header X-Content-Type-Options: nosniff
+body: 18 bytes, sha256 f9ed8ae3c540b38e89f27f227d2f55d461b54f872415b6b691aea355e3a48e8f
+no decoded stream
+
+=== GET /api/stream/window
+status 404
+header Content-Type: text/plain; charset=utf-8
+header X-Content-Type-Options: nosniff
+body: 18 bytes, sha256 f9ed8ae3c540b38e89f27f227d2f55d461b54f872415b6b691aea355e3a48e8f
+no decoded stream
+
+=== GET /api/stream/words.bin
+status 404
+header Content-Type: text/plain; charset=utf-8
+header X-Content-Type-Options: nosniff
+body: 17 bytes, sha256 bed67b75270d3cda15bb5cf8b09a537a67eb82ee5ffea362a7df19cede959cb5
+no client decode
+
+=== POST /api/stream/frames.bin
+request body: x
+status 404
+header Content-Type: text/plain; charset=utf-8
+header X-Content-Type-Options: nosniff
+body: 17 bytes, sha256 bed67b75270d3cda15bb5cf8b09a537a67eb82ee5ffea362a7df19cede959cb5
+no client decode
+

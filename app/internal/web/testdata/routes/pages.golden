@@ -1,0 +1,532 @@
+=== GET /
+status 200
+header Accept-Ranges: bytes
+header Cache-Control: no-cache
+header Content-Length: 73452
+header Content-Security-Policy: default-src 'self'; script-src 'self'; connect-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; object-src 'none'; base-uri 'none'
+header Content-Type: text/html; charset=utf-8
+header Etag: "38efa2f0e450ae6d"
+header Vary: Accept-Encoding
+body: 73452 bytes, sha256 697bcf903818fe5002aa384f300a6e5b8b1d2e591e2ea81de59892c1a3a4c783
+
+=== GET /remote
+status 200
+header Accept-Ranges: bytes
+header Cache-Control: no-cache
+header Content-Length: 1662
+header Content-Security-Policy: default-src 'self'; script-src 'self'; connect-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; object-src 'none'; base-uri 'none'
+header Content-Type: text/html; charset=utf-8
+header Etag: "e268eec3941a5237"
+header Vary: Accept-Encoding
+body: 1662 bytes, sha256 a5f1cb3a2f4334352910bf296e2e1bc8770275237334b8a38e9474d49b45c0e6
+00000000  3c 21 64 6f 63 74 79 70  65 20 68 74 6d 6c 3e 0a  |<!doctype html>.|
+00000010  3c 68 74 6d 6c 20 6c 61  6e 67 3d 22 65 6e 22 3e  |<html lang="en">|
+00000020  0a 3c 68 65 61 64 3e 0a  3c 6d 65 74 61 20 63 68  |.<head>.<meta ch|
+00000030  61 72 73 65 74 3d 22 75  74 66 2d 38 22 3e 0a 3c  |arset="utf-8">.<|
+00000040  21 2d 2d 20 45 4e 47 4d  4f 44 45 4c 2d 4f 57 4e  |!-- ENGMODEL-OWN|
+00000050  45 52 2d 55 4e 49 54 3a  20 46 55 2d 57 45 42 2d  |ER-UNIT: FU-WEB-|
+00000060  52 45 4d 4f 54 45 20 20  54 52 4c 43 2d 4c 49 4e  |REMOTE  TRLC-LIN|
+00000070  4b 53 3a 20 52 45 51 2d  53 44 53 2d 32 32 30 0a  |KS: REQ-SDS-220.|
+00000080  20 20 20 20 20 54 68 65  20 70 68 6f 6e 65 20 72  |     The phone r|
+00000090  65 6d 6f 74 65 20 28 22  54 69 6c 65 73 20 26 20  |emote ("Tiles & |
+000000a0  53 65 61 72 63 68 22 29  3a 20 69 74 73 20 6f 77  |Search"): its ow|
+000000b0  6e 20 73 6d 61 6c 6c 20  61 70 70 20 6f 6e 20 74  |n small app on t|
+000000c0  68 65 20 73 68 65 65 74  20 6d 6f 64 65 6c 0a 20  |he sheet model. |
+000000d0  20 20 20 20 41 50 49 2c  20 73 65 72 76 65 64 20  |    API, served |
+000000e0  61 74 20 2f 72 65 6d 6f  74 65 20 28 2f 72 20 72  |at /remote (/r r|
+000000f0  65 64 69 72 65 63 74 73  20 68 65 72 65 29 2e 20  |edirects here). |
+00000100  43 6f 6e 74 72 6f 6c 20  73 74 61 74 65 20 6f 6e  |Control state on|
+00000110  6c 79 2e 20 2d 2d 3e 0a  3c 6d 65 74 61 20 6e 61  |ly. -->.<meta na|
+00000120  6d 65 3d 22 76 69 65 77  70 6f 72 74 22 20 63 6f  |me="viewport" co|
+00000130  6e 74 65 6e 74 3d 22 77  69 64 74 68 3d 64 65 76  |ntent="width=dev|
+00000140  69 63 65 2d 77 69 64 74  68 2c 20 69 6e 69 74 69  |ice-width, initi|
+00000150  61 6c 2d 73 63 61 6c 65  3d 31 2c 20 76 69 65 77  |al-scale=1, view|
+00000160  70 6f 72 74 2d 66 69 74  3d 63 6f 76 65 72 22 3e  |port-fit=cover">|
+00000170  0a 3c 6d 65 74 61 20 6e  61 6d 65 3d 22 74 68 65  |.<meta name="the|
+00000180  6d 65 2d 63 6f 6c 6f 72  22 20 63 6f 6e 74 65 6e  |me-color" conten|
+00000190  74 3d 22 23 30 62 30 66  31 34 22 3e 0a 3c 6d 65  |t="#0b0f14">.<me|
+000001a0  74 61 20 6e 61 6d 65 3d  22 63 6f 6c 6f 72 2d 73  |ta name="color-s|
+000001b0  63 68 65 6d 65 22 20 63  6f 6e 74 65 6e 74 3d 22  |cheme" content="|
+000001c0  64 61 72 6b 22 3e 0a 3c  6d 65 74 61 20 6e 61 6d  |dark">.<meta nam|
+000001d0  65 3d 22 61 70 70 6c 65  2d 6d 6f 62 69 6c 65 2d  |e="apple-mobile-|
+000001e0  77 65 62 2d 61 70 70 2d  63 61 70 61 62 6c 65 22  |web-app-capable"|
+000001f0  20 63 6f 6e 74 65 6e 74  3d 22 79 65 73 22 3e 0a  | content="yes">.|
+00000200  3c 6d 65 74 61 20 6e 61  6d 65 3d 22 6d 6f 62 69  |<meta name="mobi|
+00000210  6c 65 2d 77 65 62 2d 61  70 70 2d 63 61 70 61 62  |le-web-app-capab|
+00000220  6c 65 22 20 63 6f 6e 74  65 6e 74 3d 22 79 65 73  |le" content="yes|
+00000230  22 3e 0a 3c 6d 65 74 61  20 6e 61 6d 65 3d 22 61  |">.<meta name="a|
+00000240  70 70 6c 65 2d 6d 6f 62  69 6c 65 2d 77 65 62 2d  |pple-mobile-web-|
+00000250  61 70 70 2d 73 74 61 74  75 73 2d 62 61 72 2d 73  |app-status-bar-s|
+00000260  74 79 6c 65 22 20 63 6f  6e 74 65 6e 74 3d 22 62  |tyle" content="b|
+00000270  6c 61 63 6b 2d 74 72 61  6e 73 6c 75 63 65 6e 74  |lack-translucent|
+00000280  22 3e 0a 3c 6d 65 74 61  20 6e 61 6d 65 3d 22 61  |">.<meta name="a|
+00000290  70 70 6c 65 2d 6d 6f 62  69 6c 65 2d 77 65 62 2d  |pple-mobile-web-|
+000002a0  61 70 70 2d 74 69 74 6c  65 22 20 63 6f 6e 74 65  |app-title" conte|
+000002b0  6e 74 3d 22 53 63 6f 70  65 20 72 65 6d 6f 74 65  |nt="Scope remote|
+000002c0  22 3e 0a 3c 6d 65 74 61  20 6e 61 6d 65 3d 22 66  |">.<meta name="f|
+000002d0  6f 72 6d 61 74 2d 64 65  74 65 63 74 69 6f 6e 22  |ormat-detection"|
+000002e0  20 63 6f 6e 74 65 6e 74  3d 22 74 65 6c 65 70 68  | content="teleph|
+000002f0  6f 6e 65 3d 6e 6f 22 3e  0a 3c 74 69 74 6c 65 3e  |one=no">.<title>|
+00000300  53 63 6f 70 65 20 72 65  6d 6f 74 65 3c 2f 74 69  |Scope remote</ti|
+00000310  74 6c 65 3e 0a 3c 6c 69  6e 6b 20 72 65 6c 3d 22  |tle>.<link rel="|
+00000320  6d 61 6e 69 66 65 73 74  22 20 68 72 65 66 3d 22  |manifest" href="|
+00000330  72 65 6d 6f 74 65 2e 77  65 62 6d 61 6e 69 66 65  |remote.webmanife|
+00000340  73 74 22 3e 0a 3c 6c 69  6e 6b 20 72 65 6c 3d 22  |st">.<link rel="|
+00000350  61 70 70 6c 65 2d 74 6f  75 63 68 2d 69 63 6f 6e  |apple-touch-icon|
+00000360  22 20 68 72 65 66 3d 22  72 65 6d 6f 74 65 2d 69  |" href="remote-i|
+00000370  63 6f 6e 2d 31 38 30 2e  70 6e 67 22 3e 0a 3c 6c  |con-180.png">.<l|
+00000380  69 6e 6b 20 72 65 6c 3d  22 69 63 6f 6e 22 20 74  |ink rel="icon" t|
+00000390  79 70 65 3d 22 69 6d 61  67 65 2f 70 6e 67 22 20  |ype="image/png" |
+000003a0  73 69 7a 65 73 3d 22 31  39 32 78 31 39 32 22 20  |sizes="192x192" |
+000003b0  68 72 65 66 3d 22 72 65  6d 6f 74 65 2d 69 63 6f  |href="remote-ico|
+000003c0  6e 2d 31 39 32 2e 70 6e  67 22 3e 0a 3c 6c 69 6e  |n-192.png">.<lin|
+000003d0  6b 20 72 65 6c 3d 22 73  74 79 6c 65 73 68 65 65  |k rel="styleshee|
+000003e0  74 22 20 68 72 65 66 3d  22 74 6f 6b 65 6e 73 2e  |t" href="tokens.|
+000003f0  63 73 73 3f 76 3d 38 61  31 63 33 62 32 64 61 37  |css?v=8a1c3b2da7|
+00000400  32 66 65 33 39 36 22 3e  3c 21 2d 2d 20 74 68 65  |2fe396"><!-- the|
+00000410  20 70 61 6c 65 74 74 65  20 73 68 61 72 65 64 20  | palette shared |
+00000420  77 69 74 68 20 74 68 65  20 6d 61 69 6e 20 70 61  |with the main pa|
+00000430  67 65 20 61 6e 64 20 74  68 65 20 4c 43 44 20 2d  |ge and the LCD -|
+00000440  2d 3e 0a 3c 6c 69 6e 6b  20 72 65 6c 3d 22 73 74  |->.<link rel="st|
+00000450  79 6c 65 73 68 65 65 74  22 20 68 72 65 66 3d 22  |ylesheet" href="|
+00000460  72 65 6d 6f 74 65 2e 63  73 73 3f 76 3d 30 63 66  |remote.css?v=0cf|
+00000470  66 36 62 39 35 32 61 62  65 39 38 34 62 22 3e 0a  |f6b952abe984b">.|
+00000480  3c 2f 68 65 61 64 3e 0a  3c 62 6f 64 79 3e 0a 3c  |</head>.<body>.<|
+00000490  64 69 76 20 69 64 3d 22  61 70 70 22 3e 3c 2f 64  |div id="app"></d|
+000004a0  69 76 3e 0a 3c 73 63 72  69 70 74 20 73 72 63 3d  |iv>.<script src=|
+000004b0  22 72 65 6d 6f 74 65 5f  63 6f 72 65 2e 6a 73 3f  |"remote_core.js?|
+000004c0  76 3d 65 30 35 33 34 37  36 37 33 36 66 38 38 32  |v=e053476736f882|
+000004d0  32 66 22 3e 3c 2f 73 63  72 69 70 74 3e 0a 3c 73  |2f"></script>.<s|
+000004e0  63 72 69 70 74 20 73 72  63 3d 22 72 65 6d 6f 74  |cript src="remot|
+000004f0  65 5f 75 69 2e 6a 73 3f  76 3d 36 62 31 66 36 64  |e_ui.js?v=6b1f6d|
+00000500  66 66 61 35 31 34 61 31  66 66 22 3e 3c 2f 73 63  |ffa514a1ff"></sc|
+00000510  72 69 70 74 3e 0a 3c 73  63 72 69 70 74 20 73 72  |ript>.<script sr|
+00000520  63 3d 22 72 65 6d 6f 74  65 5f 6e 65 74 2e 6a 73  |c="remote_net.js|
+00000530  3f 76 3d 33 38 66 35 37  64 37 32 66 33 38 61 39  |?v=38f57d72f38a9|
+00000540  61 33 63 22 3e 3c 2f 73  63 72 69 70 74 3e 0a 3c  |a3c"></script>.<|
+00000550  73 63 72 69 70 74 20 73  72 63 3d 22 73 6f 75 6e  |script src="soun|
+00000560  64 2e 6a 73 3f 76 3d 33  65 63 35 37 62 66 38 31  |d.js?v=3ec57bf81|
+00000570  63 36 32 35 63 33 32 22  3e 3c 2f 73 63 72 69 70  |c625c32"></scrip|
+00000580  74 3e 0a 3c 73 63 72 69  70 74 20 73 72 63 3d 22  |t>.<script src="|
+00000590  73 6f 75 6e 64 5f 77 6f  72 6b 6c 65 74 2e 6a 73  |sound_worklet.js|
+000005a0  3f 76 3d 62 37 30 65 61  34 38 34 39 31 30 32 33  |?v=b70ea48491023|
+000005b0  64 64 37 22 3e 3c 2f 73  63 72 69 70 74 3e 0a 3c  |dd7"></script>.<|
+000005c0  73 63 72 69 70 74 20 73  72 63 3d 22 73 6f 75 6e  |script src="soun|
+000005d0  64 5f 63 6c 69 65 6e 74  2e 6a 73 3f 76 3d 38 63  |d_client.js?v=8c|
+000005e0  35 38 63 63 35 39 34 38  33 36 34 35 39 63 22 3e  |58cc594836459c">|
+000005f0  3c 2f 73 63 72 69 70 74  3e 0a 3c 73 63 72 69 70  |</script>.<scrip|
+00000600  74 20 73 72 63 3d 22 72  65 6d 6f 74 65 5f 73 6f  |t src="remote_so|
+00000610  75 6e 64 2e 6a 73 3f 76  3d 37 38 61 30 34 64 63  |und.js?v=78a04dc|
+00000620  64 65 32 66 64 32 65 39  65 22 3e 3c 2f 73 63 72  |de2fd2e9e"></scr|
+00000630  69 70 74 3e 0a 3c 73 63  72 69 70 74 20 73 72 63  |ipt>.<script src|
+00000640  3d 22 72 65 6d 6f 74 65  5f 61 70 70 2e 6a 73 3f  |="remote_app.js?|
+00000650  76 3d 65 62 65 64 33 65  65 64 30 63 32 65 61 39  |v=ebed3eed0c2ea9|
+00000660  34 36 22 3e 3c 2f 73 63  72 69 70 74 3e 0a 3c 2f  |46"></script>.</|
+00000670  62 6f 64 79 3e 0a 3c 2f  68 74 6d 6c 3e 0a        |body>.</html>.|
+
+=== GET /r
+status 302
+header Content-Type: text/html; charset=utf-8
+header Location: /remote
+body: 30 bytes, sha256 b7419965e3b91642ef8efe43a592b3b4e0b6d4fb4c5eb416f8bc11ad416bf9da
+00000000  3c 61 20 68 72 65 66 3d  22 2f 72 65 6d 6f 74 65  |<a href="/remote|
+00000010  22 3e 46 6f 75 6e 64 3c  2f 61 3e 2e 0a 0a        |">Found</a>...|
+
+=== GET /remote/
+status 302
+header Content-Type: text/html; charset=utf-8
+header Location: /remote
+body: 30 bytes, sha256 b7419965e3b91642ef8efe43a592b3b4e0b6d4fb4c5eb416f8bc11ad416bf9da
+00000000  3c 61 20 68 72 65 66 3d  22 2f 72 65 6d 6f 74 65  |<a href="/remote|
+00000010  22 3e 46 6f 75 6e 64 3c  2f 61 3e 2e 0a 0a        |">Found</a>...|
+
+=== GET /app_core.js
+status 200
+header Accept-Ranges: bytes
+header Cache-Control: no-cache
+header Content-Length: 40732
+header Content-Type: text/javascript; charset=utf-8
+header Etag: "80bfc66acc9a5d12"
+header Vary: Accept-Encoding
+body: 40732 bytes, sha256 50d6459dfb995a10b2833ff13609b8a39889b25ec84873705f82c7d830fae61e
+
+=== GET /base.css
+status 200
+header Accept-Ranges: bytes
+header Cache-Control: no-cache
+header Content-Length: 28405
+header Content-Type: text/css; charset=utf-8
+header Etag: "2e9a84abd5f34571"
+header Vary: Accept-Encoding
+body: 28405 bytes, sha256 0715193ef4f735b5cb30b944e40153d73e4b151f1668ccc12676be4a3b1e575a
+
+=== GET /remote.webmanifest
+status 200
+header Accept-Ranges: bytes
+header Cache-Control: no-cache
+header Content-Length: 528
+header Content-Type: application/manifest+json
+header Etag: "57634e420335b4a6"
+header Vary: Accept-Encoding
+body: 528 bytes, sha256 de8a72ad8b2e95f78c7b449bf60bfdb15f09c9d6e8a5d5513ccd1f0b7394bc45
+00000000  7b 0a 20 20 22 6e 61 6d  65 22 3a 20 22 53 44 53  |{.  "name": "SDS|
+00000010  20 70 68 6f 6e 65 20 72  65 6d 6f 74 65 22 2c 0a  | phone remote",.|
+00000020  20 20 22 73 68 6f 72 74  5f 6e 61 6d 65 22 3a 20  |  "short_name": |
+00000030  22 53 63 6f 70 65 20 72  65 6d 6f 74 65 22 2c 0a  |"Scope remote",.|
+00000040  20 20 22 64 65 73 63 72  69 70 74 69 6f 6e 22 3a  |  "description":|
+00000050  20 22 43 68 61 6e 67 65  20 74 68 65 20 73 63 6f  | "Change the sco|
+00000060  70 65 27 73 20 73 65 74  74 69 6e 67 73 20 66 72  |pe's settings fr|
+00000070  6f 6d 20 74 68 65 20 70  68 6f 6e 65 3b 20 6e 6f  |om the phone; no|
+00000080  74 68 69 6e 67 20 6f 70  65 6e 73 20 6f 6e 20 74  |thing opens on t|
+00000090  68 65 20 73 63 6f 70 65  2e 22 2c 0a 20 20 22 73  |he scope.",.  "s|
+000000a0  74 61 72 74 5f 75 72 6c  22 3a 20 22 2f 72 65 6d  |tart_url": "/rem|
+000000b0  6f 74 65 22 2c 0a 20 20  22 73 63 6f 70 65 22 3a  |ote",.  "scope":|
+000000c0  20 22 2f 72 65 6d 6f 74  65 22 2c 0a 20 20 22 64  | "/remote",.  "d|
+000000d0  69 73 70 6c 61 79 22 3a  20 22 73 74 61 6e 64 61  |isplay": "standa|
+000000e0  6c 6f 6e 65 22 2c 0a 20  20 22 6f 72 69 65 6e 74  |lone",.  "orient|
+000000f0  61 74 69 6f 6e 22 3a 20  22 61 6e 79 22 2c 0a 20  |ation": "any",. |
+00000100  20 22 62 61 63 6b 67 72  6f 75 6e 64 5f 63 6f 6c  | "background_col|
+00000110  6f 72 22 3a 20 22 23 30  62 30 66 31 34 22 2c 0a  |or": "#0b0f14",.|
+00000120  20 20 22 74 68 65 6d 65  5f 63 6f 6c 6f 72 22 3a  |  "theme_color":|
+00000130  20 22 23 30 62 30 66 31  34 22 2c 0a 20 20 22 69  | "#0b0f14",.  "i|
+00000140  63 6f 6e 73 22 3a 20 5b  0a 20 20 20 20 7b 20 22  |cons": [.    { "|
+00000150  73 72 63 22 3a 20 22 72  65 6d 6f 74 65 2d 69 63  |src": "remote-ic|
+00000160  6f 6e 2d 31 39 32 2e 70  6e 67 22 2c 20 22 73 69  |on-192.png", "si|
+00000170  7a 65 73 22 3a 20 22 31  39 32 78 31 39 32 22 2c  |zes": "192x192",|
+00000180  20 22 74 79 70 65 22 3a  20 22 69 6d 61 67 65 2f  | "type": "image/|
+00000190  70 6e 67 22 2c 20 22 70  75 72 70 6f 73 65 22 3a  |png", "purpose":|
+000001a0  20 22 61 6e 79 22 20 7d  2c 0a 20 20 20 20 7b 20  | "any" },.    { |
+000001b0  22 73 72 63 22 3a 20 22  72 65 6d 6f 74 65 2d 69  |"src": "remote-i|
+000001c0  63 6f 6e 2d 35 31 32 2e  70 6e 67 22 2c 20 22 73  |con-512.png", "s|
+000001d0  69 7a 65 73 22 3a 20 22  35 31 32 78 35 31 32 22  |izes": "512x512"|
+000001e0  2c 20 22 74 79 70 65 22  3a 20 22 69 6d 61 67 65  |, "type": "image|
+000001f0  2f 70 6e 67 22 2c 20 22  70 75 72 70 6f 73 65 22  |/png", "purpose"|
+00000200  3a 20 22 61 6e 79 22 20  7d 0a 20 20 5d 0a 7d 0a  |: "any" }.  ].}.|
+
+=== GET /remote-icon-180.png
+status 200
+header Accept-Ranges: bytes
+header Cache-Control: no-cache
+header Content-Length: 4087
+header Content-Type: image/png
+header Etag: "dbcfb294ddcc6968"
+body: 4087 bytes, sha256 c5ed24712221f6dc26db3709816560b1c479bd156635ac938b3ff3e085450a77
+00000000  89 50 4e 47 0d 0a 1a 0a  00 00 00 0d 49 48 44 52  |.PNG........IHDR|
+00000010  00 00 00 b4 00 00 00 b4  08 02 00 00 00 b2 af 91  |................|
+00000020  65 00 00 0f be 49 44 41  54 78 da ec 9d 6d 6c 1b  |e....IDATx...ml.|
+00000030  47 7a c7 67 df b8 e2 db  ae 64 ea 0d 8c ac 9e af  |Gz.g.....d......|
+00000040  06 74 ad ab 03 ee 20 9c  d1 9e 70 07 b7 6e 0f 86  |.t.... ...p..n..|
+00000050  5c b9 49 1a 14 27 09 bd  e4 7c 48 2d 7d 28 6c df  |\.I..'...|H-}(l.|
+00000060  55 27 07 e7 7e 51 1a ab  6e 1c d9 49 21 19 41 ec  |U'..~Q..n..I!.A.|
+00000070  f8 83 25 20 45 82 c4 ae  8d a0 49 10 27 81 8c c4  |..% E.....I.'...|
+00000080  85 d0 20 51 d3 44 68 de  ac b7 4a b6 64 f1 9d 5a  |.. Q.Dh...J.d..Z|
+00000090  2e c9 2d a8 95 69 59 e6  ce ce 92 bb 5c 8a 7a fe  |..-..iY.....\.z.|
+000000a0  f0 07 59 1c 0d 77 66 7e  f3 cc db 33 cf b2 b5 0d  |..Y..wf~...3....|
+000000b0  3b 11 08 94 4b 34 54 01  08 e0 00 01 1c 20 80 03  |;...K4T...... ..|
+000000c0  04 70 80 00 0e 10 c0 01  02 38 40 00 07 08 e0 00  |.p.......8@.....|
+000000d0  01 1c 20 10 c0 01 02 38  40 00 07 08 e0 00 01 1c  |.. ....8@.......|
+000000e0  20 80 03 04 70 80 00 0e  10 c0 01 02 38 40 20 80  | ...p.......8@ .|
+000000f0  03 04 70 80 00 0e 10 c0  01 02 38 40 25 21 d6 64  |..p.......8@%!.d|
+00000100  d6 18 46 ac aa f6 88 95  2e b7 17 2a b7 68 8a 45  |..F........*.h.E|
+00000110  c3 91 60 20 b8 bc 98 4e  a5 4c cc 96 32 f1 ae 6c  |..` ...N.L..2..l|
+00000120  55 75 5d 75 9d 9f 66 18  68 2d 5b 94 4e a5 16 17  |Uu]u..f.h-[.N...|
+00000130  e6 96 17 17 cc ca 90 71  0b db 4c c9 a8 7e fb 0e  |.......q..L..~..|
+00000140  5f 6d 3d 45 c3 38 65 9b  28 9a 76 7b 45 ce c1 47  |_m=E.8e.(.v{E..G|
+00000150  42 81 12 1a 56 aa eb fc  62 95 2f fb df 50 28 18  |B...V...b./..P(.|
+00000160  8d 44 52 e9 14 34 58 11  c4 d0 8c db e3 11 04 51  |.DR..4X........Q|
+00000170  fd af 58 e5 4b 26 a4 c5  85 b9 92 80 83 77 ba 7c  |..X.K&.......w.||
+00000180  75 fe b5 c1 2f 12 9a fa  e6 cb 84 b4 a2 ff c5 bc  |u.../...........|
+00000190  93 e3 9d 52 2c 9c 4e ca  44 b3 19 96 e3 5d 5e 59  |...R,.N.D....]^Y|
+000001a0  8a 27 a5 38 e1 83 39 85  6d 86 d2 f3 6e 01 21 24  |.'.8..9.m...n.!$|
+000001b0  45 43 a4 75 b7 5a 84 78  e8 8e a1 f4 56 14 f9 36  |EC.u.Z.x....V..6|
+000001c0  42 0e be a2 71 c7 4e 97  27 53 04 5f 9d 3f 1c 0a  |B...q.N.'S._.?..|
+000001d0  48 f1 98 fd 70 54 df 25  23 9d 4e ff cf 7f 7d 98  |H...pT.%#.N...}.|
+000001e0  24 2b b9 4b d8 96 a9 a9  68 48 26 6b 3c 8e 77 f2  |$+.K....hH&k<.w.|
+000001f0  2e 6f 52 8a c7 88 1b c3  29 6c 33 94 9e e5 9d 19  |.oR.....)l3.....|
+00000200  be 89 d3 ab 45 30 9a de  a2 22 c7 10 8a 2c df fe  |....E0..."...,..|
+00000210  61 eb 9f d3 ab 23 7b 75  9d 7f f6 db 2f 6d 5e ca  |a....#{u..../m^.|
+00000220  d2 0c e3 11 2a d7 f8 bd  b5 40 48 06 c8 0a 25 93  |....*....@H...%.|
+00000230  f2 ed 5b 6b b3 51 8f 50  59 f8 ca a0 50 38 2a 9c  |..[k.Q.PY...P8*.|
+00000240  ae ec cf 91 48 04 5a c8  5e ad 6f 82 f5 4d 63 0f  |....H.Z.^.o..Mc.|
+00000250  1c 7c c5 da 13 48 92 94  86 19 a8 ed ab d9 74 4a  |.|...H........tJ|
+00000260  92 a4 0d 4d 63 1b 1c cc  5d db 05 64 94 0e 1f 1b  |...Mc...]..d....|
+00000270  9a c6 36 38 40 65 2c 80  03 04 70 80 00 0e 10 c0  |..68@e,...p.....|
+00000280  01 02 38 40 00 07 a8 34  c5 96 d4 d3 b4 b6 dc fb  |..8@...4........|
+00000290  79 6a 2e f3 af ec d5 e8  cf fc cb 6a 6c 1c e0 b8  |yj.........jl...|
+000002a0  5f 1d ed 4a db 9f a2 b6  3d ca 86 df 4f cd a1 d1  |_..J....=...O...|
+000002b0  cb d4 e8 25 aa fc 28 69  f4 a3 8e 03 4a 47 bb b2  |...%..(i....JG..|
+000002c0  9e 0c 55 57 af 51 57 df  cd 14 dc f6 87 2c d4 13  |..UW.QW......,..|
+000002d0  ac ba ce af 9e d7 c7 e3  b1 99 e9 29 99 f8 7c 9c  |...........)..|.|
+000002e0  61 39 9a 61 5b be 17 f8  97 5f df 7a b0 82 36 e8  |a9.a[...._.z..6.|
+000002f0  d4 cb ae 0b 97 7d b1 84  33 9d 4a a6 88 cf f6 38  |.....}..3.J....8|
+00000300  de 58 7a 96 e3 11 42 49  59 32 54 04 a3 45 76 39  |.Xz...BIY2T..Ev9|
+00000310  e2 8f b7 2f fd fa 09 9d  f3 f4 a9 39 f4 0f a7 6a  |.../.......9...j|
+00000320  c7 bf a8 34 5a e4 86 ed  8d ce d5 53 95 a5 85 b9  |...4Z......S....|
+00000330  02 bd 3a 4c 86 83 fc 0f  05 77 fa 77 4f de 7a 74  |..:L.....w.wO.zt|
+00000340  2f a9 f3 c4 cc 02 77 e8  69 ff e7 5f f3 9b da 60  |/.....w.i.._...`|
+00000350  fc c1 77 a5 b3 bf 9b 6b  a8 23 6d ec d7 de 11 9e  |..w....k.#m.....|
+00000360  7e b1 36 14 35 30 35 34  11 0e 93 87 95 d0 ed 59  |~.6.5054.......Y|
+00000370  92 64 a2 17 5d 3c 93 d8  b5 d3 c0 f9 7e 43 9d 7c  |.d..]<......~C.||
+00000380  e5 85 9b 87 9f f1 8e bc  91 26 e5 af e6 21 29 16  |.........&...!).|
+00000390  26 77 de 71 55 56 23 84  62 81 45 c2 f4 bc 5b e0  |&w.qUV#.b.E...[.|
+000003a0  5d 5e c2 22 23 84 3a ff  8a 3e fd 54 d8 50 7d 3e  |]^."#.:..>.T.P}>|
+000003b0  ba 37 f4 bd ef c4 0f fc  9d 23 18 26 2d 72 e9 ce  |.7.......#.&-r..|
+000003c0  39 48 6c ac e8 45 af 0f  a5 77 e5 65 b0 4e 3f 15  |9Hl..E...w.e.N?.|
+000003d0  4e c4 29 f2 f1 38 9d 94  c9 cd be 92 4e 13 16 21  |N.)..8......N..!|
+000003e0  6b c3 c9 d3 77 b4 2b a7  9f 52 f2 28 f2 ae 9d f2  |k...w.+..R.(....|
+000003f0  eb 43 f2 fe 83 74 30 5c  ee 4b 59 d1 8b ae 9c 4b  |.C...t0\.KY....K|
+00000400  37 37 e5 9f c3 50 7f 66  1e b7 b9 46 93 8e 76 65  |77...P.f...F..ve|
+00000410  a8 3f ff 67 6e 6e ca 54  9a e8 2d 6b 38 0a 27 23  |.?.gnn.T..-k8.'#|
+00000420  cb c7 83 4b 9b 92 55 db  9e 82 c8 b0 91 8f a2 c2  |...K..U.........|
+00000430  31 d4 af e0 c9 08 86 33  0b b9 e1 11 6a 62 b2 d0  |1......3....jb..|
+00000440  ac 4a 44 cd 4d 48 97 8c  89 49 34 3c 42 5d bd 46  |.JD.MH...I4<B].F|
+00000450  e1 07 0e 92 ac 36 eb 3e  47 5f b7 4e 77 1f 1e a1  |.....6.>G_.Nw...|
+00000460  06 86 b3 15 44 a9 1d 4e  ab af 88 5e 34 d4 9f b6  |....D..N...^4...|
+00000470  65 24 36 64 29 87 fa 71  dd 3d 18 46 3d c7 33 58  |e$6d)..q.=.F=.3X|
+00000480  dc 4d 4f f5 75 2b dd 9d  0a c6 08 f5 75 a3 81 61  |.MO.u+......u..a|
+00000490  aa ac 2c 47 6b 0b ea 3b  a4 e0 eb e8 d8 c9 fb ba  |..,Gk..;........|
+000004a0  ce d5 6b d4 f7 f7 d1 18  13 d2 dc 84 4e f4 96 f4  |..k.........N...|
+000004b0  e0 72 a2 17 67 de 26 26  d1 f7 f7 d1 59 32 d4 7a  |.r..g.&&....Y2.z|
+000004c0  38 76 92 ea 39 8e 33 21  7d 87 94 f5 fb c8 9b 1e  |8v..9.3!}.......|
+000004d0  0e b5 03 61 c8 d8 7f 90  ce b9 00 51 3f c2 f0 d1  |...a.......Q?...|
+000004e0  d1 5e ba 93 8f b6 3d b8  89 f3 c4 24 d2 32 7b a3  |.^....=....$.2{.|
+000004f0  97 29 bc 45 c4 5b a3 4d  06 c7 50 bf 82 d9 03 ed  |.).E.[.M..P.....|
+00000500  39 8e 9b 61 e8 f2 81 19  7a ec 1e 50 f2 21 23 9b  |9..a....z..P.!#.|
+00000510  a0 e7 b8 e6 d8 d1 e8 2f  d2 e4 83 2e 42 07 c2 74  |......./....B..t|
+00000520  ee 63 27 a9 f5 76 55 8b  8f ce c3 9a 55 89 6f 06  |.c'..vU.....U.o.|
+00000530  bb 84 41 16 5f 9c f5 a3  ea b1 93 54 7e b5 ba 39  |..A._......T~..9|
+00000540  e0 10 bd b8 69 c1 db 1f  7a 5e 7a 95 c8 7d 7e 6a  |....i...z^z..}~j|
+00000550  0e 75 1d 65 ed ad 29 b3  fa 43 d7 51 96 f0 1c f1  |.u.e..)..C.Q....|
+00000560  a5 57 5d 6f 7f e8 c1 4c  68 ac 36 99 b4 d5 2b 14  |.W]o...Lh.6...+.|
+00000570  ad 01 65 66 81 eb 1d ac  27 cf ea a3 4f f8 e7 47  |..ef....'...O..G|
+00000580  7d a5 3f b8 e0 2d d9 f3  a3 be 8f 3e 31 70 3c d4  |}.?..-.....>1p<.|
+00000590  3b 58 3f b3 c0 69 0d 2e  7d dd ca 66 85 a3 b9 09  |;X?..i..}..f....|
+000005a0  61 56 65 47 07 44 43 e7  49 08 a1 33 23 3e ad 83  |aVeG.DC.I..3#>..|
+000005b0  37 d1 6b 79 4d 91 f7 07  2d 4c 3f ff 9a 3f 33 e2  |7.kyM...-L?..?3.|
+000005c0  33 94 5b 28 4a 1f 1d 10  b5 3e ed ee b4 76 b3 87  |3.[(J....>...v..|
+000005d0  b6 74 21 87 d9 d2 c8 cf  ab e5 f0 33 5e bb 6a aa  |.t!........3^.j.|
+000005e0  f0 fe 80 79 78 8c c6 c6  33 d5 95 47 25 17 2e 93  |...yx...3..G%...|
+000005f0  37 c1 d4 b3 28 84 d0 df  b4 c9 ad 2d 89 9c 69 a6  |7...(......-..i.|
+00000600  e7 99 53 e7 2b 68 36 63  2d 19 8e d4 c6 aa 29 3f  |..S.+h6c-.....)?|
+00000610  fb 8a 7b f6 5c c5 6f 0e  ae 68 d5 d4 c3 3d f7 4d  |..{.\.o..h...=.M|
+00000620  62 68 96 cb 3e 92 ae d4  c8 33 e4 e9 d5 22 ac 4f  |bh..>....3...".O|
+00000630  7f a2 57 d3 4b e3 d9 73  15 9f 7d c5 f1 2e c3 45  |..W.K..s..}....E|
+00000640  a6 59 ee d4 79 d7 fe 3f  5b d9 5e 9f ca b5 81 a4  |.Y..y..?[.^.....|
+00000650  74 3d c2 bd 72 95 b3 02  0e 4b fc 39 04 77 fa fd  |t=..r....K.9.w..|
+00000660  97 bf 16 dc b9 f7 36 3a  fa b6 df 98 70 16 f2 a5  |......6:....p...|
+00000670  ef 9f ff 46 cb 25 a2 77  b0 fe b5 77 04 5b cc c6  |...F.%.w...w.[..|
+00000680  a3 7b 43 27 8f cc 6b 4d  b0 7e fa cb 1d 85 64 be  |.{C'..kM.~....d.|
+00000690  bb 39 3e 3a 30 ad 35 f4  fc f4 89 ef 66 c7 e8 d2  |.9>:0.5.....f...|
+000006a0  f5 e7 50 cf af 7f f1 f3  88 16 19 ff 31 c6 af 0e  |..P.........1...|
+000006b0  28 71 d5 2d 2a 29 4b ea  41 39 49 b7 66 39 5e 75  |(q.-*)K.A9I.f9^u|
+000006c0  8b 3a 3a 20 fe db 60 6e  af 8b bf ef 58 7a f3 03  |.:: ..`n....Xz..|
+000006d0  4e 5d 28 16 d3 13 4c f4  66 be 1a 33 c1 92 a5 82  |N](...L.f..3....|
+000006e0  8a 3c 36 9e a9 ba 9f b5  e6 78 36 c1 9d fe 45 fb  |.<6......x6...E.|
+000006f0  d2 73 17 3c 86 cc 9e 0d  70 84 6e cf 36 fa d1 e1  |.s.<....p.n.6...|
+00000700  ae b4 d6 12 ff c9 3e 39  14 9e 55 23 99 38 85 6d  |......>9..U#.8.m|
+00000710  b1 c0 22 79 24 13 a1 e6  21 29 1a 8a 85 ee bc b5  |.."y$...!)......|
+00000720  ea 62 99 73 ff b1 a1 4e  ee fc d9 8c 7a fa e0 6b  |.b.s...N....z..k|
+00000730  d8 a9 a6 27 7c 78 d5 53  86 dc 79 47 2d 82 9a be  |...'|x.S..yG-...|
+00000740  e7 af 95 86 ba dc c3 ff  e8 65 ea ad 77 ef 14 58  |.........e..w..X|
+00000750  64 84 d0 93 7d e8 d3 37  51 ce d9 ee e1 ae e5 f3  |d...}..7Q.......|
+00000760  23 c1 a9 b9 4c 91 4b 7a  42 8a 9f 87 9a 75 4e b6  |#...L.KzB....uN.|
+00000770  ee 88 2e c7 cc 54 d7 29  d5 5c 35 fa 35 e7 a1 c1  |.....T.).\5.5...|
+00000780  b0 69 e7 64 c1 70 b1 67  a6 26 c3 d1 da 82 b4 f6  |.i.d.p.g.&......|
+00000790  7f a6 e6 cc 3c 4e 9c 9a  d3 ac a9 e2 2f 6b 31 cb  |....<N....../k1.|
+000007a0  d7 e1 11 33 5d e7 07 86  35 73 6b db 63 fe 81 1c  |...3]...5sk.c...|
+000007b0  6d 7a 35 69 7d d4 73 dc  e4 ef c2 d4 54 47 7b f1  |mz5i}.s.....TG{.|
+000007c0  96 b5 cd 4d 48 eb 80 cd  dc fe a0 5b 8d a6 77 09  |...MH......[..w.|
+000007d0  da dc e9 7a 6b 8b a2 b1  58 a7 ac b8 ae 83 39 7d  |...zk...X.....9}|
+000007e0  28 da 69 3e e6 8b 30 8f  97 b7 c6 c6 33 95 a9 61  |(.i>..0.....3..a|
+000007f0  b6 15 72 6f fe 62 4f 48  31 d3 75 2b aa 49 3d 9d  |..ro.bOH1.u+.I=.|
+00000800  1a 1b 47 39 89 6c 6d 51  76 37 c7 df bb 6e 2d 19  |..G9.lmQv7...n-.|
+00000810  bb 9b e3 98 fe 80 3f 53  fc ed 81 7a bd 7d 14 96  |......?S...z.}..|
+00000820  77 39 64 49 4c 4a 8e f5  bf 0f 4c 2a a8 e5 ff b4  |w9dILJ....L*....|
+00000830  9a a0 77 90 ba 23 95 18  1c 0f d5 ca 5a 7b 0f a3  |..w..#......Z{..|
+00000840  97 f5 dd fe 0a 19 5c ae  9c cb dd 3c 27 8f cc ff  |......\....<'...|
+00000850  e8 ba 68 29 1c 5a 1b 1b  ea 83 e1 ff b6 f7 40 1d  |..h).Z........@.|
+00000860  d9 97 70 08 6d dc b9 51  96 24 ca 77 27 e7 62 ad  |..p.m..Q.$.w'.b.|
+00000870  a1 36 79 67 ba 54 57 2b  0f ce b1 2d 32 1b 59 33  |.6yg.TW+...-2.Y3|
+00000880  ab 75 53 a1 a1 4e 7e c4  54 33 bb 41 8f ec 0d 61  |.uS..N~.T3.A...a|
+00000890  fa 83 a5 b7 5e d3 d3 0d  28 65 79 8c 79 d3 2c c7  |....^...(ey.y.,.|
+000008a0  ec 2d 6e 66 81 7b b0 b2  4c 5c be 62 fa a8 d6 94  |.-nf.{..L\.b....|
+000008b0  f0 9f 8e 26 fe fd 6d 4b  fc 4c 45 6f 26 f3 bc cd  |...&..mK.LEo&...|
+000008c0  46 c6 ea 5c 5a 20 18 56  04 ad 08 c6 cd b3 fc fe  |F..\Z .V........|
+000008d0  b6 8d bb f5 33 0b dc cc  2d b6 14 e7 1c bd 83 f5  |....3...-.......|
+000008e0  1b b6 78 27 26 d1 f0 45  cb bd 61 33 8b 82 b3 54  |..x'&..E..a3...T|
+000008f0  4e 1f 55 d1 8b ba bb 14  2b 3c 72 bb bb 34 97 af  |N.U.....+<r..4..|
+00000900  03 67 89 96 af ff 7c 69  5e 67 38 e1 9d 42 4d 45  |.g....|i^g8..BME|
+00000910  3c 14 cc b9 8f 27 be 8b  7e 6f 27 da b0 28 eb 1d  |<....'..~o'..(..|
+00000920  ac 9f 0d 28 4e 67 e9 0d  2b 37 26 9c fb 0f ae 79  |...(Ng..+7&....y|
+00000930  cc aa fb 10 45 f3 0e 1f  be a8 69 9f fa 0e 99 bf  |....E.....i.....|
+00000940  27 d6 e8 d7 f4 97 0e 86  8b d1 1f b2 0e 94 d9 7d  |'..............}|
+00000950  94 ab d7 32 b5 5d e0 a1  95 85 96 63 dd 42 ab d8  |...2.].....c.B..|
+00000960  e1 03 d4 8d 48 ad 55 e5  89 5e a5 f3 30 55 9c e5  |....H.U..^..0U..|
+00000970  2b 66 eb d6 a2 f9 dc fa  29 9d af a1 54 f7 39 ec  |+f......)...T.9.|
+00000980  15 66 2f d2 dc dd 43 fc  2e 30 66 87 7b d3 a9 ac  |.f/...C..0f.{...|
+00000990  c2 3e 61 76 0f 31 77 23  8c 0a 93 95 e9 bb c0 f6  |.>av.1w#........|
+000009a0  ca e4 61 85 3c 04 00 b3  ea 29 e3 aa ac 26 3f bf  |..a.<....)...&?.|
+000009b0  56 a3 1e b0 da a7 d2 9f  de 44 37 26 96 76 37 c7  |V........D7&.v7.|
+000009c0  72 ce 12 fe f1 88 eb f4  c5 2a 5c 5d ac 1e d9 e3  |r........*\]....|
+000009d0  8b 70 b8 6b b9 d1 1f d1  98 72 b9 3e bd e9 13 6a  |.p.k.....r.>...j|
+000009e0  8a 5a e4 cd 04 87 51 7f  02 96 33 16 8c 85 66 58  |.Z....Q...3...fX|
+000009f0  9a c1 3d 73 ff 8b 35 57  5e b8 99 f3 a3 5f 3d 16  |..=s..5W^...._=.|
+00000a00  bb f4 41 8d 96 bf 2e 49  11 1a ea e4 5f 3d 16 c3  |..A....I...._=..|
+00000a10  7c 35 c7 f3 c5 2f f2 a6  81 83 dc 19 42 8d 7c 12  ||5.../......B.|.|
+00000a20  0d 2c a6 c8 9c 6b 18 8e  77 57 56 eb 06 63 b9 71  |.,...k..wWV..c.q|
+00000a30  1b 9d 1d 65 0e 75 e4 f0  a8 13 dc e9 be c7 67 fe  |...e.u........g.|
+00000a40  f6 37 0e ad bf d5 0d de  d2 f7 db 84 96 13 d3 d9  |.7..............|
+00000a50  51 e6 c6 8d 45 5b 8a 9c  9f e5 b6 01 0e a3 91 4f  |Q...E[.........O|
+00000a60  52 b2 44 fe 27 84 c1 58  4e 0c a1 9f ff 65 6e a7  |R.D.'..XN....en.|
+00000a70  98 7d 3f 91 ff e2 4f 92  5a 47 1e f8 e0 2d 6d 7b  |.}?...O.ZG...-m{|
+00000a80  94 7d 3f d1 5c be 9e 18  52 74 1f cc ba 22 c3 84  |.}?.\...Rt..."..|
+00000a90  d4 d8 02 4f 7b 3a 99 cf  0d 17 fc 6d 94 0d 57 c0  |...O{:.....m..W.|
+00000aa0  61 b5 52 d2 5a 3d da d0  74 05 1a 39 6d f8 34 7f  |a.R.Z=..t..9m.4.|
+00000ab0  e4 b4 26 52 63 e3 54 29  84 85 04 38 0c 08 63 3c  |..&Rc.T)...8..c<|
+00000ac0  5a 5b 70 31 30 1e 54 77  a7 a2 75 2e 6f 9d 37 02  |Z[p10.Tw..u.o.7.|
+00000ad0  c0 61 a1 26 26 11 e6 fa  e4 89 5e d2 6d b1 d6 16  |.a.&&.....^.m...|
+00000ae0  dc 7e e8 f3 a3 3e eb bc  11 00 0e 0b 85 b9 3e b9  |.~...>........>.|
+00000af0  3a 52 e8 47 27 6b 6e ca  24 d3 fa 34 8f eb 8d 00  |:R.G'kn.$..4....|
+00000b00  47 09 09 73 03 51 37 7a  9d 6e 8c b6 fc ae 37 02  |G..s.Q7z.n....7.|
+00000b10  1c 25 34 b8 60 e6 04 18  3e 74 c9 38 76 92 2a e3  |.%4.`...>t.8v.*.|
+00000b20  01 65 4b c0 a1 1e c8 61  7c 39 55 3e 36 cc 4f bb  |.eK....a|9U>6.O.|
+00000b30  3b 15 3c 19 6a c8 c3 b2  af 3a 16 6d 01 f5 1c a7  |;.<.j....:.m....|
+00000b40  ae 9c d3 bc ac a0 46 98  e9 ee 52 fe f3 bf 97 11  |......F...R.....|
+00000b50  42 3f fa a3 34 de ff 03  1f 93 09 e0 d8 64 5a 8d  |B?..4........dZ.|
+00000b60  56 48 e3 8d c1 ea 7b 4f  22 84 59 95 e5 96 d7 56  |VH....{O".Y....V|
+00000b70  1c 56 b2 dd bd 70 b7 34  dd e8 75 00 c7 16 e5 63  |.V...p.4..u....c|
+00000b80  ab 91 61 e7 91 7d 7e c1  5b 0c 05 63 79 30 fd 17  |..a..}~.[..cy0..|
+00000b90  df a2 87 7b d0 1b 67 e3  5a 87 ab 5a 0a 45 e9 87  |...{..g.Z..Z.E..|
+00000ba0  7b 9c 5f 7c 8b d6 3f ef  83 c1 5b 4a a1 c8 26 ca  |{._|..?...[J..&.|
+00000bb0  b6 97 f1 d8 28 c1 9d 3e  7b 7c 2e a7 4f 50 4e dd  |....(..>{|..OPN.|
+00000bc0  98 70 1d ea f7 1b 8d 60  66 97 4a 3d 78 0b 51 b7  |.p.....`f.J=x.Q.|
+00000bd0  28 20 92 09 b9 19 cb 99  7e 49 42 8f 1d f1 3d 71  |( ......~IB...=q|
+00000be0  80 3e fa 78 04 7f 42 1b  0c a3 e7 2e 78 5e be 54  |.>.x..B.....x^.T|
+00000bf0  85 90 a4 55 84 52 2b 72  e9 0e 2b 46 23 9f e4 1d  |...U.R+r..+F#...|
+00000c00  c9 84 44 f8 e0 2d 67 5e  42 17 5e a1 3b da 95 8e  |..D..-g^B.^.;...|
+00000c10  03 39 56 b9 13 93 68 f4  12 35 7a 99 0a 86 63 08  |.9V...h..5z...c.|
+00000c20  c5 30 45 28 b5 22 c3 52  d6 b4 25 ee f0 08 35 3c  |.0E(.".R..%...5<|
+00000c30  42 89 5e d4 dc 84 dc ab  9e 60 d1 c0 e2 c4 24 da  |B.^......`....$.|
+00000c40  22 8b 55 80 83 88 92 b1  71 24 d4 f0 ab c6 0f ea  |".U.....q$......|
+00000c50  63 eb 2d 65 41 00 07 08  e0 00 01 1c 20 80 03 04  |c.-eA....... ...|
+00000c60  70 80 00 0e 10 c0 91 51  2a b5 76 f1 90 a6 19 a8  |p......Q*.v.....|
+00000c70  cd 92 68 d1 bb 0d 91 6d  1a db e0 90 56 d6 b6 96  |..h....m....V...|
+00000c80  79 9e 07 3e 4a 81 0c fe  ee 65 ee 6c d3 d8 06 c7  |y..>J....e.l....|
+00000c90  4a fc de 13 78 3c 1e 68  1e 7b b5 be 09 d6 37 8d  |J...x<.h.{....7.|
+00000ca0  3d 70 a4 53 a9 48 28 a0  fe 5c 53 5b c7 b2 1c b4  |=p.S.H(..\S[....|
+00000cb0  90 5d 62 59 ae a6 76 2d  b6 69 24 14 48 17 3c ac  |.]bY..v-.i$.H.<.|
+00000cc0  98 70 b6 b2 b8 30 e7 11  2a 57 6d 1a fd 87 3f fc  |.p...0..*Wm...?.|
+00000cd0  e3 a9 6f be 4c 48 2b fa  5f bc 7a b8 cc bb 05 c2  |..o.LH+._.z.....|
+00000ce0  53 66 d5 53 86 e5 9d 2e  61 9b 81 e2 19 49 bf 16  |Sf.S....a....I..|
+00000cf0  5c 85 38 bd 5a 04 a3 e9  2d 2a b2 83 af 68 dc b1  |\.8.Z...-*...h..|
+00000d00  93 a6 e9 6c a3 14 de b2  85 3a fb a8 ca ba fc a8  |...l.....:......|
+00000d10  0a 85 82 d1 48 24 95 4e  41 6f 2e 82 18 9a 71 7b  |....H$.NAo....q{|
+00000d20  3c 82 70 2f 56 73 e1 6e  3e a6 59 0e 95 53 d6 c1  |<.p/Vs.n>.Y..S..|
+00000d30  8b 55 6b 77 03 05 41 5c  ff ac a0 62 2a b8 bc 64  |.Ukw..A\...b*..d|
+00000d40  0a 19 19 ec dc 46 ac 34  46 ea 20 e7 74 79 28 1a  |.....F.4F. .ty(.|
+00000d50  f6 4e ec 51 3a 95 ba 3d  3f bb 38 3f 63 56 86 e6  |.N.Q:..=?.8?cV..|
+00000d60  0c 2b f7 86 49 86 11 ab  aa 3d 62 a5 cb ed 85 d6  |.+..I....=b.....|
+00000d70  2a 9a 62 d1 70 24 18 08  2e 2f 16 3e 09 b5 10 0e  |*.b.p$.../.>....|
+00000d80  50 59 ed 9a 40 15 80 00  0e 10 c0 01 02 38 40 00  |PY..@........8@.|
+00000d90  07 08 e0 00 01 1c 20 80  03 04 70 80 00 0e 10 c0  |...... ...p.....|
+00000da0  01 02 01 1c 20 80 03 04  70 80 2c 54 51 e3 73 b8  |.... ...p.,TQ.s.|
+00000db0  9a dc de 1f 08 15 8d 15  85 64 22 2f ca e1 8f 43  |.........d"/...C|
+00000dc0  e1 8f 8d bd a4 9e 62 58  67 55 bd c3 23 52 05 bc  |......bXgU..#R..|
+00000dd0  2f 4d 49 25 13 91 60 7c  79 5e 49 25 8d d5 32 e7  |/MI%..`|y^I%..2.|
+00000de0  60 39 ae c0 ab 1b a9 54  32 29 cb e4 21 a0 0a 57  |`9.....T2)..!..W|
+00000df0  f1 fc 39 fc bf 6c 10 7f  5c 69 56 6e b1 c9 e8 cc  |..9..l..\iVn....|
+00000e00  bf 4e a5 62 44 be 2d ce  aa 7a af ff f7 29 93 5e  |.N.bD.-..z...).^|
+00000e10  a3 a7 a4 92 e1 b9 af e2  cb f3 44 f5 4b 51 4e b7  |..........D.KQN.|
+00000e20  97 61 4d eb 84 72 42 5a  89 45 8b d3 64 a6 b9 09  |.aM..rBZ.E..d...|
+00000e30  16 93 0c 84 10 57 ed 70  37 7b 03 ef e9 07 cb 72  |.....W.p7{.....r|
+00000e40  78 2a 2b bf b3 cb 44 e7  45 8a a6 79 b1 5a 8e 06  |x*+...D.E..y.Z..|
+00000e50  53 09 7d 27 7b b7 57 34  91 8c 4c 83 31 2c 4d d3  |S.}'{.W4..L.1,M.|
+00000e60  49 59 2e 93 39 87 ab c9  6d 2e 19 aa 2a b6 57 88  |IY..9...m...*.W.|
+00000e70  3f ae d2 4d 26 34 34 59  51 28 92 6c 39 07 4f 33  |?..M&44YQ(.l9.O3|
+00000e80  e6 df 02 e4 1c 3c 53 94  fb 41 c5 80 c3 fb 03 c1  |.....<S..A......|
+00000e90  a2 9c 2b f5 98 63 9d 1e  c6 51 61 89 c9 75 54 b0  |..+..c...Qa..uT.|
+00000ea0  4e 8f 6e 2b 5a 35 55 e4  ca 05 8e 02 67 a0 18 f1  |N.n+Z5U.....g...|
+00000eb0  db 75 72 b6 f4 75 bd ba  99 5b 61 36 b2 83 0b 2c  |.ur..u...[a6...,|
+00000ec0  65 f5 ea c8 55 d2 57 b7  29 8a 82 7d 0e 50 79 0a  |e...U.W.)..}.Py.|
+00000ed0  e0 00 01 1c 20 80 03 04  70 80 00 0e 10 c0 01 02  |.... ...p.......|
+00000ee0  38 40 00 07 08 e0 00 01  1c 20 80 63 73 8a d0 d9  |8@....... .cs...|
+00000ef0  c7 2e 29 8a 02 70 e8 68  65 6a c5 a2 9c a5 69 9d  |..)..p.hej....i.|
+00000f00  9c d3 06 fd f9 0c 49 37  73 73 83 30 dd d7 2b ac  |......I7ss.0..+.|
+00000f10  2c 57 51 e1 30 ea ef 49  ae c0 f5 00 3e 41 32 1e  |,WQ.0..I....>A2.|
+00000f20  21 f1 d7 ca a7 79 12 2b  c9 b8 ce bb ef e5 84 64  |!....y.+.......d|
+00000f30  51 c1 cb c7 13 2c 36 19  0d ea b5 62 3e 06 69 7a  |Q....,6....b>.iz|
+00000f40  25 78 7d 59 37 59 68 c6  92 37 8c 93 64 2b 27 24  |%x}Y7Yh..7..d+'$|
+00000f50  2b 8c 87 9c 90 8a e3 66  5c 24 1f d2 f0 c7 21 47  |+......f\$....!G|
+00000f60  b5 c3 44 af 9f d8 64 74  7a f0 a6 22 2b 24 5d 3c  |..D...dtz.."+$]<|
+00000f70  9d 90 1c 9e 4a b3 dc 48  95 54 32 3c fb bf 52 68  |....J..H.T2<..Rh|
+00000f80  91 ac 8b 27 18 96 a3 cd  f3 60 2d a6 83 71 51 a3  |...'.....`-..qQ.|
+00000f90  09 c2 d5 84 02 e7 19 65  7b 35 01 04 ab 15 10 c0  |.......e{5......|
+00000fa0  01 02 38 40 00 07 08 04  70 80 00 0e 10 c0 01 02  |..8@....p.......|
+00000fb0  38 40 00 07 08 e0 00 01  1c 20 80 03 04 70 80 00  |8@....... ...p..|
+00000fc0  0e 10 08 e0 00 01 1c 20  80 03 04 70 80 00 0e 10  |....... ...p....|
+00000fd0  c0 01 02 38 40 00 07 08  e0 00 6d 25 fd 7f 00 00  |...8@.....m%....|
+00000fe0  00 ff ff bc 20 12 04 da  33 6b 63 00 00 00 00 49  |.... ...3kc....I|
+00000ff0  45 4e 44 ae 42 60 82                              |END.B`.|
+
+=== GET /nope.js
+status 404
+header Content-Type: text/plain; charset=utf-8
+header X-Content-Type-Options: nosniff
+body: 19 bytes, sha256 b16e15764b8bc06c5c3f9f19bc8b99fa48e7894aa5a6ccdad65da49bbf564793
+404 page not found
+
+=== GET /a/b.js
+status 404
+header Content-Type: text/plain; charset=utf-8
+header X-Content-Type-Options: nosniff
+body: 19 bytes, sha256 b16e15764b8bc06c5c3f9f19bc8b99fa48e7894aa5a6ccdad65da49bbf564793
+404 page not found
+
+=== GET /ui.html
+status 404
+header Content-Type: text/plain; charset=utf-8
+header X-Content-Type-Options: nosniff
+body: 19 bytes, sha256 b16e15764b8bc06c5c3f9f19bc8b99fa48e7894aa5a6ccdad65da49bbf564793
+404 page not found
+
+=== GET /app_core.js
+request header Accept-Encoding: gzip
+status 200
+header Accept-Ranges: bytes
+header Cache-Control: no-cache
+header Content-Encoding: gzip
+header Content-Type: text/javascript; charset=utf-8
+header Etag: "80bfc66acc9a5d12-gz"
+header Vary: Accept-Encoding
+gzip body: 40732 bytes, sha256 50d6459dfb995a10b2833ff13609b8a39889b25ec84873705f82c7d830fae61e
+
+=== GET /remote-awake.mp4
+request header Range: bytes=0-15
+status 206
+header Accept-Ranges: bytes
+header Cache-Control: no-cache
+header Content-Length: 16
+header Content-Range: bytes 0-15/2368
+header Content-Type: video/mp4
+header Etag: "b3ec41b8fa61ca16"
+body: 16 bytes, sha256 9ed32ed8c758438dcb73636d080fa4ffe65b94b8c737e0c3aa5199a3a7fb36b5
+00000000  00 00 00 20 66 74 79 70  69 73 6f 6d 00 00 02 00  |... ftypisom....|
+
+=== GET /
+request header If-None-Match: "x"
+status 200
+header Accept-Ranges: bytes
+header Cache-Control: no-cache
+header Content-Length: 73452
+header Content-Security-Policy: default-src 'self'; script-src 'self'; connect-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; object-src 'none'; base-uri 'none'
+header Content-Type: text/html; charset=utf-8
+header Etag: "38efa2f0e450ae6d"
+header Vary: Accept-Encoding
+body: 73452 bytes, sha256 697bcf903818fe5002aa384f300a6e5b8b1d2e591e2ea81de59892c1a3a4c783
+
+=== GET /debug/pprof/
+status 200
+header Content-Type: text/html; charset=utf-8
+header X-Content-Type-Options: nosniff
+body: runtime profile index
+

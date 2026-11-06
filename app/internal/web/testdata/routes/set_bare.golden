@@ -1,0 +1,56 @@
+=== POST /api/set
+request body: {"control":"vdiv1","value":0.5}
+status 200
+header Content-Type: application/json
+body: 66 bytes, sha256 bf4b08fe9bd5da025c2d40e7b040e68deb7c36e7d1d29992f5bc24043f850c50
+{"applied":0.5,"err":"vertical front end unavailable","ok":false}
+
+=== POST /api/set
+request body: {"control":"offset2","value":0.5}
+status 200
+header Content-Type: application/json
+body: 35 bytes, sha256 f1cf852eaa7e502c5a5aa039d250a00b19c897f897c2c8f548de7ce011cb22fa
+{"applied":0.5,"err":"","ok":true}
+
+=== POST /api/set
+request body: {"control":"probe1","value":10}
+status 200
+header Content-Type: application/json
+body: 65 bytes, sha256 404b09a4fa8f2390edc920561478becd3bfe2fb578b22bb22ab54bf73b58e1f8
+{"applied":10,"err":"vertical front end unavailable","ok":false}
+
+=== POST /api/set
+request body: {"control":"coupling1","value":1}
+status 200
+header Content-Type: application/json
+body: 64 bytes, sha256 33f569f1f2862e8f52b4e45963b4d64d74fe0c6c577c96210d4585f7261f27df
+{"applied":1,"err":"vertical front end unavailable","ok":false}
+
+=== POST /api/set
+request body: {"control":"bwl2","value":1}
+status 200
+header Content-Type: application/json
+body: 61 bytes, sha256 e19f0167e0db4564a66cbf750899793a35a157daf1412388c24065801aaa6528
+{"applied":1,"err":"bandwidth limit unavailable","ok":false}
+
+=== POST /api/set
+request body: {"control":"rollstream","value":1}
+status 200
+header Content-Type: application/json
+body: 33 bytes, sha256 cf6967630acc3591cbc38b3fce6886a05501567670ae8fcf4464f704746f249e
+{"err":"unsupported","ok":false}
+
+=== POST /api/set
+request body: {"control":"precisionrate","value":1e6}
+status 200
+header Content-Type: application/json
+body: 73 bytes, sha256 650af8738087eb96a21aa231aad2f889b31c4c0d41946bae4794a0a8750ab1d7
+{"applied":1000000,"err":"precision sample rate unavailable","ok":false}
+
+=== POST /api/set
+request body: {"control":"ets","value":1}
+status 200
+header Content-Type: application/json
+body: 33 bytes, sha256 76551c56f6d5d8f7b906d7e99b0a31094ef33e53cb6fc086bafb26dbc7c75d36
+{"applied":1,"err":"","ok":true}
+

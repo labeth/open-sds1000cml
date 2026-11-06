@@ -1,0 +1,102 @@
+=== GET /api/screen.png
+status 200
+header Cache-Control: no-store
+header Content-Type: image/png
+body: 16 bytes, sha256 d4fc141aa9db7e10a4dc4a46d64b8d51eff002912a36087087a64796a1d8dda1
+00000000  89 50 4e 47 20 66 61 6b  65 20 73 63 72 65 65 6e  |.PNG fake screen|
+
+=== GET /api/setup
+status 200
+header Content-Type: application/json
+body: 95 bytes, sha256 5fd12a0deac22921d0af1dd3105ad24855546a21ce1e3e3ae91990ea84db4c03
+{"ok":true,"slots":[{"slot":1,"used":true,"summary":"SCOPE 1us/div"},{"slot":2,"used":false}]}
+
+=== POST /api/setup
+request body: {"op":"save","slot":4}
+status 200
+header Content-Type: application/json
+body: 12 bytes, sha256 e5f1eb4d806641698a35efe20e098efd20d7d57a9b90ee69079d5bb650920726
+{"ok":true}
+
+=== POST /api/setup
+request body: {"op":"recall","slot":3}
+status 200
+header Content-Type: application/json
+body: 37 bytes, sha256 436eb0a192c202e8cde25c9eae9900c26461471d2e2321cc7fbf9d69e212dc99
+{"err":"slot 3 is empty","ok":false}
+
+=== POST /api/setup
+request body: {"op":"load","slot":4}
+status 200
+header Content-Type: application/json
+body: 47 bytes, sha256 93a8ab2cc55132b6129f374861f029090def8bfd5d061fe115a59f818032d223
+{"err":"op must be save or recall","ok":false}
+
+=== POST /api/setup
+request body: {"op":"save","slot":21}
+status 200
+header Content-Type: application/json
+body: 39 bytes, sha256 1dc9c13c196090b6464005180618ceb58efb3d478b7eb84e14015b674b5f535e
+{"err":"slot must be 1-20","ok":false}
+
+=== POST /api/setup
+request body: {
+status 200
+header Content-Type: application/json
+body: 30 bytes, sha256 08ecb40607204ea8301f8b7d992348f1a9c3e2b49f0d270242120872aa1c1b60
+{"err":"bad json","ok":false}
+
+=== DELETE /api/setup
+status 405
+header Content-Type: text/plain; charset=utf-8
+header X-Content-Type-Options: nosniff
+body: 17 bytes, sha256 d2f6fd88b6963f9402a0ed4b83b4b2786c959577986f92022a3f5a94338eb505
+GET or POST only
+
+=== GET /api/debug/tune
+status 200
+header Content-Type: application/json
+body: 174 bytes, sha256 615ba2eb08bb8781d970dde097c5c082dc8a18f5f44505f0313b2f155bf4bb2d
+{"arm_settle_us":0,"arm_spin":false,"busy_fill_us":0,"gc_ctl":false,"max_retry":0,"render_ms":0,"fill_extra_us":0,"halt_settle_us":0,"mature_us":0,"hw_trig":false,"sig_k":0}
+
+=== POST /api/debug/tune
+request body: {"max_retry":3,"gc_ctl":true}
+status 200
+header Content-Type: application/json
+body: 173 bytes, sha256 a69451982d8e97578b1d2729bc8cbd48f8073f5f9152c84c1d3eb8b88c927146
+{"arm_settle_us":0,"arm_spin":false,"busy_fill_us":0,"gc_ctl":true,"max_retry":3,"render_ms":0,"fill_extra_us":0,"halt_settle_us":0,"mature_us":0,"hw_trig":false,"sig_k":0}
+
+=== POST /api/debug/tune
+request body: x
+status 200
+header Content-Type: application/json
+body: 30 bytes, sha256 08ecb40607204ea8301f8b7d992348f1a9c3e2b49f0d270242120872aa1c1b60
+{"err":"bad json","ok":false}
+
+=== GET /api/panel/scan
+status 200
+header Content-Type: application/json
+body: 92 bytes, sha256 2f9262e05eb7d39f4c261be347cebf2ace97e563a13a6c8076320475948dde44
+{"frame":{"words":[1,2,3,4],"knobs":[5,6,7,8],"frames":9,"changes":10,"pins":11},"ok":true}
+
+=== POST /api/panel/scan
+request body: {"enable":true,"half":20}
+status 200
+header Content-Type: application/json
+body: 92 bytes, sha256 2f9262e05eb7d39f4c261be347cebf2ace97e563a13a6c8076320475948dde44
+{"frame":{"words":[1,2,3,4],"knobs":[5,6,7,8],"frames":9,"changes":10,"pins":11},"ok":true}
+
+=== POST /api/panel/scan
+request body: {"enable":true}
+status 200
+header Content-Type: application/json
+body: 38 bytes, sha256 ed9962c9454a278b02691e43e8a4d5108aea8d89bad195f148c039a63d04d524
+{"err":"half must be set","ok":false}
+
+=== POST /api/panel/scan
+request body: x
+status 200
+header Content-Type: application/json
+body: 30 bytes, sha256 08ecb40607204ea8301f8b7d992348f1a9c3e2b49f0d270242120872aa1c1b60
+{"err":"bad json","ok":false}
+

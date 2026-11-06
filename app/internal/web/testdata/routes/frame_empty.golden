@@ -1,0 +1,42 @@
+=== GET /api/frame.bin
+status 200
+header Cache-Control: no-store
+header Content-Type: application/octet-stream
+body: 236 bytes, sha256 718d12a7b4d1409e5b8f3e4e68c16c1373d7f2046579e05b8a2a3ce3249e9bec
+00000000  f5 01 00 00 e4 00 00 00  7b 22 73 65 71 22 3a 30  |........{"seq":0|
+00000010  2c 22 75 6e 63 68 61 6e  67 65 64 22 3a 74 72 75  |,"unchanged":tru|
+00000020  65 2c 22 65 64 67 65 5f  78 22 3a 2d 31 2c 22 70  |e,"edge_x":-1,"p|
+00000030  74 70 22 3a 30 2c 22 74  64 69 76 5f 73 22 3a 30  |tp":0,"tdiv_s":0|
+00000040  2c 22 64 69 73 70 6c 61  79 65 64 5f 73 64 69 76  |,"displayed_sdiv|
+00000050  5f 73 22 3a 30 2c 22 69  6e 74 65 72 70 22 3a 66  |_s":0,"interp":f|
+00000060  61 6c 73 65 2c 22 6e 6f  72 6d 22 3a 66 61 6c 73  |alse,"norm":fals|
+00000070  65 2c 22 74 72 69 67 64  22 3a 66 61 6c 73 65 2c  |e,"trigd":false,|
+00000080  22 63 6f 68 65 72 65 6e  74 22 3a 66 61 6c 73 65  |"coherent":false|
+00000090  2c 22 63 6f 6c 73 22 3a  30 2c 22 63 6f 6c 5f 73  |,"cols":0,"col_s|
+000000a0  70 61 6e 5f 73 22 3a 30  2c 22 65 64 67 65 5f 66  |pan_s":0,"edge_f|
+000000b0  72 61 63 22 3a 30 2c 22  77 69 6e 5f 66 72 61 63  |rac":0,"win_frac|
+000000c0  22 3a 30 2c 22 76 70 63  31 22 3a 30 2c 22 76 70  |":0,"vpc1":0,"vp|
+000000d0  63 32 22 3a 30 2c 22 6f  66 66 31 5f 76 22 3a 30  |c2":0,"off1_v":0|
+000000e0  2c 22 6f 66 66 32 5f 76  22 3a 30 7d              |,"off2_v":0}|
+
+=== GET /api/frame.bin?raw=1
+status 200
+header Cache-Control: no-store
+header Content-Type: application/octet-stream
+body: 236 bytes, sha256 747e43a05cd09106a230e0f6ccde27665885bae90ba4abfbace629f99f8fe092
+00000000  f5 11 00 00 e4 00 00 00  7b 22 73 65 71 22 3a 30  |........{"seq":0|
+00000010  2c 22 75 6e 63 68 61 6e  67 65 64 22 3a 74 72 75  |,"unchanged":tru|
+00000020  65 2c 22 65 64 67 65 5f  78 22 3a 2d 31 2c 22 70  |e,"edge_x":-1,"p|
+00000030  74 70 22 3a 30 2c 22 74  64 69 76 5f 73 22 3a 30  |tp":0,"tdiv_s":0|
+00000040  2c 22 64 69 73 70 6c 61  79 65 64 5f 73 64 69 76  |,"displayed_sdiv|
+00000050  5f 73 22 3a 30 2c 22 69  6e 74 65 72 70 22 3a 66  |_s":0,"interp":f|
+00000060  61 6c 73 65 2c 22 6e 6f  72 6d 22 3a 66 61 6c 73  |alse,"norm":fals|
+00000070  65 2c 22 74 72 69 67 64  22 3a 66 61 6c 73 65 2c  |e,"trigd":false,|
+00000080  22 63 6f 68 65 72 65 6e  74 22 3a 66 61 6c 73 65  |"coherent":false|
+00000090  2c 22 63 6f 6c 73 22 3a  30 2c 22 63 6f 6c 5f 73  |,"cols":0,"col_s|
+000000a0  70 61 6e 5f 73 22 3a 30  2c 22 65 64 67 65 5f 66  |pan_s":0,"edge_f|
+000000b0  72 61 63 22 3a 30 2c 22  77 69 6e 5f 66 72 61 63  |rac":0,"win_frac|
+000000c0  22 3a 30 2c 22 76 70 63  31 22 3a 30 2c 22 76 70  |":0,"vpc1":0,"vp|
+000000d0  63 32 22 3a 30 2c 22 6f  66 66 31 5f 76 22 3a 30  |c2":0,"off1_v":0|
+000000e0  2c 22 6f 66 66 32 5f 76  22 3a 30 7d              |,"off2_v":0}|
+

@@ -1,0 +1,335 @@
+=== GET /api/set
+status 405
+header Content-Type: text/plain; charset=utf-8
+header X-Content-Type-Options: nosniff
+body: 10 bytes, sha256 978f7dd0de5d186d546284812c48fef9bc571fe48c5bfea755679017e070c2ba
+POST only
+
+=== POST /api/set
+request body: {
+status 200
+header Content-Type: application/json
+body: 30 bytes, sha256 08ecb40607204ea8301f8b7d992348f1a9c3e2b49f0d270242120872aa1c1b60
+{"err":"bad json","ok":false}
+
+=== POST /api/set
+request body: {"control":"tdiv","value":1e-6}
+status 200
+header Content-Type: application/json
+body: 40 bytes, sha256 e8ac57218c25724846cbae75b80f278a35a4e52ec8a53eb545a2a761284de086
+{"applied":0.000001,"err":"","ok":true}
+
+=== POST /api/set
+request body: {"control":"tdiv","value":3e-6}
+status 200
+header Content-Type: application/json
+body: 59 bytes, sha256 efa6c2e332eb732027171cbd76f4b409161f172b7b95c7266d9ce1c362635d62
+{"applied":0.000003,"err":"tdiv not in ladder","ok":false}
+
+=== POST /api/set
+request body: {"control":"run","value":0}
+status 200
+header Content-Type: application/json
+body: 33 bytes, sha256 3a27959a5ada8aa11708d82752857614eda84fedfde4665f0f4753b32674a0ab
+{"applied":0,"err":"","ok":true}
+
+=== POST /api/set
+request body: {"control":"runtoggle"}
+status 200
+header Content-Type: application/json
+body: 33 bytes, sha256 76551c56f6d5d8f7b906d7e99b0a31094ef33e53cb6fc086bafb26dbc7c75d36
+{"applied":1,"err":"","ok":true}
+
+=== POST /api/set
+request body: {"control":"single"}
+status 200
+header Content-Type: application/json
+body: 33 bytes, sha256 3a27959a5ada8aa11708d82752857614eda84fedfde4665f0f4753b32674a0ab
+{"applied":0,"err":"","ok":true}
+
+=== POST /api/set
+request body: {"control":"norm","value":1}
+status 200
+header Content-Type: application/json
+body: 33 bytes, sha256 76551c56f6d5d8f7b906d7e99b0a31094ef33e53cb6fc086bafb26dbc7c75d36
+{"applied":1,"err":"","ok":true}
+
+=== POST /api/set
+request body: {"control":"triglevelcode","value":70000}
+status 200
+header Content-Type: application/json
+body: 64 bytes, sha256 7b1718ac59b84f2f90811271f45891f8473227d6312256ecde837ce61cdceb1a
+{"applied":70000,"err":"triglevelcode out of range","ok":false}
+
+=== POST /api/set
+request body: {"control":"triglevelcode","value":30000}
+status 200
+header Content-Type: application/json
+body: 37 bytes, sha256 243888e926068fe9e0e312db7838ccd6e5968ca46ce2a4b2fcfc674d91dfd812
+{"applied":30000,"err":"","ok":true}
+
+=== POST /api/set
+request body: {"control":"trigslope","value":1}
+status 200
+header Content-Type: application/json
+body: 33 bytes, sha256 76551c56f6d5d8f7b906d7e99b0a31094ef33e53cb6fc086bafb26dbc7c75d36
+{"applied":1,"err":"","ok":true}
+
+=== POST /api/set
+request body: {"control":"ets","value":1}
+status 200
+header Content-Type: application/json
+body: 33 bytes, sha256 76551c56f6d5d8f7b906d7e99b0a31094ef33e53cb6fc086bafb26dbc7c75d36
+{"applied":1,"err":"","ok":true}
+
+=== POST /api/set
+request body: {"control":"trigpos","value":0.3}
+status 200
+header Content-Type: application/json
+body: 35 bytes, sha256 8e3065ad1fba619b6e95bcb69b4c61fef1bedf9ffcd7fb1f2c0ffaf9b6d99c26
+{"applied":0.3,"err":"","ok":true}
+
+=== POST /api/set
+request body: {"control":"memdepth","value":4096}
+status 200
+header Content-Type: application/json
+body: 27 bytes, sha256 85f76c1eb4f86ac3137eb2d4275e11dfa6715665fae482298fc2bc50f5a89ba5
+{"applied":4096,"ok":true}
+
+=== POST /api/set
+request body: {"control":"frameperiod","value":40}
+status 200
+header Content-Type: application/json
+body: 25 bytes, sha256 3dda5a1d0d759f6093cd30d9e88f1615a9a1fc1aa4f2d50618a38259e32e0034
+{"applied":40,"ok":true}
+
+=== POST /api/set
+request body: {"control":"decodeview","value":1}
+status 200
+header Content-Type: application/json
+body: 24 bytes, sha256 1a6ac1f1f678e486db396c2e7275e609956a02a6b7f92c6d2089c1ab62a8f5c7
+{"applied":0,"ok":true}
+
+=== POST /api/set
+request body: {"control":"rollstream","value":1}
+status 200
+header Content-Type: application/json
+body: 27 bytes, sha256 c733e9821fa52f437adc721a78a18e3d8319500183db1d7fad22c70d5e17c020
+{"applied":true,"ok":true}
+
+=== POST /api/set
+request body: {"control":"holdoff","value":0.001}
+status 200
+header Content-Type: application/json
+body: 28 bytes, sha256 4a004ce958dbc9233e2a09edd943a63d79a94578897b72037a1bb9042532f665
+{"applied":0.001,"ok":true}
+
+=== POST /api/set
+request body: {"control":"stream","value":1}
+status 200
+header Content-Type: application/json
+body: 27 bytes, sha256 c733e9821fa52f437adc721a78a18e3d8319500183db1d7fad22c70d5e17c020
+{"applied":true,"ok":true}
+
+=== POST /api/set
+request body: {"control":"serialmode","value":2}
+status 200
+header Content-Type: application/json
+body: 33 bytes, sha256 e49087af46ec4e266f0c869b597e6eb389c87044f5080a2bcd42039a3bf48ef3
+{"applied":2,"err":"","ok":true}
+
+=== POST /api/set
+request body: {"control":"zonemode","value":1}
+status 200
+header Content-Type: application/json
+body: 33 bytes, sha256 76551c56f6d5d8f7b906d7e99b0a31094ef33e53cb6fc086bafb26dbc7c75d36
+{"applied":1,"err":"","ok":true}
+
+=== POST /api/set
+request body: {"control":"maskmode","value":1}
+status 200
+header Content-Type: application/json
+body: 33 bytes, sha256 76551c56f6d5d8f7b906d7e99b0a31094ef33e53cb6fc086bafb26dbc7c75d36
+{"applied":1,"err":"","ok":true}
+
+=== POST /api/set
+request body: {"control":"maskclear"}
+status 200
+header Content-Type: application/json
+body: 33 bytes, sha256 3a27959a5ada8aa11708d82752857614eda84fedfde4665f0f4753b32674a0ab
+{"applied":0,"err":"","ok":true}
+
+=== POST /api/set
+request body: {"control":"bodemode","value":1,"lo":0,"hi":1}
+status 200
+header Content-Type: application/json
+body: 33 bytes, sha256 76551c56f6d5d8f7b906d7e99b0a31094ef33e53cb6fc086bafb26dbc7c75d36
+{"applied":1,"err":"","ok":true}
+
+=== POST /api/set
+request body: {"control":"bodeclear"}
+status 200
+header Content-Type: application/json
+body: 33 bytes, sha256 3a27959a5ada8aa11708d82752857614eda84fedfde4665f0f4753b32674a0ab
+{"applied":0,"err":"","ok":true}
+
+=== POST /api/set
+request body: {"control":"trigtype","value":2}
+status 200
+header Content-Type: application/json
+body: 33 bytes, sha256 e49087af46ec4e266f0c869b597e6eb389c87044f5080a2bcd42039a3bf48ef3
+{"applied":2,"err":"","ok":true}
+
+=== POST /api/set
+request body: {"control":"pulseparams","lvl":0.5,"min":10,"max":20,"cond":3}
+status 200
+header Content-Type: application/json
+body: 33 bytes, sha256 3a27959a5ada8aa11708d82752857614eda84fedfde4665f0f4753b32674a0ab
+{"applied":0,"err":"","ok":true}
+
+=== POST /api/set
+request body: {"control":"slopeparams","lo":0.1,"hi":0.9,"min":1,"max":5,"cond":1}
+status 200
+header Content-Type: application/json
+body: 33 bytes, sha256 3a27959a5ada8aa11708d82752857614eda84fedfde4665f0f4753b32674a0ab
+{"applied":0,"err":"","ok":true}
+
+=== POST /api/set
+request body: {"control":"videoparams","std":1,"line":20,"neg":true}
+status 200
+header Content-Type: application/json
+body: 33 bytes, sha256 3a27959a5ada8aa11708d82752857614eda84fedfde4665f0f4753b32674a0ab
+{"applied":0,"err":"","ok":true}
+
+=== POST /api/set
+request body: {"control":"acqmode","value":2}
+status 200
+header Content-Type: application/json
+body: 33 bytes, sha256 e49087af46ec4e266f0c869b597e6eb389c87044f5080a2bcd42039a3bf48ef3
+{"applied":2,"err":"","ok":true}
+
+=== POST /api/set
+request body: {"control":"precisionrate","value":1e6}
+status 200
+header Content-Type: application/json
+body: 38 bytes, sha256 cdd3902b27384716b7572941565ed236a3449ac93d1e11b772a49d96cbca9471
+{"applied":500000,"err":"","ok":true}
+
+=== POST /api/set
+request body: {"control":"avgcount","value":16}
+status 200
+header Content-Type: application/json
+body: 34 bytes, sha256 3bd9e0cc7afe8c273b77af5aaef1c5e3460b08b0f10df76a2d8b042063adad33
+{"applied":16,"err":"","ok":true}
+
+=== POST /api/set
+request body: {"control":"eres","value":4}
+status 200
+header Content-Type: application/json
+body: 33 bytes, sha256 49c5f93852c0766ac934285b9b7701147af16479201871a722ee2e4bc8b1121e
+{"applied":4,"err":"","ok":true}
+
+=== POST /api/set
+request body: {"control":"eresbits","value":1.5}
+status 200
+header Content-Type: application/json
+body: 35 bytes, sha256 83fdeed39dd65c0d4269e5a9dcb393edc5bbdc5a69eb01367a64c6181ba1a5b6
+{"applied":1.5,"err":"","ok":true}
+
+=== POST /api/set
+request body: {"control":"trigsource","value":1}
+status 200
+header Content-Type: application/json
+body: 33 bytes, sha256 76551c56f6d5d8f7b906d7e99b0a31094ef33e53cb6fc086bafb26dbc7c75d36
+{"applied":1,"err":"","ok":true}
+
+=== POST /api/set
+request body: {"control":"vdiv1","value":0.5}
+status 200
+header Content-Type: application/json
+body: 35 bytes, sha256 f1cf852eaa7e502c5a5aa039d250a00b19c897f897c2c8f548de7ce011cb22fa
+{"applied":0.5,"err":"","ok":true}
+
+=== POST /api/set
+request body: {"control":"vdiv2","value":0.3}
+status 200
+header Content-Type: application/json
+body: 54 bytes, sha256 3edc83e8474f771bf5a555465da47a678a6e7abe86737e235ef93c75790d92d1
+{"applied":0.3,"err":"vdiv not in ladder","ok":false}
+
+=== POST /api/set
+request body: {"control":"offset1","value":0.25}
+status 200
+header Content-Type: application/json
+body: 36 bytes, sha256 a0832f4b9b41706fbfb08927ae6992c32d9c4797dc516ea6990b34951877dc80
+{"applied":0.25,"err":"","ok":true}
+
+=== POST /api/set
+request body: {"control":"offset2","value":99}
+status 200
+header Content-Type: application/json
+body: 54 bytes, sha256 00fd23c47a406aed21c373a539cfcc01629823980e354fe4de498a52d6e05472
+{"applied":99,"err":"offset out of range","ok":false}
+
+=== POST /api/set
+request body: {"control":"probe2","value":10}
+status 200
+header Content-Type: application/json
+body: 34 bytes, sha256 f880d11a919a707e2e1baf796160b1b9284adeb07584594dac0492e6aed1e498
+{"applied":10,"err":"","ok":true}
+
+=== POST /api/set
+request body: {"control":"probe1","value":5}
+status 200
+header Content-Type: application/json
+body: 60 bytes, sha256 ab909e0efa75d17a1f99d4cf582d3b9f026297de216ba51577be2d42c6ce5537
+{"applied":5,"err":"probe must be 1, 10 or 100","ok":false}
+
+=== POST /api/set
+request body: {"control":"coupling2","value":2}
+status 200
+header Content-Type: application/json
+body: 33 bytes, sha256 e49087af46ec4e266f0c869b597e6eb389c87044f5080a2bcd42039a3bf48ef3
+{"applied":2,"err":"","ok":true}
+
+=== POST /api/set
+request body: {"control":"coupling1","value":7}
+status 200
+header Content-Type: application/json
+body: 76 bytes, sha256 ec6a3db90e2efa6716afcd0675ee61aea4778d8d624eef768846184a5b4c9a64
+{"applied":7,"err":"coupling must be 0 (DC), 1 (AC) or 2 (GND)","ok":false}
+
+=== POST /api/set
+request body: {"control":"bwl1","value":1}
+status 200
+header Content-Type: application/json
+body: 61 bytes, sha256 e19f0167e0db4564a66cbf750899793a35a157daf1412388c24065801aaa6528
+{"applied":1,"err":"bandwidth limit unavailable","ok":false}
+
+=== POST /api/set
+request body: {"control":"nope"}
+status 200
+header Content-Type: application/json
+body: 49 bytes, sha256 dd1681085d58e492883c4eb46c8f05ddb144290e81de2646c5aa1a1a6d4de46c
+{"applied":0,"err":"unknown control","ok":false}
+
+=== POST /api/set
+request body: {"control":"tdiv","value":1e999}
+status 200
+header Content-Type: application/json
+body: 30 bytes, sha256 08ecb40607204ea8301f8b7d992348f1a9c3e2b49f0d270242120872aa1c1b60
+{"err":"bad json","ok":false}
+
+=== POST /api/set
+request body: {"control":"tdiv","value":1} {"x":2}
+status 200
+header Content-Type: application/json
+body: 33 bytes, sha256 76551c56f6d5d8f7b906d7e99b0a31094ef33e53cb6fc086bafb26dbc7c75d36
+{"applied":1,"err":"","ok":true}
+
+=== GET /api/status
+status 200
+header Content-Type: application/json
+body: 5615 bytes, sha256 0335103aef2d8c40411272912203680e45fb257bbd0404abe321495ce4bc5c86
+{"frames":77,"coherent":0,"published":0,"held":0,"halt_confirm":0,"bus_errors":0,"dead_runs":0,"wedged":false,"fps":0,"running":true,"norm":true,"single":true,"trig_pos_frac":0.3,"false_triggers":0,"noise_triggers":0,"tdiv_s":1,"tdiv_set_s":0,"displayed_sdiv_s":1,"record_s":0,"trig_code":30000,"off_c1":10100,"off_c2":10300,"trig_rising":true,"trig_source":1,"last_ptp":0,"last_trigpos":0,"arm_to_latch_ms":0,"drain_ms":0,"lcd_frames":0,"sram_recall_ms":0,"condition_ms":0,"led_lag_ms":0,"live_readout":"","busy_pct":0,"busy_ms":0,"roll_stream":false,"roll":false,"view_pending":false,"holdoff_s":0.001,"seq":0,"mmap_drain":false,"ets":true,"band":"","halt_mode":"","trig_type":2,"trig_qual":{"video_std":0,"video_line":0,"video_neg":false,"pulse_lvl":0,"pulse_min_ns":0,"pulse_max_ns":0,"pulse_cond":0,"slope_lo":0,"slope_hi":0,"slope_min_ns":0,"slope_max_ns":0,"slope_cond":0},"acq_mode":2,"avg_count":16,"precision_rate_hz":0,"eres_len":7,"wincol_std":0,"wincol_std_raw":0,"wincol_max":0,"valid_depth":0,"win_cols":0,"mem_depth":4096,"gap_ms":0,"short_drains":0,"stream_overflows":0,"zone_mode":1,"mask_mode":1,"mask_gen":5,"serial_mode":2,"bode_mode":1,"bode_ref":0,"bode_dut":1,"tdivs":[1e-9,2e-9,5e-9,1e-8,2.5e-8,5e-8,1e-7,2e-7,5e-7,0.000001,0.000002,0.000005,0.00001,0.00002,0.00005,0.0001,0.0002,0.0005,0.001,0.002,0.005,0.01,0.02,0.05,0.1,0.2,0.5,1,2,5,10,20,50],"full_rate_tdiv_s":0.0002,"full_rate_s":2e-9,"trig_volts":15.773874862788144,"trig_zero":31437,"trig_cpv":911,"trig_code_min":1,"trig_code_max":65535,"stream":{"state":"STREAM","label":"UART 115200 b/s C1","units":500,"errors":0,"lost":0,"lines":30,"units_per_s":0,"record":false,"trigger_line":-1,"mode":"gap-free"},"waiting":false,"sound_held":"the phone holds SOUND","vdivs":[0.002,0.005,0.01,0.02,0.05,0.1,0.2,0.5,1,2,5,10],"vdiv1":0.5,"vdiv2":0.5,"probe1":10,"probe2":10,"cpl1":0,"cpl2":2,"inv1":false,"trig_repeat":"C1 repeats","trig_repeat_warn":true,"inv2":true,"zoom1":1,"zoom2":1,"vdiv_live":true,"off1_v":12.3,"off2_v":-7.7,"cal_source":"defaults","dc1_v":0,"dc2_v":0,"version":"dev (unknown, unknown)","panel":{"Seq":41,"SheetsSeq":9,"AutosetBusy":false,"AutosetMsg":"","Workspace":"SCOPE","WorkspaceID":"scope","View":"Y-T","Views":["","","","",""],"Mode":"workspace","Sheet":{"Open":false,"Tab":"","TabName":"","TabTitle":"","Tabs":null,"Edit":false,"Row":null},"FKeys":[{"Label":"SCOPE","Value":"","Sel":true,"Dim":false},{"Label":"","Value":"","Sel":false,"Dim":false},{"Label":"","Value":"","Sel":false,"Dim":false},{"Label":"","Value":"","Sel":false,"Dim":false},{"Label":"","Value":"","Sel":false,"Dim":false}],"Tool":[{"Knob":"Adjust","Job":"Offset"}],"Again":"X-Y","AgainNext":"X-Y","Notice":"","Remote":"","Picker":{"Open":false,"Mode":"","Tokens":null,"Cursor":0},"Lamps":33,"LampsLit":["CH1","RUN"],"Display":{"ShowC1":true,"ShowC2":false,"ShowMeas":true,"MeasItems":null,"ViewMode":0,"MathMode":0,"Zoom":0,"ZoomOff":0,"Persist":false,"FFTSrc":0,"DecProto":0,"DecBaud":0,"DecChA":0,"DecChB":0,"DecCPOL":false,"DecCPHA":false,"DecLSB":false,"DecParity":"","DecInverted":false,"DecBits":0,"DecLayer":"","DecLayerAddr":0,"DecLayerDir":0,"DecDelayNs":0,"DecFormat":0,"DecDetecting":false,"DecAuto":false,"DecNote":"","CurOn":false,"CurType":0,"CurSel":0,"CurX":[0,0],"CurY":[0,0],"CurT":[0,0],"CurV":[0,0],"CurVCh":0,"AutosetBusy":false,"AutosetMsg":"","Remote":""},"Screen":"on","AutosetDone":0,"Refs":[{"Has":false,"Show":false,"Gen":0},{"Has":false,"Show":false,"Gen":0}]},"sr_active":true,"sr_bits":2.5,"sr_frames":40,"sr_rejected":3,"sr_status":"stacking","half_rate":0,"acq_log":[{"seq":0,"band":"","valid_depth":0,"cols":0,"fill_at_halt":0,"halt_ok":false,"saw_trig":false,"anchored":false,"filled":false,"arm_to_latch_ms":0,"trig_pos":0,"half":false,"first_half":false,"published":false,"norm":false,"tdiv_s":0}],"cmd_log":[{"name":"tdiv","val":1e-7,"at_seq":0},{"name":"tdiv","val":0.000001,"at_seq":0},{"name":"tdiv","val":0.000003,"at_seq":0},{"name":"run","val":0,"at_seq":0},{"name":"runtoggle","val":0,"at_seq":0},{"name":"single","val":0,"at_seq":0},{"name":"norm","val":1,"at_seq":0},{"name":"triglevelcode","val":70000,"at_seq":0},{"name":"triglevelcode","val":30000,"at_seq":0},{"name":"trigslope","val":1,"at_seq":0},{"name":"ets","val":1,"at_seq":0},{"name":"trigpos","val":0.3,"at_seq":0},{"name":"memdepth","val":4096,"at_seq":0},{"name":"frameperiod","val":40,"at_seq":0},{"name":"decodeview","val":1,"at_seq":0},{"name":"rollstream","val":1,"at_seq":0},{"name":"holdoff","val":0.001,"at_seq":0},{"name":"stream","val":1,"at_seq":0},{"name":"serialmode","val":2,"at_seq":0},{"name":"zonemode","val":1,"at_seq":0},{"name":"maskmode","val":1,"at_seq":0},{"name":"maskclear","val":0,"at_seq":0},{"name":"bodemode","val":1,"at_seq":0},{"name":"bodeclear","val":0,"at_seq":0},{"name":"trigtype","val":2,"at_seq":0},{"name":"pulseparams","val":0,"at_seq":0},{"name":"slopeparams","val":0,"at_seq":0},{"name":"videoparams","val":0,"at_seq":0},{"name":"acqmode","val":2,"at_seq":0},{"name":"precisionrate","val":1000000,"at_seq":0},{"name":"avgcount","val":16,"at_seq":0},{"name":"eres","val":4,"at_seq":0},{"name":"eresbits","val":1.5,"at_seq":0},{"name":"trigsource","val":1,"at_seq":0},{"name":"vdiv1","val":0.5,"at_seq":0},{"name":"vdiv2","val":0.3,"at_seq":0},{"name":"offset1","val":0.25,"at_seq":0},{"name":"offset2","val":99,"at_seq":0},{"name":"probe2","val":10,"at_seq":0},{"name":"probe1","val":5,"at_seq":0},{"name":"coupling2","val":2,"at_seq":0},{"name":"coupling1","val":7,"at_seq":0},{"name":"bwl1","val":1,"at_seq":0},{"name":"nope","val":0,"at_seq":0},{"name":"tdiv","val":1,"at_seq":0}]}
+

@@ -1,0 +1,51 @@
+=== POST /api/panel
+request body: {"button":"F1"}
+status 200
+header Content-Type: application/json
+body: 30 bytes, sha256 629a5536dfd26bf9df04a1a5cbe0382883e5881d6516cda6ae8b0eaf7954af6a
+{"err":"no panel","ok":false}
+
+=== GET /api/panel/wait
+status 404
+header Content-Type: text/plain; charset=utf-8
+header X-Content-Type-Options: nosniff
+body: 9 bytes, sha256 406620f0135846bb7c50ea3c04bae0c40e0f72999656599d536b2091058a3723
+no panel
+
+=== GET /api/sheets
+status 404
+header Content-Type: text/plain; charset=utf-8
+header X-Content-Type-Options: nosniff
+body: 9 bytes, sha256 406620f0135846bb7c50ea3c04bae0c40e0f72999656599d536b2091058a3723
+no panel
+
+=== POST /api/sheets/set
+request body: {"row":"a","value":1}
+status 404
+header Content-Type: text/plain; charset=utf-8
+header X-Content-Type-Options: nosniff
+body: 9 bytes, sha256 406620f0135846bb7c50ea3c04bae0c40e0f72999656599d536b2091058a3723
+no panel
+
+=== POST /api/sheets/action
+request body: {"row":"a"}
+status 404
+header Content-Type: text/plain; charset=utf-8
+header X-Content-Type-Options: nosniff
+body: 9 bytes, sha256 406620f0135846bb7c50ea3c04bae0c40e0f72999656599d536b2091058a3723
+no panel
+
+=== POST /api/stream/page
+request body: {"on":true}
+status 404
+header Content-Type: text/plain; charset=utf-8
+header X-Content-Type-Options: nosniff
+body: 9 bytes, sha256 406620f0135846bb7c50ea3c04bae0c40e0f72999656599d536b2091058a3723
+no panel
+
+=== GET /api/refs
+status 200
+header Content-Type: application/json
+body: 47 bytes, sha256 78c10e38a14ac7464c6fdba76805645410a7a62eb62ebfd94f114bd58065d366
+{"error":"no panel on this server","ok":false}
+

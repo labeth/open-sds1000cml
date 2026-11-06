@@ -1,0 +1,91 @@
+=== POST /api/panel
+request body: x
+status 200
+header Content-Type: application/json
+body: 30 bytes, sha256 08ecb40607204ea8301f8b7d992348f1a9c3e2b49f0d270242120872aa1c1b60
+{"err":"bad json","ok":false}
+
+=== POST /api/panel
+request body: {"button":"F1"}
+status 200
+header Content-Type: application/json
+body: 12 bytes, sha256 e5f1eb4d806641698a35efe20e098efd20d7d57a9b90ee69079d5bb650920726
+{"ok":true}
+
+=== POST /api/panel
+request body: {"knob":"adjust","dir":-1}
+status 200
+header Content-Type: application/json
+body: 12 bytes, sha256 e5f1eb4d806641698a35efe20e098efd20d7d57a9b90ee69079d5bb650920726
+{"ok":true}
+
+=== POST /api/panel
+request body: {"button":"F2","remote":true,"nomenu":true}
+status 200
+header Content-Type: application/json
+body: 98 bytes, sha256 20eb06e97414edf6ff122b757abbb82fca691b2ea0f665a542229c2c4bf24eab
+{"ok":true,"row":"key","text":"F2","changed":["trig.level"],"notice":"nomenu true","sheetsSeq":3}
+
+=== POST /api/panel
+request body: {"knob":"adjust","dir":1,"steps":3,"remote":true}
+status 200
+header Content-Type: application/json
+body: 46 bytes, sha256 58a0f8d8e22cf20931d8480dfd705b9613eb3f0f1dffef5fb74b8ec64292a552
+{"ok":true,"row":"knob","text":"adjust 1 x3"}
+
+=== POST /api/panel
+request body: {"button":"auto","for":"bus"}
+status 200
+header Content-Type: application/json
+body: 12 bytes, sha256 e5f1eb4d806641698a35efe20e098efd20d7d57a9b90ee69079d5bb650920726
+{"ok":true}
+
+=== POST /api/panel
+request body: {"button":"AUTO","for":"scope"}
+status 200
+header Content-Type: application/json
+body: 13 bytes, sha256 db8c4a0c90cdbbbda90af1d70d35adedce6ec6fb928a309e48992f548e425cea
+{"ok":false}
+
+=== POST /api/panel
+request body: {"type":{"text":"55 AA"}}
+status 200
+header Content-Type: application/json
+body: 75 bytes, sha256 a27638dc615837d1c64e30abaeeef51dafeac0df27ca85f0712c1d1d3326aae8
+{"applied":"55 AA","error":"","ok":true,"row":"bus.match","value":"55 AA"}
+
+=== POST /api/panel
+request body: {"set":{"row":"trig.level","text":"50V"}}
+status 200
+header Content-Type: application/json
+body: 103 bytes, sha256 3c475f894472284b230f172159eed8982e4df8d5e8bd7c5382b91f10c15757ee
+{"applied":"","error":"level 50V is outside -6.4V .. 6.4V","ok":false,"row":"trig.level","value":null}
+
+=== POST /api/panel
+request body: {"workspace":"measure"}
+status 200
+header Content-Type: application/json
+body: 224 bytes, sha256 bdddd8e01dd7bbf98c4036cba89bdc7a6c4c12567de52cab639853ed41b46414
+{"changed":["meas.pkpk","meas.freq"],"error":"","name":"MEASURE","next":"Eye diagram","notice":"Measuring Vpp and Freq - the Measure key picks others","ok":true,"seq":41,"sheetsSeq":7,"view":"Packets","workspace":"measure"}
+
+=== POST /api/panel
+request body: {"again":true}
+status 200
+header Content-Type: application/json
+body: 150 bytes, sha256 87674896cb92e98bfb14a4cb8097bfa86251d4334faaf97883bcea60ee7c0d8c
+{"changed":null,"error":"","name":"MEASURE","next":"Packets","notice":"","ok":true,"seq":41,"sheetsSeq":0,"view":"Eye diagram","workspace":"measure"}
+
+=== POST /api/panel
+request body: {"workspace":"nope"}
+status 200
+header Content-Type: application/json
+body: 214 bytes, sha256 12e7b2eada96802e7b40ccb72557bca41ba81f3ff57805ea93339487429bbccc
+{"changed":null,"error":"no workspace \"nope\": SCOPE, BUS, SPECTRUM, MEASURE or COMPARE","name":"MEASURE","next":"Packets","notice":"","ok":false,"seq":41,"sheetsSeq":0,"view":"Eye diagram","workspace":"measure"}
+
+=== POST /api/panel
+request body: {}
+status 200
+header Content-Type: application/json
+body: 13 bytes, sha256 db8c4a0c90cdbbbda90af1d70d35adedce6ec6fb928a309e48992f548e425cea
+{"ok":false}
+

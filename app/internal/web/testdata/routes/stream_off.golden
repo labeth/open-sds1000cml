@@ -1,0 +1,27 @@
+=== GET /api/stream/lines
+status 404
+header Content-Type: text/plain; charset=utf-8
+header X-Content-Type-Options: nosniff
+body: 18 bytes, sha256 f9ed8ae3c540b38e89f27f227d2f55d461b54f872415b6b691aea355e3a48e8f
+no decoded stream
+
+=== GET /api/stream/lines.bin
+status 404
+header Content-Type: text/plain; charset=utf-8
+header X-Content-Type-Options: nosniff
+body: 18 bytes, sha256 f9ed8ae3c540b38e89f27f227d2f55d461b54f872415b6b691aea355e3a48e8f
+no decoded stream
+
+=== GET /api/stream/window
+status 404
+header Content-Type: text/plain; charset=utf-8
+header X-Content-Type-Options: nosniff
+body: 18 bytes, sha256 f9ed8ae3c540b38e89f27f227d2f55d461b54f872415b6b691aea355e3a48e8f
+no decoded stream
+
+=== GET /api/status
+status 200
+header Content-Type: application/json
+body: 3667 bytes, sha256 708e1710def3189b5584414d2795524bdcd46a73a609e2096adb03325002ac23
+{"frames":77,"coherent":0,"published":0,"held":0,"halt_confirm":0,"bus_errors":0,"dead_runs":0,"wedged":false,"fps":0,"running":true,"norm":true,"single":false,"trig_pos_frac":0.5,"false_triggers":0,"noise_triggers":0,"tdiv_s":1e-7,"tdiv_set_s":0,"displayed_sdiv_s":1e-7,"record_s":0,"trig_code":30000,"off_c1":10100,"off_c2":10300,"trig_rising":true,"trig_source":0,"last_ptp":0,"last_trigpos":0,"arm_to_latch_ms":0,"drain_ms":0,"lcd_frames":0,"sram_recall_ms":0,"condition_ms":0,"led_lag_ms":0,"live_readout":"","busy_pct":0,"busy_ms":0,"roll_stream":false,"roll":false,"view_pending":false,"holdoff_s":0,"seq":0,"mmap_drain":false,"ets":false,"band":"","halt_mode":"","trig_type":0,"trig_qual":{"video_std":0,"video_line":0,"video_neg":false,"pulse_lvl":0,"pulse_min_ns":0,"pulse_max_ns":0,"pulse_cond":0,"slope_lo":0,"slope_hi":0,"slope_min_ns":0,"slope_max_ns":0,"slope_cond":0},"acq_mode":0,"avg_count":0,"precision_rate_hz":0,"eres_len":0,"wincol_std":0,"wincol_std_raw":0,"wincol_max":0,"valid_depth":0,"win_cols":0,"mem_depth":20480,"gap_ms":0,"short_drains":0,"stream_overflows":0,"mask_gen":5,"serial_mode":1,"bode_ref":0,"bode_dut":0,"tdivs":[1e-9,2e-9,5e-9,1e-8,2.5e-8,5e-8,1e-7,2e-7,5e-7,0.000001,0.000002,0.000005,0.00001,0.00002,0.00005,0.0001,0.0002,0.0005,0.001,0.002,0.005,0.01,0.02,0.05,0.1,0.2,0.5,1,2,5,10,20,50],"full_rate_tdiv_s":0.0002,"full_rate_s":2e-9,"trig_volts":15.773874862788144,"trig_zero":31437,"trig_cpv":911,"trig_code_min":1,"trig_code_max":65535,"waiting":true,"wait_s":10,"sound_held":"the phone holds SOUND","vdivs":[0.002,0.005,0.01,0.02,0.05,0.1,0.2,0.5,1,2,5,10],"vdiv1":1,"vdiv2":1,"probe1":10,"probe2":1,"cpl1":0,"cpl2":1,"inv1":false,"trig_repeat":"C1 repeats","trig_repeat_warn":true,"inv2":true,"zoom1":1,"zoom2":1,"vdiv_live":true,"off1_v":12.3,"off2_v":-0.77,"cal_source":"defaults","dc1_v":0,"dc2_v":0,"version":"dev (unknown, unknown)","panel":{"Seq":41,"SheetsSeq":9,"AutosetBusy":false,"AutosetMsg":"","Workspace":"SCOPE","WorkspaceID":"scope","View":"Y-T","Views":["","","","",""],"Mode":"workspace","Sheet":{"Open":false,"Tab":"","TabName":"","TabTitle":"","Tabs":null,"Edit":false,"Row":null},"FKeys":[{"Label":"SCOPE","Value":"","Sel":true,"Dim":false},{"Label":"","Value":"","Sel":false,"Dim":false},{"Label":"","Value":"","Sel":false,"Dim":false},{"Label":"","Value":"","Sel":false,"Dim":false},{"Label":"","Value":"","Sel":false,"Dim":false}],"Tool":[{"Knob":"Adjust","Job":"Offset"}],"Again":"X-Y","AgainNext":"X-Y","Notice":"","Remote":"","Picker":{"Open":false,"Mode":"","Tokens":null,"Cursor":0},"Lamps":33,"LampsLit":["CH1","RUN"],"Display":{"ShowC1":true,"ShowC2":false,"ShowMeas":true,"MeasItems":null,"ViewMode":0,"MathMode":0,"Zoom":0,"ZoomOff":0,"Persist":false,"FFTSrc":0,"DecProto":0,"DecBaud":0,"DecChA":0,"DecChB":0,"DecCPOL":false,"DecCPHA":false,"DecLSB":false,"DecParity":"","DecInverted":false,"DecBits":0,"DecLayer":"","DecLayerAddr":0,"DecLayerDir":0,"DecDelayNs":0,"DecFormat":0,"DecDetecting":false,"DecAuto":false,"DecNote":"","CurOn":false,"CurType":0,"CurSel":0,"CurX":[0,0],"CurY":[0,0],"CurT":[0,0],"CurV":[0,0],"CurVCh":0,"AutosetBusy":false,"AutosetMsg":"","Remote":""},"Screen":"on","AutosetDone":0,"Refs":[{"Has":false,"Show":false,"Gen":0},{"Has":false,"Show":false,"Gen":0}]},"sr_active":true,"sr_bits":2.5,"sr_frames":40,"sr_rejected":3,"sr_status":"stacking","half_rate":0,"acq_log":[{"seq":0,"band":"","valid_depth":0,"cols":0,"fill_at_halt":0,"halt_ok":false,"saw_trig":false,"anchored":false,"filled":false,"arm_to_latch_ms":0,"trig_pos":0,"half":false,"first_half":false,"published":false,"norm":false,"tdiv_s":0}],"cmd_log":[{"name":"tdiv","val":1e-7,"at_seq":0}]}
+

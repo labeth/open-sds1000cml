@@ -1,0 +1,16 @@
+=== POST /api/decoded/start
+request body: {}
+status 404
+header Content-Type: text/plain; charset=utf-8
+header X-Content-Type-Options: nosniff
+body: 19 bytes, sha256 b16e15764b8bc06c5c3f9f19bc8b99fa48e7894aa5a6ccdad65da49bbf564793
+404 page not found
+
+=== POST /api/superres/fpga
+request body: {"records":20}
+status 404
+header Content-Type: text/plain; charset=utf-8
+header X-Content-Type-Options: nosniff
+body: 19 bytes, sha256 b16e15764b8bc06c5c3f9f19bc8b99fa48e7894aa5a6ccdad65da49bbf564793
+404 page not found
+

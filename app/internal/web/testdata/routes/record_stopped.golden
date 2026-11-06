@@ -1,0 +1,6 @@
+=== GET /api/record.bin?sample_s=1e-8&wait_ms=30
+status 409
+header Content-Type: application/json
+body: 141 bytes, sha256 e9af49a128fc05ce7c20f9ee6231cddbf2819ec21af49922508273a2b271ffc3
+{"seq":0,"n":0,"sample_s":0,"tdiv_s":0,"vpc1":0,"vpc2":0,"off1_v":0,"off2_v":0,"err":"the scope is stopped: it captures no record (Run it)"}
+
