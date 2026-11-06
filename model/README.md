@@ -22,5 +22,20 @@ engdoc --model model/engmod.yml --requirements model/requirements.yml \
   --design model/views.yml --code-root .. --out /tmp/ARCHITECTURE.adoc
 ```
 
+The model is held to the life-cycle tier `product` with the foundation and security bundles
+(`lifecycle` in `engmod.yml`, decision `DEC-TIER-PRODUCT`), and requirement links are strict: every
+requirement realizes one of the capabilities published in `architecture.yml` (`CAP-SDS-*`) or is
+derived with a rationale, and is at least approved. A product-tier finding that cannot be fixed yet
+is carried as a POA&M item in `assurance.yml` with `milestone: tier:product` naming the diagnostic.
+`engtrace` resolves `--code-root` from the working directory, so run it from `model/` to see what a
+tier requires:
+
+```sh
+cd model && engtrace --model engmod.yml --requirements requirements.yml --code-root .. --tier-gap operational
+```
+
+Requirement statuses follow the evidence (`engws status-suggest --repo model`): implemented once the
+code is linked, verified only with a passing RED check recorded for the tree.
+
 Changes to behaviour go through the model first: record the decision in
 `decisions.yml`, then change the code.

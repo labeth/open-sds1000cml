@@ -2843,3 +2843,25 @@ decisions:
   - The probe images ship in the diagnostics zip; balls.txt is the census's one list of balls, copied into the
     collector.
 
+- id: DEC-TIER-PRODUCT
+  title: The model is held to the product life-cycle tier
+  status: accepted
+  date: '2026-11-06'
+  context: The firmware ships as the instrument's only application, updated in the field by the OTA agent, and is
+    used for measurements people rely on. The engineering model sets the bar every change on main and every release
+    must meet; below that bar a finding is only reported, above it the check fails.
+  decision: 'The module declares its life-cycle tier in engmod.yml and requirement links are strict.
+
+    Tier: Product
+
+    Bundles: Foundation, Security
+    '
+  consequences:
+  - Every requirement realizes a published capability (CAP-SDS-*) or is derived with a rationale; an untraced
+    requirement, an unparented one or an unapproved one fails the model check.
+  - The owner approved the requirement set as written when choosing this tier; a requirement is approved,
+    implemented once its code is linked, and verified only with the evidence engws status-suggest requires.
+  - A product-tier finding that cannot be fixed yet is carried as a POA&M item with milestone tier:product that
+    names the diagnostic and the plan; it stays reported until the item is completed.
+  - The security bundle commits the model to its control, risk and trust-boundary records (assurance.yml) and
+    their verification; the safety bundle (DO-178C) is not taken.

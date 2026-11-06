@@ -122,6 +122,33 @@ assurance:
     relatedControls: []
     rationale: Track source evidence and qualify the relevant boundary before changing deployment claims.
     response: mitigate
+  - id: RISK-INTERLEAVE-PHASE
+    title: Interleave correction without record-phase metadata
+    statement: The converter-offset correction takes each record's five-phase rotation from sample statistics, so a
+      record whose rotation no channel identifies is left uncorrected and a wrong match would correct with the
+      wrong phase (REQ-SDS-074).
+    status: open
+    appliesTo:
+    - FU-APP-ENGINE
+    relatedControls: []
+    rationale: The acquisition images record no converter phase with a record, and none has room for it; the
+      fingerprint guards bound the heuristic (ADR-INTERLEAVE-OFFSET-DEFAULT).
+    response: mitigate
+  poamItems:
+  - id: POAM-INTERLEAVE-PHASE-TAG
+    riskRef: RISK-INTERLEAVE-PHASE
+    milestone: tier:product
+    status: planned
+    responsibleRole: ACT-MAINTAINER
+    artifacts:
+    - path: model/decisions.yml
+      description: 'ADR-INTERLEAVE-OFFSET-DEFAULT: a converter-phase tag recorded by the FPGA with each record
+        satisfies REQ-SDS-074. Plan: free room in an acquisition image, record the tag with the record metadata,
+        apply the correction only when the tag is present and valid, and link the guard and its test to
+        REQ-SDS-074.'
+    defers:
+    - code: requirement.orphan
+      path: requirements[REQ-SDS-074]
   trustBoundaries:
   - id: TB-DEVICE
     name: Privileged instrument execution

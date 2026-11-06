@@ -1,7 +1,7 @@
 schemaVersion: 2
 module:
   path: github.com/labeth/open-sds1000cml/model@v0
-  version: v0.1.0
+  version: v0.2.0
   modelId: sds1000cml
   title: SDS1000CML+ software and hardware engineering model
   introduction: 'The SDS1000CML+ firmware: the ARM application, the FPGA images, the on-device agent and the
@@ -17,6 +17,11 @@ documents:
   views: views.yml
   decisions: decisions.yml
 dependencies: []
+lifecycle:
+  tier: product
+  bundles: [foundation, security]
+  tierDecision: DEC-TIER-PRODUCT
+requirementLinks: strict
 publications:
 - id: public
   architecture:
