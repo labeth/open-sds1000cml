@@ -6,13 +6,12 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"errors"
-	"io"
 	"net/http"
-	"slices"
 	"strconv"
 	"sync"
 	"time"
 
+	"github.com/labeth/open-dso-core/webserver"
 	"github.com/labeth/open-sds1000cml/app/internal/engine"
 )
 
@@ -140,7 +139,7 @@ func (s *Server) hStreamFrames(w http.ResponseWriter, r *http.Request) {
 		bp = new([]byte)
 	}
 	defer framesBufs.Put(bp)
-	body, err := readBody(http.MaxBytesReader(w, r.Body, framesBinMax), (*bp)[:0], r.ContentLength)
+	body, err := webserver.ReadBody(http.MaxBytesReader(w, r.Body, framesBinMax), (*bp)[:0], r.ContentLength, framesBinMax)
 	*bp = body[:0]
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusRequestEntityTooLarge)
@@ -155,26 +154,4 @@ func (s *Server) hStreamFrames(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
-}
-
-// readBody reads r to its end into dst (grown once to n when the length is
-// known).
-// TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
-func readBody(r io.Reader, dst []byte, n int64) ([]byte, error) {
-	if n > 0 && n <= framesBinMax {
-		dst = slices.Grow(dst, int(n)+1)
-	}
-	for {
-		if len(dst) == cap(dst) {
-			dst = slices.Grow(dst, 64<<10)
-		}
-		k, err := r.Read(dst[len(dst):cap(dst)])
-		dst = dst[:len(dst)+k]
-		if err == io.EOF {
-			return dst, nil
-		}
-		if err != nil {
-			return dst, err
-		}
-	}
 }

@@ -20,6 +20,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/labeth/open-dso-core/webserver"
 	"github.com/labeth/open-sds1000cml/app/internal/engine"
 	"github.com/labeth/open-sds1000cml/app/internal/panel"
 )
@@ -46,7 +47,7 @@ func TestRemotePageServed(t *testing.T) {
 	s := New(&fakeScope{}, nil, nil, nil)
 	rec := get(s, "/remote")
 	body := rec.Body.String()
-	if rec.Code != 200 || !strings.HasPrefix(rec.Header().Get("Content-Type"), "text/html") || rec.Header().Get("Content-Security-Policy") != pageCSP {
+	if rec.Code != 200 || !strings.HasPrefix(rec.Header().Get("Content-Type"), "text/html") || rec.Header().Get("Content-Security-Policy") != webserver.PageCSP {
 		t.Fatalf("/remote: %d %q csp %q", rec.Code, rec.Header().Get("Content-Type"), rec.Header().Get("Content-Security-Policy"))
 	}
 	for _, want := range []string{
@@ -131,9 +132,9 @@ func TestRemotePageServed(t *testing.T) {
 func TestAssetsRevalidate(t *testing.T) {
 	s := New(&fakeScope{}, nil, nil, nil)
 	paths := []string{"/", "/remote"}
-	files, _ := assetFS.ReadDir(".")
+	files, _ := webserver.Assets.ReadDir(".")
 	for _, f := range files {
-		if staticName(f.Name()) {
+		if webserver.StaticName(f.Name()) {
 			paths = append(paths, "/"+f.Name())
 		}
 	}
@@ -158,7 +159,7 @@ func TestAssetsRevalidate(t *testing.T) {
 			t.Fatalf("%s with another tag: %d", p, other.Code)
 		}
 	}
-	if r := get(s, "/remote", "If-None-Match", assetTags["remote.html"]); r.Code != http.StatusNotModified || r.Header().Get("Content-Security-Policy") != pageCSP {
+	if r := get(s, "/remote", "If-None-Match", webserver.AssetTag("remote.html")); r.Code != http.StatusNotModified || r.Header().Get("Content-Security-Policy") != webserver.PageCSP {
 		t.Fatalf("/remote revalidated: %d csp %q", r.Code, r.Header().Get("Content-Security-Policy"))
 	}
 }
@@ -320,11 +321,11 @@ func TestPanelWorkspaceWithAnLCDSheetOpen(t *testing.T) {
 func TestAssetsVersionedAndCompressed(t *testing.T) {
 	s := New(&fakeScope{}, nil, nil, nil)
 	page := get(s, "/").Body.String()
-	want := `src="app_core.js?v=` + strings.Trim(assetTags["app_core.js"], `"`) + `"`
+	want := `src="app_core.js?v=` + strings.Trim(webserver.AssetTag("app_core.js"), `"`) + `"`
 	if !strings.Contains(page, want) {
 		t.Fatalf("the page lacks %s", want)
 	}
-	if r := get(s, "/app_core.js?v="+strings.Trim(assetTags["app_core.js"], `"`)); r.Header().Get("Cache-Control") != "public, max-age=31536000, immutable" {
+	if r := get(s, "/app_core.js?v="+strings.Trim(webserver.AssetTag("app_core.js"), `"`)); r.Header().Get("Cache-Control") != "public, max-age=31536000, immutable" {
 		t.Fatalf("a tagged request: cache %q", r.Header().Get("Cache-Control"))
 	} else if _, dated := r.Header()["Date"]; dated && r.Header()["Date"] != nil {
 		t.Fatal("a tagged file carries the scope's Date (a browser ages it from that clock)")
@@ -332,9 +333,9 @@ func TestAssetsVersionedAndCompressed(t *testing.T) {
 	if r := get(s, "/app_core.js?v=0000"); r.Header().Get("Cache-Control") != "no-cache" {
 		t.Fatalf("another tag: cache %q", r.Header().Get("Cache-Control"))
 	}
-	raw, _ := assetFS.ReadFile("app_core.js")
+	raw, _ := webserver.Assets.ReadFile("app_core.js")
 	r := get(s, "/app_core.js", "Accept-Encoding", "gzip, deflate")
-	if r.Header().Get("Content-Encoding") != "gzip" || r.Body.Len() >= len(raw)/2 || r.Header().Get("ETag") == assetTags["app_core.js"] {
+	if r.Header().Get("Content-Encoding") != "gzip" || r.Body.Len() >= len(raw)/2 || r.Header().Get("ETag") == webserver.AssetTag("app_core.js") {
 		t.Fatalf("gzip: encoding %q, %d of %d bytes, etag %q", r.Header().Get("Content-Encoding"), r.Body.Len(), len(raw), r.Header().Get("ETag"))
 	}
 	zr, err := gzip.NewReader(r.Body)

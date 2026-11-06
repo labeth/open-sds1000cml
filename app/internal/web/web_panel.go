@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/labeth/open-dso-core/webserver"
 	"github.com/labeth/open-sds1000cml/app/internal/panel"
 )
 
@@ -65,28 +66,28 @@ func (s *Server) hRefs(w http.ResponseWriter, r *http.Request) {
 	}
 	pr, ok := s.panel.(panelRefs)
 	if !ok {
-		writeJSON(w, map[string]any{"ok": false, "error": "no panel on this server"}) //nolint:goconst // JSON field names: the literal shows the reply's shape
+		webserver.WriteJSON(w, map[string]any{"ok": false, "error": "no panel on this server"}) //nolint:goconst // JSON field names: the literal shows the reply's shape
 		return
 	}
 	if r.Method == http.MethodGet {
-		writeJSON(w, map[string]any{"ok": true, "refs": pr.RefsExport()})
+		webserver.WriteJSON(w, map[string]any{"ok": true, "refs": pr.RefsExport()})
 		return
 	}
 	pa, ok := s.panel.(panelRefActions)
 	if !ok {
-		writeJSON(w, map[string]any{"ok": false, "error": "this scope's references cannot be changed from here"})
+		webserver.WriteJSON(w, map[string]any{"ok": false, "error": "this scope's references cannot be changed from here"})
 		return
 	}
 	var req struct {
 		Slot string `json:"slot"`
 		Op   string `json:"op"`
 	}
-	if err := decodeSmall(r.Body, &req); err != nil || (req.Slot != "A" && req.Slot != "B") {
-		writeJSON(w, map[string]any{"ok": false, "error": "bad json: want {\"slot\":\"A\"|\"B\",\"op\":store|show|hide|clear}"})
+	if err := webserver.DecodeSmall(r.Body, &req); err != nil || (req.Slot != "A" && req.Slot != "B") {
+		webserver.WriteJSON(w, map[string]any{"ok": false, "error": "bad json: want {\"slot\":\"A\"|\"B\",\"op\":store|show|hide|clear}"})
 		return
 	}
 	res := pa.RefAction(int(req.Slot[0]-'A'), req.Op)
-	writeJSON(w, map[string]any{"ok": res.OK, "error": res.Error, "notice": res.Notice, "refs": pr.RefsExport()})
+	webserver.WriteJSON(w, map[string]any{"ok": res.OK, "error": res.Error, "notice": res.Notice, "refs": pr.RefsExport()})
 }
 
 type panelKeys interface {
@@ -105,7 +106,7 @@ type panelKeys interface {
 func (s *Server) hPanelWorkspace(w http.ResponseWriter, name string, again bool) {
 	pw, ok := s.panel.(panelWorkspaces)
 	if !ok {
-		writeJSON(w, map[string]any{"ok": false, "error": "no panel"})
+		webserver.WriteJSON(w, map[string]any{"ok": false, "error": "no panel"})
 		return
 	}
 	var res panel.SetResult
@@ -119,7 +120,7 @@ func (s *Server) hPanelWorkspace(w http.ResponseWriter, name string, again bool)
 		st := ps.PanelStatus()
 		out["seq"], out["workspace"], out["name"], out["view"], out["next"] = st.Seq, st.WorkspaceID, st.Workspace, st.View, st.AgainNext
 	}
-	writeJSON(w, out)
+	webserver.WriteJSON(w, out)
 }
 
 // remote returns the panel's remote surface or answers 404.
@@ -150,7 +151,7 @@ func (s *Server) hPanelWait(w http.ResponseWriter, r *http.Request) {
 	if ms > 10000 {
 		ms = 10000
 	}
-	writeJSON(w, pr.WaitPanel(seq, time.Duration(ms)*time.Millisecond))
+	webserver.WriteJSON(w, pr.WaitPanel(seq, time.Duration(ms)*time.Millisecond))
 }
 
 // hSheets returns the whole sheet model: every tab and row with its id,
@@ -161,7 +162,7 @@ func (s *Server) hSheets(w http.ResponseWriter, _ *http.Request) {
 	if !ok {
 		return
 	}
-	writeJSON(w, pr.Sheets())
+	webserver.WriteJSON(w, pr.Sheets())
 }
 
 // hSheetsSet sets one row: {"row":"trig.level","value":1.25} or
@@ -178,10 +179,10 @@ func (s *Server) hSheetsSet(w http.ResponseWriter, r *http.Request) {
 		Text  string `json:"text"`
 	}
 	if err := json.NewDecoder(io.LimitReader(r.Body, 4<<10)).Decode(&req); err != nil || req.Row == "" {
-		writeJSON(w, panel.SetResult{Error: "bad json: want {\"row\":id,\"value\":v} or {\"row\":id,\"text\":t}"})
+		webserver.WriteJSON(w, panel.SetResult{Error: "bad json: want {\"row\":id,\"value\":v} or {\"row\":id,\"text\":t}"})
 		return
 	}
-	writeJSON(w, pr.SheetSet(req.Row, req.Value, req.Text))
+	webserver.WriteJSON(w, pr.SheetSet(req.Row, req.Value, req.Text))
 }
 
 // hStreamPage starts ({"on":true}) or ends the scope's stream for this page,
@@ -198,22 +199,22 @@ func (s *Server) hStreamPage(w http.ResponseWriter, r *http.Request) {
 		Leave bool `json:"leave"` // the page going: only a stream it still holds ends
 	}
 	if err := json.NewDecoder(io.LimitReader(r.Body, 1<<10)).Decode(&req); err != nil {
-		writeJSON(w, panel.SetResult{Error: "bad json: want {\"on\":bool}"})
+		webserver.WriteJSON(w, panel.SetResult{Error: "bad json: want {\"on\":bool}"})
 		return
 	}
 	if pl, ok := pr.(interface{ PageLeave() panel.SetResult }); ok && req.Leave {
-		writeJSON(w, pl.PageLeave())
+		webserver.WriteJSON(w, pl.PageLeave())
 		return
 	}
 	if ps, ok := pr.(interface{ PageStream(on bool) panel.SetResult }); ok {
-		writeJSON(w, ps.PageStream(req.On))
+		webserver.WriteJSON(w, ps.PageStream(req.On))
 		return
 	}
 	v := 0.0 // as a sheet set's JSON number
 	if req.On {
 		v = 1
 	}
-	writeJSON(w, pr.SheetSet("bus.stream", v, ""))
+	webserver.WriteJSON(w, pr.SheetSet("bus.stream", v, ""))
 }
 
 // hSheetsAction runs an action row: {"row":"file.setup3","action":"save"}
@@ -229,8 +230,8 @@ func (s *Server) hSheetsAction(w http.ResponseWriter, r *http.Request) {
 		Action string `json:"action"`
 	}
 	if err := json.NewDecoder(io.LimitReader(r.Body, 4<<10)).Decode(&req); err != nil || req.Row == "" {
-		writeJSON(w, panel.SetResult{Error: "bad json: want {\"row\":id,\"action\":name}"})
+		webserver.WriteJSON(w, panel.SetResult{Error: "bad json: want {\"row\":id,\"action\":name}"})
 		return
 	}
-	writeJSON(w, pr.SheetAction(req.Row, req.Action))
+	webserver.WriteJSON(w, pr.SheetAction(req.Row, req.Action))
 }

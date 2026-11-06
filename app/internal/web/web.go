@@ -6,7 +6,6 @@ package web
 
 import (
 	"encoding/json"
-	"fmt"
 	"io"
 	"net/http"
 	"net/http/pprof"
@@ -17,6 +16,7 @@ import (
 	"time"
 
 	"github.com/labeth/open-dso-core/measure"
+	"github.com/labeth/open-dso-core/webserver"
 	"github.com/labeth/open-sds1000cml/app/internal/engine"
 	"github.com/labeth/open-sds1000cml/app/internal/panel"
 	"github.com/labeth/open-sds1000cml/app/internal/sramcapture"
@@ -141,17 +141,10 @@ type Server struct {
 	// setups is the numbered setup store behind /api/setup (SetSetupMemory).
 	setups SetupMemory
 
-	// epoch is the single-active-client token. Each page load calls /api/claim,
-	// which bumps epoch; the frame.bin long-poll (the only sustained load) carries
-	// its claimed epoch and is refused (409) once a newer client has claimed. So a
-	// second browser "steals" the device and the first stops polling — the device
-	// serves at most ONE live client, bounding the CPU that competes with the
-	// engine's drain (spec 03 §2). epoch 0 (unclaimed: SCPI, curl, tests) is never
-	// refused. It starts at the server's start time (epoch0), so a page claimed
-	// before a restart (its scripts the old build's) holds an epoch this run
-	// never issued and is refused once a page claims in this run.
-	epoch  atomic.Uint64
-	epoch0 uint64
+	// claims is the single-active-client epoch (/api/claim): the device
+	// serves at most one live page, bounding the CPU that competes with the
+	// engine's drain (spec 03 §2).
+	claims *webserver.Epoch
 
 	// recordBusy is a /api/record.bin under way: one at a time, as each holds
 	// a whole record (two 500k-sample channels) on a 128 MB device.
@@ -193,8 +186,7 @@ type measVal struct {
 // renders the LCD as a PNG.
 // TRLC-LINKS: REQ-SDS-161, REQ-SDS-162, REQ-SDS-163, REQ-SDS-164
 func New(sc Scope, fe Analog, panel Panel, screen func() []byte) *Server {
-	s := &Server{sc: sc, fe: fe, panel: panel, screen: screen, epoch0: uint64(time.Now().UnixMilli())}
-	s.epoch.Store(s.epoch0)
+	s := &Server{sc: sc, fe: fe, panel: panel, screen: screen, claims: webserver.NewEpoch()}
 	return s
 }
 
@@ -233,7 +225,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /api/record.bin", s.hRecord)
 	mux.HandleFunc("/api/zones", s.hZones)
 	mux.HandleFunc("/api/serial", s.hSerial)
-	mux.HandleFunc("GET /api/serial/protocols", func(w http.ResponseWriter, _ *http.Request) { writeJSON(w, engine.SerialDecoderList()) })
+	mux.HandleFunc("GET /api/serial/protocols", func(w http.ResponseWriter, _ *http.Request) { webserver.WriteJSON(w, engine.SerialDecoderList()) })
 	mux.HandleFunc("/api/mask", s.hMask)
 	mux.HandleFunc("/api/maskfail", s.hMaskFail)
 	mux.HandleFunc("/api/bode", s.hBode)
@@ -241,7 +233,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /api/sound/take.bin", s.hSoundTakeBin)
 	mux.HandleFunc("/api/sound", s.hSound)
 	mux.HandleFunc("/api/screen.png", s.hScreen)
-	mux.HandleFunc("/api/claim", s.hClaim)
+	mux.HandleFunc("/api/claim", s.claims.ServeClaim)
 	mux.HandleFunc("/api/setup", s.hSetup)
 	mux.HandleFunc("/api/debug/tune", s.hTune)
 	// pprof (lab device): live CPU/heap profiling for optimization work.
@@ -251,18 +243,6 @@ func (s *Server) Handler() http.Handler {
 	return mux
 }
 
-// hClaim issues a fresh single-client epoch (see Server.epoch). The page calls
-// it once on load; opening a second browser bumps the epoch and takes over.
-// TRLC-LINKS: REQ-SDS-161
-func (s *Server) hClaim(w http.ResponseWriter, _ *http.Request) {
-	e := s.epoch.Add(1)
-	w.Header().Set("Content-Type", "application/json")
-	// The encoder's text for the map, written directly.
-	// A write to a client that went away has no one to report to.
-	_, _ = w.Write(strconv.AppendUint([]byte(`{"epoch":`), e, 10))
-	_, _ = w.Write([]byte("}\n"))
-}
-
 // hTune applies the live frame-rate and CPU tuning knobs and
 // returns the effective values. GET reports current values; POST {json} sets
 // them. Fields omitted / negative are left unchanged (see engine.Tune).
@@ -270,33 +250,17 @@ func (s *Server) hClaim(w http.ResponseWriter, _ *http.Request) {
 func (s *Server) hTune(w http.ResponseWriter, r *http.Request) {
 	cur := s.sc.TuneSnapshot()
 	if r.Method != http.MethodPost {
-		writeJSON(w, cur)
+		webserver.WriteJSON(w, cur)
 		return
 	}
 	// Decode onto the current values so any omitted field (bools included) keeps
 	// its present setting; only what the body carries is overridden.
 	t := cur
 	if err := json.NewDecoder(io.LimitReader(r.Body, 4<<10)).Decode(&t); err != nil {
-		writeBadJSON(w)
+		webserver.WriteBadJSON(w)
 		return
 	}
-	writeJSON(w, s.sc.Tune(t))
-}
-
-// superseded reports whether a request's ?epoch is not the active client's
-// once a browser has claimed in this run: an older one (a newer browser has
-// claimed) or one from before a restart. epoch 0 / absent (SCPI, curl,
-// tests) is exempt, and so is every page until a claim in this run.
-// TRLC-LINKS: REQ-SDS-161
-func (s *Server) superseded(r *http.Request) bool {
-	q := r.URL.Query().Get("epoch")
-	if q == "" {
-		return false
-	}
-	var e uint64
-	_, _ = fmt.Sscanf(q, "%d", &e) // unparsable: 0, exempt like an absent epoch
-	cur := s.epoch.Load()
-	return e != 0 && cur != s.epoch0 && e != cur
+	webserver.WriteJSON(w, s.sc.Tune(t))
 }
 
 // hPanel injects a front-panel button or knob event (spec 08 §6), or types
@@ -332,11 +296,11 @@ func (s *Server) hPanel(w http.ResponseWriter, r *http.Request) {
 		} `json:"set"`
 	}
 	if err := json.NewDecoder(io.LimitReader(r.Body, 4<<10)).Decode(&req); err != nil {
-		writeBadJSON(w)
+		webserver.WriteBadJSON(w)
 		return
 	}
 	if s.panel == nil {
-		writeJSON(w, map[string]any{"ok": false, "err": "no panel"})
+		webserver.WriteJSON(w, map[string]any{"ok": false, "err": "no panel"})
 		return
 	}
 	if req.Workspace != "" || req.Again {
@@ -346,7 +310,7 @@ func (s *Server) hPanel(w http.ResponseWriter, r *http.Request) {
 	if req.Type != nil || req.Set != nil {
 		pr, ok := s.panel.(panelRemote)
 		if !ok {
-			writeJSON(w, map[string]any{"ok": false, "err": "no panel"})
+			webserver.WriteJSON(w, map[string]any{"ok": false, "err": "no panel"})
 			return
 		}
 		var res panel.SetResult
@@ -355,14 +319,14 @@ func (s *Server) hPanel(w http.ResponseWriter, r *http.Request) {
 		} else {
 			res = pr.SheetSet(req.Set.Row, nil, req.Set.Text)
 		}
-		writeJSON(w, map[string]any{"ok": res.OK, "applied": res.Text, "row": res.Row, "value": res.Value, "error": res.Error}) //nolint:goconst // JSON field names: the literal shows the reply's shape
+		webserver.WriteJSON(w, map[string]any{"ok": res.OK, "applied": res.Text, "row": res.Row, "value": res.Value, "error": res.Error}) //nolint:goconst // JSON field names: the literal shows the reply's shape
 		return
 	}
 	if pk, isKeys := s.panel.(panelKeys); isKeys && req.Remote && (req.Button != "" || req.Knob != "") {
 		if req.Button != "" {
-			writeJSON(w, pk.RemoteKey(req.Button, req.NoMenu))
+			webserver.WriteJSON(w, pk.RemoteKey(req.Button, req.NoMenu))
 		} else {
-			writeJSON(w, pk.RemoteKnob(req.Knob, req.Dir, req.Steps, req.NoMenu))
+			webserver.WriteJSON(w, pk.RemoteKnob(req.Knob, req.Dir, req.Steps, req.NoMenu))
 		}
 		return
 	}
@@ -377,7 +341,7 @@ func (s *Server) hPanel(w http.ResponseWriter, r *http.Request) {
 		}
 		ok = s.panel.InjectKnob(req.Knob, req.Dir, req.Steps)
 	}
-	writeJSON(w, map[string]any{"ok": ok})
+	webserver.WriteJSON(w, map[string]any{"ok": ok})
 }
 
 // hScreen returns a PNG of the current LCD render — the exact device screen.
@@ -392,15 +356,6 @@ func (s *Server) hScreen(w http.ResponseWriter, _ *http.Request) {
 	_, _ = w.Write(s.screen())
 }
 
-// pageCSP is the strict same-origin CSP of the pages. Script and connect are
-// 'self' only (no inline script — every module is an external same-origin
-// classic script). style keeps 'unsafe-inline' for the display:none hooks.
-// img allows data: for the canvas PNG export. Media and the manifest fall
-// back to 'self'.
-const pageCSP = "default-src 'self'; script-src 'self'; connect-src 'self'; " +
-	"style-src 'self' 'unsafe-inline'; img-src 'self' data:; " +
-	"object-src 'none'; base-uri 'none'"
-
 // hRoot serves the page at "/" (with the strict CSP) and every embedded
 // asset by bare filename (.js/.css, the remote's manifest, icons and
 // videos). It is the ServeMux catch-all; the /api/* routes are registered
@@ -409,11 +364,11 @@ const pageCSP = "default-src 'self'; script-src 'self'; connect-src 'self'; " +
 func (s *Server) hRoot(w http.ResponseWriter, r *http.Request) {
 	p := strings.TrimPrefix(r.URL.Path, "/")
 	if p == "" {
-		w.Header().Set("Content-Security-Policy", pageCSP)
-		serveAsset(w, r, "ui.html")
+		w.Header().Set("Content-Security-Policy", webserver.PageCSP)
+		webserver.ServeAsset(w, r, "ui.html")
 		return
 	}
-	if staticName(p) && serveAsset(w, r, p) {
+	if webserver.StaticName(p) && webserver.ServeAsset(w, r, p) {
 		return
 	}
 	http.NotFound(w, r)
@@ -423,20 +378,8 @@ func (s *Server) hRoot(w http.ResponseWriter, r *http.Request) {
 // small app on the sheet model API, with the same strict CSP as the page.
 // TRLC-LINKS: REQ-SDS-161, REQ-SDS-220
 func (s *Server) hRemote(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Security-Policy", pageCSP)
-	serveAsset(w, r, "remote.html")
-}
-
-// writeBadJSON answers a request whose body is not the JSON it takes.
-// TRLC-LINKS: REQ-SDS-162
-func writeBadJSON(w http.ResponseWriter) {
-	writeJSON(w, map[string]any{"ok": false, "err": "bad json"})
-}
-
-// TRLC-LINKS: REQ-SDS-161, REQ-SDS-162, REQ-SDS-163, REQ-SDS-164
-func writeJSON(w http.ResponseWriter, v any) {
-	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(v) // a client that went away has no one to report to
+	w.Header().Set("Content-Security-Policy", webserver.PageCSP)
+	webserver.ServeAsset(w, r, "remote.html")
 }
 
 const screenCols = 800
@@ -483,26 +426,26 @@ type panelScanner interface {
 func (s *Server) hPanelScan(w http.ResponseWriter, r *http.Request) {
 	ps, ok := s.sc.(panelScanner)
 	if !ok {
-		writeJSON(w, map[string]any{"ok": false, "err": "no panel scan"})
+		webserver.WriteJSON(w, map[string]any{"ok": false, "err": "no panel scan"})
 		return
 	}
 	if r.Method == http.MethodPost {
 		var p sramcapture.PanelConfig
 		if err := json.NewDecoder(io.LimitReader(r.Body, 4<<10)).Decode(&p); err != nil {
-			writeBadJSON(w)
+			webserver.WriteBadJSON(w)
 			return
 		}
 		if err := ps.SetPanelScan(p); err != nil {
-			writeJSON(w, map[string]any{"ok": false, "err": err.Error()})
+			webserver.WriteJSON(w, map[string]any{"ok": false, "err": err.Error()})
 			return
 		}
 	}
 	f, err := ps.PanelScan()
 	if err != nil {
-		writeJSON(w, map[string]any{"ok": false, "err": err.Error()})
+		webserver.WriteJSON(w, map[string]any{"ok": false, "err": err.Error()})
 		return
 	}
-	writeJSON(w, map[string]any{"ok": true, "frame": f})
+	webserver.WriteJSON(w, map[string]any{"ok": true, "frame": f})
 }
 
 // hStreamLines serves the decoded stream's transcript as data from an
@@ -527,7 +470,7 @@ func (s *Server) hStreamLines(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "no decoded stream", http.StatusNotFound)
 		return
 	}
-	writeJSON(w, page)
+	webserver.WriteJSON(w, page)
 }
 
 // hStreamWindow serves the stream's newest ?rows=N (1..40) transcript lines
@@ -550,7 +493,7 @@ func (s *Server) hStreamWindow(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "no decoded stream", http.StatusNotFound)
 		return
 	}
-	writeJSON(w, page)
+	webserver.WriteJSON(w, page)
 }
 
 // hStreamLinesBin serves the transcript from ?from=N in the compact binary

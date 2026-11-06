@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/labeth/open-dso-core/testenv"
+	"github.com/labeth/open-dso-core/webserver"
 	"github.com/labeth/open-sds1000cml/app/internal/analog"
 	"github.com/labeth/open-sds1000cml/app/internal/engine"
 	"github.com/labeth/open-sds1000cml/app/internal/panel"
@@ -333,31 +334,31 @@ func newRemoteRig(tb testing.TB, before ...func(*panel.Controller, *remoteEngine
 			ok = ok && pc.InjectButtonWait("menu", 3*time.Second)
 		}
 		ok = ok && pc.RemoteWorkspace("scope").OK
-		writeJSON(w, map[string]bool{"ok": ok})
+		webserver.WriteJSON(w, map[string]bool{"ok": ok})
 	})
 	mux.HandleFunc("/down", func(w http.ResponseWriter, _ *http.Request) {
 		gate.down.Store(true)
 		r.app.CloseClientConnections()
-		writeJSON(w, map[string]bool{"ok": true})
+		webserver.WriteJSON(w, map[string]bool{"ok": true})
 	})
 	mux.HandleFunc("/up", func(w http.ResponseWriter, _ *http.Request) {
 		gate.down.Store(false)
-		writeJSON(w, map[string]bool{"ok": true})
+		webserver.WriteJSON(w, map[string]bool{"ok": true})
 	})
 	mux.HandleFunc("/button", func(w http.ResponseWriter, q *http.Request) {
-		writeJSON(w, map[string]bool{"ok": pc.InjectButtonWait(q.URL.Query().Get("name"), 3*time.Second)})
+		webserver.WriteJSON(w, map[string]bool{"ok": pc.InjectButtonWait(q.URL.Query().Get("name"), 3*time.Second)})
 	})
 	mux.HandleFunc("/knob", func(w http.ResponseWriter, q *http.Request) {
 		dir, _ := strconv.Atoi(q.URL.Query().Get("dir"))
 		ok := pc.InjectKnob(q.URL.Query().Get("name"), dir, 1)
 		time.Sleep(50 * time.Millisecond) // the knob runs on the panel loop
-		writeJSON(w, map[string]bool{"ok": ok})
+		webserver.WriteJSON(w, map[string]bool{"ok": ok})
 	})
-	mux.HandleFunc("/status", func(w http.ResponseWriter, _ *http.Request) { writeJSON(w, pc.PanelStatus()) })
+	mux.HandleFunc("/status", func(w http.ResponseWriter, _ *http.Request) { webserver.WriteJSON(w, pc.PanelStatus()) })
 	mux.HandleFunc("/tdivlag", func(w http.ResponseWriter, q *http.Request) {
 		ms, _ := strconv.Atoi(q.URL.Query().Get("ms"))
 		eng.lock(func() { eng.tdivLag = time.Duration(ms) * time.Millisecond })
-		writeJSON(w, map[string]bool{"ok": true})
+		webserver.WriteJSON(w, map[string]bool{"ok": true})
 	})
 	mux.HandleFunc("/mask", func(w http.ResponseWriter, q *http.Request) {
 		n, _ := strconv.ParseInt(q.URL.Query().Get("pass"), 10, 64)
@@ -366,19 +367,19 @@ func newRemoteRig(tb testing.TB, before ...func(*panel.Controller, *remoteEngine
 			eng.stats.MaskPass = n
 			eng.fakeScope.mu.Unlock()
 		})
-		writeJSON(w, map[string]bool{"ok": true})
+		webserver.WriteJSON(w, map[string]bool{"ok": true})
 	})
 	mux.HandleFunc("/hits", func(w http.ResponseWriter, _ *http.Request) {
 		gate.mu.Lock()
 		hits := gate.hits
 		gate.hits = nil
 		gate.mu.Unlock()
-		writeJSON(w, hits)
+		webserver.WriteJSON(w, hits)
 	})
 	mux.HandleFunc("/engine", func(w http.ResponseWriter, _ *http.Request) {
 		st := eng.Snapshot()
 		ser := eng.SerialConfig()
-		writeJSON(w, map[string]any{
+		webserver.WriteJSON(w, map[string]any{
 			"tdiv": st.TdivS, "trigCode": st.TrigCode, "norm": st.Norm, "running": st.Running,
 			"serialMode": st.SerialMode, "serialBytes": ser.Bytes, "holdoff": st.HoldoffS, "acqMode": st.AcqMode, "avg": st.AvgCount,
 		})

@@ -5,6 +5,8 @@ package web
 import (
 	"io"
 	"net/http"
+
+	"github.com/labeth/open-dso-core/webserver"
 )
 
 // SetupMemory stores and recalls whole instrument setups in numbered slots.
@@ -44,14 +46,14 @@ func (s *Server) SetSetupMemory(m SetupMemory) { s.setups = m }
 func (s *Server) hSetup(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodGet {
 		if s.setups == nil {
-			writeJSON(w, map[string]any{"ok": false, "err": "setup memory unavailable"})
+			webserver.WriteJSON(w, map[string]any{"ok": false, "err": "setup memory unavailable"})
 			return
 		}
 		var slots []SetupSlot
 		if l, ok := s.setups.(setupLister); ok {
 			slots = l.SetupSlots()
 		}
-		writeJSON(w, map[string]any{"ok": true, "slots": slots})
+		webserver.WriteJSON(w, map[string]any{"ok": true, "slots": slots})
 		return
 	}
 	if r.Method != http.MethodPost {
@@ -62,16 +64,16 @@ func (s *Server) hSetup(w http.ResponseWriter, r *http.Request) {
 		Op   string `json:"op"`
 		Slot int    `json:"slot"`
 	}
-	if err := decodeSmall(io.LimitReader(r.Body, 1<<10), &req); err != nil {
-		writeBadJSON(w)
+	if err := webserver.DecodeSmall(io.LimitReader(r.Body, 1<<10), &req); err != nil {
+		webserver.WriteBadJSON(w)
 		return
 	}
 	if req.Slot < 1 || req.Slot > setupSlotCount {
-		writeJSON(w, map[string]any{"ok": false, "err": "slot must be 1-20"})
+		webserver.WriteJSON(w, map[string]any{"ok": false, "err": "slot must be 1-20"})
 		return
 	}
 	if s.setups == nil {
-		writeJSON(w, map[string]any{"ok": false, "err": "setup memory unavailable"})
+		webserver.WriteJSON(w, map[string]any{"ok": false, "err": "setup memory unavailable"})
 		return
 	}
 	var err error
@@ -81,12 +83,12 @@ func (s *Server) hSetup(w http.ResponseWriter, r *http.Request) {
 	case "recall":
 		err = s.setups.RecallSetup(req.Slot)
 	default:
-		writeJSON(w, map[string]any{"ok": false, "err": "op must be save or recall"})
+		webserver.WriteJSON(w, map[string]any{"ok": false, "err": "op must be save or recall"})
 		return
 	}
 	if err != nil {
-		writeJSON(w, map[string]any{"ok": false, "err": err.Error()})
+		webserver.WriteJSON(w, map[string]any{"ok": false, "err": err.Error()})
 		return
 	}
-	writeJSON(w, map[string]any{"ok": true})
+	webserver.WriteJSON(w, map[string]any{"ok": true})
 }

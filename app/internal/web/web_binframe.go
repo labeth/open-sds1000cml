@@ -8,8 +8,8 @@ import (
 	"fmt"
 	"net/http"
 	"time"
-	"unsafe"
 
+	"github.com/labeth/open-dso-core/webserver"
 	"github.com/labeth/open-sds1000cml/app/internal/engine"
 )
 
@@ -84,7 +84,7 @@ func encodeBinFrame(rep frameReply) []byte {
 	buf = buf[:at+payloadBytes]
 	if precision {
 		for _, seg := range [][]uint16{rep.Q1, rep.Q2} {
-			at += copy(buf[at:], leBytes(seg))
+			at += copy(buf[at:], webserver.LEBytes(seg))
 		}
 	} else {
 		for _, seg := range segs {
@@ -126,7 +126,7 @@ func (s *Server) FrameClient(d time.Duration) bool {
 // slow client simply skips to the newest frame.
 // TRLC-LINKS: REQ-SDS-163
 func (s *Server) hFrameBin(w http.ResponseWriter, r *http.Request) {
-	if s.superseded(r) {
+	if s.claims.Superseded(r) {
 		w.WriteHeader(http.StatusConflict) // 409 — a newer browser claimed the device
 		return
 	}
@@ -247,15 +247,7 @@ func (s *Server) hFrameBin(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Cache-Control", "no-store")
 	// Bound the write: the server sets no global timeouts (long-poll depends
 	// on that), so a half-open peer must not hold this goroutine for minutes.
-	// CLEAR the deadline afterwards — with WriteTimeout=0 net/http never
-	// resets it, and the keep-alive connection is reused by other handlers
-	// that set none (an absolute deadline left armed would fail them later).
-	rc := http.NewResponseController(w)
-	// A writer without deadlines (a test recorder) writes unbounded, and a
-	// failed write has no one to report to.
-	_ = rc.SetWriteDeadline(time.Now().Add(5 * time.Second))
-	_, _ = w.Write(buf)
-	_ = rc.SetWriteDeadline(time.Time{})
+	webserver.WriteWithin(w, buf, 5*time.Second)
 }
 
 // waitFrame parks until a frame after since has published, or timeout.
@@ -355,13 +347,4 @@ func (s *Server) rawBinMsg(since uint64) []byte {
 	binary.LittleEndian.PutUint32(buf[4:8], uint32(len(hj))) //nolint:gosec // G115: a JSON header of a few KB
 	buf = append(buf, hj...)
 	return append(buf, payload...)
-}
-
-// leBytes is the memory of w: its words little-endian on these CPUs.
-// TRLC-LINKS: REQ-SDS-163
-func leBytes(w []uint16) []byte {
-	if len(w) == 0 {
-		return nil
-	}
-	return unsafe.Slice((*byte)(unsafe.Pointer(&w[0])), 2*len(w)) //nolint:gosec // G103: the words' own memory, little-endian on this CPU
 }

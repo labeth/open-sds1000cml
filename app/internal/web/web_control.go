@@ -3,7 +3,6 @@
 package web
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -11,9 +10,9 @@ import (
 	"log"
 	"math"
 	"net/http"
-	"sync"
 	"time"
 
+	"github.com/labeth/open-dso-core/webserver"
 	"github.com/labeth/open-sds1000cml/app/internal/analog"
 	"github.com/labeth/open-sds1000cml/app/internal/engine"
 )
@@ -35,7 +34,7 @@ func (s *Server) hZones(w http.ResponseWriter, r *http.Request) {
 		Ch     int     `json:"ch"`
 	}
 	if err := json.NewDecoder(io.LimitReader(r.Body, 1<<16)).Decode(&zs); err != nil {
-		writeBadJSON(w)
+		webserver.WriteBadJSON(w)
 		return
 	}
 	if len(zs) > 4 {
@@ -53,7 +52,7 @@ func (s *Server) hZones(w http.ResponseWriter, r *http.Request) {
 		})
 	}
 	s.sc.SetZones(out)
-	writeJSON(w, map[string]any{"ok": true, "zones": len(out)})
+	webserver.WriteJSON(w, map[string]any{"ok": true, "zones": len(out)})
 }
 
 // hSerial installs the serial/protocol-trigger config (POST JSON = SerialParams:
@@ -70,10 +69,10 @@ func (s *Server) hSerial(w http.ResponseWriter, r *http.Request) {
 		// it rather than replace it with its own empty match
 		sc, ok := s.sc.(interface{ SerialConfig() engine.SerialParams })
 		if !ok {
-			writeJSON(w, map[string]any{"ok": false, "err": "no serial trigger"})
+			webserver.WriteJSON(w, map[string]any{"ok": false, "err": "no serial trigger"})
 			return
 		}
-		writeJSON(w, map[string]any{"ok": true, "params": sc.SerialConfig(), "mode": s.sc.Snapshot().SerialMode})
+		webserver.WriteJSON(w, map[string]any{"ok": true, "params": sc.SerialConfig(), "mode": s.sc.Snapshot().SerialMode})
 		return
 	}
 	if r.Method != http.MethodPost {
@@ -82,7 +81,7 @@ func (s *Server) hSerial(w http.ResponseWriter, r *http.Request) {
 	}
 	var p engine.SerialParams
 	if err := json.NewDecoder(io.LimitReader(r.Body, 1<<16)).Decode(&p); err != nil {
-		writeBadJSON(w)
+		webserver.WriteBadJSON(w)
 		return
 	}
 	p.Proto = clampI(p.Proto, 0, engine.SerialProtocols-1) // 0 off … 10 flexray, 11 lin … 30 wiegand … 52 IR multi
@@ -144,7 +143,7 @@ func (s *Server) hSerial(w http.ResponseWriter, r *http.Request) {
 		p.SPIClockHz, p.SPIDelayNs, p.Fine = cur.SPIClockHz, cur.SPIDelayNs, cur.Fine
 	}
 	s.sc.SetSerialParams(p)
-	writeJSON(w, map[string]any{"ok": true})
+	webserver.WriteJSON(w, map[string]any{"ok": true})
 }
 
 // TRLC-LINKS: REQ-SDS-162
@@ -181,25 +180,25 @@ func (s *Server) hMask(w http.ResponseWriter, r *http.Request) {
 		IfGen      *uint64 `json:"if_gen"` // a re-install: the install it replaces (Stats.MaskGen)
 	}
 	if err := json.NewDecoder(io.LimitReader(r.Body, 4<<20)).Decode(&m); err != nil {
-		writeBadJSON(w)
+		webserver.WriteBadJSON(w)
 		return
 	}
 	var lo, hi []uint8
 	if len(m.LoBytes) > 0 {
 		if len(m.Lo) > 0 || len(m.Hi) > 0 || len(m.LoBytes) != m.Win || len(m.HiBytes) != m.Win || m.Win <= 0 || m.Win > 1<<20 {
-			writeJSON(w, map[string]any{"ok": false, "err": "length mismatch"})
+			webserver.WriteJSON(w, map[string]any{"ok": false, "err": "length mismatch"})
 			return
 		}
 		lo, hi = m.LoBytes, m.HiBytes
 	} else {
 		if len(m.Lo) == 0 {
 			s.clearMask()
-			writeJSON(w, map[string]any{"ok": true, "cleared": true, "gen": s.sc.Snapshot().MaskGen})
+			webserver.WriteJSON(w, map[string]any{"ok": true, "cleared": true, "gen": s.sc.Snapshot().MaskGen})
 			return
 		}
 		// Preserve the original bounded numeric upload for older clients.
 		if len(m.Lo) != m.Win || len(m.Hi) != m.Win || m.Win <= 0 || m.Win > 1<<16 {
-			writeJSON(w, map[string]any{"ok": false, "err": "length mismatch"})
+			webserver.WriteJSON(w, map[string]any{"ok": false, "err": "length mismatch"})
 			return
 		}
 		lo, hi = make([]uint8, m.Win), make([]uint8, m.Win)
@@ -213,7 +212,7 @@ func (s *Server) hMask(w http.ResponseWriter, r *http.Request) {
 	// LCD, by a phone or another page), so a cleared mask does not come back
 	if m.IfGen != nil {
 		if cur := s.sc.Snapshot().MaskGen; cur != *m.IfGen {
-			writeJSON(w, map[string]any{"ok": false, "stale": true, "gen": cur, "err": "the scope's mask changed since this page installed it"})
+			webserver.WriteJSON(w, map[string]any{"ok": false, "stale": true, "gen": cur, "err": "the scope's mask changed since this page installed it"})
 			return
 		}
 	}
@@ -223,7 +222,7 @@ func (s *Server) hMask(w http.ResponseWriter, r *http.Request) {
 	})
 	// gen names this install: the page keeps re-scaling its mask only while
 	// the scope still holds it (Stats.MaskGen)
-	writeJSON(w, map[string]any{"ok": true, "win": m.Win, "gen": s.sc.Snapshot().MaskGen})
+	webserver.WriteJSON(w, map[string]any{"ok": true, "win": m.Win, "gen": s.sc.Snapshot().MaskGen})
 }
 
 // clearMask removes the mask with its test and counts: through the panel
@@ -254,7 +253,7 @@ func (s *Server) hBode(w http.ResponseWriter, _ *http.Request) {
 	for i, pt := range pts {
 		f[i], g[i], p[i] = pt.FreqHz, pt.GainDB, pt.PhaseDeg
 	}
-	writeJSON(w, map[string]any{"ok": true, "n": len(pts), "freq": f, "gain_db": g, "phase_deg": p})
+	webserver.WriteJSON(w, map[string]any{"ok": true, "n": len(pts), "freq": f, "gain_db": g, "phase_deg": p})
 }
 
 // TRLC-LINKS: REQ-SDS-162
@@ -263,7 +262,7 @@ func (s *Server) hMaskFail(w http.ResponseWriter, r *http.Request) {
 	i := 0
 	_, _ = fmt.Sscanf(r.URL.Query().Get("i"), "%d", &i) // bad: 0, the newest
 	if i < 0 || i >= len(ring) {
-		writeJSON(w, map[string]any{"ok": false, "err": "no such failure", "count": len(ring)})
+		webserver.WriteJSON(w, map[string]any{"ok": false, "err": "no such failure", "count": len(ring)})
 		return
 	}
 	f := ring[i]
@@ -273,7 +272,7 @@ func (s *Server) hMaskFail(w http.ResponseWriter, r *http.Request) {
 	// failure was captured, and far better than the hard-coded 1 V/div ×1 the
 	// client used to assume (its CSV/sigrok exports were wrong off that scale).
 	off, vpc := s.vertScales()
-	writeJSON(w, map[string]any{
+	webserver.WriteJSON(w, map[string]any{
 		"ok": true, "i": i, "count": len(ring),
 		"seq": f.Seq, "at_ms": f.AtNs / 1e6,
 		"fail_col": f.FailCol, "fail_code": f.FailCode, "fail_sample": f.FailSample,
@@ -308,13 +307,13 @@ func (s *Server) hSet(w http.ResponseWriter, r *http.Request) { //nolint:gocyclo
 	var req setReq
 	// 4 KB cap: a scalar-verb body is tens of bytes; an unbounded decoder
 	// would buffer an attacker-sized body on a 64 MB-class ARM.
-	if err := decodeSmall(r.Body, &req); err != nil {
-		writeBadJSON(w)
+	if err := webserver.DecodeSmall(r.Body, &req); err != nil {
+		webserver.WriteBadJSON(w)
 		return
 	}
 	for _, v := range []float64{req.Value, req.Lvl, req.Lo, req.Hi, req.Min, req.Max} {
 		if math.IsNaN(v) || math.IsInf(v, 0) {
-			writeJSON(w, map[string]any{"ok": false, "err": "bad value"})
+			webserver.WriteJSON(w, map[string]any{"ok": false, "err": "bad value"})
 			return
 		}
 	}
@@ -369,34 +368,34 @@ func (s *Server) hSet(w http.ResponseWriter, r *http.Request) { //nolint:gocyclo
 		s.sc.SetTrigPosFrac(req.Value)
 	case "memdepth":
 		applied := s.sc.SetMemDepth(int(req.Value))
-		writeJSON(w, map[string]any{"ok": true, "applied": applied}) //nolint:goconst // JSON field names: the literal shows the reply's shape
+		webserver.WriteJSON(w, map[string]any{"ok": true, "applied": applied}) //nolint:goconst // JSON field names: the literal shows the reply's shape
 		return
 	case "frameperiod":
 		applied := s.sc.SetFramePeriod(int(req.Value))
-		writeJSON(w, map[string]any{"ok": true, "applied": applied})
+		webserver.WriteJSON(w, map[string]any{"ok": true, "applied": applied})
 		return
 	case "decodeview":
 		// Accepted for older pages: decoding needs no lease now, the live
 		// envelope is time-ordered (engine orderEnvelope).
-		writeJSON(w, map[string]any{"ok": true, "applied": 0})
+		webserver.WriteJSON(w, map[string]any{"ok": true, "applied": 0})
 		return
 	case "rollstream":
 		// Roll on the stream image (gap-free; an image reload when roll starts
 		// or ends) instead of chunked captures.
 		if sc, ok := s.sc.(interface{ SetRollStream(bool) }); ok {
 			sc.SetRollStream(req.Value != 0)
-			writeJSON(w, map[string]any{"ok": true, "applied": req.Value != 0})
+			webserver.WriteJSON(w, map[string]any{"ok": true, "applied": req.Value != 0})
 		} else {
-			writeJSON(w, map[string]any{"ok": false, "err": "unsupported"})
+			webserver.WriteJSON(w, map[string]any{"ok": false, "err": "unsupported"})
 		}
 		return
 	case "holdoff":
 		applied := s.sc.SetHoldoff(req.Value)
-		writeJSON(w, map[string]any{"ok": true, "applied": applied})
+		webserver.WriteJSON(w, map[string]any{"ok": true, "applied": applied})
 		return
 	case "stream":
 		on := s.sc.SetStreamMode(req.Value != 0)
-		writeJSON(w, map[string]any{"ok": true, "applied": on})
+		webserver.WriteJSON(w, map[string]any{"ok": true, "applied": on})
 		return
 	case "serialmode":
 		s.sc.SetSerialMode(int(req.Value))
@@ -533,7 +532,7 @@ func (s *Server) hSet(w http.ResponseWriter, r *http.Request) { //nolint:gocyclo
 	default:
 		ok, errStr = false, "unknown control"
 	}
-	writeJSON(w, map[string]any{"ok": ok, "applied": applied, "err": errStr})
+	webserver.WriteJSON(w, map[string]any{"ok": ok, "applied": applied, "err": errStr})
 }
 
 // endWebCapture ends a web page's decoded capture before Run, Run/Stop or
@@ -553,27 +552,3 @@ func (s *Server) endWebCapture(ctx context.Context) {
 		log.Printf("web: ending the web page's decoded capture: %v", err)
 	}
 }
-
-// decodeSmall decodes the first JSON value of a body of at most 4 KB, as
-// the stream decoder did, read whole into a pooled buffer: a body that is one
-// value (all of them, in practice) is unmarshalled without a decoder and its
-// buffers; one with more after it still decodes its first value.
-// TRLC-LINKS: REQ-SDS-162
-func decodeSmall(body io.Reader, v any) error {
-	buf, ok := smallBodies.Get().(*[4 << 10]byte)
-	if !ok {
-		buf = new([4 << 10]byte)
-	}
-	defer smallBodies.Put(buf)
-	n, err := io.ReadFull(body, buf[:])
-	if err != nil && err != io.ErrUnexpectedEOF && err != io.EOF {
-		return err
-	}
-	if json.Unmarshal(buf[:n], v) == nil {
-		return nil
-	}
-	return json.NewDecoder(bytes.NewReader(buf[:n])).Decode(v)
-}
-
-// smallBodies lends the 4 KB request buffers.
-var smallBodies = sync.Pool{New: func() any { return new([4 << 10]byte) }}

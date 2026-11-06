@@ -520,7 +520,7 @@ func TestClaimSupersedesEarlierRun(t *testing.T) {
 	req := func(e uint64) *http.Request {
 		return httptest.NewRequestWithContext(t.Context(), http.MethodGet, fmt.Sprintf("/api/frame.bin?epoch=%d", e), nil)
 	}
-	if s.superseded(req(3)) {
+	if s.claims.Superseded(req(3)) {
 		t.Fatal("before any claim in this run, a page from before the restart was refused")
 	}
 	rr := httptest.NewRecorder()
@@ -530,11 +530,11 @@ func TestClaimSupersedesEarlierRun(t *testing.T) {
 		t.Fatalf("claim: %v %s", err, rr.Body.String())
 	}
 	for _, e := range []uint64{3, c.Epoch - 1, c.Epoch + 5} {
-		if !s.superseded(req(e)) {
+		if !s.claims.Superseded(req(e)) {
 			t.Errorf("epoch %d not refused after claim %d", e, c.Epoch)
 		}
 	}
-	if s.superseded(req(c.Epoch)) || s.superseded(req(0)) {
+	if s.claims.Superseded(req(c.Epoch)) || s.claims.Superseded(req(0)) {
 		t.Error("the claimed page or an unclaimed client was refused")
 	}
 }

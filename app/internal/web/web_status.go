@@ -8,6 +8,7 @@ import (
 	"slices"
 	"time"
 
+	"github.com/labeth/open-dso-core/webserver"
 	"github.com/labeth/open-sds1000cml/app/internal/analog"
 	"github.com/labeth/open-sds1000cml/app/internal/buildinfo"
 	"github.com/labeth/open-sds1000cml/app/internal/engine"
@@ -175,7 +176,7 @@ func (s *Server) hStatus(w http.ResponseWriter, _ *http.Request) {
 		rep.Off1V *= s.fe.ProbeFactor(0)
 		rep.Off2V *= s.fe.ProbeFactor(1)
 	}
-	writeJSON(w, rep)
+	webserver.WriteJSON(w, rep)
 }
 
 // streamStatus is the decoded stream in /api/status (ADR-PANEL-DECODED-STREAM).

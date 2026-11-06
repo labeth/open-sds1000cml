@@ -20,6 +20,7 @@ import (
 	"time"
 
 	"github.com/labeth/open-dso-core/vxi11srv"
+	"github.com/labeth/open-dso-core/webserver"
 	"github.com/labeth/open-sds1000cml/app/internal/analog"
 	"github.com/labeth/open-sds1000cml/app/internal/buildinfo"
 	"github.com/labeth/open-sds1000cml/app/internal/bus"
@@ -258,7 +259,7 @@ func Run() {
 	go func() {
 		logf("web ui listening on %s", listen)
 		startMark("web up")
-		go web.Precompress()
+		go webserver.Precompress()
 		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			logf("web server: %v", err)
 		}

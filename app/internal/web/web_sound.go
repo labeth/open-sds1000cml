@@ -6,13 +6,12 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"io"
-	"math"
 	"net/http"
 	"reflect"
 	"strconv"
-	"strings"
 	"time"
 
+	"github.com/labeth/open-dso-core/webserver"
 	"github.com/labeth/open-sds1000cml/app/internal/engine"
 	"github.com/labeth/open-sds1000cml/app/internal/panel"
 )
@@ -216,14 +215,14 @@ func writeSoundBin(w http.ResponseWriter, h any, b engine.SoundBlock, deadline t
 	if err != nil {
 		// A scale or level that is no number (a front end not set yet) goes
 		// as null: an empty header broke the page's whole stream.
-		hj, _ = json.Marshal(jsonSafe(reflect.ValueOf(h)))
+		hj, _ = json.Marshal(webserver.JSONSafe(reflect.ValueOf(h)))
 	}
 	buf := make([]byte, 8, 8+len(hj)+4*b.N)
 	copy(buf, soundBinMagic[:])
 	binary.LittleEndian.PutUint32(buf[4:8], uint32(len(hj))) //nolint:gosec // G115: a JSON header of a few KB
 	buf = append(buf, hj...)
 	for _, seg := range [][]uint16{b.Q1, b.Q2} {
-		buf = append(buf, leBytes(seg)...) // the words' little-endian bytes
+		buf = append(buf, webserver.LEBytes(seg)...) // the words' little-endian bytes
 	}
 	w.Header().Set("Content-Type", "application/octet-stream")
 	w.Header().Set("Cache-Control", "no-store")
@@ -300,7 +299,7 @@ func (s *Server) hSound(w http.ResponseWriter, r *http.Request) {
 	var req soundPost
 	if r.Method == http.MethodPost {
 		if err := json.NewDecoder(io.LimitReader(r.Body, 8<<10)).Decode(&req); err != nil {
-			writeBadJSON(w)
+			webserver.WriteBadJSON(w)
 			return
 		}
 		if req.Action == "take_scope" {
@@ -318,7 +317,7 @@ func (s *Server) hSound(w http.ResponseWriter, r *http.Request) {
 		if len(req.Settings) > 0 {
 			cur := sp.SoundSettings()
 			if err := json.Unmarshal(req.Settings, &cur); err != nil {
-				writeJSON(w, map[string]any{"ok": false, "err": "bad settings"})
+				webserver.WriteJSON(w, map[string]any{"ok": false, "err": "bad settings"})
 				return
 			}
 			sp.SetSoundSettings(cur)
@@ -336,111 +335,9 @@ func (s *Server) hSound(w http.ResponseWriter, r *http.Request) {
 	if src, ok := s.sc.(soundSource); ok {
 		rep.Info = src.SoundInfo() // the stream's state now (the service reads it only while it runs)
 	}
-	out := map[string]any{"ok": errText == "", "report": jsonSafe(reflect.ValueOf(rep))}
+	out := map[string]any{"ok": errText == "", "report": webserver.JSONSafe(reflect.ValueOf(rep))}
 	if errText != "" {
 		out["err"] = errText
 	}
-	writeJSON(w, out)
-}
-
-// finiteSeries reports a slice or array of finite floats, or of structs of
-// finite floats, ints, bools and strings without JSON tag options (their
-// encoding/json form is jsonSafe's).
-// TRLC-LINKS: REQ-SDS-274
-func finiteSeries(v reflect.Value) bool {
-	et := v.Type().Elem()
-	switch et.Kind() { //nolint:exhaustive // every other kind is not a series: false
-	case reflect.Float64, reflect.Float32:
-		for i := range v.Len() {
-			if f := v.Index(i).Float(); math.IsNaN(f) || math.IsInf(f, 0) {
-				return false
-			}
-		}
-		return true
-	case reflect.Struct:
-		var floats []int
-		for i := range et.NumField() {
-			f := et.Field(i)
-			if !f.IsExported() || strings.Contains(f.Tag.Get("json"), ",") || f.Anonymous {
-				return false
-			}
-			switch f.Type.Kind() { //nolint:exhaustive // the kinds listed are the safe ones; default refuses the rest
-			case reflect.Float64, reflect.Float32:
-				floats = append(floats, i)
-			case reflect.Int, reflect.Int64, reflect.Int32, reflect.Uint64, reflect.Uint32, reflect.Bool, reflect.String:
-			default:
-				return false
-			}
-		}
-		for i := range v.Len() {
-			e := v.Index(i)
-			for _, k := range floats {
-				if f := e.Field(k).Float(); math.IsNaN(f) || math.IsInf(f, 0) {
-					return false
-				}
-			}
-		}
-		return true
-	}
-	return false
-}
-
-// jsonSafe turns v into plain JSON values with every NaN and infinity as
-// null (encoding/json refuses them): structs by their JSON names.
-// TRLC-LINKS: REQ-SDS-274
-func jsonSafe(v reflect.Value) any {
-	switch v.Kind() { //nolint:exhaustive // the kinds that can hold a NaN; every other value encodes as it is
-	case reflect.Float32, reflect.Float64:
-		f := v.Float()
-		if math.IsNaN(f) || math.IsInf(f, 0) {
-			return nil
-		}
-		return f
-	case reflect.Struct:
-		if t, ok := reflect.TypeAssert[time.Time](v); ok {
-			return t
-		}
-		m := map[string]any{}
-		ty := v.Type()
-		for i := range ty.NumField() {
-			f := ty.Field(i)
-			if !f.IsExported() {
-				continue
-			}
-			name := f.Name
-			if tag := f.Tag.Get("json"); tag != "" {
-				if tag == "-" {
-					continue
-				}
-				if n, _, _ := strings.Cut(tag, ","); n != "" {
-					name = n
-				}
-			}
-			m[name] = jsonSafe(v.Field(i))
-		}
-		return m
-	case reflect.Slice, reflect.Array:
-		if v.Kind() == reflect.Slice && v.IsNil() {
-			return []any{}
-		}
-		// A long series of plain finite numbers (the drift log, the envelope)
-		// goes to encoding/json whole: a value built per element costs the
-		// scope's CPU hundreds of milliseconds a report for a long log.
-		if v.Len() > 16 && finiteSeries(v) {
-			if b, err := json.Marshal(v.Interface()); err == nil {
-				return json.RawMessage(b)
-			}
-		}
-		out := make([]any, v.Len())
-		for i := range out {
-			out[i] = jsonSafe(v.Index(i))
-		}
-		return out
-	case reflect.Pointer, reflect.Interface:
-		if v.IsNil() {
-			return nil
-		}
-		return jsonSafe(v.Elem())
-	}
-	return v.Interface()
+	webserver.WriteJSON(w, out)
 }

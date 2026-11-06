@@ -11,6 +11,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/labeth/open-dso-core/webserver"
 	"github.com/labeth/open-sds1000cml/app/internal/sramcapture"
 )
 
@@ -70,7 +71,7 @@ func (s *Server) registerDecodedCapture(mux *http.ServeMux) {
 			http.Error(w, err.Error(), http.StatusConflict)
 			return
 		}
-		writeJSON(w, id)
+		webserver.WriteJSON(w, id)
 	})
 	mux.HandleFunc("GET /api/decoded/status", func(w http.ResponseWriter, r *http.Request) {
 		id, err := decodedIdentity(r)
@@ -85,7 +86,7 @@ func (s *Server) registerDecodedCapture(mux *http.ServeMux) {
 			http.Error(w, err.Error(), http.StatusConflict)
 			return
 		}
-		writeJSON(w, m)
+		webserver.WriteJSON(w, m)
 	})
 	mux.HandleFunc("POST /api/decoded/end", func(w http.ResponseWriter, r *http.Request) {
 		id, err := decodedIdentity(r)

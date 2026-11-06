@@ -10,6 +10,7 @@ import (
 	"net/http"
 
 	"github.com/labeth/open-dso-core/superres"
+	"github.com/labeth/open-dso-core/webserver"
 	"github.com/labeth/open-sds1000cml/app/internal/engine"
 )
 
@@ -102,7 +103,7 @@ func (s *Server) registerFPGAStack(mux *http.ServeMux) {
 			http.Error(w, err.Error(), http.StatusConflict)
 			return
 		}
-		writeJSON(w, struct {
+		webserver.WriteJSON(w, struct {
 			engine.FPGAStackResult
 			Template []int `json:"template,omitempty"`
 			Stride   int   `json:"template_stride,omitempty"`
