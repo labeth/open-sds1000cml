@@ -1,113 +1,32 @@
-// Package frames fans the engine's single-consumer arena out to multiple
-// readers (web UI + LCD renderer). The arena's Consume contract permits ONE
-// consumer (spec 07 §7: the read slot is private to it) — the fan-out is
-// that consumer, and everyone else works on its deep copy under an RWMutex.
+// Package frames is the SDS1000CML+ engine's frame fan-out: the core's
+// fanout over engine.Frame, with the copy that knows the engine frame's
+// buffers. The arena's Consume contract permits ONE consumer; the fan-out
+// is that consumer, and everyone else works on its deep copy.
 // ENGMODEL-OWNER-UNIT: FU-APP-FRAMES
 package frames
 
 import (
-	"sync"
-	"time"
+	"github.com/labeth/open-dso-core/engine/fanout"
 
 	"github.com/labeth/open-sds1000cml/app/internal/engine"
 )
 
 // Source is the single-consumer frame producer (the engine).
 // TRLC-LINKS: REQ-SDS-020
-type Source interface {
-	Consume() (*engine.Frame, bool)
-}
+type Source = fanout.Source[engine.Frame]
 
 // Fanout holds the newest engine frame for every reader (LCD, web) and wakes
 // those waiting for a fresh one.
 // TRLC-LINKS: REQ-SDS-020
-type Fanout struct {
-	mu     sync.RWMutex
-	latest engine.Frame
-	has    bool
-	wake   chan struct{} // closed+replaced under mu on every fresh snapshot
-}
+type Fanout = fanout.Fanout[engine.Frame]
 
 // New returns an empty fan-out.
 // TRLC-LINKS: REQ-SDS-020
-func New() *Fanout { return &Fanout{wake: make(chan struct{})} }
+func New() *Fanout { return fanout.New(CopyFrame, frameSeq) }
 
-// Run snapshots fresh frames at up to 100 Hz so the live preview is not
-// limited by the former 20 Hz display cadence. Blocks; run as a goroutine.
+// frameSeq is a frame's publish sequence.
 // TRLC-LINKS: REQ-SDS-020
-func (fo *Fanout) Run(src Source, stop <-chan struct{}) {
-	t := time.NewTicker(10 * time.Millisecond)
-	defer t.Stop()
-	for {
-		select {
-		case <-stop:
-			return
-		case <-t.C:
-			f, fresh := src.Consume()
-			if f == nil || !fresh {
-				continue
-			}
-			fo.mu.Lock()
-			CopyFrame(&fo.latest, f)
-			fo.has = true
-			close(fo.wake)                // wake WaitNext parkers; close never blocks,
-			fo.wake = make(chan struct{}) // so a stuck waiter can't stall this tick
-			fo.mu.Unlock()
-		}
-	}
-}
-
-// WaitNext parks until the fan-out snapshots a frame with Seq != last,
-// returning the new Seq, or until timeout elapses, returning whatever Seq is
-// current (possibly last, possibly 0 if nothing has been published). No lock
-// is held while parked, and Run can never block on a parker (it only closes
-// the wake channel). The timer is created once, not per wake iteration.
-// TRLC-LINKS: REQ-SDS-020
-func (fo *Fanout) WaitNext(last uint64, timeout time.Duration) uint64 {
-	// A newer frame already there needs no timer.
-	fo.mu.RLock()
-	if fo.has && fo.latest.Seq != 0 && fo.latest.Seq != last {
-		seq := fo.latest.Seq
-		fo.mu.RUnlock()
-		return seq
-	}
-	fo.mu.RUnlock()
-	deadline := time.NewTimer(timeout)
-	defer deadline.Stop()
-	for {
-		fo.mu.RLock()
-		var seq uint64
-		if fo.has {
-			seq = fo.latest.Seq
-		}
-		wake := fo.wake
-		fo.mu.RUnlock()
-		if seq != 0 && seq != last {
-			return seq
-		}
-		select {
-		case <-wake:
-		case <-deadline.C:
-			return seq
-		}
-	}
-}
-
-// WithFrame runs fn on the latest snapshot under the read lock; fn must not
-// retain the pointer, and must be quick: while it runs the next snapshot
-// waits, and every reader after it (the LCD, the web page's status) waits
-// on that. Long work copies the frame (CopyFrame) and runs outside. fn
-// receives nil when nothing has been published yet.
-// TRLC-LINKS: REQ-SDS-020
-func (fo *Fanout) WithFrame(fn func(*engine.Frame)) {
-	fo.mu.RLock()
-	defer fo.mu.RUnlock()
-	if !fo.has {
-		fn(nil)
-		return
-	}
-	fn(&fo.latest)
-}
+func frameSeq(f *engine.Frame) uint64 { return f.Seq }
 
 // CopyFrame deep-copies src into dst, reusing dst's buffers: the
 // snapshot's copy, and the copy a reader takes for long work (a bus search)
