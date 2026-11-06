@@ -25,9 +25,10 @@ catalog:
     - published bank
     definition: Published bank token, first word ordinal, valid word count and status; stable until correctly released.
   - id: TERM-FRAME
-    name: display and measurement frame
+    name: published frame
     aliases:
-    - published frame
+    - display frame
+    - measurement frame
     definition: Samples plus valid length, sample period, trigger position, filter bandwidth/guard and mode metadata.
   - id: TERM-SETTINGS
     name: instrument settings

@@ -2137,9 +2137,40 @@ behavior:
     from: STATE-RESET
     to: STATE-IDLE
     description: Architectural lifecycle; guards are detailed in RTL and requirements.
+  - type: transitions_to
+    from: STATE-IDLE
+    to: STATE-DECODED-CAPTURING
+    description: A decoded stream is armed with a new event epoch and raw prehistory.
+  - type: transitions_to
+    from: STATE-DECODED-CAPTURING
+    to: STATE-DECODED-RETAINED
+    description: A qualified protocol match after history readiness completes and freezes the raw record.
+  - type: transitions_to
+    from: STATE-DECODED-CAPTURING
+    to: STATE-DECODED-INCOMPLETE
+    description: A framing, sequence or host-buffer error ends the transcript before a trigger.
+  - type: transitions_to
+    from: STATE-DECODED-RETAINED
+    to: STATE-DECODED-INCOMPLETE
+    description: Decoding continues after the trigger, so a transcript error can still end it; the retained record stays
+      retrievable.
+  - type: transitions_to
+    from: STATE-DECODED-RETAINED
+    to: STATE-IDLE
+    description: Explicit session end halts acquisition and event transport.
+  - type: transitions_to
+    from: STATE-DECODED-INCOMPLETE
+    to: STATE-IDLE
+    description: Explicit session end halts acquisition and event transport.
   - type: triggered_by
     from: STATE-CAPTURING
     to: EVT-START
+  - type: triggered_by
+    from: STATE-DECODED-CAPTURING
+    to: EVT-START
+  - type: triggered_by
+    from: STATE-DECODED-RETAINED
+    to: EVT-TRIGGER
   - type: triggered_by
     from: STATE-FROZEN
     to: EVT-COMPLETE
