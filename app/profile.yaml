@@ -1,0 +1,93 @@
+# The SDS1102CML+ as this firmware drives it, in the core's profile schema
+# (open-dso-core/profile). Sources: specs/00-overview.md (the instrument),
+# 04-timebase-and-bands.md (the ladder), 08-front-panel.md (keys, knobs,
+# lamps), and the app's own constants named beside each value.
+
+channels: 2
+
+# 8-bit converter codes; mid-screen is code 128, 25 codes per division.
+format: {bits: 8, storage: u8, shift: 0, frac: 0, min: 0, max: 255, mid: 128}
+
+# 1 GSa/s is the nominal rate; the record holds samples 2 ns apart on both
+# channels (the fast native bands), so that is the rate the core may plan with.
+rates:
+  - samples_per_s: 500e6
+    max_channels: 2
+
+# One finalized record (engine maxRecordCols = iface.PretrigMax + 2).
+max_depth: 20480
+bandwidth: 100e6
+
+# Full-rate records, decimated records (with Q8.8 precision words) and
+# min/max envelopes.
+content: [raw-full-rate, raw-decimated, peak-pairs]
+raw_access:
+  max_depth: 20480
+
+# The nodes the FPGA images implement between them; each image narrows them.
+triggers:
+  nodes:
+    edge: {slopes: [rising, falling]}
+    pulse: {qual_ops: [shorter, longer, inside, outside]}
+    slope: {slopes: [rising, falling], qual_ops: [shorter, longer, inside, outside]}
+    video: {}
+    zone: {}
+    protocol: {}
+    symbol: {}
+    sequence: {}
+    frame-start: {}
+  max_stages: 1
+  protocols: [uart, spi, i2c, manchester, usbls, mil1553, sent]
+  sources: [analog]
+
+display:
+  w: 800
+  h: 480
+  format: rgb565
+  divs_h: 10
+  divs_v: 8
+
+inputs:
+  keys: [run, single, auto, f1, f2, f3, f4, f5, trigmenu, acquire, display, horizmenu,
+    menuonoff, measure, cursors, math, defaultsetup, ref, saverecall, print, help, utility,
+    ch1, ch2, set50, force, ch1pospush, ch2pospush, horizpospush, tdivpush, ch1vdivpush,
+    ch2vdivpush, triglevelpush, adjustpush]
+  knobs: [horizpos, ch2pos, tdiv, ch2vdiv, ch1vdiv, adjust, triglevel, ch1pos]
+  lamps: [cursors, intensity, ch1, math, ch2, ref, measure, acquire, display, saverecall,
+    utility, run, stop, single]
+
+supervisor:
+  watchdog: dev-watchdog
+  restart: watchdog
+
+# The FPGA stacker and the stream images are image features (hal.Images),
+# not optional hardware.
+options: []
+
+budget:
+  cores: 1
+  target_fps: 60
+  display_hz: 52        # the LCD's fixed cadence
+  quiet_acquire: true   # one core shares its time with arm-settle and drain
+
+# This firmware loads its own FPGA images.
+stage: 2
+
+# engine/bands.go: the 33-detent ladder (the fast decade uses 25 ns, not
+# 20 ns); native full-rate records up to 1 us/div; roll from 100 ms/div.
+timebase:
+  tdiv_s: [1e-9, 2e-9, 5e-9, 10e-9, 25e-9, 50e-9, 100e-9, 200e-9, 500e-9,
+    1e-6, 2e-6, 5e-6, 10e-6, 20e-6, 50e-6, 100e-6, 200e-6, 500e-6,
+    1e-3, 2e-3, 5e-3, 10e-3, 20e-3, 50e-3, 100e-3, 200e-3, 500e-3,
+    1, 2, 5, 10, 20, 50]
+  full_rate_tdiv_s: 1e-6
+  roll_from_s: 100e-3
+
+limits:
+  setup_slots: 20     # the *SAV/*RCL range
+  ref_slots: 2        # REF A and REF B
+  record_max: 20480
+
+variants:
+  - name: sds1102cml-plus
+    match: {model: SDS1102CML+}
