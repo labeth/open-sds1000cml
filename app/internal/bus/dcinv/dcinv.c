@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0-or-later
 // dcinv — DMA cache-invalidate helper for the owned-FPGA EDMA drain.
 // The AM3352 EDMA writes DRAM as a bus master (not through the CPU cache), so a
 // reused CPU-cached buffer reads back stale data. This misc/char driver exposes an
