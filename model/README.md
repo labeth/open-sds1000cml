@@ -18,9 +18,14 @@ serves (`TRLC-LINKS`). CI validates the model and those links across the reposit
 `.github/workflows/ci.yml` (`ENGMODEL_VERSION`, v0.10.0):
 
 ```sh
-engdoc --model model/engmod.yml --requirements model/requirements.yml \
-  --design model/views.yml --code-root .. --out /tmp/ARCHITECTURE.adoc
+cd model
+engdoc --model engmod.yml --requirements requirements.yml \
+  --design views.yml --code-root .. --lock check --out /tmp/ARCHITECTURE.adoc
 ```
+
+Run it from `model/`: the code scan resolves `--code-root` from the manifest's directory and the test
+scan from the working directory, so only there do both reach the repository and the requirements
+trace to their tests as well as their code.
 
 The model is held to the life-cycle tier `product` with the foundation and security bundles
 (`lifecycle` in `engmod.yml`, decision `DEC-TIER-PRODUCT`), and requirement links are strict: every
