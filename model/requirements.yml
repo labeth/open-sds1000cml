@@ -7,7 +7,7 @@ requirements:
 - id: REQ-SDS-001
   title: Single bus owner
   text: The instrument shall serialize acquisition and staged GPMC operations through one engine owner.
-  status: draft
+  status: implemented
   derived: true
   derivedRationale: 'Design constraint from the bus hazard (RISK-BUS, CTRL-BUS): overlapping GPMC transactions stall
     the processor, so one owner serializes them. It serves every capability that touches the FPGA rather than one
@@ -34,7 +34,7 @@ requirements:
 - id: REQ-SDS-002
   title: Inherited descriptors
   text: The instrument shall reuse boot GPMC and key descriptors without freshly opening or closing them.
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-ACQUISITION
   category: functional
@@ -58,7 +58,7 @@ requirements:
   title: One startup path
   text: The instrument shall start one way only, under the OTA agent and with its embedded images, loading the general
     image, verifying the SRAM transport and starting the acquisition worker before any capture command.
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-SUPERVISED-OPERATION
   category: functional
@@ -77,7 +77,7 @@ requirements:
 - id: REQ-SDS-004
   title: Fabric identity
   text: The instrument shall verify the loaded image identity before starting its acquisition engine.
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-FPGA-IMAGES
   category: functional
@@ -101,7 +101,7 @@ requirements:
 - id: REQ-SDS-005
   title: Volatile configuration
   text: The instrument shall configure the Cyclone through CS3 selector 7 during controlled bring-up.
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-FPGA-IMAGES
   category: functional
@@ -121,7 +121,7 @@ requirements:
 - id: REQ-SDS-006
   title: Owner panic containment
   text: The instrument shall park a panicked acquisition owner while preserving descriptors for supervisor recovery.
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-ACQUISITION
   category: functional
@@ -138,7 +138,7 @@ requirements:
 - id: REQ-SDS-007
   title: Frame ownership
   text: The instrument shall handoff captured frames using the preallocated three-slot arena.
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-ACQUISITION
   category: functional
@@ -161,7 +161,7 @@ requirements:
 - id: REQ-SDS-008
   title: Responsive capture control
   text: The instrument shall service control requests during bounded capture waits.
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-ACQUISITION
   category: functional
@@ -190,7 +190,7 @@ requirements:
 - id: REQ-SDS-009
   title: Frame metadata
   text: The instrument shall set the sample and mode metadata required to interpret each published frame.
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-ACQUISITION
   category: functional
@@ -220,7 +220,7 @@ requirements:
 - id: REQ-SDS-010
   title: Timebase planning
   text: The instrument shall select a capture and display plan for the requested timebase.
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-ACQUISITION
   category: functional
@@ -269,7 +269,7 @@ requirements:
 - id: REQ-SDS-011
   title: Trigger qualification
   text: The instrument shall qualify capture publication using the selected trigger policy.
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-TRIGGER
   category: functional
@@ -304,7 +304,7 @@ requirements:
   title: Acquisition modes
   text: The instrument shall apply the supported averaging, enhanced-resolution and peak policies for the active
     acquisition path.
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-ACQUISITION
   category: functional
@@ -332,7 +332,7 @@ requirements:
 - id: REQ-SDS-013
   title: Serial trigger gates
   text: The instrument shall gate captured-frame publication using registered protocol matchers.
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-TRIGGER
   category: functional
@@ -360,7 +360,7 @@ requirements:
 - id: REQ-SDS-014
   title: Zone and mask gates
   text: The instrument shall evaluate configured zones and golden masks against captured samples.
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-TRIGGER
   category: functional
@@ -395,7 +395,7 @@ requirements:
 - id: REQ-SDS-015
   title: Absolute analog state
   text: The instrument shall emit seeded absolute analog range and gain settings through SPI.
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-ANALOG-FRONT-END
   category: functional
@@ -416,7 +416,7 @@ requirements:
 - id: REQ-SDS-016
   title: Calibration
   text: The instrument shall decode and validate per-unit calibration data with a fallback path.
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-ANALOG-FRONT-END
   category: functional
@@ -438,7 +438,7 @@ requirements:
 - id: REQ-SDS-017
   title: Measurements
   text: The instrument shall compute voltage and timing measurements from the shared measurement core.
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-MEASUREMENT
   category: functional
@@ -461,7 +461,7 @@ requirements:
 - id: REQ-SDS-018
   title: Protocol decoding
   text: The instrument shall provide the ten protocol decoder families present in the source.
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-PROTOCOL-DECODE
   category: functional
@@ -563,7 +563,7 @@ requirements:
   title: Repetitive-waveform reconstruction
   text: The instrument shall reconstruct repetitive waveform samples using the configured alignment and stacking
     method.
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-ENHANCED-RESOLUTION
   category: functional
@@ -620,7 +620,7 @@ requirements:
 - id: REQ-SDS-020
   title: Frame consumers
   text: The instrument shall share one engine frame stream with display and remote consumers.
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-ACQUISITION
   category: functional
@@ -639,7 +639,7 @@ requirements:
   text: The instrument shall render instrument data with bitmap text and scaled readout labels on an 800 by 480
     RGB565 little-endian surface, export screen images, and present complete back buffers through the Linux framebuffer
     interface.
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-FRONT-PANEL
   category: functional
@@ -718,7 +718,7 @@ requirements:
 - id: REQ-SDS-022
   title: Panel capabilities
   text: The instrument shall expose panel actions only through capabilities supported by the selected fabric.
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-FRONT-PANEL
   category: functional
@@ -740,7 +740,7 @@ requirements:
   title: Web transport
   text: The instrument shall serve settings and binary frame data through the web endpoint and decode binary frame
     payloads for browser consumers.
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-WEB-UI
   category: functional
@@ -768,7 +768,7 @@ requirements:
 - id: REQ-SDS-024
   title: Remote instrument commands
   text: The instrument shall serve implemented SCPI commands and waveform transfers through VXI-11.
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-REMOTE-PROGRAMMING
   category: functional
@@ -804,7 +804,7 @@ requirements:
 - id: REQ-SDS-025
   title: Capture health
   text: The instrument shall gate initial health on coherent capture and refresh health on advancing engine progress.
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-SUPERVISED-OPERATION
   category: functional
@@ -832,7 +832,7 @@ requirements:
 - id: REQ-SDS-026
   title: Agent watchdog
   text: The instrument shall service the hardware watchdog independently of application health.
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-SUPERVISED-OPERATION
   category: functional
@@ -850,7 +850,7 @@ requirements:
   title: Factory takeover policy
   text: The instrument shall gate ordinary factory takeover on an inherited GPMC descriptor and idle confirmation,
     with explicit forced-takeover and already-taken-over reclamation exceptions.
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-SUPERVISED-OPERATION
   category: functional
@@ -883,7 +883,7 @@ requirements:
   title: Application slot supervision and recovery ladder
   text: The instrument shall select application slots, classify supervised outcomes and apply the conditional recovery
     ladder.
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-SUPERVISED-OPERATION
   category: functional
@@ -912,7 +912,7 @@ requirements:
 - id: REQ-SDS-029
   title: Conditional slot-update integrity
   text: The instrument shall compare a supplied SHA-256 digest before application or agent slot updates.
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-FIRMWARE-UPDATE
   category: functional
@@ -938,7 +938,7 @@ requirements:
 - id: REQ-SDS-030
   title: Boot anchor
   text: The instrument shall launch the agent through the USB startup chain.
-  status: draft
+  status: approved
   realizes:
   - CAP-SDS-SUPERVISED-OPERATION
   category: functional
@@ -958,7 +958,7 @@ requirements:
 - id: REQ-SDS-032
   title: SRAM identity
   text: The instrument shall reject unsupported SRAM identities and invalid capture geometry before writes.
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-ACQUISITION
   category: functional
@@ -975,7 +975,7 @@ requirements:
 - id: REQ-SDS-033
   title: Frozen recall
   text: The instrument shall preserve a frozen record across repeated and partial host recalls.
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-ACQUISITION
   category: functional
@@ -995,7 +995,7 @@ requirements:
 - id: REQ-SDS-034
   title: Timing qualification gate
   text: The instrument shall verify complete counter recall when selecting faster revision-10 GPMC timing.
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-ACQUISITION
   category: functional
@@ -1018,7 +1018,7 @@ requirements:
 - id: REQ-SDS-035
   title: Stream continuity
   text: The instrument shall validate bank ordinals and retain ownership until copied samples are safe.
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-ACQUISITION
   category: functional
@@ -1042,7 +1042,7 @@ requirements:
 - id: REQ-SDS-036
   title: Independent precision rate
   text: The instrument shall retain the selected precision sample rate when the view timebase changes.
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-ENHANCED-RESOLUTION
   category: functional
@@ -1063,7 +1063,7 @@ requirements:
 - id: REQ-SDS-037
   title: Precision compensation
   text: The instrument shall preserve Q8.8 fractions and record boundaries during FIR conditioning.
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-ENHANCED-RESOLUTION
   category: functional
@@ -1090,7 +1090,7 @@ requirements:
 - id: REQ-SDS-038
   title: ADC lane mapping
   text: The instrument shall map eighty sampled lanes into the declared ten logical ADC bytes.
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-ACQUISITION
   category: functional
@@ -1108,7 +1108,7 @@ requirements:
 - id: REQ-SDS-039
   title: Chronological interleave
   text: The instrument shall order the five-phase converter stream chronologically before SRAM packing.
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-ACQUISITION
   category: functional
@@ -1129,7 +1129,7 @@ requirements:
   title: Precision reduction
   text: The instrument shall support raw storage and legal power-of-two precision reductions without truncating
     Q8.8 fractions.
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-ENHANCED-RESOLUTION
   category: functional
@@ -1162,7 +1162,7 @@ requirements:
 - id: REQ-SDS-041
   title: Capture geometry
   text: The instrument shall reject zero posthistory and total capture counts exceeding SRAM capacity.
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-ACQUISITION
   category: functional
@@ -1180,7 +1180,7 @@ requirements:
 - id: REQ-SDS-042
   title: Finite pre/post capture
   text: The instrument shall retain a bounded pretrigger ring and finish the requested posttrigger history.
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-ACQUISITION
   category: functional
@@ -1198,7 +1198,7 @@ requirements:
 - id: REQ-SDS-043
   title: Recall bounds
   text: The instrument shall accept only recall windows contained in the frozen record.
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-ACQUISITION
   category: functional
@@ -1215,7 +1215,7 @@ requirements:
 - id: REQ-SDS-044
   title: SRAM address accounting
   text: The instrument shall count every transport clock advance including pipeline flush pulses.
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-ACQUISITION
   category: functional
@@ -1237,7 +1237,7 @@ requirements:
 - id: REQ-SDS-049
   title: Host packet packing
   text: The instrument shall pack valid source words while preserving an odd final word.
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-ACQUISITION
   category: functional
@@ -1254,7 +1254,7 @@ requirements:
 - id: REQ-SDS-052
   title: Host publication ownership
   text: The instrument shall release a published bank only with its matching current token.
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-ACQUISITION
   category: functional
@@ -1274,7 +1274,7 @@ requirements:
   title: Retained record metadata
   text: The instrument shall preserve independently frozen record metadata across rejected requests and idle setting
     edits.
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-ACQUISITION
   category: functional
@@ -1291,7 +1291,7 @@ requirements:
 - id: REQ-SDS-058
   title: Epoch reset
   text: The instrument shall invalidate in-flight ownership and command state across reset or loss of clock lock.
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-ACQUISITION
   category: functional
@@ -1308,7 +1308,7 @@ requirements:
 - id: REQ-SDS-066
   title: Bode transfer measurements
   text: The instrument shall compute transfer magnitude and phase for externally driven sweep points.
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-SIGNAL-ANALYSIS
   category: functional
@@ -1336,7 +1336,7 @@ requirements:
 - id: REQ-SDS-067
   title: Eye and jitter analysis
   text: The instrument shall stop incompatible eye accumulation when channel or calibration scale changes.
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-SIGNAL-ANALYSIS
   category: functional
@@ -1355,7 +1355,7 @@ requirements:
 - id: REQ-SDS-068
   title: Spectrogram
   text: The instrument shall maintain the configured FFT-over-time waterfall.
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-SIGNAL-ANALYSIS
   category: functional
@@ -1404,7 +1404,7 @@ requirements:
 - id: REQ-SDS-069
   title: Waveform export
   text: The instrument shall encode supported calibrated waveform export formats.
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-WEB-UI
   category: functional
@@ -1435,7 +1435,7 @@ requirements:
 - id: REQ-SDS-070
   title: Spectral analysis
   text: The instrument shall compute the selected channel spectrum with frequency-scaled peak output.
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-SIGNAL-ANALYSIS
   category: functional
@@ -1489,7 +1489,7 @@ requirements:
 - id: REQ-SDS-071
   title: WebGL rendering
   text: The instrument shall render browser trace surfaces through the graphics pipeline.
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-WEB-UI
   category: functional
@@ -1512,7 +1512,7 @@ requirements:
 - id: REQ-SDS-072
   title: Settings validation
   text: The instrument shall normalize persisted instrument settings before applying hardware-facing values.
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-SETTINGS
   category: functional
@@ -1530,7 +1530,7 @@ requirements:
 - id: REQ-SDS-073
   title: Go and browser parity
   text: The instrument shall preserve shared decoder semantics between Go and JavaScript implementations.
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-PROTOCOL-DECODE
   category: functional
@@ -1547,7 +1547,7 @@ requirements:
 - id: REQ-SDS-074
   title: Interleave calibration phase
   text: The instrument shall apply interleave correction only with valid record-phase metadata.
-  status: draft
+  status: approved
   realizes:
   - CAP-SDS-ANALOG-FRONT-END
   category: functional
@@ -1569,7 +1569,7 @@ requirements:
 - id: REQ-SDS-081
   title: CPU-visible DMA
   text: The instrument shall make DMA output coherent before CPU consumers validate or publish samples.
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-ACQUISITION
   category: functional
@@ -1593,7 +1593,7 @@ requirements:
   title: Legacy SRAM control
   text: The instrument shall serialize legacy SRAM control commands through the CS1 register protocol with acknowledgement
     and cancellable waits.
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-ACQUISITION
   category: functional
@@ -1612,7 +1612,7 @@ requirements:
   title: Legacy SRAM status
   text: The instrument shall expose legacy SRAM acquisition state, record geometry, sample format, sample rate and
     data-fault metadata.
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-ACQUISITION
   category: functional
@@ -1630,7 +1630,7 @@ requirements:
 - id: REQ-SDS-084
   title: Legacy ADC snapshot
   text: The instrument shall return ten logical ADC bytes after the legacy snapshot command completes.
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-ACQUISITION
   category: functional
@@ -1648,7 +1648,7 @@ requirements:
   title: Process descriptor inspection
   text: The instrument shall expose device-holder identities, process ancestry and process liveness through read-only
     process inspection.
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-SUPERVISED-OPERATION
   category: functional
@@ -1666,7 +1666,7 @@ requirements:
   title: Watchdog lifecycle
   text: The instrument shall support retrying watchdog acquisition, reporting keepalive status and disarming the
     watchdog on a clean agent stop.
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-SUPERVISED-OPERATION
   category: functional
@@ -1683,7 +1683,7 @@ requirements:
 - id: REQ-SDS-087
   title: Application slot store
   text: The instrument shall maintain A/B application binaries and active and confirmed slot pointers.
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-FIRMWARE-UPDATE
   category: functional
@@ -1701,7 +1701,7 @@ requirements:
   title: Agent runtime configuration
   text: The instrument shall resolve agent identity, transport, storage paths and supervision settings using device
     defaults and environment overrides.
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-SUPERVISED-OPERATION
   category: functional
@@ -1719,7 +1719,7 @@ requirements:
   title: Settings snapshot persistence
   text: The instrument shall persist versioned setup snapshots and fall back to defaults when a snapshot cannot
     be loaded.
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-SETTINGS
   category: functional
@@ -1739,7 +1739,7 @@ requirements:
   title: Debounced settings saving
   text: The instrument shall save changed settings after the settling interval and flush pending changes when the
     saver stops.
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-SETTINGS
   category: functional
@@ -1758,7 +1758,7 @@ requirements:
   title: Calibration DC diagnostic
   text: The instrument shall compute DC diagnostic volts using (mean ADC code - 128) * calibration gain / 110 for
     the selected channel and range.
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-ANALOG-FRONT-END
   category: functional
@@ -1777,7 +1777,7 @@ requirements:
   title: Configuration container validation
   text: The instrument shall validate passive-serial container length and bit order before configuration writes
     unless the corresponding explicit override is selected.
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-FPGA-IMAGES
   category: functional
@@ -1797,7 +1797,7 @@ requirements:
   title: Calibrated offset conversion
   text: The instrument shall convert requested offset volts to a calibrated DAC code with the implemented per-tier
     slope and range clamps.
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-ANALOG-FRONT-END
   category: functional
@@ -1820,7 +1820,7 @@ requirements:
   title: Software display coupling
   text: The instrument shall apply the selected DC, AC or ground display transform without issuing a coupling relay
     write.
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-ANALOG-FRONT-END
   category: functional
@@ -1838,7 +1838,7 @@ requirements:
 - id: REQ-SDS-097
   title: Probe display multiplier
   text: The instrument shall retain each channel probe multiplier independently of analog gain programming.
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-ANALOG-FRONT-END
   category: functional
@@ -1858,7 +1858,7 @@ requirements:
   title: Trigger calibration selection
   text: The instrument shall select the channel and detent trigger calibration for probe-referred trigger voltage
     conversion.
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-TRIGGER
   category: functional
@@ -1880,7 +1880,7 @@ requirements:
   title: Ideal precision response limits
   text: The instrument shall report ideal white-noise gain and normalized bandwidth for supported positive precision
     reductions.
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-ENHANCED-RESOLUTION
   category: functional
@@ -1903,7 +1903,7 @@ requirements:
 - id: REQ-SDS-100
   title: Factory instrument command transport
   text: The instrument shall provide a VXI-11 client for factory command writes and query replies used during takeover.
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-SUPERVISED-OPERATION
   category: functional
@@ -1927,7 +1927,7 @@ requirements:
 - id: REQ-SDS-101
   title: OTA JSON command envelope
   text: The instrument shall define JSON request and response envelopes for OTA command transport.
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-FIRMWARE-UPDATE
   category: functional
@@ -1950,7 +1950,7 @@ requirements:
   title: Platform status collection
   text: The instrument shall collect kernel, IPv4, memory, uptime, load and OTA-filesystem space facts for status
     reporting.
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-SUPERVISED-OPERATION
   category: functional
@@ -1969,7 +1969,7 @@ requirements:
 - id: REQ-SDS-103
   title: Read-only inherited GPMC access
   text: The instrument shall expose read-only factory-register access through the inherited GPMC descriptor.
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-SUPERVISED-OPERATION
   category: functional
@@ -1993,7 +1993,7 @@ requirements:
 - id: REQ-SDS-104
   title: Persisted agent control flags
   text: The instrument shall serialize agent control flags to a JSON state file and report persistence failures.
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-SUPERVISED-OPERATION
   category: functional
@@ -2015,7 +2015,7 @@ requirements:
 - id: REQ-SDS-105
   title: Agent health-file liveness
   text: The instrument shall observe health-file changes and apply first-report grace and subsequent staleness deadlines.
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-SUPERVISED-OPERATION
   category: functional
@@ -2039,7 +2039,7 @@ requirements:
   title: Chunked file upload sessions
   text: The instrument shall receive file chunks into upload sessions and validate declared size and digest before
     destination replacement.
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-FIRMWARE-UPDATE
   category: functional
@@ -2064,7 +2064,7 @@ requirements:
 - id: REQ-SDS-107
   title: TCP agent command transport
   text: The instrument shall dispatch JSON command requests received over TCP and return JSON response lines.
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-FIRMWARE-UPDATE
   category: functional
@@ -2088,7 +2088,7 @@ requirements:
 - id: REQ-SDS-108
   title: NATS agent command and event transport
   text: The instrument shall dispatch NATS command requests and publish lifecycle events and periodic status heartbeats.
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-FIRMWARE-UPDATE
   category: functional
@@ -2113,7 +2113,7 @@ requirements:
 - id: REQ-SDS-109
   title: Host command transport
   text: The instrument shall provide host-side TCP and NATS command transports with structured device responses.
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-FIRMWARE-UPDATE
   category: functional
@@ -2136,7 +2136,7 @@ requirements:
 - id: REQ-SDS-110
   title: Host file transfer and update initiation
   text: The instrument shall provide host-side file transfer and update initiation commands.
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-FIRMWARE-UPDATE
   category: functional
@@ -2161,7 +2161,7 @@ requirements:
 - id: REQ-SDS-111
   title: Host embedded broker startup
   text: The instrument shall provide a host-side embedded NATS broker startup command.
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-FIRMWARE-UPDATE
   category: functional
@@ -2181,7 +2181,7 @@ requirements:
 - id: REQ-SDS-112
   title: Host relay recovery control
   text: The instrument shall provide host-side relay commands for external power-cycle recovery.
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-FIRMWARE-UPDATE
   category: functional
@@ -2202,7 +2202,7 @@ requirements:
 - id: REQ-SDS-113
   title: Agent RPC dispatch and serialization
   text: The instrument shall dispatch agent JSON commands and return structured success or error responses.
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-FIRMWARE-UPDATE
   category: functional
@@ -2228,7 +2228,7 @@ requirements:
 - id: REQ-SDS-114
   title: Agent diagnostic responses
   text: The instrument shall expose identity, status and optional register-probe results through agent diagnostics.
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-FIRMWARE-UPDATE
   category: functional
@@ -2253,7 +2253,7 @@ requirements:
 - id: REQ-SDS-115
   title: Agent command execution and log reads
   text: The instrument shall provide command execution and log-tail operations through the agent.
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-FIRMWARE-UPDATE
   category: functional
@@ -2277,7 +2277,7 @@ requirements:
 - id: REQ-SDS-116
   title: Agent file-read chunks
   text: The instrument shall return file-read chunks through the agent.
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-FIRMWARE-UPDATE
   category: functional
@@ -2297,7 +2297,7 @@ requirements:
 - id: REQ-SDS-117
   title: Agent application control requests
   text: The instrument shall provide guarded application start, stop and restart requests.
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-SUPERVISED-OPERATION
   category: functional
@@ -2321,7 +2321,7 @@ requirements:
 - id: REQ-SDS-118
   title: Agent application slot installation
   text: The instrument shall install application payloads and select installed application slots.
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-FIRMWARE-UPDATE
   category: functional
@@ -2343,7 +2343,7 @@ requirements:
 - id: REQ-SDS-119
   title: Agent self-update and restart handoff
   text: The instrument shall stage an agent slot update and request a clean exit for boot-loop handoff.
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-FIRMWARE-UPDATE
   category: functional
@@ -2367,7 +2367,7 @@ requirements:
 - id: REQ-SDS-120
   title: Agent untakeover control
   text: The instrument shall provide an untakeover control that hands the scope back to the factory app at the next power-on.
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-SUPERVISED-OPERATION
   category: functional
@@ -2386,7 +2386,7 @@ requirements:
 - id: REQ-SDS-121
   title: Agent reboot confirmation gate
   text: The instrument shall require a decoded confirmation flag before requesting reboot through the agent.
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-FIRMWARE-UPDATE
   category: functional
@@ -2405,7 +2405,7 @@ requirements:
 - id: REQ-SDS-122
   title: Agent runtime initialization and shutdown
   text: The instrument shall initialize agent state and services and accept a stop notification.
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-SUPERVISED-OPERATION
   category: functional
@@ -2429,7 +2429,7 @@ requirements:
 - id: REQ-SDS-123
   title: Agent event callback delivery
   text: The instrument shall log agent events and deliver them to an optional registered callback.
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-FIRMWARE-UPDATE
   category: functional
@@ -2448,7 +2448,7 @@ requirements:
 - id: REQ-SDS-124
   title: Agent command-line dispatch
   text: The instrument shall dispatch supported agent command-line modes and reject unknown subcommands.
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-FIRMWARE-UPDATE
   category: functional
@@ -2469,7 +2469,7 @@ requirements:
   title: Browser presentation and Bode view controls
   text: The instrument shall format browser labels and present Bode point sets with arm, clear, channel and enlarge
     controls.
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-SIGNAL-ANALYSIS
   category: functional
@@ -2500,7 +2500,7 @@ requirements:
 - id: REQ-SDS-126
   title: Cross-frame uniformity telemetry
   text: The instrument shall report cross-frame sample dispersion for centred and fixed-position windows.
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-ACQUISITION
   category: functional
@@ -2524,7 +2524,7 @@ requirements:
   title: Engine diagnostics and tuning
   text: The instrument shall expose engine snapshots, acquisition and command history, owner-serviced diagnostics
     and device-clock tuning controls.
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-ACQUISITION
   category: functional
@@ -2544,7 +2544,7 @@ requirements:
   title: Engine capture recovery telemetry
   text: The instrument shall count dead and degraded captures, periodically reprogram the legacy capture engine
     and report wedge or stuck-suspect state under the implemented evidence conditions.
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-ACQUISITION
   category: functional
@@ -2569,7 +2569,7 @@ requirements:
   title: GPMC register and checked-pop access
   text: The instrument shall encode inherited-descriptor register transactions, guard normal writes and expose checked
     pop operations that report transfer failures.
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-ACQUISITION
   category: functional
@@ -2588,7 +2588,7 @@ requirements:
   title: CS1 read-timing sweep
   text: The instrument shall validate supported CS1 read-timing candidates, compare repeated candidate and baseline
     drains and attempt restoration of the starting timing between sweep steps.
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-ACQUISITION
   category: functional
@@ -2610,7 +2610,7 @@ requirements:
   title: GPMC region survey
   text: The instrument shall expose chip-select configuration decoding and explicitly requested read-only mapped
     region samples.
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-ACQUISITION
   category: functional
@@ -2629,7 +2629,7 @@ requirements:
   title: Panel event dispatch and indicators
   text: The instrument shall translate matrix edges and queued named actions into instrument commands, resynchronize
     knob state from authoritative snapshots and expose running, channel and mode indicators.
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-FRONT-PANEL
   category: functional
@@ -2657,7 +2657,7 @@ requirements:
   title: Panel menus and shared display state
   text: The instrument shall expose softkey menus, bounded control ladders, cursor and decode settings, and shared
     display state for rendering and setup restoration.
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-FRONT-PANEL
   category: functional
@@ -2684,7 +2684,7 @@ requirements:
   title: Panel autoset sweep
   text: The instrument shall offer a cancellable autoset sweep using live-frame measurements to select timebase,
     vertical scale, centering and trigger level, with a no-signal scale restoration path.
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-AUTOSET
   category: functional
@@ -2705,7 +2705,7 @@ requirements:
   title: Panel reference snapshots
   text: The instrument shall capture and expose two display-code reference slots with independent visibility and
     a clear operation.
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-COMPARE
   category: functional
@@ -2726,7 +2726,7 @@ requirements:
   title: Panel mask acquisition workflow
   text: The instrument shall offer a background golden-mask build from distinct eligible frames on the trigger-source
     channel and controls for mask mode, tolerance and failure counters.
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-COMPARE
   category: functional
@@ -2747,7 +2747,7 @@ requirements:
   title: Panel super-resolution workflow
   text: The instrument shall seed a reference stack, expose channel and gate controls, accumulate new frames, and
     publish compensated review means on selected stop criteria or sample-rate changes.
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-ENHANCED-RESOLUTION
   category: functional
@@ -2771,7 +2771,7 @@ requirements:
   title: Reference-locked interpolation stack
   text: The instrument shall support gated reference matching, occurrence accumulation on a fine interpolation grid,
     reference-preserving reset and resolution-estimate reporting.
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-ENHANCED-RESOLUTION
   category: functional
@@ -2796,7 +2796,7 @@ requirements:
   title: Super-resolution magnitude compensation
   text: The instrument shall offer regularized magnitude compensation using the stored response curve, configurable
     gain limits and budget-derived target selection while restoring gap locations in the result.
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-ENHANCED-RESOLUTION
   category: functional
@@ -2828,7 +2828,7 @@ requirements:
   title: Web hosting routing and client epoch
   text: The instrument shall expose its default web assets and API routes and provide a client epoch claim checked
     by frame requests.
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-WEB-UI
   category: functional
@@ -2851,7 +2851,7 @@ requirements:
   title: Web control and configuration dispatch
   text: The instrument shall dispatch web control requests to acquisition, analog, panel and analysis owners with
     the validation implemented by each route.
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-WEB-UI
   category: functional
@@ -2877,7 +2877,7 @@ requirements:
   title: Web frame shaping and binary transport
   text: The instrument shall shape captured frame data into windowed or deep-record binary responses with optional
     raw and precision payloads.
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-ACQUISITION
   category: functional
@@ -2910,7 +2910,7 @@ requirements:
   title: Web status scaling and measurement cache
   text: The instrument shall expose status and calibrated display scales and cache derived measurements using its
     frame and configuration key.
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-MEASUREMENT
   category: functional
@@ -2936,7 +2936,7 @@ requirements:
   title: Application service composition
   text: The instrument shall compose its acquisition, front-end, display, settings and remote-control services
     in one configuration.
-  status: draft
+  status: implemented
   derived: true
   derivedRationale: 'Design constraint of the one-app rule (ADR-ONE-APP): the services are composed in one configuration
     so the application has one path. It is a property of the application''s structure, not a capability.'
@@ -2959,7 +2959,7 @@ requirements:
   title: Device display and screenshot composition
   text: The instrument shall assemble display state from acquisition and UI owners and render panel and screenshot
     surfaces from that state.
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-FRONT-PANEL
   category: functional
@@ -2984,7 +2984,7 @@ requirements:
 - id: REQ-SDS-174
   title: Application version label
   text: The instrument shall expose its application version, commit and build-time labels from link-time metadata.
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-FIRMWARE-UPDATE
   category: functional
@@ -3003,7 +3003,7 @@ requirements:
   title: Host operations command dispatch
   text: The instrument shall provide a host command interface for device RPC, updates, discovery, observation, SCPI
     and external power operations.
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-FIRMWARE-UPDATE
   category: functional
@@ -3025,7 +3025,7 @@ requirements:
   title: USB anchor agent-slot recovery
   text: The instrument shall use the USB anchor to select and respawn agent slots and apply its duration-based confirmation,
     intent and crash-loop recovery policy.
-  status: draft
+  status: approved
   realizes:
   - CAP-SDS-SUPERVISED-OPERATION
   category: functional
@@ -3049,7 +3049,7 @@ requirements:
 - id: REQ-SDS-178
   title: OTA version label
   text: The instrument shall expose OTA version, commit and build-time labels from link-time metadata.
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-FIRMWARE-UPDATE
   category: functional
@@ -3069,7 +3069,7 @@ requirements:
   title: Required browser test dependencies
   text: The instrument shall provide test helpers that require Node and turn unavailable browser dependencies into
     failures when CI_REQUIRE_BROWSER is enabled.
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-OFFLINE-VERIFICATION
   category: functional
@@ -3089,7 +3089,7 @@ requirements:
   title: Synthetic browser regression harnesses
   text: The instrument shall provide localhost browser regression harnesses with synthetic scope fixtures for control,
     rendering, frame transport, analysis and interaction checks.
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-OFFLINE-VERIFICATION
   category: functional
@@ -3138,7 +3138,7 @@ requirements:
   title: Browser numerical regression harnesses
   text: The instrument shall provide Node regression harnesses for selected decoder, eye-jitter, super-resolution,
     compensation and equivalent-time sampling fixtures.
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-OFFLINE-VERIFICATION
   category: functional
@@ -3171,7 +3171,7 @@ requirements:
   title: Web inline-content regression policy
   text: The instrument shall provide regression checks for inline style and script budgets and the served content
     security policy.
-  status: draft
+  status: approved
   realizes:
   - CAP-SDS-OFFLINE-VERIFICATION
   category: functional
@@ -3192,7 +3192,7 @@ requirements:
   text: The instrument shall use the reduced-rate stream tap to retain each in-flight packet until destination acknowledgement,
     include a word accepted with stop, seal the final partial or empty transfer, and latch overload rather than
     overwrite an unacknowledged packet.
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-ACQUISITION
   category: functional
@@ -3216,7 +3216,7 @@ requirements:
   text: The instrument shall capture selected GPMC writes with their selector and data, drive the shared bus only
     during selected reads, and emit one read-completion pop with the retained selector when qualified-read mode
     is enabled.
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-ACQUISITION
   category: functional
@@ -3242,7 +3242,7 @@ requirements:
   title: DDR output pairing
   text: The instrument shall emit the high and low values on successive output clock edges and provide complementary
     differential outputs where a DDR pair is used.
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-ACQUISITION
   category: functional
@@ -3264,7 +3264,7 @@ requirements:
   title: Input lane registration and activity monitoring
   text: The instrument shall register input lanes through two stages, accumulate observed high and low activity
     until gate reset, and saturate transition counts within each configured monitoring window.
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-ACQUISITION
   category: functional
@@ -3285,7 +3285,7 @@ requirements:
   title: Eye and jitter numerical accumulation
   text: The instrument shall estimate a per-record serial clock grid, accumulate TIE and folded eye density, and
     report bounded synthetic jitter statistics.
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-SIGNAL-ANALYSIS
   category: functional
@@ -3309,7 +3309,7 @@ requirements:
   title: Eye and jitter display
   text: The instrument shall display accumulated eye density, TIE histogram, spectrum and available summary metrics
     in compact and enlarged browser views.
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-SIGNAL-ANALYSIS
   category: functional
@@ -3330,7 +3330,7 @@ requirements:
   title: Eye acquisition and optimization control
   text: The instrument shall acquire raw eye records with generation and sequence guards and search supported timebase
     settings for a lockable serial signal.
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-SIGNAL-ANALYSIS
   category: functional
@@ -3352,7 +3352,7 @@ requirements:
   title: Browser viewport and pointer interaction
   text: The instrument shall map record coordinates into browser viewports and support bounded zoom, pan, cursor
     and marker interactions.
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-WEB-UI
   category: functional
@@ -3377,7 +3377,7 @@ requirements:
   title: Browser math traces and stored references
   text: The instrument shall provide code-domain channel arithmetic, selected-tone residual traces and the scope's
     waveform references for browser display.
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-COMPARE
   category: functional
@@ -3400,7 +3400,7 @@ requirements:
   title: Browser shared state and operator controls
   text: The instrument shall maintain browser display state and operator controls for acquisition, triggering, scale,
     view selection and device autoset.
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-WEB-UI
   category: functional
@@ -3430,7 +3430,7 @@ requirements:
   title: Precision snapshot model fitting
   text: The instrument shall fit selected browser capture windows to sinusoidal, triangular or harmonic models and
     display model residuals separately from acquisition data.
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-ENHANCED-RESOLUTION
   category: functional
@@ -3454,7 +3454,7 @@ requirements:
   title: Browser serial trigger configuration
   text: The instrument shall derive serial trigger settings from browser decode roles and install a valid match
     configuration before requesting arming.
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-TRIGGER
   category: functional
@@ -3475,7 +3475,7 @@ requirements:
   title: Browser decoder selection and capture review
   text: The instrument shall dispatch configured browser decoding and maintain bounded transcript history and watch-capture
     review state.
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-PROTOCOL-DECODE
   category: functional
@@ -3498,7 +3498,7 @@ requirements:
   title: Device-facing operator workflow harnesses
   text: The instrument shall provide operator workflow fixtures for tone, PRBS, UART, SPI, burst and mask sources,
     shared assertion helpers and a missing-channel regression driver.
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-OFFLINE-VERIFICATION
   category: functional
@@ -3524,7 +3524,7 @@ requirements:
   title: Reproducible FPGA image build
   text: The instrument shall provide an FPGA image build that publishes a bitstream only from a fresh project at
     the image's recorded seed whose clocks all meet timing.
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-FPGA-IMAGES
   category: functional
@@ -3543,7 +3543,7 @@ requirements:
     while no settings sheet is open, show them as a pictogram rail at most 30 px wide at the right edge of the
     LCD with the active one highlighted, and show the active workspace's next view when its key is pressed
     again.
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-FRONT-PANEL
   category: functional
@@ -3560,7 +3560,7 @@ requirements:
     cover every setting and each row's options written out, pick the highlighted row's option with F1-F5, change
     tab with S/DIV, move rows with Adjust, close the sheet on the key of the open tab, and run actions only from
     labelled F-keys.
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-FRONT-PANEL
   category: functional
@@ -3578,7 +3578,7 @@ requirements:
     it to the trigger position, and the push centring the trigger where there is no second job), and keep the
     printed jobs of V/DIV, vertical Position, Level, S/DIV and their pushes (Variable, Zero, Zoom), with V/DIV
     and S/DIV turning the way their printed arcs show.
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-FRONT-PANEL
   category: functional
@@ -3594,7 +3594,7 @@ requirements:
     fixed columns that hold still while the same messages repeat, default the decode strip to hex, let the user
     select packets and pick bytes to trigger on, and cycle the packets, an eye diagram and a decoded stream when F2
     is pressed again.
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-PROTOCOL-DECODE
   category: functional
@@ -3616,7 +3616,7 @@ requirements:
     rate, UI, crossing level, the UIs folded, eye height, eye width, rise and fall times, TIE jitter RMS and peak to
     peak, RJ / DJ and period and cycle-to-cycle jitter, shown as bounds when the sample interval limits them, with
     the same picture and figures in the same order on the LCD and the web.
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-SIGNAL-ANALYSIS
   category: functional
@@ -3632,7 +3632,7 @@ requirements:
   text: The instrument shall show the FFT with a peak table (frequency, level, level relative to the largest peak,
     harmonic number), THD and a movable peak marker, beside a small time trace, and cycle FFT, spectrogram and Bode
     when F3 is pressed again.
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-SIGNAL-ANALYSIS
   category: functional
@@ -3648,7 +3648,7 @@ requirements:
   text: The instrument shall show running measurement statistics (current, mean, minimum, maximum, standard
     deviation and count) for the chosen parameters, with time and voltage cursors moved by Adjust and Horizontal
     Position.
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-MEASUREMENT
   category: functional
@@ -3665,7 +3665,7 @@ requirements:
     readout, average N captures of a repeating signal into a master when F5 is pressed again in COMPARE, store
     it as REF A, build the mask from it, restore the previous acquisition so live captures are tested raw, and
     refuse a master from a signal that does not repeat, saying how to fix the trigger.
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-COMPARE
   category: functional
@@ -3682,7 +3682,7 @@ requirements:
   text: The instrument shall offer in its web app the same five workspaces with keyboard switching, a fixed
     instrument strip for run control, timebase, channels and trigger, and an all-settings view, replacing the
     single dock of cards.
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-WEB-UI
   category: functional
@@ -3696,7 +3696,7 @@ requirements:
   text: The instrument shall serve a phone remote page that changes every setting through the sheet model without
     opening a sheet on the LCD, shows only control state, keeps a change history with undo, and keeps the phone awake
     where the browser allows.
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-WEB-UI
   category: functional
@@ -3728,7 +3728,7 @@ requirements:
   text: The instrument shall show only a small live scope drifting over a black LCD after no input has reached
     the panel for the Screen saver time, draw the LCD black and switch its backlight off after none has for the
     Screen off time, and let a key or knob on the scope that wakes the screen do nothing else.
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-FRONT-PANEL
   category: functional
@@ -3751,7 +3751,7 @@ requirements:
     channel roles, rate, SPI mode and bit order into the decoder settings that every decode, stream and serial trigger
     then uses, and detect it once more when settings it filled in have decoded nothing for about two seconds of
     captures after decoding the bus.
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-PROTOCOL-DECODE
   category: functional
@@ -3777,7 +3777,7 @@ requirements:
   text: The instrument shall, when AUTO is pressed in the BUS workspace, forget the bus decoded, fit the vertical with
     the threshold midway, detect the bus again and fill in the decoder settings, and put the hardware trigger on the
     start of the bus's frames with a timebase that shows whole messages with every bit resolved.
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-PROTOCOL-DECODE
   category: functional
@@ -3803,7 +3803,7 @@ requirements:
     swing that stays on the screen and the cursors on one period and on the top and base in MEASURE, at least fifty cycles of the FFT source on a sampled timebase with the
     largest swing on the screen and the marker on its fundamental in SPECTRUM, and in COMPARE the setup a mask or
     reference was stored at.
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-AUTOSET
   category: functional
@@ -3825,7 +3825,7 @@ requirements:
   title: AUTO leaves no trace clipped
   text: The instrument shall, after the autoset's vertical fit and again on the screen it leaves, step a channel whose
     capture runs past the screen's top or bottom for a stretch to the next coarser V/div and centre it again.
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-AUTOSET
   category: functional
@@ -3844,7 +3844,7 @@ requirements:
   title: AUTO from a page frames the page's workspace
   text: The instrument shall, when AUTO is pressed on the web page, run the AUTO of the workspace the page shows,
     whichever workspace the LCD shows, and leave the LCD's workspace as it is.
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-AUTOSET
   category: functional
@@ -3866,7 +3866,7 @@ requirements:
   text: The instrument shall keep REF A and REF B on the scope, show on the web page the references the scope
     holds with the setup and probes they were stored at, and store, show, hide and delete them on the scope when
     the page does.
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-COMPARE
   category: functional
@@ -3890,7 +3890,7 @@ requirements:
   text: The instrument shall, while the BUS workspace shows its Stream view, stream the bus the decoder settings name
     (in hardware, or in software for REQ-SDS-240) with the stop the BUS sheet holds and show its transcript, and end
     that stream when the view is left.
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-PROTOCOL-DECODE
   category: functional
@@ -3915,7 +3915,7 @@ requirements:
   text: The instrument shall decode two-wire SPI, UART and I2C in the FPGA from the converters' samples, timing each
     line's edges by interpolation between samples, and trigger on the decoded bytes for SPI clocks up to 104 MHz,
     UART rates up to 62.5 MBd and I2C clocks up to 3.4 MHz.
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-PROTOCOL-DECODE
   category: functional
@@ -3948,7 +3948,7 @@ requirements:
   text: The instrument shall read SPI's data line, in the FPGA's receiver on the samples and in the software
     decoders, at the data delay the BUS sheet holds after the clock's sampling edge (on Auto, the middle of the
     data's eye measured on the full-rate record), and show the delay and the timing margin left each side of it.
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-PROTOCOL-DECODE
   category: functional
@@ -3974,7 +3974,7 @@ requirements:
     minute while acquiring and on a full-rate record with a held core, bring cores that hold one code under a moving
     input back by restarting the encode clocks and then by loading the image again, and show a notice and a status
     flag naming the converters that stay stuck.
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-ACQUISITION
   category: functional
@@ -4001,7 +4001,7 @@ requirements:
   text: The instrument shall decode LIN (break, sync, protected identifier and checksum), DMX512 (break, mark after
     break, start code and slots), MIDI (status and data bytes with running status) and Modbus RTU (address, function,
     data and CRC-16) from one line, on the LCD and the web page alike.
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-PROTOCOL-DECODE
   category: functional
@@ -4024,7 +4024,7 @@ requirements:
   text: The instrument shall decode 1-Wire (resets, presence, time slots in standard and overdrive speed, ROM commands
     and the ROM CRC-8), WS281x LED data (800 and 400 kbit/s), DHT11, DHT22 and AM230x readings with their checksum,
     HDMI-CEC messages with their end-of-message and acknowledge bits, and SAE J1850 VPW frames with their CRC-8.
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-PROTOCOL-DECODE
   category: functional
@@ -4045,7 +4045,7 @@ requirements:
   title: Infrared remote protocol decoding
   text: The instrument shall decode NEC (frames and repeats), Sony SIRC (12, 15 and 20 bits), RC-5 (and RC-5X) and
     RC-6 remote-control frames from a demodulating receiver's output, an emitter's drive or a still-modulated carrier.
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-PROTOCOL-DECODE
   category: functional
@@ -4066,7 +4066,7 @@ requirements:
   text: The instrument shall decode DALI forward, backward and 24-bit frames, USB Power Delivery messages (ordered
     sets, 4b5b symbols, header and CRC-32) on a CC line, and S/PDIF subframes (B, M and W preambles, 24-bit samples
     and parity) at sample rates from 32 to 192 kHz.
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-PROTOCOL-DECODE
   category: functional
@@ -4084,7 +4084,7 @@ requirements:
   text: The instrument shall decode PS/2 device frames and host requests, SWD requests, acknowledges and data words
     with their parities, MDIO clause 22 and clause 45 frames, and Wiegand 26 and 34-bit card frames with their
     parities, from a clock (or D0) line and a data (or D1) line on either channel.
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-PROTOCOL-DECODE
   category: functional
@@ -4102,7 +4102,7 @@ requirements:
   title: USB low and full speed
   text: The instrument shall decode USB packets at low speed (1.5 Mbit/s) and full speed (12 Mbit/s) on one data
     line, checking each token's CRC5 and each data packet's CRC16.
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-PROTOCOL-DECODE
   category: functional
@@ -4119,7 +4119,7 @@ requirements:
   text: The instrument shall, on Auto and AUTO in BUS, detect each protocol of REQ-SDS-232 to REQ-SDS-236 from an
     edge-triggered capture, naming it only on its own check, fill in its settings and arm its frame-start match on
     the FPGA's serial trigger.
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-PROTOCOL-DECODE
   category: functional
@@ -4146,7 +4146,7 @@ requirements:
   text: The instrument shall read the packets of a decoded SPI, I2C, UART, 1-Wire, MDIO or USB bus as the transactions
     of the chip or protocol layer chosen for that bus, and name each transaction in the BUS packet list, the decode
     strip and the web page's packet table.
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-BUS-ANALYSIS
   category: functional
@@ -4172,7 +4172,7 @@ requirements:
     programming, nRF24L01, nRF905, CC1101, RFM12, MRF24J40, ENC28J60, ST25R39xx, ADXL345, ADNS-5020, ADE7758,
     ADF4350/1, AD5626, AD7910/20, LTC2421/2, MAX7219/21, X2444, RGB LED strings, an NES gamepad and SSI32 from the
     bytes of one SPI data line.
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-BUS-ANALYSIS
   category: functional
@@ -4191,7 +4191,7 @@ requirements:
   text: The instrument shall name the transfers of EDID, an XFP module, 24xx EEPROMs, the DS1307 and RTC-8564 clocks,
     ATSHA204A, MLX90614, a Wii Nunchuk, HDCP, LM75, LTC2607/17/27, TCA6408A, PCA9571, MCP23008, MCP23017 and
     MXC6225XU from an I2C bus, following each device's register pointer from transfer to transfer.
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-BUS-ANALYSIS
   category: functional
@@ -4212,7 +4212,7 @@ requirements:
   text: The instrument shall name the frames of Futaba S.BUS (setting its UART's 100 kbaud even-parity inverted
     framing), the ARM ITM, TPIU and ETMv3 trace streams, Amulet LCD ASCII commands and PAN1321 AT commands from a UART
     line.
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-BUS-ANALYSIS
   category: functional
@@ -4230,7 +4230,7 @@ requirements:
   title: 1-Wire network and device layers
   text: The instrument shall name a 1-Wire transaction's ROM command and ROM code and the function commands of the
     DS28EA00 and DS18B20 thermometers, the DS2408 switch and the DS2431/32/33 EEPROMs, with their CRCs checked.
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-BUS-ANALYSIS
   category: functional
@@ -4246,7 +4246,7 @@ requirements:
   title: CFP and USB request layers
   text: The instrument shall name the CFP module register accesses on an MDIO bus's clause 45 frames and the
     control requests, descriptors and handshakes of a USB bus's transactions.
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-BUS-ANALYSIS
   category: functional
@@ -4261,7 +4261,7 @@ requirements:
 - id: REQ-SDS-247
   title: Bus layers chosen on their evidence
   text: The instrument shall, on Auto and AUTO in BUS, choose a bus layer only when the bus's packets prove it.
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-BUS-ANALYSIS
   category: functional
@@ -4288,7 +4288,7 @@ requirements:
   title: Bus layer transactions as hardware trigger matches
   text: The instrument shall set the serial trigger's match from the selected packet's transaction as its layer
     names it, as the bus's own match tokens and I2C address, for the FPGA's matcher to trigger on.
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-TRIGGER
   category: functional
@@ -4303,7 +4303,7 @@ requirements:
   title: I2C address split and filter
   text: The instrument shall number an I2C bus's devices and each device's transfers, and list only the transfers to
     one address in one direction when the address filter layer is chosen.
-  status: draft
+  status: approved
   realizes:
   - CAP-SDS-BUS-ANALYSIS
   category: functional
@@ -4320,7 +4320,7 @@ requirements:
   text: The instrument shall stream each protocol of REQ-SDS-232 to REQ-SDS-236 into the decoded-stream transcript,
     gap-free where its shortest feature spans three and a half buckets of the gap-free stream, and as back-to-back
     records otherwise, and show which of the two it streams in.
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-PROTOCOL-DECODE
   category: functional
@@ -4349,7 +4349,7 @@ requirements:
   title: Motion and pulse-width decoding
   text: The instrument shall decode a quadrature encoder's A and B lines (steps and direction), a stepper driver's STEP
     and DIR lines (steps and direction) and a PWM line (each period's duty cycle), on either channel.
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-PROTOCOL-DECODE
   category: functional
@@ -4371,7 +4371,7 @@ requirements:
     OOK sensor messages (protocols 2.1 and 3 with their checksums), ISO 14443 modified Miller (106 kbit/s, pauses or
     edges), Morse (letters at the timing found on the line) and DCF77 time code (minute, hour and date fields with
     their parities).
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-PROTOCOL-DECODE
   category: functional
@@ -4390,7 +4390,7 @@ requirements:
   text: The instrument shall decode EM4100 tag frames (header, rows with their parities, column parity) and the
     EM4305 and T55xx reader commands (login, write, read, the block and lock bits) from the field's envelope or its
     125 kHz carrier.
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-PROTOCOL-DECODE
   category: functional
@@ -4408,7 +4408,7 @@ requirements:
   text: The instrument shall decode STM8 SWIM transactions (commands, count, address and bytes with parity and
     acknowledge), Apple SDQ bytes, PJON over PJDL frames (modes 1 to 4, header, CRC-8 and CRC-32), DSI frames, Qi
     wireless-power packets (preamble, header, payload and checksum) and their errors.
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-PROTOCOL-DECODE
   category: functional
@@ -4427,7 +4427,7 @@ requirements:
   text: The instrument shall decode SD card commands and responses in SD mode (CMD at CLK, CRC-7, application
     commands), AVR PDI instructions, cJTAG escapes, the online activation code and OScan1 scans, Sega Maple bus frames
     and digital caliper readings, from a clock line and a data line on either channel.
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-PROTOCOL-DECODE
   category: functional
@@ -4445,7 +4445,7 @@ requirements:
   text: The instrument shall decode the common IR remote protocols beyond NEC, SIRC, RC-5 and RC-6 (Samsung, Samsung32,
     JVC, NEC16, NEC42, Kaseikyo, Matsushita and Denon/Sharp) from a receiver's output or an emitter's drive, naming
     the protocol and its address and command.
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-PROTOCOL-DECODE
   category: functional
@@ -4464,7 +4464,7 @@ requirements:
   text: The instrument shall, on Auto and AUTO in BUS, name each protocol of REQ-SDS-250 to REQ-SDS-255 from a capture
     only on its own evidence (its checks, its timing classes or its handshake) and fill in its settings, without
     naming any other protocol's capture as one of them.
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-PROTOCOL-DECODE
   category: functional
@@ -4482,7 +4482,7 @@ requirements:
   title: Hardware frame start of the protocols beyond the first thirty
   text: The instrument shall trigger in the FPGA on the frame start and on unit values of each protocol of
     REQ-SDS-250 to REQ-SDS-255, using the qualify image's symbol trigger, with AUTO in BUS arming that frame start.
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-TRIGGER
   category: functional
@@ -4502,7 +4502,7 @@ requirements:
   text: The instrument shall offer each protocol of REQ-SDS-250 to REQ-SDS-255 in BUS, on the LCD strip, on the web
     page and on the phone remote with its line or clock and data roles, keep it in a setup, list its frames as
     packets and send its detected variant and polarity to the serial trigger.
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-PROTOCOL-DECODE
   category: functional
@@ -4520,7 +4520,7 @@ requirements:
   text: The instrument shall stream each protocol of REQ-SDS-250 to REQ-SDS-255 into the decoded-stream transcript
     as REQ-SDS-240 streams its protocols, gap-free or as back-to-back records, and show which of the two it streams
     in.
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-PROTOCOL-DECODE
   category: functional
@@ -4549,7 +4549,7 @@ requirements:
     play C1, C2, both as stereo or the output less the gain- and delay-matched input, with the DC blocked, a
     high-pass and a low-pass each with an adjustable cutoff, automatic or manual gain, a limiter and mute, reporting
     the buffer, the rate correction, underruns and the latency.
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-SOUND
   category: functional
@@ -4572,7 +4572,7 @@ requirements:
   text: The instrument shall show each channel's level as RMS, peak, peak-to-peak, DC and crest factor in volts and in
     dB against dBu, dBV or a nominal level (Eurorack 10 Vpp, +4 dBu, -10 dBV, a guitar's 100 mV), with a clip mark
     when the converter's range is reached.
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-SOUND
   category: functional
@@ -4591,7 +4591,7 @@ requirements:
   text: The instrument shall name the tuned channel's pitch as a note and cents against a settable A4 with a needle,
     a strobe and the last ten seconds of pitch, tabulate V/oct points of a CV on the other channel against the
     pitch with the scale and high-end errors, and log the pitch once a second.
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-SOUND
   category: functional
@@ -4612,7 +4612,7 @@ requirements:
   text: The instrument shall, when armed, capture a note's envelope from the FPGA's edge on a gate or on the signal's
     level until the sound has died away, and read its attack (10-90 % and start to peak), decay with its time
     constant, sustain, release with its time constant and peak, from a tone's amplitude or a CV read directly.
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-SOUND
   category: functional
@@ -4632,7 +4632,7 @@ requirements:
   text: The instrument shall read a tone's tremolo depth, rate and shape, its vibrato deviation in cents and Hz, rate
     and shape, wow, flutter and a weighted wow-and-flutter figure, audio-rate FM's carrier-to-modulator ratio and
     index from its sidebands, and, without a pitch, an LFO's rate, levels, rise share and shape.
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-SOUND
   category: functional
@@ -4650,7 +4650,7 @@ requirements:
   title: Audio spectrum and harmonics
   text: The instrument shall show the audio spectrum on a log frequency axis with a note grid and the scope's own
     floor, and read H1 to H10 against H1 with THD, the even/odd balance and mains hum.
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-SOUND
   category: functional
@@ -4670,7 +4670,7 @@ requirements:
   text: The instrument shall compare a circuit's input on one channel with its output on the other by gain and phase
     at the fundamental, broadband gain, delay and the distortion the circuit adds, with the output against the input
     as a transfer curve and both spectra overlaid.
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-SOUND
   category: functional
@@ -4688,7 +4688,7 @@ requirements:
   text: The instrument shall draw one, two or four periods of the tuned channel from a level crossing the FPGA marked
     in the stream, placed on that crossing between samples, with the previous cycles fading behind, and read the
     period, duty, peak-to-peak, rise, fall and slew.
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-SOUND
   category: functional
@@ -4711,7 +4711,7 @@ requirements:
   text: The instrument shall show SOUND as SPECTRUM's fourth view on the LCD with the tuner, two meters, a readout
     column that Adjust turns through modulation, envelope, A/B, harmonics and V/oct, and the pitch-locked trace, and
     keep SOUND's settings in a setup.
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-SOUND
   category: functional
@@ -4728,7 +4728,7 @@ requirements:
   title: SOUND on the web page and the phone
   text: The instrument shall offer SOUND on the web page as its own workspace (Alt+6) and on the phone remote as a
     Sound tab with the tuner, the meters and Listen, sharing SOUND's settings and readouts with the LCD.
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-SOUND
   category: functional
@@ -4753,7 +4753,7 @@ requirements:
     with two cursors reading time, volts, frequency, level and their differences, played by Listen looped at full,
     half or quarter speed, with RUN/STOP and SINGLE on the phone, and the readouts reading the take at the cursor or
     over the visible window.
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-SOUND
   category: functional
@@ -4778,7 +4778,7 @@ requirements:
   title: SOUND's drift log ends with SOUND
   text: The instrument shall end SOUND's drift log when neither the LCD nor any web or phone page shows SOUND, and
     restore it off from a saved setup.
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-SOUND
   category: functional
@@ -4795,7 +4795,7 @@ requirements:
     SOUND, or AUTO, RUN/STOP or SINGLE, end a web or phone page's audio stream at once and refuse its stream until
     a page takes the scope again (its button, or SOUND shown anew), show the page paused with a button to take the
     scope, and name a page holding the stream on the LCD with AUTO as the key that takes it back.
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-SOUND
   category: functional
@@ -4820,7 +4820,7 @@ requirements:
     encoder's or stepper's position and speed, a caliper's reading, the DCF77 time, a UART's terminal, the USB PD
     offers, request and contract, Wiegand cards, CAN signals from a DBC file and a protocol layer's values, from
     each capture's decode, or gap-free from the scope's stream for the byte-wise buses.
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-BUS-ANALYSIS
   category: functional
@@ -4839,7 +4839,7 @@ requirements:
   text: The instrument shall play a decoded MIDI bus's notes in the web page, with each channel's program choosing
     the voice, channel 10 drums, volume, expression, sustain and pitch bend acting, the notes spaced as on the bus,
     a volume and an all-notes-off, and a note whose note-off a gap lost ending by itself.
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-BUS-ANALYSIS
   category: functional
@@ -4857,7 +4857,7 @@ requirements:
     select and data with the bit clock recovered, or PDM from a microphone's clock and data, reporting each
     channel's rate, level, peak, clipping, DC and the bits its words use, drawing the waveforms and playing the
     audio looped.
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-BUS-ANALYSIS
   category: functional
@@ -4877,7 +4877,7 @@ requirements:
     universe's levels, an LED strip's colours, a PS/2 keyboard's key presses and releases, a reading for an IR
     remote, a caliper, a Wiegand reader, a PWM line, a DCF77 clock and an encoder or stepper, LIN's and CAN's frames
     by identifier, and a UART's text.
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-BUS-ANALYSIS
   category: functional
@@ -4892,7 +4892,7 @@ requirements:
   title: A MIDI bus recorded to a file
   text: The instrument shall record a MIDI bus's channel messages with their times in the web page and save them as
     a Standard MIDI File.
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-BUS-ANALYSIS
   category: functional
@@ -4907,7 +4907,7 @@ requirements:
   title: Digital audio's spectrum and distortion
   text: The instrument shall draw a digital audio capture's spectrum in the web page and state each channel's tone,
     total harmonic distortion, SINAD and effective bits where the record parts the tone from its harmonics.
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-BUS-ANALYSIS
   category: functional
@@ -4924,7 +4924,7 @@ requirements:
   text: The instrument shall, booted under the factory firmware from the diagnostics stick, record the board's kernel,
     devices, pin multiplexing, processes, factory firmware files, FPGA version register, the factory app's settings
     and its screen without writing anything but the stick.
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-DIAGNOSTICS
   category: functional
@@ -4952,7 +4952,7 @@ requirements:
   text: The instrument shall, from the diagnostics stick whose MODE file says active, record the factory app's device
     syscalls while it steps the factory app through every V/div, coupling, offset, bandwidth limit, timebase, trigger
     and acquisition setting over SCPI, and then put the factory app's settings back.
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-DIAGNOSTICS
   category: functional
@@ -4976,7 +4976,7 @@ requirements:
     stage found an AM335x running the SDS1000 factory app on /dev/Gpmc, an FPGA register read through the inherited
     descriptor, a Siglent SDS1000-series identity and settings answered in the form the sweep restores, and say which
     check failed otherwise.
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-DIAGNOSTICS
   category: functional
@@ -4997,7 +4997,7 @@ requirements:
     EP4CE10's, stop the factory app, load the probe image without and with the weak pull-ups, and judge from the
     census of every FPGA ball which converter cores, channel front ends and clocks of the SDS1102CML+'s population
     are present, absent or partial.
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-DIAGNOSTICS
   category: functional
@@ -5025,7 +5025,7 @@ requirements:
   text: The instrument shall, from the diagnostics stick's takeover stage, run this firmware's app on the board for a
     minute and a half as the agent runs it, and record its log, whether and when it reported health, and its status
     and screen.
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-DIAGNOSTICS
   category: functional
@@ -5044,7 +5044,7 @@ requirements:
     channel whether its gain DAC, range relay, AC coupling, GND relay bit, 20 MHz bandwidth limit and offset DAC act on
     its converters, and which FPGA ball its trigger comparator drives, using the 1 kHz probe compensation square on
     the probes.
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-DIAGNOSTICS
   category: functional
@@ -5072,7 +5072,7 @@ requirements:
     through its address counter, whether the front panel's key chain answers and its key interrupt reaches the
     processor, which FPGA balls the processor's gpio113 and eHRPWM outputs reach, and which of the SDS1102CML+'s
     processor devices are missing or extra, and light the panel LEDs one by one.
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-DIAGNOSTICS
   category: functional
@@ -5093,7 +5093,7 @@ requirements:
   title: Diagnostics DONE screen
   text: The instrument shall, when the diagnostics stick has finished, flush the stick and show DONE, or FAILED with
     the reason, on its screen.
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-DIAGNOSTICS
   category: functional
@@ -5110,7 +5110,7 @@ requirements:
   title: Diagnostics archive
   text: The instrument shall, from the diagnostics stick, leave one archive on the stick with a manifest of every
     member, the collectors' errors and a summary, and a status file saying when it is done.
-  status: draft
+  status: implemented
   realizes:
   - CAP-SDS-DIAGNOSTICS
   category: functional
