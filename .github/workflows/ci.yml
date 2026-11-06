@@ -221,9 +221,11 @@ jobs:
 
   # The engineering model (model/) must validate without errors: requirements,
   # catalog, and every function's TRLC-LINKS across the tree. engdoc exits
-  # non-zero on any error; warnings are reported but pass. --code-root is
-  # taken from the manifest's directory (model/): ".." is the repository, so
-  # requirements are traced to the code that implements them.
+  # non-zero on any error; warnings are reported but pass. It runs inside
+  # model/ with --code-root ..: the code scan and the test scan both resolve
+  # that path, one from the manifest's directory and one from the working
+  # directory, so only from model/ do both reach the repository and the
+  # requirements trace to their implementing code and to their tests.
   model:
     runs-on: ubuntu-latest
     env:
@@ -243,9 +245,11 @@ jobs:
           done
           exit 1
       - name: validate the model
+        working-directory: model
         run: >
-          engdoc --model model/engmod.yml --requirements model/requirements.yml
-          --design model/views.yml --code-root .. --out "$RUNNER_TEMP/ARCHITECTURE.adoc"
+          engdoc --model engmod.yml --requirements requirements.yml
+          --design views.yml --code-root .. --lock check
+          --out "$RUNNER_TEMP/ARCHITECTURE.adoc"
 
   cross-build:
     runs-on: ubuntu-latest
