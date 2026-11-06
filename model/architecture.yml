@@ -981,6 +981,91 @@ architecture:
       froze (a burst, a specific UART byte pattern, a glitch, a slow ramp — anything).'
     tags:
     - source-backed
+  contract:
+    provides:
+    - id: CAP-SDS-ACQUISITION
+      kind: capability
+      note: Acquire both channels through the acquisition FPGA at the requested timebase and acquisition mode, as
+        a live stream or a finite pre- and post-trigger record held for recall, with every published frame carrying
+        the metadata needed to interpret it and every lost or stale sample reported rather than hidden.
+    - id: CAP-SDS-TRIGGER
+      kind: capability
+      note: Trigger on edges and levels, on zones and golden masks, and in the FPGA on the frame start and content
+        of a decoded serial bus.
+    - id: CAP-SDS-ANALOG-FRONT-END
+      kind: capability
+      note: Set each channel's vertical scale, offset, coupling, bandwidth limit and probe factor, and report the
+        signal in absolute volts at the probe tip, corrected with the unit's own calibration and with a safe default
+        when that calibration is missing or invalid.
+    - id: CAP-SDS-ENHANCED-RESOLUTION
+      kind: capability
+      note: Raise the effective resolution of a capture beyond the converters' eight bits, by precision-rate reduction
+        of the sample stream and by reference-locked reconstruction of a repetitive waveform, with the gain and bandwidth
+        cost of each setting stated.
+    - id: CAP-SDS-MEASUREMENT
+      kind: capability
+      note: Measure voltage and timing parameters of a trace, with running statistics and time and voltage cursors.
+    - id: CAP-SDS-AUTOSET
+      kind: capability
+      note: Frame an unknown signal automatically for the task of the active workspace, from the front panel or the
+        web page, leaving no trace clipped.
+    - id: CAP-SDS-SIGNAL-ANALYSIS
+      kind: capability
+      note: 'Analyse a signal in the frequency and timing domains: spectrum with peaks and distortion, spectrogram,
+        Bode transfer sweeps, and the eye diagram and jitter of a serial line.'
+    - id: CAP-SDS-COMPARE
+      kind: capability
+      note: Compare the live trace against stored references, golden masks and math traces, and average a repeating
+        signal into a master reference.
+    - id: CAP-SDS-PROTOCOL-DECODE
+      kind: capability
+      note: Decode serial, remote-control, sensor and debug protocols from the captured channels, detect an unknown
+        bus and fill in its settings, and stream the decoded transcript, with the device and the browser decoding
+        a capture alike.
+    - id: CAP-SDS-BUS-ANALYSIS
+      kind: capability
+      note: 'Read a decoded bus as the transactions of the chip or protocol layer it carries, and present it as what
+        it carries: MIDI notes and files, light levels, key presses and digital audio.'
+    - id: CAP-SDS-SOUND
+      kind: capability
+      note: 'Listen to and measure audio and synthesizer signals: hear the probe, meter levels, tune pitch, and read
+        envelopes, modulation, harmonics and a circuit''s input against its output.'
+    - id: CAP-SDS-FRONT-PANEL
+      kind: capability
+      note: 'Operate the instrument from its own front panel and LCD: task workspaces, settings sheets, knob tools,
+        indicators, the screen saver and screen images.'
+    - id: CAP-SDS-WEB-UI
+      kind: capability
+      note: Operate and observe the instrument from a web browser and a phone on the network, with the same workspaces
+        and settings as the front panel, and export calibrated waveforms.
+    - id: CAP-SDS-REMOTE-PROGRAMMING
+      kind: capability
+      note: Control the instrument and transfer waveforms from a host program with SCPI commands over VXI-11.
+    - id: CAP-SDS-SETTINGS
+      kind: capability
+      note: Keep the instrument's setup across power cycles, applying only valid values and falling back to defaults
+        when a saved setup cannot be read.
+    - id: CAP-SDS-SUPERVISED-OPERATION
+      kind: capability
+      note: Start the one application the same way every time under the OTA agent, take the scope over from the factory
+        firmware, keep the application healthy and recover it through the application slots, and hand the scope back
+        to the factory firmware on request.
+    - id: CAP-SDS-FIRMWARE-UPDATE
+      kind: capability
+      note: Install, update and roll back the application and the agent from a host, with every payload checked against
+        its digest, and maintain the instrument remotely through the agent's commands, file transfer and logs.
+    - id: CAP-SDS-FPGA-IMAGES
+      kind: capability
+      note: Ship FPGA images built reproducibly that meet timing, and configure the fabric only with a valid image
+        whose identity is checked before acquisition starts.
+    - id: CAP-SDS-DIAGNOSTICS
+      kind: capability
+      note: 'Diagnose an SDS1000-family board from a USB stick: record the factory firmware and hardware, test the
+        front end, memory, panel and processor, run this firmware''s app, and leave one archive with the results.'
+    - id: CAP-SDS-OFFLINE-VERIFICATION
+      kind: capability
+      note: Let the maintainer check the firmware's behaviour without the instrument, with browser and numerical regression
+        harnesses on synthetic fixtures and the web page's content-security budgets.
   actors:
   - id: ACT-OPERATOR
     name: Instrument operator
