@@ -11,12 +11,11 @@ import (
 	"net/http/pprof"
 	"strconv"
 	"strings"
-	"sync"
 	"sync/atomic"
 	"time"
 
-	"github.com/labeth/open-dso-core/measure"
 	"github.com/labeth/open-dso-core/webserver"
+	"github.com/labeth/open-dso-core/webserver/shape"
 	"github.com/labeth/open-sds1000cml/app/internal/engine"
 	"github.com/labeth/open-sds1000cml/app/internal/panel"
 	"github.com/labeth/open-sds1000cml/app/internal/sramcapture"
@@ -154,32 +153,9 @@ type Server struct {
 	// ns): a page showing the scope keeps that long-poll open (FrameClient).
 	frameAt atomic.Int64
 
-	// Single-entry auto-measurement cache. measure.Compute over a deep record
-	// is the heaviest in-lock CPU besides serialization, and every /api/frame
-	// and /api/frame.bin request needs the same numbers for a given published
-	// frame — so it runs once per (seq, coupling, scale) and is shared. The
-	// key carries the measurement inputs BY VALUE, so mutations from any path
-	// (web /api/set, SCPI, panel) change the key and refresh naturally.
-	measMu  sync.Mutex
-	measKey measKey
-	meas    measVal
-	measAt  time.Time // when meas was computed (drives the fast-flow throttle)
-}
-
-// TRLC-LINKS: REQ-SDS-164
-type measKey struct {
-	seq        uint64
-	cpl1, cpl2 int
-	vpc, off   [2]float64
-	sampleS    float64
-}
-
-// TRLC-LINKS: REQ-SDS-164
-type measVal struct {
-	m1, m2       *measure.Result
-	clip1, clip2 bool
-	seq          uint64 // the frame measured
-	edgeRead     uint64 // its edge windows' read (engine.Frame.EdgeRead)
+	// meas is the frame measurements' cache: computed once per published
+	// frame and its measurement inputs, shared by every request.
+	meas shape.MeasCache
 }
 
 // New is the web UI's server over sc; fe and panel may be nil, and screen
@@ -383,37 +359,6 @@ func (s *Server) hRemote(w http.ResponseWriter, r *http.Request) {
 }
 
 const screenCols = 800
-
-// Binary frame layout served by /api/frame.bin (all integers little-endian):
-//
-//	[0]     u8  magic 0xF5 — bump on any layout change
-//	[1]     u8  flags: bit0 unchanged, bit1 envelope, bit2 deep, bit3 empty,
-//	            bit4 raw, bit5 precision
-//	[2:4]   u16 reserved (0)
-//	[4:8]   u32 H = JSON header byte length
-//	[8:8+H]     UTF-8 JSON header: frameReply with the array fields nilled,
-//	            plus head/tail = the contiguous -1 margin counts
-//	[8+H:]      payload, raw uint8 ADC codes:
-//	            native: c1[cols] c2[cols]
-//	            deep:   c1[cols-head-tail] c2[cols-head-tail] (cols == depth)
-//	            env:    e1min[cols] e1max[cols] e2min[cols] e2max[cols]
-//	            precision: q1[body] q2[body], u16 Q8.8 codes
-//	            unchanged/empty: none
-//	            then, when the header's view_n > 0 (a request that leased a
-//	            view window, view=): vc1[view_n] vc2[view_n]
-//
-// The -1 sentinels in the int16 reply arrays are provably contiguous head/tail
-// runs (the deep path serves the record verbatim; window() rail-extends off-record
-// columns), so two counts replace the in-band sentinel and the payload narrows to uint8.
-const binMagic = 0xF5
-
-const (
-	binUnchanged = 1 << 0
-	binEnv       = 1 << 1
-	binDeep      = 1 << 2
-	binEmpty     = 1 << 3
-	binRaw       = 1 << 4 // raw=1: un-windowed record, payload c1[cols] c2[cols]
-)
 
 // panelScanner is the engine's front-panel scan (ADR-PANEL-SERIAL-SCAN).
 type panelScanner interface {

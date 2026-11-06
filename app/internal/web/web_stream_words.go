@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/labeth/open-dso-core/webserver"
+	"github.com/labeth/open-dso-core/webserver/wire"
 	"github.com/labeth/open-sds1000cml/app/internal/engine"
 )
 
@@ -24,19 +25,6 @@ import (
 type clientDecoder interface {
 	ReadClientWords(seq uint64, limit int, wait time.Duration, dst []engine.ClientChunk) (engine.ClientWords, func())
 	PostClientFrames(body []byte) error
-}
-
-// wordsBinMagic opens a /api/stream/words.bin reply.
-var wordsBinMagic = [4]byte{'S', 'D', 'W', '1'}
-
-// wordsBinHeader is the JSON header of a /api/stream/words.bin reply.
-type wordsBinHeader struct {
-	engine.ClientStreamInfo
-	Next     uint64 `json:"next"`    // the seq to ask for next
-	Dropped  uint64 `json:"dropped"` // chunks asked for that the ring no longer held
-	Chunks   int    `json:"chunks"`
-	Lag      uint64 `json:"lag"` // stream samples the scope holds without the page's frames
-	ServerMS int64  `json:"serverMS"`
 }
 
 // wordsBufs are a reply's chunk list and head, and a post's body, reused:
@@ -85,8 +73,8 @@ func (s *Server) hStreamWords(w http.ResponseWriter, r *http.Request) {
 	cw, release := src.ReadClientWords(from, maxB, time.Duration(wait)*time.Millisecond, wb.chunks[:0])
 	defer release()
 	wb.chunks = cw.Chunks
-	h := wordsBinHeader{
-		ClientStreamInfo: cw.Info, Next: cw.Next, Dropped: cw.Dropped, Chunks: len(cw.Chunks), Lag: cw.Lag,
+	h := wire.WordsHeader{
+		Info: cw.Info, Next: cw.Next, Dropped: cw.Dropped, Chunks: len(cw.Chunks), Lag: cw.Lag,
 		ServerMS: time.Now().UnixMilli(),
 	}
 	hj, err := json.Marshal(h)
@@ -99,7 +87,7 @@ func (s *Server) hStreamWords(w http.ResponseWriter, r *http.Request) {
 		hj = append(hj, ' ')
 	}
 	head := wb.head[:0]
-	head = append(head, wordsBinMagic[:]...)
+	head = append(head, wire.WordsBinMagic[:]...)
 	head = binary.LittleEndian.AppendUint32(head, uint32(len(hj))) //nolint:gosec // G115: a JSON header of a few KB
 	head = append(head, hj...)
 	head = engine.AppendClientChunkHeads(head, cw.Chunks)

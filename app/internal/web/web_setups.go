@@ -7,6 +7,7 @@ import (
 	"net/http"
 
 	"github.com/labeth/open-dso-core/webserver"
+	"github.com/labeth/open-dso-core/webserver/wire"
 )
 
 // SetupMemory stores and recalls whole instrument setups in numbered slots.
@@ -18,11 +19,7 @@ type SetupMemory interface {
 }
 
 // SetupSlot is one setup slot as the scope's FILE tab shows it.
-type SetupSlot struct {
-	Slot    int    `json:"slot"`
-	Used    bool   `json:"used"`
-	Summary string `json:"summary,omitempty"`
-}
+type SetupSlot = wire.SetupSlot
 
 // setupLister is a store that says what its slots hold (the panel's).
 type setupLister interface {

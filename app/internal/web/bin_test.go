@@ -11,25 +11,26 @@ import (
 	"testing"
 	"time"
 
+	"github.com/labeth/open-dso-core/webserver/wire"
 	"github.com/labeth/open-sds1000cml/app/internal/engine"
 )
 
 // getBin fetches /api/frame.bin and returns the decoded header + raw payload.
 // TRLC-LINKS: REQ-SDS-163
-func getBin(t *testing.T, s *Server, url string) (frameReply, byte, []byte) {
+func getBin(t *testing.T, s *Server, url string) (wire.FrameReply, byte, []byte) {
 	t.Helper()
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, url, nil)
 	rec := httptest.NewRecorder()
 	s.Handler().ServeHTTP(rec, req)
 	b := rec.Body.Bytes()
-	if len(b) < 8 || b[0] != binMagic {
+	if len(b) < 8 || b[0] != wire.BinMagic {
 		t.Fatalf("bad bin reply: %d bytes, magic %#x", len(b), b[0])
 	}
 	h := binary.LittleEndian.Uint32(b[4:8])
 	if 8+int(h) > len(b) {
 		t.Fatalf("header length %d overruns %d-byte reply", h, len(b))
 	}
-	var rep frameReply
+	var rep wire.FrameReply
 	if err := json.Unmarshal(b[8:8+h], &rep); err != nil {
 		t.Fatalf("header json: %v", err)
 	}
@@ -41,14 +42,14 @@ func getBin(t *testing.T, s *Server, url string) (frameReply, byte, []byte) {
 // is validated against (there is one transport now, so parity is checked against
 // the builder, not a second HTTP endpoint).
 // TRLC-LINKS: REQ-SDS-163
-func refReply(s *Server, cols int, full bool, since uint64) frameReply {
+func refReply(s *Server, cols int, full bool, since uint64) wire.FrameReply {
 	off, vpc := s.vertScales()
 	st := s.sc.Snapshot()
 	posFrac := st.TrigPosFrac
 	if !(posFrac >= 0 && posFrac <= 1) {
 		posFrac = 0.5
 	}
-	var rep frameReply
+	var rep wire.FrameReply
 	s.sc.WithFrame(func(f *engine.Frame) {
 		rep = s.buildReply(f, cols, full, since, off, vpc, posFrac, st.Running && !st.Single)
 	})
@@ -59,13 +60,13 @@ func refReply(s *Server, cols int, full bool, since uint64) frameReply {
 // header's JSON round-trip (marshal→unmarshal), so scalar parity comparisons are
 // exact against getBin's decoded header.
 // TRLC-LINKS: REQ-SDS-163
-func getRef(t *testing.T, s *Server, cols int, full bool, since uint64) frameReply {
+func getRef(t *testing.T, s *Server, cols int, full bool, since uint64) wire.FrameReply {
 	t.Helper()
 	b, err := json.Marshal(refReply(s, cols, full, since))
 	if err != nil {
 		t.Fatalf("marshal ref: %v", err)
 	}
-	var rep frameReply
+	var rep wire.FrameReply
 	if err := json.Unmarshal(b, &rep); err != nil {
 		t.Fatalf("unmarshal ref: %v", err)
 	}
@@ -127,7 +128,7 @@ func TestBinFrameParity(t *testing.T) {
 				C1: c1, C2: c2, Seq: 13, Valid: 6144, WinCols: 2048,
 				EdgeX: 100, TdivS: 1e-3, DisplayedS: 1e-3, SampleS: 1.6e-6,
 			}
-		}(), binDeep},
+		}(), wire.FlagDeep},
 		{"deep-trig-edge-end", func() *engine.Frame {
 			c1, c2 := deepC(6144)
 			// Edge near the record end: still served verbatim, still no margins.
@@ -135,14 +136,14 @@ func TestBinFrameParity(t *testing.T) {
 				C1: c1, C2: c2, Seq: 14, Valid: 6144, WinCols: 2048,
 				EdgeX: 6100, TdivS: 1e-3, DisplayedS: 1e-3, SampleS: 1.6e-6,
 			}
-		}(), binDeep},
+		}(), wire.FlagDeep},
 		{"deep-freerun", func() *engine.Frame {
 			c1, c2 := deepC(6144)
 			return &engine.Frame{
 				C1: c1, C2: c2, Seq: 15, Valid: 6144, WinCols: 2048,
 				EdgeX: -1, TdivS: 1e-3, DisplayedS: 1e-3, SampleS: 1.6e-6,
 			}
-		}(), binDeep},
+		}(), wire.FlagDeep},
 		{"envelope", func() *engine.Frame {
 			mk := func(base int) []uint8 {
 				e := make([]uint8, 800)
@@ -157,7 +158,7 @@ func TestBinFrameParity(t *testing.T) {
 				IsEnv: true, EnvCols: 800, EnvMin: mk(0), EnvMax: mk(50), EnvMin2: mk(100), EnvMax2: mk(150),
 				TdivS: 0.01, DisplayedS: 0.01, SampleS: 1e-4,
 			}
-		}(), binEnv},
+		}(), wire.FlagEnv},
 	}
 	for _, tc := range shapes {
 		t.Run(tc.name, func(t *testing.T) {
@@ -166,7 +167,7 @@ func TestBinFrameParity(t *testing.T) {
 			want := getRef(t, s, 2048, true, 0)
 			got, flags, pay := getBin(t, s, "/api/frame.bin?since=0&cols=2048&full=1")
 
-			if flags&^binEmpty != tc.want {
+			if flags&^wire.FlagEmpty != tc.want {
 				t.Fatalf("flags = %#x, want %#x", flags, tc.want)
 			}
 			// Header scalar parity (arrays compared separately).
@@ -219,7 +220,7 @@ func TestBinFrameUnchanged(t *testing.T) {
 	fs := &fakeScope{frame: f, fresh: true}
 	s := New(fs, nil, nil, nil)
 	rep, flags, pay := getBin(t, s, "/api/frame.bin?since=9&cols=2048&full=1")
-	if !rep.Unchanged || flags&binUnchanged == 0 || len(pay) != 0 {
+	if !rep.Unchanged || flags&wire.FlagUnchanged == 0 || len(pay) != 0 {
 		t.Fatalf("unchanged: rep=%+v flags=%#x pay=%d", rep, flags, len(pay))
 	}
 	// No frame published yet → unchanged with seq 0.
@@ -286,7 +287,7 @@ func TestMeasCacheReuse(t *testing.T) {
 	}
 	// Seq advance past the throttle window: recompute.
 	f.Seq = 24
-	s.measAt = time.Time{}
+	s.meas.Expire()
 	r6 := s.buildReply(f, 512, false, 0, [2]float64{}, [2]float64{1. / 16, 1. / 32}, 0.5, true)
 	if r6.M1 == r5.M1 {
 		t.Fatal("expired throttle window did not refresh the measurement cache")
@@ -313,7 +314,7 @@ func TestBinFrameRawShape(t *testing.T) {
 	s := New(fs, nil, nil, nil)
 
 	rep, flags, pay := getBin(t, s, "/api/frame.bin?since=0&raw=1")
-	if flags&binRaw == 0 || flags&binUnchanged != 0 {
+	if flags&wire.FlagRaw == 0 || flags&wire.FlagUnchanged != 0 {
 		t.Fatalf("flags = %#x, want raw", flags)
 	}
 	if rep.WinCols != 200 || rep.Cols != n || rep.SampleS != 1e-8 || rep.EdgeX != 123.625 || !rep.Trigd {
@@ -340,7 +341,7 @@ func TestBinFrameRawShape(t *testing.T) {
 
 	// unchanged short-circuit still applies.
 	rep2, flags2, pay2 := getBin(t, s, "/api/frame.bin?since=31&raw=1")
-	if !rep2.Unchanged || flags2&binUnchanged == 0 || len(pay2) != 0 {
+	if !rep2.Unchanged || flags2&wire.FlagUnchanged == 0 || len(pay2) != 0 {
 		t.Fatalf("raw unchanged: %+v flags=%#x pay=%d", rep2, flags2, len(pay2))
 	}
 }

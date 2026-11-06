@@ -3,29 +3,14 @@
 package web
 
 import (
-	"encoding/binary"
 	"encoding/json"
 	"net/http"
 	"strconv"
 	"time"
 
+	"github.com/labeth/open-dso-core/webserver/wire"
 	"github.com/labeth/open-sds1000cml/app/internal/engine"
 )
-
-// recordReply is /api/record.bin's header: the record's samples a channel,
-// their interval, and how a code reads as volts on each channel (off is the
-// offset applied, vpc the volts a code).
-type recordReply struct {
-	Seq     uint64  `json:"seq"`
-	N       int     `json:"n"`
-	SampleS float64 `json:"sample_s"`
-	TdivS   float64 `json:"tdiv_s"`
-	Vpc1    float64 `json:"vpc1"`
-	Vpc2    float64 `json:"vpc2"`
-	Off1V   float64 `json:"off1_v"`
-	Off2V   float64 `json:"off2_v"`
-	Err     string  `json:"err,omitempty"`
-}
 
 // recordWaitMax bounds /api/record.bin's wait for a record.
 const recordWaitMax = 10 * time.Second
@@ -71,7 +56,7 @@ func (s *Server) hRecord(w http.ResponseWriter, r *http.Request) {
 		}
 	})
 	deadline := time.Now().Add(wait)
-	var hdr recordReply
+	var hdr wire.RecordReply
 	var c1, c2 []byte
 	got := false
 	renewed := time.Time{}
@@ -90,7 +75,7 @@ func (s *Server) hRecord(w http.ResponseWriter, r *http.Request) {
 			if n < recordMin {
 				return
 			}
-			hdr = recordReply{Seq: f.Seq, N: n, SampleS: f.SampleS, TdivS: f.TdivS}
+			hdr = wire.RecordReply{Seq: f.Seq, N: n, SampleS: f.SampleS, TdivS: f.TdivS}
 			c1 = append([]byte(nil), f.C1[:n]...)
 			c2 = append([]byte(nil), f.C2[:n]...)
 			got = true
@@ -110,12 +95,7 @@ func (s *Server) hRecord(w http.ResponseWriter, r *http.Request) {
 	}
 	off, vpc := s.vertScales()
 	hdr.Vpc1, hdr.Vpc2, hdr.Off1V, hdr.Off2V = vpc[0], vpc[1], off[0], off[1]
-	js, _ := json.Marshal(hdr)
-	out := make([]byte, 4, 4+len(js)+len(c1)+len(c2))
-	binary.LittleEndian.PutUint32(out, uint32(len(js))) //nolint:gosec // G115: a JSON header of a few KB
-	out = append(out, js...)
-	out = append(out, c1...)
-	out = append(out, c2...)
+	out := wire.EncodeRecord(hdr, c1, c2)
 	w.Header().Set("Content-Type", "application/octet-stream")
 	w.Header().Set("Cache-Control", "no-store")
 	_, _ = w.Write(out)
@@ -130,5 +110,5 @@ const recordNever = "this acquisition cannot serve sampled records"
 func recordRefused(w http.ResponseWriter, why string) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusConflict)
-	_ = json.NewEncoder(w).Encode(recordReply{Err: why})
+	_ = json.NewEncoder(w).Encode(wire.RecordReply{Err: why})
 }

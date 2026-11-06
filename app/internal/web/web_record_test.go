@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/labeth/open-dso-core/testenv"
+	"github.com/labeth/open-dso-core/webserver/wire"
 	"github.com/labeth/open-sds1000cml/app/internal/engine"
 )
 
@@ -78,7 +79,7 @@ func TestRecordServesAWholeSampledRecord(t *testing.T) {
 	}
 	b := rec.Body.Bytes()
 	hl := int(binary.LittleEndian.Uint32(b))
-	var h recordReply
+	var h wire.RecordReply
 	if err := json.Unmarshal(b[4:4+hl], &h); err != nil {
 		t.Fatal(err)
 	}

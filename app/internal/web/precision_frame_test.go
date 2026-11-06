@@ -6,12 +6,14 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"testing"
+
+	"github.com/labeth/open-dso-core/webserver/wire"
 )
 
 // TRLC-LINKS: REQ-SDS-163
 func TestPrecisionBinaryPayload(t *testing.T) {
-	rep := frameReply{Seq: 1, Cols: 2, Depth: 2, C1: []int16{100, 255}, C2: []int16{101, 0}, Q1: []uint16{25601, 65535}, Q2: []uint16{25728, 0}, FractionBits: 8}
-	b := encodeBinFrame(rep)
+	rep := wire.FrameReply{Seq: 1, Cols: 2, Depth: 2, C1: []int16{100, 255}, C2: []int16{101, 0}, Q1: []uint16{25601, 65535}, Q2: []uint16{25728, 0}, FractionBits: 8}
+	b := wire.EncodeBinFrame(rep)
 	if b[1]&0x20 == 0 {
 		t.Fatal("precision flag missing")
 	}

@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"github.com/labeth/open-dso-core/testenv"
+	"github.com/labeth/open-dso-core/webserver/wire"
 	"github.com/labeth/open-sds1000cml/app/internal/engine"
 	"github.com/labeth/open-sds1000cml/app/internal/panel"
 )
@@ -93,7 +94,7 @@ func newOwnerScope(t *testing.T) (*ownerScope, *panel.Controller, *Server, func(
 
 // soundBinHead reads a /api/sound.bin reply's header.
 // TRLC-LINKS: REQ-SDS-277
-func soundBinHead(t *testing.T, h http.Handler, url string) soundBinHeader {
+func soundBinHead(t *testing.T, h http.Handler, url string) wire.SoundBinHeader {
 	t.Helper()
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(rec, httptest.NewRequestWithContext(t.Context(), http.MethodGet, url, nil))
@@ -102,7 +103,7 @@ func soundBinHead(t *testing.T, h http.Handler, url string) soundBinHeader {
 		t.Fatalf("%s: %d %q", url, rec.Code, b)
 	}
 	n := binary.LittleEndian.Uint32(b[4:8])
-	var hd soundBinHeader
+	var hd wire.SoundBinHeader
 	if err := json.Unmarshal(b[8:8+n], &hd); err != nil {
 		t.Fatal(err)
 	}

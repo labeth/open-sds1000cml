@@ -11,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/labeth/open-dso-core/webserver/wire"
 	"github.com/labeth/open-sds1000cml/app/internal/engine"
 	"github.com/labeth/open-sds1000cml/app/internal/panel"
 )
@@ -43,7 +44,7 @@ func TestSoundTakeBin(t *testing.T) {
 		t.Fatalf("stopped: status %d, %d bytes", r.StatusCode, len(body))
 	}
 	hl := binary.LittleEndian.Uint32(body[4:8])
-	var h soundTakeHeader
+	var h wire.SoundTakeHeader
 	if err := json.Unmarshal(body[8:8+hl], &h); err != nil {
 		t.Fatal(err)
 	}

@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/labeth/open-dso-core/testenv"
+	"github.com/labeth/open-dso-core/webserver/wire"
 	"github.com/labeth/open-sds1000cml/app/internal/analog"
 	"github.com/labeth/open-sds1000cml/app/internal/engine"
 )
@@ -73,7 +74,7 @@ func TestBinFrameCarriesTheViewWindow(t *testing.T) {
 	fe := &fakeAnalog{}
 	s := New(&fakeScope{frameGen: func() *engine.Frame { return f }}, fe, nil, nil)
 	rep, flags, pay := getBin(t, s, "/api/frame.bin?cols=2048&full=1")
-	if flags&binDeep == 0 || rep.ViewN != vn || math.Abs(rep.ViewA-1998.0/4095) > 1e-12 || math.Abs(rep.ViewB-2097.0/4095) > 1e-12 {
+	if flags&wire.FlagDeep == 0 || rep.ViewN != vn || math.Abs(rep.ViewA-1998.0/4095) > 1e-12 || math.Abs(rep.ViewB-2097.0/4095) > 1e-12 {
 		t.Fatalf("flags %#x view_n %d a %v b %v", flags, rep.ViewN, rep.ViewA, rep.ViewB)
 	}
 	if len(pay) != 2*n+2*vn {

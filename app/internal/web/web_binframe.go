@@ -4,108 +4,14 @@ package web
 
 import (
 	"encoding/binary"
-	"encoding/json"
 	"fmt"
 	"net/http"
 	"time"
 
 	"github.com/labeth/open-dso-core/webserver"
+	"github.com/labeth/open-dso-core/webserver/wire"
 	"github.com/labeth/open-sds1000cml/app/internal/engine"
 )
-
-// encodeBinFrame serializes a built reply to the binary wire format. It runs
-// after WithFrame returns — rep owns its data, so no lock is held here.
-// TRLC-LINKS: REQ-SDS-163
-func encodeBinFrame(rep frameReply) []byte {
-	var flags byte
-	precision := rep.FractionBits == 8 && len(rep.Q1) == len(rep.C1) && len(rep.Q2) == len(rep.C2) && len(rep.Q1) > 0
-	var segs [][]int16
-	head, tail := 0, 0
-	switch {
-	case rep.Unchanged:
-		flags |= binUnchanged
-	case rep.IsEnv:
-		flags |= binEnv
-		segs = [][]int16{rep.E1Min, rep.E1Max, rep.E2Min, rep.E2Max}
-	default:
-		if rep.Depth > 0 {
-			flags |= binDeep
-		}
-		n := len(rep.C1)
-		for head < n && rep.C1[head] < 0 {
-			head++
-		}
-		if head == n { // whole array is margin (defensive: Valid<1 never publishes)
-			flags |= binEmpty
-		} else {
-			for rep.C1[n-1-tail] < 0 {
-				tail++
-			}
-			segs = [][]int16{rep.C1, rep.C2}
-		}
-	}
-	if precision {
-		flags |= 0x20
-	}
-	hdr := rep
-	hdr.C1, hdr.C2 = nil, nil
-	hdr.E1Min, hdr.E1Max, hdr.E2Min, hdr.E2Max = nil, nil, nil, nil
-	hdr.VC1, hdr.VC2 = nil, nil
-	hdr.Head, hdr.Tail = head, tail
-	view := !rep.Unchanged && !rep.IsEnv && rep.ViewN > 0 && len(rep.VC1) == rep.ViewN && len(rep.VC2) == rep.ViewN
-	if !view {
-		hdr.ViewA, hdr.ViewB, hdr.ViewN = 0, 0, 0
-	}
-	hj, err := json.Marshal(hdr)
-	if err != nil { // unreachable with finite inputs; keep the wire well-formed
-		flags = binUnchanged
-		segs, head, tail = nil, 0, 0
-		hj = []byte(`{"seq":0,"unchanged":true,"edge_x":-1}`)
-	}
-	segLen := 0
-	if len(segs) > 0 {
-		segLen = len(segs[0]) - head - tail
-	}
-	payloadBytes := segLen * len(segs)
-	if precision {
-		payloadBytes = 2 * (len(rep.Q1) + len(rep.Q2))
-	}
-	if view {
-		payloadBytes += 2 * rep.ViewN
-	}
-	buf := make([]byte, 8, 8+len(hj)+payloadBytes)
-	buf[0] = binMagic
-	buf[1] = flags
-	binary.LittleEndian.PutUint32(buf[4:8], uint32(len(hj))) //nolint:gosec // G115: a JSON header of a few KB
-	buf = append(buf, hj...)
-	// The payload written in place: the precision words as their
-	// little-endian bytes, the codes a byte each.
-	at := len(buf)
-	buf = buf[:at+payloadBytes]
-	if precision {
-		for _, seg := range [][]uint16{rep.Q1, rep.Q2} {
-			at += copy(buf[at:], webserver.LEBytes(seg))
-		}
-	} else {
-		for _, seg := range segs {
-			out := buf[at : at+segLen]
-			for i, v := range seg[head : head+segLen] {
-				out[i] = uint8(v & 0xff) // a display code, 0..255
-			}
-			at += segLen
-		}
-	}
-	if view {
-		for _, seg := range [][]int16{rep.VC1, rep.VC2} {
-			out := buf[at : at+len(seg)]
-			for i, v := range seg {
-				out[i] = uint8(v & 0xff) // a display code, 0..255
-			}
-			at += len(seg)
-		}
-	}
-	return buf
-}
 
 // FrameClient reports whether a page asked for a frame within the last d:
 // a page showing the scope keeps /api/frame.bin's long-poll open (it waits
@@ -237,11 +143,11 @@ func (s *Server) hFrameBin(w http.ResponseWriter, r *http.Request) {
 		if !(posFrac >= 0 && posFrac <= 1) {
 			posFrac = 0.5
 		}
-		var rep frameReply
+		var rep wire.FrameReply
 		s.sc.WithFrame(func(f *engine.Frame) {
 			rep = s.buildReply(f, cols, full, since, off, vpc, posFrac, st.Running && !st.Single)
 		})
-		buf = encodeBinFrame(rep) // encode inside the quiet lock; network write is outside
+		buf = wire.EncodeBinFrame(rep) // encode inside the quiet lock; network write is outside
 	}()
 	w.Header().Set("Content-Type", "application/octet-stream")
 	w.Header().Set("Cache-Control", "no-store")
@@ -282,17 +188,14 @@ func (s *Server) waitFrame(since uint64, timeout time.Duration) {
 // TRLC-LINKS: REQ-SDS-163
 func (s *Server) rawBinMsg(since uint64) []byte {
 	off, vpc := s.vertScales()
-	var hdr frameReply
-	var payload []byte
-	var flags byte = binRaw
+	var rf wire.RawFrame
 	s.sc.WithFrame(func(f *engine.Frame) {
 		if f == nil || f.Seq == 0 || f.Seq == since {
 			var seq uint64
 			if f != nil {
 				seq = f.Seq
 			}
-			hdr = frameReply{Seq: seq, Unchanged: true, EdgeX: -1}
-			flags |= binUnchanged
+			rf = wire.RawFrame{Header: wire.FrameReply{Seq: seq, Unchanged: true, EdgeX: -1}, Unchanged: true}
 			return
 		}
 		n := min(
@@ -304,11 +207,10 @@ func (s *Server) rawBinMsg(since uint64) []byte {
 				f.Valid, len(f.C1),
 			), len(f.C2))
 		if n <= 0 {
-			hdr = frameReply{Seq: f.Seq, Unchanged: true, EdgeX: -1}
-			flags |= binUnchanged | binEmpty
+			rf = wire.RawFrame{Header: wire.FrameReply{Seq: f.Seq, Unchanged: true, EdgeX: -1}, Unchanged: true, Empty: true}
 			return
 		}
-		hdr = frameReply{
+		hdr := wire.FrameReply{
 			Seq: f.Seq, EdgeX: f.EdgeX, Ptp: f.Ptp, TdivS: f.TdivS, WinCols: min(f.WinCols, n),
 			DisplayedS: f.DisplayedS, Interp: f.Interp, Norm: f.Norm,
 			Trigd: f.Trigd, Coherent: f.Coherent, IsEnv: f.IsEnv, PeakDetect: f.PeakDetect, Ordered: f.Ordered, CaptureSampleS: captureSampleS(f),
@@ -323,28 +225,20 @@ func (s *Server) rawBinMsg(since uint64) []byte {
 		hdr.Decimation, hdr.CaptureDepth, hdr.TriggerKind = f.Decimation, f.CaptureDepth, f.TriggerKind
 		hdr.FullRate = f.FullRate
 		if len(f.Q1) == n && len(f.Q2) == n {
-			flags |= 0x20
 			hdr.FractionBits = 8
-			payload = make([]byte, 4*n)
+			payload := make([]byte, 4*n)
 			for ch, q := range [][]uint16{f.Q1, f.Q2} {
 				for i, v := range q {
 					binary.LittleEndian.PutUint16(payload[2*(ch*n+i):], v)
 				}
 			}
+			rf = wire.RawFrame{Header: hdr, Precision: true, Payload: payload}
 			return
 		}
-		payload = make([]byte, 2*n)
+		payload := make([]byte, 2*n)
 		copy(payload[:n], f.C1[:n])
 		copy(payload[n:], f.C2[:n])
+		rf = wire.RawFrame{Header: hdr, Payload: payload}
 	})
-	hj, err := json.Marshal(hdr)
-	if err != nil { // unreachable with finite inputs
-		hj, payload, flags = []byte(`{"seq":0,"unchanged":true,"edge_x":-1}`), nil, binRaw|binUnchanged
-	}
-	buf := make([]byte, 8, 8+len(hj)+len(payload))
-	buf[0] = binMagic
-	buf[1] = flags
-	binary.LittleEndian.PutUint32(buf[4:8], uint32(len(hj))) //nolint:gosec // G115: a JSON header of a few KB
-	buf = append(buf, hj...)
-	return append(buf, payload...)
+	return wire.EncodeRawFrame(rf)
 }

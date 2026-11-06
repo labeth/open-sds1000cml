@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/labeth/open-dso-core/analysis"
+	"github.com/labeth/open-dso-core/uimodel"
 	"github.com/labeth/open-sds1000cml/app/internal/analog"
 	"github.com/labeth/open-sds1000cml/app/internal/buildinfo"
 	"github.com/labeth/open-sds1000cml/app/internal/engine"
@@ -17,48 +18,8 @@ import (
 	"github.com/labeth/open-sds1000cml/app/internal/streamview"
 )
 
-// Display is the instrument display state the LCD renders the frame with
-// (the trace overlays the panel owns).
-type Display struct {
-	ShowC1, ShowC2   bool
-	ShowMeas         bool
-	MeasItems        []string // "1:pkpk": the chosen readouts, channel and parameter
-	ViewMode         int      // 0 Y-T, 1 X-Y, 2 FFT, 3 Bode, 4 spectrogram
-	MathMode         int
-	Zoom             int
-	ZoomOff          float64
-	Persist          bool
-	FFTSrc           int
-	DecProto         int
-	DecBaud          int
-	DecChA, DecChB   int
-	DecCPOL, DecCPHA bool
-	DecLSB           bool
-	DecParity        string // Modbus RTU's framing ("": found by the decoder)
-	DecInverted      bool   // the IR and DALI lines' marks at the high level
-	DecBits          int    // SIRC's or Wiegand's frame length (0: not known)
-	// DecLayer is the bus's layer (analysis.Layers' ID, "" none) and
-	// DecLayerAddr/Dir the I2C filter's address (-1 any) and direction.
-	DecLayer     string
-	DecLayerAddr int
-	DecLayerDir  int
-	DecDelayNs   float64 // SPI's data delay in use after the sampling edge (ns)
-	DecFormat    int
-	// Auto: a detection runs (DecDetecting); the settings are what it filled
-	// in (DecAuto); what the last one found, or why it found none (DecNote)
-	DecDetecting bool
-	DecAuto      bool
-	DecNote      string
-	CurOn        bool
-	CurType      int
-	CurSel       int
-	CurX, CurY   [2]float64 // where the screen shows the cursors now: fractions across and down (beyond 0..1 off it)
-	CurT, CurV   [2]float64 // their signal: times from the trigger (s), volts at CurVCh's tip
-	CurVCh       int
-	AutosetBusy  bool
-	AutosetMsg   string
-	Remote       string // the last remote change, while it shows
-}
+// Display is uimodel.Display.
+type Display = uimodel.Display
 
 // Snapshot returns the display state and the UI view, read together.
 // TRLC-LINKS: REQ-SDS-211, REQ-SDS-212

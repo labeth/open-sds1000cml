@@ -9,7 +9,7 @@ import (
 	"testing"
 
 	"github.com/labeth/open-dso-core/sound"
-	"github.com/labeth/open-dso-core/webserver"
+	"github.com/labeth/open-dso-core/webserver/wire"
 	"github.com/labeth/open-sds1000cml/app/internal/panel"
 )
 
@@ -25,7 +25,7 @@ func TestJSONSafeSeries(t *testing.T) {
 		r.VOct = append(r.VOct, sound.VOctPoint{V: float64(i), Hz: 55})
 	}
 	r.VOct[50].Hz = math.NaN()
-	b, err := json.Marshal(map[string]any{"report": webserver.JSONSafe(reflect.ValueOf(r))})
+	b, err := json.Marshal(map[string]any{"report": wire.JSONSafe(reflect.ValueOf(r))})
 	if err != nil {
 		t.Fatal(err)
 	}

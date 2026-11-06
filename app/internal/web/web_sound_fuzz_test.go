@@ -13,6 +13,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/labeth/open-dso-core/webserver/wire"
 	"github.com/labeth/open-sds1000cml/app/internal/engine"
 	"github.com/labeth/open-sds1000cml/app/internal/panel"
 )
@@ -128,7 +129,7 @@ func TestSoundAPIHostile(t *testing.T) {
 			t.Fatalf("%s: status %d, %d bytes", q, r.StatusCode, len(b))
 		}
 		hl := int(binary.LittleEndian.Uint32(b[4:8]))
-		var h soundBinHeader
+		var h wire.SoundBinHeader
 		if hl == 0 || 8+hl > len(b) || json.Unmarshal(b[8:8+hl], &h) != nil {
 			t.Fatalf("%s: header of %d bytes does not parse: %q", q, hl, b[8:min(len(b), 8+hl)])
 		}

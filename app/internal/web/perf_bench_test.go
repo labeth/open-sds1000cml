@@ -99,18 +99,6 @@ func TestClaimText(t *testing.T) {
 	}
 }
 
-// TRLC-LINKS: REQ-SDS-163
-func BenchmarkWindowFrame(b *testing.B) {
-	sig := make([]uint8, 5000)
-	for i := range sig {
-		sig[i] = uint8(i)
-	}
-	for b.Loop() {
-		window(sig, 5000, 5000, 2500, false, 800, 0.5)
-		window(sig, 5000, 1000, 2500, true, 800, 0.5)
-	}
-}
-
 // TRLC-LINKS: REQ-SDS-162
 func BenchmarkHTTPPanelWait(b *testing.B) {
 	rig := newRemoteRig(b)
