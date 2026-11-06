@@ -14,8 +14,8 @@ The documentation of the firmware: an engineering model (schema version 2), with
 
 Every source file names its unit (`ENGMODEL-OWNER-UNIT`) and every function the requirements it
 serves (`TRLC-LINKS`). CI validates the model and those links across the repository with `engdoc` from
-[engineering-model-go](https://github.com/labeth/engineering-model-go), at the commit pinned in
-`.github/workflows/ci.yml`:
+[engineering-model-go](https://github.com/labeth/engineering-model-go), at the release pinned in
+`.github/workflows/ci.yml` (`ENGMODEL_VERSION`, v0.10.0):
 
 ```sh
 engdoc --model model/engmod.yml --requirements model/requirements.yml \
