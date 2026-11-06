@@ -10,8 +10,8 @@ import (
 	"sync/atomic"
 	"testing"
 
-	"github.com/labeth/open-sds1000cml/app/internal/engine"
 	"github.com/labeth/open-dso-core/testenv"
+	"github.com/labeth/open-sds1000cml/app/internal/engine"
 )
 
 // TestFFTBrowser drives the real UI in headless Chromium (via Playwright) against

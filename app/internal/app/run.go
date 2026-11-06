@@ -19,6 +19,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/labeth/open-dso-core/vxi11srv"
 	"github.com/labeth/open-sds1000cml/app/internal/analog"
 	"github.com/labeth/open-sds1000cml/app/internal/buildinfo"
 	"github.com/labeth/open-sds1000cml/app/internal/bus"
@@ -31,7 +32,6 @@ import (
 	"github.com/labeth/open-sds1000cml/app/internal/settings"
 	"github.com/labeth/open-sds1000cml/app/internal/sramcapture"
 	"github.com/labeth/open-sds1000cml/app/internal/streamview"
-	"github.com/labeth/open-dso-core/vxi11srv"
 	"github.com/labeth/open-sds1000cml/app/internal/web"
 )
 

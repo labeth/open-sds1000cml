@@ -12,8 +12,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/labeth/open-sds1000cml/app/internal/bus"
 	"github.com/labeth/open-dso-core/decode"
+	"github.com/labeth/open-sds1000cml/app/internal/bus"
 	"github.com/labeth/open-sds1000cml/app/internal/decodedlines"
 	"github.com/labeth/open-sds1000cml/app/internal/sramcapture"
 )

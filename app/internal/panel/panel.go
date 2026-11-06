@@ -13,11 +13,11 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/labeth/open-sds1000cml/app/internal/analog"
 	"github.com/labeth/open-dso-core/decode"
+	"github.com/labeth/open-dso-core/superres"
+	"github.com/labeth/open-sds1000cml/app/internal/analog"
 	"github.com/labeth/open-sds1000cml/app/internal/engine"
 	"github.com/labeth/open-sds1000cml/app/internal/settings"
-	"github.com/labeth/open-dso-core/superres"
 )
 
 // Engine is the command surface the controller drives (spec 08 §4).

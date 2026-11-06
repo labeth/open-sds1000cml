@@ -16,9 +16,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/labeth/open-dso-core/testenv"
 	"github.com/labeth/open-sds1000cml/app/internal/engine"
 	"github.com/labeth/open-sds1000cml/app/internal/panel"
-	"github.com/labeth/open-dso-core/testenv"
 )
 
 // ownerScope is a scope with an audio stream behind the real panel: the

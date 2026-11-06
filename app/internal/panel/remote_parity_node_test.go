@@ -5,6 +5,7 @@ package panel
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/labeth/open-dso-core/webclient"
 	"math"
 	"os"
 	"os/exec"
@@ -12,8 +13,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/labeth/open-sds1000cml/app/internal/panel/wsview"
 	"github.com/labeth/open-dso-core/testenv"
+	"github.com/labeth/open-sds1000cml/app/internal/panel/wsview"
 )
 
 // TestRemoteCoreParity: what the phone remote says before it sends a value
@@ -120,12 +121,12 @@ func TestRemoteCoreParity(t *testing.T) {
 	if err := os.WriteFile(vf, blob, 0o644); err != nil {
 		t.Fatal(err)
 	}
-	for _, f := range []string{filepath.Join("testdata", "remoteparity.cjs"), filepath.Join("..", "web", "remote_core.js")} {
+	for _, f := range []string{filepath.Join("testdata", "remoteparity.cjs"), filepath.Join(webclient.Dir(), "remote_core.js")} {
 		if _, err := os.ReadFile(f); err != nil { // read here so Go's test cache sees a change to them (node reads them)
 			t.Fatal(err)
 		}
 	}
-	cmd := exec.CommandContext(t.Context(), node, filepath.Join("testdata", "remoteparity.cjs"), vf, filepath.Join("..", "web"))
+	cmd := exec.CommandContext(t.Context(), node, filepath.Join("testdata", "remoteparity.cjs"), vf, webclient.Dir())
 	cmd.Stderr = os.Stderr
 	raw, err := cmd.Output()
 	if err != nil {

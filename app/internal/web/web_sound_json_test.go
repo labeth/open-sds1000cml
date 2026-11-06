@@ -8,8 +8,8 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/labeth/open-sds1000cml/app/internal/panel"
 	"github.com/labeth/open-dso-core/sound"
+	"github.com/labeth/open-sds1000cml/app/internal/panel"
 )
 
 // TestJSONSafeSeries reads a SOUND report with long series through

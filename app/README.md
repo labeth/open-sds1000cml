@@ -35,6 +35,6 @@ GOARCH=386 go test ./...   # the device is 32-bit
 | `web`, `scpi`, `vxi11srv` | the web UI and phone remote (HTML/JS/CSS embedded) with its JSON API, SCPI, the VXI-11 server |
 | `buildinfo`, `testenv` | version stamp, test gating |
 
-`internal/web/e2e/` drives the web UI on a live scope ([README](internal/web/e2e/README.md)).
+`open-dso-core/webclient/e2e/` drives the web UI on a live scope.
 `internal/bus/dcinv/` is the D-cache invalidate kernel module the EDMA drain loads
 ([README](internal/bus/dcinv/README.md)).

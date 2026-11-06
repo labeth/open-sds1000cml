@@ -10,8 +10,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/labeth/open-sds1000cml/app/internal/engine"
 	"github.com/labeth/open-dso-core/sound"
+	"github.com/labeth/open-sds1000cml/app/internal/engine"
 )
 
 // SOUND (ADR-SOUND) on the scope's side: the settings the LCD, the web page

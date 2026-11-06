@@ -8,8 +8,8 @@ import (
 	"math"
 	"time"
 
-	"github.com/labeth/open-sds1000cml/app/internal/engine"
 	"github.com/labeth/open-dso-core/superres"
+	"github.com/labeth/open-sds1000cml/app/internal/engine"
 )
 
 // Device super-res (spec: reference-locked stack-and-crunch), the ACQ tab's

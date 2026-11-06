@@ -14,10 +14,11 @@ import (
 	"github.com/labeth/open-sds1000cml/app/internal/streamview"
 )
 
-// Colour palette (spec 07 §2.2). The col* variables are GENERATED into
-// palette_gen.go from ../web/tokens.json — the single source of truth shared with
-// the web UI — so the two surfaces cannot diverge (they did: the trigger colour
-// was red on web but green here). Edit tokens.json + `go generate ./internal/web`.
+// Colour palette (spec 07 §2.2). The col* variables in palette.go are tokens
+// of open-dso-core/design's shared palette, the single source of truth for the
+// web UI too, so the two surfaces cannot diverge (they did: the trigger colour
+// was red on web but green here). Edit open-dso-core/design/tokens.json and run
+// `go generate ./design` there.
 
 // HUD is the UI-state snapshot the overlay renders alongside the frozen
 // frame (spec 07 §6). It carries no capture state.

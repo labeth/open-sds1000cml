@@ -7,7 +7,7 @@ import (
 	"math"
 )
 
-// colSR (palette_gen.go, token "sr") is the super-res overlay colour — the old
+// colSR (palette.go, token "sr") is the super-res overlay colour — the old
 // C2 cyan since C2 took the panel's pink; distinct from C1/C2/trigger.
 
 // drawSuperresHUD overlays the super-res status line (focus/bits/count) along the

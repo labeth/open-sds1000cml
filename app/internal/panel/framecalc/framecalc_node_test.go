@@ -4,14 +4,15 @@ package framecalc
 
 import (
 	"encoding/json"
+	"github.com/labeth/open-dso-core/webclient"
 	"math"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"testing"
 
-	"github.com/labeth/open-sds1000cml/app/internal/engine"
 	"github.com/labeth/open-dso-core/testenv"
+	"github.com/labeth/open-sds1000cml/app/internal/engine"
 )
 
 // TestSpectrumJSParity runs the LCD's spectrum (Spectrum) and the web's
@@ -68,7 +69,7 @@ func TestSpectrumJSParity(t *testing.T) {
 	if err := os.WriteFile(vf, blob, 0o644); err != nil {
 		t.Fatal(err)
 	}
-	cmd := exec.CommandContext(t.Context(), node, filepath.Join("testdata", "spectrumparity.cjs"), vf, filepath.Join("..", "..", "web"))
+	cmd := exec.CommandContext(t.Context(), node, filepath.Join("testdata", "spectrumparity.cjs"), vf, webclient.Dir())
 	cmd.Stderr = os.Stderr
 	out, err := cmd.Output()
 	if err != nil {

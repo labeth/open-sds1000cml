@@ -7,6 +7,7 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"fmt"
+	"github.com/labeth/open-dso-core/webclient"
 	"math/rand"
 	"os"
 	"os/exec"
@@ -18,8 +19,8 @@ import (
 	"time"
 
 	"github.com/labeth/open-dso-core/decode"
-	"github.com/labeth/open-sds1000cml/app/internal/sramcapture"
 	"github.com/labeth/open-dso-core/testenv"
+	"github.com/labeth/open-sds1000cml/app/internal/sramcapture"
 )
 
 // rleWords undoes appendWordsRLE.
@@ -370,7 +371,7 @@ func TestClientDecodeMatchesScope(t *testing.T) {
 		if err := os.WriteFile(cj, blob, 0o644); err != nil {
 			t.Fatal(err)
 		}
-		out, err := exec.CommandContext(t.Context(), "node", "../web/webdec_check.mjs", "session", cj).CombinedOutput()
+		out, err := exec.CommandContext(t.Context(), "node", filepath.Join(webclient.Dir(), "webdec_check.mjs"), "session", cj).CombinedOutput()
 		if err != nil || !strings.Contains(string(out), "WEBDEC OK") {
 			t.Fatalf("webdec_check.mjs: %v\n%s", err, out)
 		}

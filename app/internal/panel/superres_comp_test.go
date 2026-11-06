@@ -6,8 +6,8 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/labeth/open-sds1000cml/app/internal/engine"
 	"github.com/labeth/open-dso-core/superres"
+	"github.com/labeth/open-sds1000cml/app/internal/engine"
 )
 
 // Native review must show the accumulated mean without implicit deconvolution.

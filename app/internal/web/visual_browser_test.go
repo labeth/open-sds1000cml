@@ -9,8 +9,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/labeth/open-sds1000cml/app/internal/engine"
 	"github.com/labeth/open-dso-core/testenv"
+	"github.com/labeth/open-sds1000cml/app/internal/engine"
 )
 
 // TestVisualMIDIBrowser: a MIDI bus (two notes on, one off) decodes in BUS,

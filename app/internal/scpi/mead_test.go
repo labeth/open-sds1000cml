@@ -8,8 +8,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/labeth/open-sds1000cml/app/internal/engine"
 	"github.com/labeth/open-dso-core/measure"
+	"github.com/labeth/open-sds1000cml/app/internal/engine"
 )
 
 // square is a 0/200-code square of the given period starting high at phase.

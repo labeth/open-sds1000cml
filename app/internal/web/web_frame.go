@@ -6,9 +6,9 @@ import (
 	"math"
 	"time"
 
+	"github.com/labeth/open-dso-core/measure"
 	"github.com/labeth/open-sds1000cml/app/internal/analog"
 	"github.com/labeth/open-sds1000cml/app/internal/engine"
-	"github.com/labeth/open-dso-core/measure"
 )
 
 // TRLC-LINKS: REQ-SDS-163

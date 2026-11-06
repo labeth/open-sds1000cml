@@ -5,7 +5,9 @@ package panel
 import (
 	"compress/gzip"
 	"encoding/json"
+	"github.com/labeth/open-dso-core/testenv"
 	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/labeth/open-dso-core/decode"
@@ -16,7 +18,7 @@ import (
 // TRLC-LINKS: REQ-SDS-214
 func loadScopeCapture(t *testing.T, name string) (c1, c2 []uint8, sampleS float64) {
 	t.Helper()
-	f, err := os.Open("../decode/testdata/" + name)
+	f, err := os.Open(filepath.Join(testenv.CoreDir(), "decode", "testdata", name))
 	if err != nil {
 		t.Fatal(err)
 	}

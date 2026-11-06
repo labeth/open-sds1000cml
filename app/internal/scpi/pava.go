@@ -7,9 +7,9 @@ import (
 	"math"
 	"strings"
 
+	"github.com/labeth/open-dso-core/measure"
 	"github.com/labeth/open-sds1000cml/app/internal/analog"
 	"github.com/labeth/open-sds1000cml/app/internal/engine"
-	"github.com/labeth/open-dso-core/measure"
 )
 
 // liveFront is the front end's live probe and coupling, when it offers them:

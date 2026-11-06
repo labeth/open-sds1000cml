@@ -16,14 +16,12 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/labeth/open-sds1000cml/app/internal/engine"
 	"github.com/labeth/open-dso-core/measure"
+	"github.com/labeth/open-sds1000cml/app/internal/engine"
 	"github.com/labeth/open-sds1000cml/app/internal/panel"
 	"github.com/labeth/open-sds1000cml/app/internal/sramcapture"
 	"github.com/labeth/open-sds1000cml/app/internal/streamview"
 )
-
-//go:generate go run gen_tokens.go
 
 // Client assets (page + classic-script JS modules + CSS) are embedded and
 // served generically — see assets.go.

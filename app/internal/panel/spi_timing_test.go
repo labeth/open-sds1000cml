@@ -6,8 +6,10 @@ import (
 	"compress/gzip"
 	"encoding/json"
 	"fmt"
+	"github.com/labeth/open-dso-core/testenv"
 	"math"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -142,7 +144,7 @@ func spiRecord(late float64) (c1, c2 []uint8) {
 // TRLC-LINKS: REQ-SDS-230
 func flashRecords(t *testing.T) (tdivs []float64, frames []*engine.Frame) {
 	t.Helper()
-	f, err := os.Open("../decode/testdata/spi_flash104_records.json.gz")
+	f, err := os.Open(filepath.Join(testenv.CoreDir(), "decode", "testdata", "spi_flash104_records.json.gz"))
 	if err != nil {
 		t.Fatal(err)
 	}

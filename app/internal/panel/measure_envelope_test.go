@@ -7,8 +7,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/labeth/open-sds1000cml/app/internal/engine"
 	"github.com/labeth/open-dso-core/measure"
+	"github.com/labeth/open-sds1000cml/app/internal/engine"
 )
 
 // MEASURE reads an inverted channel's live envelope with the complement duty,

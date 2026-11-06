@@ -8,9 +8,9 @@ import (
 	"math"
 	"strconv"
 
+	"github.com/labeth/open-dso-core/superres"
 	"github.com/labeth/open-sds1000cml/app/internal/engine"
 	"github.com/labeth/open-sds1000cml/app/internal/sramcapture"
-	"github.com/labeth/open-dso-core/superres"
 )
 
 // srStopFPGA is the fourth Stop-on mode: stack Target records in the FPGA

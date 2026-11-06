@@ -7,9 +7,9 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/labeth/open-dso-core/sound"
 	"github.com/labeth/open-sds1000cml/app/internal/engine"
 	"github.com/labeth/open-sds1000cml/app/internal/panel/wsview"
-	"github.com/labeth/open-dso-core/sound"
 )
 
 // SOUND's takes on the scope's side (engine/sound_take.go makes them): while

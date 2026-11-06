@@ -5,25 +5,62 @@ package web
 import (
 	"bytes"
 	"compress/gzip"
-	"embed"
 	"fmt"
+	"github.com/labeth/open-dso-core/design"
+	"github.com/labeth/open-dso-core/webclient"
 	"hash/fnv"
+	"io/fs"
 	"net/http"
 	"path"
 	"regexp"
+	"slices"
 	"strings"
 	"sync"
 	"time"
 )
 
-// assetFS holds the served client: the page, every classic-script .js module,
-// and the CSS. A single directory embed means a new script only needs its
-// <script> tag in ui.html — no per-file embed/handler/route boilerplate. The
-// phone remote (remote.html, remote_*.js, remote.css) adds its web app
-// manifest, home-screen icons and the keep-awake videos.
-//
-//go:embed ui.html remote.html *.js *.css remote.webmanifest remote-*.png remote-awake.mp4 remote-awake.webm
-var assetFS embed.FS
+// assetFS is what the server serves: the web client every scope shares
+// (open-dso-core/webclient: the pages and every classic-script .js module,
+// the phone remote's manifest, icons and keep-awake videos) and the shared
+// stylesheets (open-dso-core/design), all at the top level. A new script
+// only needs its <script> tag in ui.html.
+var assetFS = layeredFS{webclient.FS, design.CSS}
+
+// layeredFS reads a file from the first layer that has it and lists every
+// layer's files, the first layer's winning a name both have.
+type layeredFS []fs.FS
+
+// ReadFile is name's body from the first layer that has it.
+// TRLC-LINKS: REQ-SDS-161
+func (l layeredFS) ReadFile(name string) ([]byte, error) {
+	for _, f := range l {
+		if b, err := fs.ReadFile(f, name); err == nil {
+			return b, nil
+		}
+	}
+	return nil, &fs.PathError{Op: "read", Path: name, Err: fs.ErrNotExist}
+}
+
+// ReadDir lists dir across the layers, sorted by name.
+// TRLC-LINKS: REQ-SDS-161
+func (l layeredFS) ReadDir(dir string) ([]fs.DirEntry, error) {
+	seen := map[string]bool{}
+	var out []fs.DirEntry
+	for _, f := range l {
+		es, err := fs.ReadDir(f, dir)
+		if err != nil {
+			continue
+		}
+		for _, e := range es {
+			if !seen[e.Name()] {
+				seen[e.Name()] = true
+				out = append(out, e)
+			}
+		}
+	}
+	slices.SortFunc(out, func(a, b fs.DirEntry) int { return strings.Compare(a.Name(), b.Name()) })
+	return out, nil
+}
 
 // assetTypes are the served files' content types by extension.
 var assetTypes = map[string]string{

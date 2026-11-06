@@ -1,5 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-PANEL
-// remoteparity.cjs - runs the phone remote's hints (internal/web/remote_core.js:
+// remoteparity.cjs - runs the phone remote's hints (open-dso-core/webclient/remote_core.js:
 // si, fmtValue, parseNumber, numberHint, parseMatch) on the vectors of
 // TestRemoteCoreParity in remote_parity_node_test.go and prints what they say.
 // Usage: node remoteparity.cjs <vectors.json> <web dir>.

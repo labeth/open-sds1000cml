@@ -9,8 +9,8 @@ import (
 	"testing/synctest"
 	"time"
 
-	"github.com/labeth/open-sds1000cml/app/internal/engine"
 	"github.com/labeth/open-dso-core/superres"
+	"github.com/labeth/open-sds1000cml/app/internal/engine"
 )
 
 // An FPGA stack reviews at the session's timebase: one screen of samples with

@@ -6,8 +6,8 @@ import (
 	"math"
 	"testing"
 
-	"github.com/labeth/open-sds1000cml/app/internal/engine"
 	"github.com/labeth/open-dso-core/measure"
+	"github.com/labeth/open-sds1000cml/app/internal/engine"
 )
 
 // An inverted channel on a live envelope frame reads the complement duty: the
