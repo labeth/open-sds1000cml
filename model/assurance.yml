@@ -21,6 +21,53 @@ assurance:
     name: Timing and CDC qualification gates
     category: integrity
     description: Do not equate simulation or internal fit with external hardware qualification.
+  controlVerifications:
+  - id: CV-BUS
+    controlRef: CTRL-BUS
+    riskRefs:
+    - RISK-BUS
+    method: test
+    owner: ACT-MAINTAINER
+    verificationRefs:
+    - REQ-SDS-001
+    - REQ-SDS-129
+  - id: CV-IDENTITY
+    controlRef: CTRL-IDENTITY
+    riskRefs:
+    - RISK-BUS
+    method: test
+    owner: ACT-MAINTAINER
+    verificationRefs:
+    - REQ-SDS-032
+    - REQ-SDS-041
+    - REQ-SDS-092
+  - id: CV-EPOCH
+    controlRef: CTRL-EPOCH
+    riskRefs:
+    - RISK-LOSS
+    method: test
+    owner: ACT-MAINTAINER
+    verificationRefs:
+    - REQ-SDS-035
+    - REQ-SDS-058
+  - id: CV-HEALTH
+    controlRef: CTRL-HEALTH
+    method: test
+    owner: ACT-MAINTAINER
+    verificationRefs:
+    - REQ-SDS-025
+    - REQ-SDS-028
+    - REQ-SDS-105
+    - REQ-SDS-128
+  - id: CV-TIMING
+    controlRef: CTRL-TIMING
+    riskRefs:
+    - RISK-QUALIFICATION
+    method: test
+    owner: ACT-MAINTAINER
+    verificationRefs:
+    - REQ-SDS-034
+    - REQ-SDS-210
   risks:
   - id: RISK-BUS
     title: Bus wedge
