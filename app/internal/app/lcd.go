@@ -9,6 +9,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/labeth/open-dso-core/webserver"
 	"github.com/labeth/open-sds1000cml/app/internal/analog"
 	"github.com/labeth/open-sds1000cml/app/internal/engine"
 	"github.com/labeth/open-sds1000cml/app/internal/frames"
@@ -18,7 +19,6 @@ import (
 	"github.com/labeth/open-sds1000cml/app/internal/panel/wsview"
 	"github.com/labeth/open-sds1000cml/app/internal/scpi"
 	"github.com/labeth/open-sds1000cml/app/internal/streamview"
-	"github.com/labeth/open-sds1000cml/app/internal/web"
 )
 
 // lastViewWasBode tracks whether the DEVICE's BODE view armed FRA, so leaving
@@ -36,7 +36,7 @@ var uiCtrl atomic.Pointer[panel.Controller]
 
 // webSrv is the web server, published after creation so the display loop
 // can tell whether a page shows the scope (lcdGov).
-var webSrv atomic.Pointer[web.Server]
+var webSrv atomic.Pointer[webserver.Server]
 
 // streamCtrl is the scope-side decoded stream, published for the HUD.
 var streamCtrl atomic.Pointer[streamview.Controller]

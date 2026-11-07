@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/labeth/open-dso-core/decode"
+	"github.com/labeth/open-dso-core/streamwire"
 	"github.com/labeth/open-sds1000cml/app/internal/decodedlines"
 	"github.com/labeth/open-sds1000cml/app/internal/engine"
 	"github.com/labeth/open-sds1000cml/app/internal/sramcapture"
@@ -67,13 +68,8 @@ type View struct {
 	Mode string
 }
 
-// Page is a window of formatted transcript lines.
-type Page struct {
-	Lines       []string
-	Top, Total  int // first line shown, lines held
-	TriggerLine int // -1 when unknown
-	Header      string
-}
+// Page is streamwire.Page.
+type Page = streamwire.Page
 
 // historyLines bounds the transcript (about 260 k bytes of 8-bit units).
 const historyLines = 16384
@@ -450,9 +446,8 @@ func ParamsFromDecode(p engine.SerialParams, r decode.Result, colTimeS float64) 
 	return p, nil
 }
 
-// ListRows is how many transcript lines the full-screen list shows; the
-// panel centres the trigger with it.
-const ListRows = 40
+// ListRows is streamwire.ListRows.
+const ListRows = streamwire.ListRows
 
 // Refuse shows why a stream could not start, without touching a running one.
 // TRLC-LINKS: REQ-SDS-018
@@ -466,26 +461,11 @@ func (c *Controller) Refuse(reason string) {
 	c.t = decodedlines.New(0, historyLines)
 }
 
-// LineData is one transcript line as data: its absolute index since the
-// stream started, the first unit's sample ordinal, the units, and which of
-// them are decode errors or (I2C) not acknowledged.
-type LineData struct {
-	Index  int      `json:"i"`
-	Sample uint64   `json:"s"`
-	Units  []uint32 `json:"v"`
-	Errs   uint16   `json:"e,omitempty"`
-	Naks   uint16   `json:"k,omitempty"`
-	Note   string   `json:"n,omitempty"`
-}
+// LineData is streamwire.LineData.
+type LineData = streamwire.LineData
 
-// LinesPage answers Lines: Base is the oldest line still held, Next the index
-// to ask for next; a reader that falls behind Base has missed lines.
-type LinesPage struct {
-	State string     `json:"state"`
-	Base  int        `json:"base"`
-	Next  int        `json:"next"`
-	Lines []LineData `json:"lines"`
-}
+// LinesPage is streamwire.LinesPage.
+type LinesPage = streamwire.LinesPage
 
 // Lines returns up to limit transcript lines from absolute index from (raised
 // to the oldest held), for a reader following the stream.

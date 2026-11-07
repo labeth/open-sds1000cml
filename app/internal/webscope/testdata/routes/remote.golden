@@ -1,0 +1,88 @@
+=== GET /api/panel/wait?seq=40&timeout_ms=20000
+status 200
+header Content-Type: application/json
+body: 1374 bytes, sha256 679dd94817512590de94c0a7b8f9c958ea51ba92797f291ea057b162765a3ab6
+{"Seq":41,"SheetsSeq":9,"AutosetBusy":false,"AutosetMsg":"","Workspace":"SCOPE","WorkspaceID":"scope","View":"Y-T","Views":["","","","",""],"Mode":"workspace","Sheet":{"Open":false,"Tab":"","TabName":"","TabTitle":"","Tabs":null,"Edit":false,"Row":null},"FKeys":[{"Label":"SCOPE","Value":"","Sel":true,"Dim":false},{"Label":"","Value":"","Sel":false,"Dim":false},{"Label":"","Value":"","Sel":false,"Dim":false},{"Label":"","Value":"","Sel":false,"Dim":false},{"Label":"","Value":"","Sel":false,"Dim":false}],"Tool":[{"Knob":"Adjust","Job":"Offset"}],"Again":"X-Y","AgainNext":"X-Y","Notice":"","Remote":"","Picker":{"Open":false,"Mode":"","Tokens":null,"Cursor":0},"Lamps":33,"LampsLit":["CH1","RUN"],"Display":{"ShowC1":true,"ShowC2":false,"ShowMeas":true,"MeasItems":null,"ViewMode":0,"MathMode":0,"Zoom":0,"ZoomOff":0,"Persist":false,"FFTSrc":0,"DecProto":0,"DecBaud":0,"DecChA":0,"DecChB":0,"DecCPOL":false,"DecCPHA":false,"DecLSB":false,"DecParity":"","DecInverted":false,"DecBits":0,"DecLayer":"","DecLayerAddr":0,"DecLayerDir":0,"DecDelayNs":0,"DecFormat":0,"DecDetecting":false,"DecAuto":false,"DecNote":"","CurOn":false,"CurType":0,"CurSel":0,"CurX":[0,0],"CurY":[0,0],"CurT":[0,0],"CurV":[0,0],"CurVCh":0,"AutosetBusy":false,"AutosetMsg":"","Remote":""},"Screen":"on","AutosetDone":0,"Refs":[{"Has":false,"Show":false,"Gen":0},{"Has":false,"Show":false,"Gen":0}]}
+
+=== GET /api/panel/wait?timeout_ms=-3
+status 200
+header Content-Type: application/json
+body: 1374 bytes, sha256 679dd94817512590de94c0a7b8f9c958ea51ba92797f291ea057b162765a3ab6
+{"Seq":41,"SheetsSeq":9,"AutosetBusy":false,"AutosetMsg":"","Workspace":"SCOPE","WorkspaceID":"scope","View":"Y-T","Views":["","","","",""],"Mode":"workspace","Sheet":{"Open":false,"Tab":"","TabName":"","TabTitle":"","Tabs":null,"Edit":false,"Row":null},"FKeys":[{"Label":"SCOPE","Value":"","Sel":true,"Dim":false},{"Label":"","Value":"","Sel":false,"Dim":false},{"Label":"","Value":"","Sel":false,"Dim":false},{"Label":"","Value":"","Sel":false,"Dim":false},{"Label":"","Value":"","Sel":false,"Dim":false}],"Tool":[{"Knob":"Adjust","Job":"Offset"}],"Again":"X-Y","AgainNext":"X-Y","Notice":"","Remote":"","Picker":{"Open":false,"Mode":"","Tokens":null,"Cursor":0},"Lamps":33,"LampsLit":["CH1","RUN"],"Display":{"ShowC1":true,"ShowC2":false,"ShowMeas":true,"MeasItems":null,"ViewMode":0,"MathMode":0,"Zoom":0,"ZoomOff":0,"Persist":false,"FFTSrc":0,"DecProto":0,"DecBaud":0,"DecChA":0,"DecChB":0,"DecCPOL":false,"DecCPHA":false,"DecLSB":false,"DecParity":"","DecInverted":false,"DecBits":0,"DecLayer":"","DecLayerAddr":0,"DecLayerDir":0,"DecDelayNs":0,"DecFormat":0,"DecDetecting":false,"DecAuto":false,"DecNote":"","CurOn":false,"CurType":0,"CurSel":0,"CurX":[0,0],"CurY":[0,0],"CurT":[0,0],"CurV":[0,0],"CurVCh":0,"AutosetBusy":false,"AutosetMsg":"","Remote":""},"Screen":"on","AutosetDone":0,"Refs":[{"Has":false,"Show":false,"Gen":0},{"Has":false,"Show":false,"Gen":0}]}
+
+=== GET /api/sheets
+status 200
+header Content-Type: application/json
+body: 208 bytes, sha256 59e294fcbcfd58bc2f05dfaf80c704dba425d0ccb9610167467ecc65cb9fc39c
+{"Seq":7,"SheetsSeq":0,"Tabs":[{"ID":"trig","Name":"TRIG","Title":"","Key":"","Rows":[{"ID":"trig.level","Label":"Level","Kind":"number","Available":false,"Help":"","Value":0.2,"Text":"200mV","Unit":"V"}]}]}
+
+=== POST /api/sheets
+status 404
+header Content-Type: text/plain; charset=utf-8
+header X-Content-Type-Options: nosniff
+body: 19 bytes, sha256 b16e15764b8bc06c5c3f9f19bc8b99fa48e7894aa5a6ccdad65da49bbf564793
+404 page not found
+
+=== POST /api/sheets/set
+request body: {"row":"trig.level","value":1.25}
+status 200
+header Content-Type: application/json
+body: 59 bytes, sha256 1888d3a63a35a4fdfdcc64bad1490cf9366ae923c7150b5d9cda3130c906b161
+{"ok":true,"row":"trig.level","value":1.25,"text":"1.25V"}
+
+=== POST /api/sheets/set
+request body: {"row":"trig.level","text":"50V"}
+status 200
+header Content-Type: application/json
+body: 77 bytes, sha256 1b7d419248571dc2671749ce162358111c406d8a23995db971c18878f05c3e48
+{"ok":false,"row":"trig.level","error":"level 50V is outside -6.4V .. 6.4V"}
+
+=== POST /api/sheets/set
+request body: {"value":1}
+status 200
+header Content-Type: application/json
+body: 90 bytes, sha256 461d3dfb0defefbd89457f504647a0a024742482445d5840d1203504e5e5f7a8
+{"ok":false,"error":"bad json: want {\"row\":id,\"value\":v} or {\"row\":id,\"text\":t}"}
+
+=== POST /api/sheets/action
+request body: {"row":"file.setup3","action":"save"}
+status 200
+header Content-Type: application/json
+body: 51 bytes, sha256 24f55129fbbb1ee70c31e54ac434535cc86ccb3f7a7cf933d264540e7ba4c511
+{"ok":true,"row":"file.setup3","text":"Stack now"}
+
+=== POST /api/sheets/action
+request body: {"row":""}
+status 200
+header Content-Type: application/json
+body: 67 bytes, sha256 6f59d593975518777ceb432f28196415992ab60788012158546844a3698082db
+{"ok":false,"error":"bad json: want {\"row\":id,\"action\":name}"}
+
+=== POST /api/stream/page
+request body: {"on":true}
+status 200
+header Content-Type: application/json
+body: 44 bytes, sha256 ecbb28be7c1cd34374189bea06d8858b93a215c5ddbca70ed35bcf070c49ac0c
+{"ok":true,"row":"bus.stream","value":true}
+
+=== POST /api/stream/page
+request body: {"leave":true}
+status 200
+header Content-Type: application/json
+body: 28 bytes, sha256 8ea2775ca835c315f85abd83b3dace1b9d0343d4137b19cd118deb6296bbd67e
+{"ok":true,"notice":"left"}
+
+=== POST /api/stream/page
+request body: [
+status 200
+header Content-Type: application/json
+body: 52 bytes, sha256 d5ecc55f205f458aef4722bf76dd75de925eac6b87213edcde9ecee424b13b23
+{"ok":false,"error":"bad json: want {\"on\":bool}"}
+
+=== GET /api/stream/page
+status 404
+header Content-Type: text/plain; charset=utf-8
+header X-Content-Type-Options: nosniff
+body: 19 bytes, sha256 b16e15764b8bc06c5c3f9f19bc8b99fa48e7894aa5a6ccdad65da49bbf564793
+404 page not found
+

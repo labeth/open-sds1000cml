@@ -1,0 +1,6 @@
+=== GET /api/record.bin?sample_s=1e-8&wait_ms=2000
+status 200
+header Cache-Control: no-store
+header Content-Type: application/octet-stream
+body: 400099 bytes, sha256 62fdf838adbea28ab9449969115715890d4687f512f111d290b2f1ca6c8cfec3
+

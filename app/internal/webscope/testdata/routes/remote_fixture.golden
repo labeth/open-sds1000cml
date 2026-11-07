@@ -1,0 +1,21 @@
+=== POST /api/stream/page
+request body: {"on":true}
+status 200
+header Content-Type: application/json
+body: 59 bytes, sha256 36de6f478107800e3c9173968ed405aaa169e0b2bbfe9bad7ecdde5bea92a030
+{"ok":true,"row":"bus.stream","value":1.25,"text":"1.25V"}
+
+=== POST /api/stream/page
+request body: {"leave":true}
+status 200
+header Content-Type: application/json
+body: 59 bytes, sha256 36de6f478107800e3c9173968ed405aaa169e0b2bbfe9bad7ecdde5bea92a030
+{"ok":true,"row":"bus.stream","value":1.25,"text":"1.25V"}
+
+=== POST /api/panel
+request body: {"again":true}
+status 200
+header Content-Type: application/json
+body: 32 bytes, sha256 2027b07392b85116f43d7e7f01bbe4c19e7917b263eff7ab5521ee305600c7c6
+{"error":"no panel","ok":false}
+

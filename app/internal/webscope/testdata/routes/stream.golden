@@ -1,0 +1,39 @@
+=== GET /api/stream/lines?from=5&max=99999
+status 200
+header Content-Type: application/json
+body: 115 bytes, sha256 35716fee681556b3065d17ea96a477986fb7321c6c5ff8712278f326adb7654f
+{"state":"STREAM","base":2,"next":7,"lines":[{"i":5,"s":0,"v":[85,170],"e":2},{"i":6,"s":100,"v":[85,170],"e":2}]}
+
+=== GET /api/stream/lines?from=x&max=1
+status 200
+header Content-Type: application/json
+body: 80 bytes, sha256 e985df197d2831a146007186c2d43aa58a896d820dc5a2b0801b4534359a3c1a
+{"state":"STREAM","base":2,"next":1,"lines":[{"i":0,"s":0,"v":[85,170],"e":2}]}
+
+=== GET /api/stream/lines.bin?from=12
+status 200
+header Cache-Control: no-store
+header Content-Type: application/octet-stream
+body: 13 bytes, sha256 7ed94a308ce86dcc2bd81a63c27b36343937b2ba246ebcb5d56ba27c91124744
+00000000  6c 69 6e 65 73 20 66 72  6f 6d 20 31 32           |lines from 12|
+
+=== GET /api/stream/window?rows=3
+status 200
+header Content-Type: application/json
+body: 96 bytes, sha256 6cd47bb71b1f861a671969dc31dc1f7c633278938fc8ba3fa4df2f8efc955bf8
+{"Lines":["0 55 AA","1 55 AA","2 55 AA"],"Top":27,"Total":30,"TriggerLine":-1,"Header":"t hex"}
+
+=== GET /api/stream/window?rows=999
+status 200
+header Content-Type: application/json
+body: 497 bytes, sha256 31cf0a3e315826c94fb511066a6f216c09206d3ec8814fe50cf50cfa02949b6d
+{"Lines":["0 55 AA","1 55 AA","2 55 AA","3 55 AA","4 55 AA","5 55 AA","6 55 AA","7 55 AA","8 55 AA","9 55 AA","10 55 AA","11 55 AA","12 55 AA","13 55 AA","14 55 AA","15 55 AA","16 55 AA","17 55 AA","18 55 AA","19 55 AA","20 55 AA","21 55 AA","22 55 AA","23 55 AA","24 55 AA","25 55 AA","26 55 AA","27 55 AA","28 55 AA","29 55 AA","30 55 AA","31 55 AA","32 55 AA","33 55 AA","34 55 AA","35 55 AA","36 55 AA","37 55 AA","38 55 AA","39 55 AA"],"Top":-10,"Total":30,"TriggerLine":-1,"Header":"t hex"}
+
+=== POST /api/stream/lines
+request body: {}
+status 404
+header Content-Type: text/plain; charset=utf-8
+header X-Content-Type-Options: nosniff
+body: 19 bytes, sha256 b16e15764b8bc06c5c3f9f19bc8b99fa48e7894aa5a6ccdad65da49bbf564793
+404 page not found
+

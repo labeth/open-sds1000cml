@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/labeth/open-dso-core/uimodel"
 	"github.com/labeth/open-sds1000cml/app/internal/analog"
 	"github.com/labeth/open-sds1000cml/app/internal/engine"
 )
@@ -34,44 +35,14 @@ type refWave struct {
 	at        time.Time
 }
 
-// RefExport is a saved reference as the web app takes it (GET /api/refs):
-// its screen columns, the volts they were saved at, the timebase and where
-// the trigger sat, the probes then and the setup it was stored at, so a page
-// shows the scope's REF A and B as the LCD does.
-type RefExport struct {
-	Has     bool       `json:"has"`
-	Show    bool       `json:"show"`
-	Gen     uint64     `json:"gen"` // names the store: it changes with each one
-	At      int64      `json:"at"`  // when it was stored, Unix milliseconds
-	Cols    int        `json:"cols"`
-	C1      []int      `json:"c1,omitempty"`
-	C2      []int      `json:"c2,omitempty"`
-	Vdiv    [2]float64 `json:"vdiv"` // at the probe tip, as the web's volts per code
-	Off     [2]float64 `json:"off"`  // at the probe tip
-	Probe   [2]float64 `json:"probe"`
-	TdivS   float64    `json:"tdiv_s"`
-	PosFrac float64    `json:"pos_frac"`
-	Setup   *RefSetup  `json:"setup,omitempty"`
-}
+// RefExport is uimodel.RefExport.
+type RefExport = uimodel.RefExport
 
-// RefSetup is the setup a reference was stored at (AUTO in COMPARE puts the
-// scope back on it): the timebase asked for, the trigger's place, source and
-// slope, and each channel's V/div at the probe tip.
-type RefSetup struct {
-	TdivS   float64    `json:"tdiv_s"`
-	PosFrac float64    `json:"pos_frac"`
-	Vdiv    [2]float64 `json:"vdiv"`
-	TrigSrc int        `json:"trig_src"`
-	Rising  bool       `json:"rising"`
-}
+// RefSetup is uimodel.RefSetup.
+type RefSetup = uimodel.RefSetup
 
-// RefTag says what a reference slot holds, for the status: a page reads the
-// slot again (GET /api/refs) when its Gen or Show changes.
-type RefTag struct {
-	Has  bool
-	Show bool
-	Gen  uint64
-}
+// RefTag is uimodel.RefTag.
+type RefTag = uimodel.RefTag
 
 // RefWave is the render-side view of a saved reference.
 // TRLC-LINKS: REQ-SDS-138

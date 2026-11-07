@@ -11,6 +11,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/labeth/open-dso-core/webserver/wire"
 	"github.com/labeth/open-sds1000cml/app/internal/bus"
 	"github.com/labeth/open-sds1000cml/app/internal/sramcapture"
 )
@@ -48,14 +49,9 @@ type SoundScale struct {
 	OffV  [2]float64 `json:"off_v"`
 }
 
-// SoundMark is a level crossing the FPGA marked: the sample (stream
-// ordinal) whose value crossed, the channel and direction.
-type SoundMark struct {
-	At     uint64 `json:"at"`
-	Ch     int    `json:"ch"`
-	Rising bool   `json:"rising"`
-	N      int    `json:"n,omitempty"` // crossings since the last read (the image keeps the newest)
-}
+// SoundMark is a level crossing the FPGA marked (wire.SoundMark: it goes to
+// the pages as it is).
+type SoundMark = wire.SoundMark
 
 // SoundMarkConfig asks the FPGA for marks: the channel, the level (8-bit
 // code), hysteresis codes, and which directions.

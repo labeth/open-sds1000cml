@@ -1,0 +1,161 @@
+=== GET /api/sound.bin?from=1010&max=8&marks=1
+status 200
+header Cache-Control: no-store
+header Content-Type: application/octet-stream
+body: 345 bytes, sha256 3df5d5b578e754cffe01f1d2279d18d1b2a6d8592dbded51c6266dab713d9496
+00000000  53 42 01 00 31 01 00 00  7b 22 61 63 74 69 76 65  |SB..1...{"active|
+00000010  22 3a 74 72 75 65 2c 22  65 72 72 22 3a 22 22 2c  |":true,"err":"",|
+00000020  22 66 69 72 73 74 22 3a  31 30 31 30 2c 22 67 61  |"first":1010,"ga|
+00000030  70 73 22 3a 5b 5d 2c 22  6c 6f 73 73 65 73 22 3a  |ps":[],"losses":|
+00000040  30 2c 22 6d 61 72 6b 5f  63 68 22 3a 33 2c 22 6d  |0,"mark_ch":3,"m|
+00000050  61 72 6b 5f 76 22 3a 31  2e 34 34 2c 22 6d 61 72  |ark_v":1.44,"mar|
+00000060  6b 73 22 3a 5b 7b 22 61  74 22 3a 31 30 31 30 2c  |ks":[{"at":1010,|
+00000070  22 63 68 22 3a 31 2c 22  6e 22 3a 30 2c 22 72 69  |"ch":1,"n":0,"ri|
+00000080  73 69 6e 67 22 3a 74 72  75 65 7d 5d 2c 22 6d 61  |sing":true}],"ma|
+00000090  72 6b 73 5f 6f 6e 22 3a  66 61 6c 73 65 2c 22 6e  |rks_on":false,"n|
+000000a0  22 3a 38 2c 22 6e 65 78  74 22 3a 31 30 34 30 2c  |":8,"next":1040,|
+000000b0  22 70 61 75 73 65 64 22  3a 66 61 6c 73 65 2c 22  |"paused":false,"|
+000000c0  72 61 74 65 22 3a 36 31  30 33 35 2e 31 35 36 32  |rate":61035.1562|
+000000d0  35 2c 22 73 63 61 6c 65  73 22 3a 5b 7b 22 66 72  |5,"scales":[{"fr|
+000000e0  6f 6d 22 3a 31 30 30 30  2c 22 6f 66 66 22 3a 5b  |om":1000,"off":[|
+000000f0  6e 75 6c 6c 2c 30 5d 2c  22 76 70 63 22 3a 5b 30  |null,0],"vpc":[0|
+00000100  2e 34 2c 30 2e 30 32 5d  7d 5d 2c 22 73 65 72 76  |.4,0.02]}],"serv|
+00000110  65 72 5f 6d 73 22 3a 30  30 30 30 30 30 30 30 30  |er_ms":000000000|
+00000120  30 30 30 30 2c 22 73 74  61 74 65 22 3a 22 73 74  |0000,"state":"st|
+00000130  72 65 61 6d 69 6e 67 22  7d 00 00 00 00 00 00 00  |reaming"}.......|
+00000140  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|
+00000150  00 00 00 00 00 00 00 00  00                       |.........|
+
+=== GET /api/sound.bin?max=99999999&min=4&wait=5
+status 200
+header Cache-Control: no-store
+header Content-Type: application/octet-stream
+body: 474 bytes, sha256 45c75cd4a1e9c6fe2a0c6294114d0389595b067aa613b61fdeb08864b397ccb9
+00000000  53 42 01 00 32 01 00 00  7b 22 61 63 74 69 76 65  |SB..2...{"active|
+00000010  22 3a 74 72 75 65 2c 22  65 72 72 22 3a 22 22 2c  |":true,"err":"",|
+00000020  22 66 69 72 73 74 22 3a  31 30 30 30 2c 22 67 61  |"first":1000,"ga|
+00000030  70 73 22 3a 5b 5d 2c 22  6c 6f 73 73 65 73 22 3a  |ps":[],"losses":|
+00000040  30 2c 22 6d 61 72 6b 5f  63 68 22 3a 33 2c 22 6d  |0,"mark_ch":3,"m|
+00000050  61 72 6b 5f 76 22 3a 31  2e 34 34 2c 22 6d 61 72  |ark_v":1.44,"mar|
+00000060  6b 73 22 3a 5b 7b 22 61  74 22 3a 31 30 30 30 2c  |ks":[{"at":1000,|
+00000070  22 63 68 22 3a 31 2c 22  6e 22 3a 30 2c 22 72 69  |"ch":1,"n":0,"ri|
+00000080  73 69 6e 67 22 3a 74 72  75 65 7d 5d 2c 22 6d 61  |sing":true}],"ma|
+00000090  72 6b 73 5f 6f 6e 22 3a  66 61 6c 73 65 2c 22 6e  |rks_on":false,"n|
+000000a0  22 3a 34 30 2c 22 6e 65  78 74 22 3a 31 30 34 30  |":40,"next":1040|
+000000b0  2c 22 70 61 75 73 65 64  22 3a 66 61 6c 73 65 2c  |,"paused":false,|
+000000c0  22 72 61 74 65 22 3a 36  31 30 33 35 2e 31 35 36  |"rate":61035.156|
+000000d0  32 35 2c 22 73 63 61 6c  65 73 22 3a 5b 7b 22 66  |25,"scales":[{"f|
+000000e0  72 6f 6d 22 3a 31 30 30  30 2c 22 6f 66 66 22 3a  |rom":1000,"off":|
+000000f0  5b 6e 75 6c 6c 2c 30 5d  2c 22 76 70 63 22 3a 5b  |[null,0],"vpc":[|
+00000100  30 2e 34 2c 30 2e 30 32  5d 7d 5d 2c 22 73 65 72  |0.4,0.02]}],"ser|
+00000110  76 65 72 5f 6d 73 22 3a  30 30 30 30 30 30 30 30  |ver_ms":00000000|
+00000120  30 30 30 30 30 2c 22 73  74 61 74 65 22 3a 22 73  |00000,"state":"s|
+00000130  74 72 65 61 6d 69 6e 67  22 7d 00 00 00 00 00 00  |treaming"}......|
+00000140  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|
+00000150  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|
+00000160  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|
+00000170  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|
+00000180  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|
+00000190  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|
+000001a0  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|
+000001b0  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|
+000001c0  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|
+000001d0  00 00 00 00 00 00 00 00  00 00                    |..........|
+
+=== GET /api/sound.bin?from=2000&wait=1
+status 200
+header Cache-Control: no-store
+header Content-Type: application/octet-stream
+body: 313 bytes, sha256 e882e239454c86b945d7ae7b378136afb29c9ffe245427f576bd15deb80a2e51
+00000000  53 42 01 00 31 01 00 00  7b 22 61 63 74 69 76 65  |SB..1...{"active|
+00000010  22 3a 74 72 75 65 2c 22  65 72 72 22 3a 22 22 2c  |":true,"err":"",|
+00000020  22 66 69 72 73 74 22 3a  31 30 34 30 2c 22 67 61  |"first":1040,"ga|
+00000030  70 73 22 3a 5b 5d 2c 22  6c 6f 73 73 65 73 22 3a  |ps":[],"losses":|
+00000040  30 2c 22 6d 61 72 6b 5f  63 68 22 3a 33 2c 22 6d  |0,"mark_ch":3,"m|
+00000050  61 72 6b 5f 76 22 3a 31  2e 34 34 2c 22 6d 61 72  |ark_v":1.44,"mar|
+00000060  6b 73 22 3a 5b 7b 22 61  74 22 3a 31 30 34 30 2c  |ks":[{"at":1040,|
+00000070  22 63 68 22 3a 31 2c 22  6e 22 3a 30 2c 22 72 69  |"ch":1,"n":0,"ri|
+00000080  73 69 6e 67 22 3a 74 72  75 65 7d 5d 2c 22 6d 61  |sing":true}],"ma|
+00000090  72 6b 73 5f 6f 6e 22 3a  66 61 6c 73 65 2c 22 6e  |rks_on":false,"n|
+000000a0  22 3a 30 2c 22 6e 65 78  74 22 3a 31 30 34 30 2c  |":0,"next":1040,|
+000000b0  22 70 61 75 73 65 64 22  3a 66 61 6c 73 65 2c 22  |"paused":false,"|
+000000c0  72 61 74 65 22 3a 36 31  30 33 35 2e 31 35 36 32  |rate":61035.1562|
+000000d0  35 2c 22 73 63 61 6c 65  73 22 3a 5b 7b 22 66 72  |5,"scales":[{"fr|
+000000e0  6f 6d 22 3a 31 30 30 30  2c 22 6f 66 66 22 3a 5b  |om":1000,"off":[|
+000000f0  6e 75 6c 6c 2c 30 5d 2c  22 76 70 63 22 3a 5b 30  |null,0],"vpc":[0|
+00000100  2e 34 2c 30 2e 30 32 5d  7d 5d 2c 22 73 65 72 76  |.4,0.02]}],"serv|
+00000110  65 72 5f 6d 73 22 3a 30  30 30 30 30 30 30 30 30  |er_ms":000000000|
+00000120  30 30 30 30 2c 22 73 74  61 74 65 22 3a 22 73 74  |0000,"state":"st|
+00000130  72 65 61 6d 69 6e 67 22  7d                       |reaming"}|
+
+=== GET /api/sound/take.bin
+status 200
+header Cache-Control: no-store
+header Content-Type: application/octet-stream
+body: 282 bytes, sha256 5bbc534036cc9b1d922eb10b192a2ece20979c45ccf25f8eff3f46f609a04ac5
+00000000  53 42 01 00 fa 00 00 00  7b 22 66 69 72 73 74 22  |SB......{"first"|
+00000010  3a 31 30 30 30 2c 22 67  61 70 73 22 3a 5b 5d 2c  |:1000,"gaps":[],|
+00000020  22 68 61 73 5f 74 72 69  67 22 3a 74 72 75 65 2c  |"has_trig":true,|
+00000030  22 69 64 22 3a 34 2c 22  6d 61 72 6b 73 22 3a 5b  |"id":4,"marks":[|
+00000040  7b 22 61 74 22 3a 31 30  30 30 2c 22 63 68 22 3a  |{"at":1000,"ch":|
+00000050  31 2c 22 6e 22 3a 30 2c  22 72 69 73 69 6e 67 22  |1,"n":0,"rising"|
+00000060  3a 74 72 75 65 7d 5d 2c  22 6e 22 3a 36 2c 22 72  |:true}],"n":6,"r|
+00000070  61 74 65 22 3a 36 31 30  33 35 2e 31 35 36 32 35  |ate":61035.15625|
+00000080  2c 22 73 63 61 6c 65 73  22 3a 5b 7b 22 66 72 6f  |,"scales":[{"fro|
+00000090  6d 22 3a 31 30 30 30 2c  22 6f 66 66 22 3a 5b 6e  |m":1000,"off":[n|
+000000a0  75 6c 6c 2c 30 5d 2c 22  76 70 63 22 3a 5b 30 2e  |ull,0],"vpc":[0.|
+000000b0  34 2c 30 2e 30 32 5d 7d  5d 2c 22 74 72 69 67 22  |4,0.02]}],"trig"|
+000000c0  3a 31 30 30 33 2c 22 74  72 69 67 5f 63 68 22 3a  |:1003,"trig_ch":|
+000000d0  31 2c 22 74 72 69 67 5f  72 69 73 69 6e 67 22 3a  |1,"trig_rising":|
+000000e0  74 72 75 65 2c 22 74 72  69 67 5f 76 22 3a 30 2e  |true,"trig_v":0.|
+000000f0  34 34 2c 22 77 68 79 22  3a 22 73 69 6e 67 6c 65  |44,"why":"single|
+00000100  22 7d 00 80 2c 81 58 82  84 83 b0 84 dc 85 00 80  |"}..,.X.........|
+00000110  38 7f 70 7e a8 7d e0 7c  18 7c                    |8.p~.}.|.||
+
+=== GET /api/sound
+status 200
+header Content-Type: application/json
+body: 2610 bytes, sha256 8aed7db16db791e78c0c0507c90d1bfe168d167c86a79ac7e7cb211d22b11526
+{"ok":true,"report":{"ab":{"AddedDB":0,"AddedPct":0,"DelayOK":false,"DelayS":0,"F0":0,"GainDB":0,"Match":0,"OK":false,"PhaseDeg":0,"RMSGainDB":0,"THDA":0,"THDB":0,"Why":""},"adsr":"","adsr_env":[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,null,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39],"adsr_env_fs":0,"adsr_res":{"Attack0100":0,"Attack1090":0,"Decay":0,"DecayEnd":0,"DecayTau":0,"End":0,"Floor":0,"HasSustain":false,"OK":false,"Peak":0,"PeakAt":0,"Release":0,"ReleaseAt":0,"ReleaseTau":0,"Start":null,"Sustain":0,"SustainDB":0,"SustainPct":0,"Why":""},"adsr_why":"","cents":null,"clarity":0,"cv":null,"drift":[],"harm":{"Character":"","EvenDB":0,"EvenOdd":0,"F0":0,"FloorDBV":0,"H":[{"DBV":0,"Found":false,"Hz":0,"N":0,"RelDB":0},{"DBV":0,"Found":false,"Hz":0,"N":0,"RelDB":0},{"DBV":0,"Found":false,"Hz":0,"N":0,"RelDB":0},{"DBV":0,"Found":false,"Hz":0,"N":0,"RelDB":0},{"DBV":0,"Found":false,"Hz":0,"N":0,"RelDB":0},{"DBV":0,"Found":false,"Hz":0,"N":0,"RelDB":0},{"DBV":0,"Found":false,"Hz":0,"N":0,"RelDB":0},{"DBV":0,"Found":false,"Hz":0,"N":0,"RelDB":0},{"DBV":0,"Found":false,"Hz":0,"N":0,"RelDB":0},{"DBV":0,"Found":false,"Hz":0,"N":0,"RelDB":0}],"Hum":{"DBV":0,"Found":false,"MainHz":0,"SumDBV":0},"OK":false,"OddDB":0,"THDDB":0,"THDPct":0},"hz":null,"info":{"active":true,"err":"","last_data":"0001-01-01T00:00:00Z","losses":0,"mark_cfg":{"ch":3,"falling":false,"hyst":0,"level":200,"rising":false},"marks":false,"mode":"","next":1040,"oldest":1000,"post_s":0,"pre_s":0,"rate_hz":61035.15625,"started":"0001-01-01T00:00:00Z","state":"streaming","take":0,"trig_gate":false},"levels":[{"clip":false,"crest_db":0,"db":0,"dc":0,"ok":false,"peak":0,"peak_db":0,"rms":0,"vpp":0},{"clip":false,"crest_db":0,"db":0,"dc":0,"ok":false,"peak":0,"peak_db":0,"rms":0,"vpp":0}],"lfo":{"Cycles":0,"Max":0,"Mean":0,"Min":0,"OK":false,"RateHz":0,"RisePct":0,"Shape":"","Vpp":0,"Why":""},"mod":{"AMCycles":0,"AMDB":0,"AMMax":0,"AMMin":0,"AMPct":0,"AMRate":0,"AMShape":"","FMCents":0,"FMCycles":0,"FMHz":0,"FMRate":0,"FMShape":"","Fc":0,"FlutterPct":0,"FreqMax":0,"FreqMin":0,"HasAM":false,"HasFM":false,"OK":false,"Seconds":0,"WFPct":0,"Why":"","WowPct":0},"note":"","paused":false,"paused_why":"","settings":{"a4":0,"ab_in":0,"ch":0,"cycles":0,"drift":false,"env_cv":false,"gate":0,"gate_v":0,"page":0,"post_s":0,"pre_s":0,"range":"","ref":"","slow":false,"trig_gate":false,"voct_auto":false},"sidebands":{"Beta":0,"Fc":0,"Fit":0,"Fm":0,"Lines":0,"OK":false,"Ratio":"","Why":""},"voct":[],"voct_fit":{"HFDevCents":0,"OK":false,"OctPerV":0,"Rows":[],"ScaleCents":0,"SpanOctaves":0,"TrimPct":0}}}
+
+=== GET /api/sound?api=1&marks=1&lease=0
+status 200
+header Content-Type: application/json
+body: 2610 bytes, sha256 8aed7db16db791e78c0c0507c90d1bfe168d167c86a79ac7e7cb211d22b11526
+{"ok":true,"report":{"ab":{"AddedDB":0,"AddedPct":0,"DelayOK":false,"DelayS":0,"F0":0,"GainDB":0,"Match":0,"OK":false,"PhaseDeg":0,"RMSGainDB":0,"THDA":0,"THDB":0,"Why":""},"adsr":"","adsr_env":[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,null,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39],"adsr_env_fs":0,"adsr_res":{"Attack0100":0,"Attack1090":0,"Decay":0,"DecayEnd":0,"DecayTau":0,"End":0,"Floor":0,"HasSustain":false,"OK":false,"Peak":0,"PeakAt":0,"Release":0,"ReleaseAt":0,"ReleaseTau":0,"Start":null,"Sustain":0,"SustainDB":0,"SustainPct":0,"Why":""},"adsr_why":"","cents":null,"clarity":0,"cv":null,"drift":[],"harm":{"Character":"","EvenDB":0,"EvenOdd":0,"F0":0,"FloorDBV":0,"H":[{"DBV":0,"Found":false,"Hz":0,"N":0,"RelDB":0},{"DBV":0,"Found":false,"Hz":0,"N":0,"RelDB":0},{"DBV":0,"Found":false,"Hz":0,"N":0,"RelDB":0},{"DBV":0,"Found":false,"Hz":0,"N":0,"RelDB":0},{"DBV":0,"Found":false,"Hz":0,"N":0,"RelDB":0},{"DBV":0,"Found":false,"Hz":0,"N":0,"RelDB":0},{"DBV":0,"Found":false,"Hz":0,"N":0,"RelDB":0},{"DBV":0,"Found":false,"Hz":0,"N":0,"RelDB":0},{"DBV":0,"Found":false,"Hz":0,"N":0,"RelDB":0},{"DBV":0,"Found":false,"Hz":0,"N":0,"RelDB":0}],"Hum":{"DBV":0,"Found":false,"MainHz":0,"SumDBV":0},"OK":false,"OddDB":0,"THDDB":0,"THDPct":0},"hz":null,"info":{"active":true,"err":"","last_data":"0001-01-01T00:00:00Z","losses":0,"mark_cfg":{"ch":3,"falling":false,"hyst":0,"level":200,"rising":false},"marks":false,"mode":"","next":1040,"oldest":1000,"post_s":0,"pre_s":0,"rate_hz":61035.15625,"started":"0001-01-01T00:00:00Z","state":"streaming","take":0,"trig_gate":false},"levels":[{"clip":false,"crest_db":0,"db":0,"dc":0,"ok":false,"peak":0,"peak_db":0,"rms":0,"vpp":0},{"clip":false,"crest_db":0,"db":0,"dc":0,"ok":false,"peak":0,"peak_db":0,"rms":0,"vpp":0}],"lfo":{"Cycles":0,"Max":0,"Mean":0,"Min":0,"OK":false,"RateHz":0,"RisePct":0,"Shape":"","Vpp":0,"Why":""},"mod":{"AMCycles":0,"AMDB":0,"AMMax":0,"AMMin":0,"AMPct":0,"AMRate":0,"AMShape":"","FMCents":0,"FMCycles":0,"FMHz":0,"FMRate":0,"FMShape":"","Fc":0,"FlutterPct":0,"FreqMax":0,"FreqMin":0,"HasAM":false,"HasFM":false,"OK":false,"Seconds":0,"WFPct":0,"Why":"","WowPct":0},"note":"","paused":false,"paused_why":"","settings":{"a4":0,"ab_in":0,"ch":0,"cycles":0,"drift":false,"env_cv":false,"gate":0,"gate_v":0,"page":0,"post_s":0,"pre_s":0,"range":"","ref":"","slow":false,"trig_gate":false,"voct_auto":false},"sidebands":{"Beta":0,"Fc":0,"Fit":0,"Fm":0,"Lines":0,"OK":false,"Ratio":"","Why":""},"voct":[],"voct_fit":{"HFDevCents":0,"OK":false,"OctPerV":0,"Rows":[],"ScaleCents":0,"SpanOctaves":0,"TrimPct":0}}}
+
+=== POST /api/sound
+request body: {"settings":{"a4":442,"ch":1},"action":"adsr_arm"}
+status 200
+header Content-Type: application/json
+body: 2612 bytes, sha256 6eb41698bd71883c983ee453c902c1d79388ca489d02d835a30f4bfcd965adb6
+{"ok":true,"report":{"ab":{"AddedDB":0,"AddedPct":0,"DelayOK":false,"DelayS":0,"F0":0,"GainDB":0,"Match":0,"OK":false,"PhaseDeg":0,"RMSGainDB":0,"THDA":0,"THDB":0,"Why":""},"adsr":"","adsr_env":[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,null,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39],"adsr_env_fs":0,"adsr_res":{"Attack0100":0,"Attack1090":0,"Decay":0,"DecayEnd":0,"DecayTau":0,"End":0,"Floor":0,"HasSustain":false,"OK":false,"Peak":0,"PeakAt":0,"Release":0,"ReleaseAt":0,"ReleaseTau":0,"Start":null,"Sustain":0,"SustainDB":0,"SustainPct":0,"Why":""},"adsr_why":"","cents":null,"clarity":0,"cv":null,"drift":[],"harm":{"Character":"","EvenDB":0,"EvenOdd":0,"F0":0,"FloorDBV":0,"H":[{"DBV":0,"Found":false,"Hz":0,"N":0,"RelDB":0},{"DBV":0,"Found":false,"Hz":0,"N":0,"RelDB":0},{"DBV":0,"Found":false,"Hz":0,"N":0,"RelDB":0},{"DBV":0,"Found":false,"Hz":0,"N":0,"RelDB":0},{"DBV":0,"Found":false,"Hz":0,"N":0,"RelDB":0},{"DBV":0,"Found":false,"Hz":0,"N":0,"RelDB":0},{"DBV":0,"Found":false,"Hz":0,"N":0,"RelDB":0},{"DBV":0,"Found":false,"Hz":0,"N":0,"RelDB":0},{"DBV":0,"Found":false,"Hz":0,"N":0,"RelDB":0},{"DBV":0,"Found":false,"Hz":0,"N":0,"RelDB":0}],"Hum":{"DBV":0,"Found":false,"MainHz":0,"SumDBV":0},"OK":false,"OddDB":0,"THDDB":0,"THDPct":0},"hz":null,"info":{"active":true,"err":"","last_data":"0001-01-01T00:00:00Z","losses":0,"mark_cfg":{"ch":3,"falling":false,"hyst":0,"level":200,"rising":false},"marks":false,"mode":"","next":1040,"oldest":1000,"post_s":0,"pre_s":0,"rate_hz":61035.15625,"started":"0001-01-01T00:00:00Z","state":"streaming","take":0,"trig_gate":false},"levels":[{"clip":false,"crest_db":0,"db":0,"dc":0,"ok":false,"peak":0,"peak_db":0,"rms":0,"vpp":0},{"clip":false,"crest_db":0,"db":0,"dc":0,"ok":false,"peak":0,"peak_db":0,"rms":0,"vpp":0}],"lfo":{"Cycles":0,"Max":0,"Mean":0,"Min":0,"OK":false,"RateHz":0,"RisePct":0,"Shape":"","Vpp":0,"Why":""},"mod":{"AMCycles":0,"AMDB":0,"AMMax":0,"AMMin":0,"AMPct":0,"AMRate":0,"AMShape":"","FMCents":0,"FMCycles":0,"FMHz":0,"FMRate":0,"FMShape":"","Fc":0,"FlutterPct":0,"FreqMax":0,"FreqMin":0,"HasAM":false,"HasFM":false,"OK":false,"Seconds":0,"WFPct":0,"Why":"","WowPct":0},"note":"","paused":false,"paused_why":"","settings":{"a4":442,"ab_in":0,"ch":1,"cycles":0,"drift":false,"env_cv":false,"gate":0,"gate_v":0,"page":0,"post_s":0,"pre_s":0,"range":"","ref":"","slow":false,"trig_gate":false,"voct_auto":false},"sidebands":{"Beta":0,"Fc":0,"Fit":0,"Fm":0,"Lines":0,"OK":false,"Ratio":"","Why":""},"voct":[],"voct_fit":{"HFDevCents":0,"OK":false,"OctPerV":0,"Rows":[],"ScaleCents":0,"SpanOctaves":0,"TrimPct":0}}}
+
+=== POST /api/sound
+request body: {"action":"take_scope"}
+status 200
+header Content-Type: application/json
+body: 2625 bytes, sha256 37ec73356f851a440fef95f6421e29ec183c2f090897c4fecd1c57d72caa0200
+{"err":"EOF","ok":false,"report":{"ab":{"AddedDB":0,"AddedPct":0,"DelayOK":false,"DelayS":0,"F0":0,"GainDB":0,"Match":0,"OK":false,"PhaseDeg":0,"RMSGainDB":0,"THDA":0,"THDB":0,"Why":""},"adsr":"","adsr_env":[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,null,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39],"adsr_env_fs":0,"adsr_res":{"Attack0100":0,"Attack1090":0,"Decay":0,"DecayEnd":0,"DecayTau":0,"End":0,"Floor":0,"HasSustain":false,"OK":false,"Peak":0,"PeakAt":0,"Release":0,"ReleaseAt":0,"ReleaseTau":0,"Start":null,"Sustain":0,"SustainDB":0,"SustainPct":0,"Why":""},"adsr_why":"","cents":null,"clarity":0,"cv":null,"drift":[],"harm":{"Character":"","EvenDB":0,"EvenOdd":0,"F0":0,"FloorDBV":0,"H":[{"DBV":0,"Found":false,"Hz":0,"N":0,"RelDB":0},{"DBV":0,"Found":false,"Hz":0,"N":0,"RelDB":0},{"DBV":0,"Found":false,"Hz":0,"N":0,"RelDB":0},{"DBV":0,"Found":false,"Hz":0,"N":0,"RelDB":0},{"DBV":0,"Found":false,"Hz":0,"N":0,"RelDB":0},{"DBV":0,"Found":false,"Hz":0,"N":0,"RelDB":0},{"DBV":0,"Found":false,"Hz":0,"N":0,"RelDB":0},{"DBV":0,"Found":false,"Hz":0,"N":0,"RelDB":0},{"DBV":0,"Found":false,"Hz":0,"N":0,"RelDB":0},{"DBV":0,"Found":false,"Hz":0,"N":0,"RelDB":0}],"Hum":{"DBV":0,"Found":false,"MainHz":0,"SumDBV":0},"OK":false,"OddDB":0,"THDDB":0,"THDPct":0},"hz":null,"info":{"active":true,"err":"","last_data":"0001-01-01T00:00:00Z","losses":0,"mark_cfg":{"ch":3,"falling":false,"hyst":0,"level":200,"rising":false},"marks":false,"mode":"","next":1040,"oldest":1000,"post_s":0,"pre_s":0,"rate_hz":61035.15625,"started":"0001-01-01T00:00:00Z","state":"streaming","take":0,"trig_gate":false},"levels":[{"clip":false,"crest_db":0,"db":0,"dc":0,"ok":false,"peak":0,"peak_db":0,"rms":0,"vpp":0},{"clip":false,"crest_db":0,"db":0,"dc":0,"ok":false,"peak":0,"peak_db":0,"rms":0,"vpp":0}],"lfo":{"Cycles":0,"Max":0,"Mean":0,"Min":0,"OK":false,"RateHz":0,"RisePct":0,"Shape":"","Vpp":0,"Why":""},"mod":{"AMCycles":0,"AMDB":0,"AMMax":0,"AMMin":0,"AMPct":0,"AMRate":0,"AMShape":"","FMCents":0,"FMCycles":0,"FMHz":0,"FMRate":0,"FMShape":"","Fc":0,"FlutterPct":0,"FreqMax":0,"FreqMin":0,"HasAM":false,"HasFM":false,"OK":false,"Seconds":0,"WFPct":0,"Why":"","WowPct":0},"note":"","paused":false,"paused_why":"","settings":{"a4":442,"ab_in":0,"ch":1,"cycles":0,"drift":false,"env_cv":false,"gate":0,"gate_v":0,"page":0,"post_s":0,"pre_s":0,"range":"","ref":"","slow":false,"trig_gate":false,"voct_auto":false},"sidebands":{"Beta":0,"Fc":0,"Fit":0,"Fm":0,"Lines":0,"OK":false,"Ratio":"","Why":""},"voct":[],"voct_fit":{"HFDevCents":0,"OK":false,"OctPerV":0,"Rows":[],"ScaleCents":0,"SpanOctaves":0,"TrimPct":0}}}
+
+=== POST /api/sound
+request body: {"settings":7}
+status 200
+header Content-Type: application/json
+body: 34 bytes, sha256 858776c28562ecc33c0018c01456766440dd25f58702faab8461e1ff870936e1
+{"err":"bad settings","ok":false}
+
+=== POST /api/sound
+request body: {"action":"nope"}
+status 200
+header Content-Type: application/json
+body: 2625 bytes, sha256 37ec73356f851a440fef95f6421e29ec183c2f090897c4fecd1c57d72caa0200
+{"err":"EOF","ok":false,"report":{"ab":{"AddedDB":0,"AddedPct":0,"DelayOK":false,"DelayS":0,"F0":0,"GainDB":0,"Match":0,"OK":false,"PhaseDeg":0,"RMSGainDB":0,"THDA":0,"THDB":0,"Why":""},"adsr":"","adsr_env":[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,null,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39],"adsr_env_fs":0,"adsr_res":{"Attack0100":0,"Attack1090":0,"Decay":0,"DecayEnd":0,"DecayTau":0,"End":0,"Floor":0,"HasSustain":false,"OK":false,"Peak":0,"PeakAt":0,"Release":0,"ReleaseAt":0,"ReleaseTau":0,"Start":null,"Sustain":0,"SustainDB":0,"SustainPct":0,"Why":""},"adsr_why":"","cents":null,"clarity":0,"cv":null,"drift":[],"harm":{"Character":"","EvenDB":0,"EvenOdd":0,"F0":0,"FloorDBV":0,"H":[{"DBV":0,"Found":false,"Hz":0,"N":0,"RelDB":0},{"DBV":0,"Found":false,"Hz":0,"N":0,"RelDB":0},{"DBV":0,"Found":false,"Hz":0,"N":0,"RelDB":0},{"DBV":0,"Found":false,"Hz":0,"N":0,"RelDB":0},{"DBV":0,"Found":false,"Hz":0,"N":0,"RelDB":0},{"DBV":0,"Found":false,"Hz":0,"N":0,"RelDB":0},{"DBV":0,"Found":false,"Hz":0,"N":0,"RelDB":0},{"DBV":0,"Found":false,"Hz":0,"N":0,"RelDB":0},{"DBV":0,"Found":false,"Hz":0,"N":0,"RelDB":0},{"DBV":0,"Found":false,"Hz":0,"N":0,"RelDB":0}],"Hum":{"DBV":0,"Found":false,"MainHz":0,"SumDBV":0},"OK":false,"OddDB":0,"THDDB":0,"THDPct":0},"hz":null,"info":{"active":true,"err":"","last_data":"0001-01-01T00:00:00Z","losses":0,"mark_cfg":{"ch":3,"falling":false,"hyst":0,"level":200,"rising":false},"marks":false,"mode":"","next":1040,"oldest":1000,"post_s":0,"pre_s":0,"rate_hz":61035.15625,"started":"0001-01-01T00:00:00Z","state":"streaming","take":0,"trig_gate":false},"levels":[{"clip":false,"crest_db":0,"db":0,"dc":0,"ok":false,"peak":0,"peak_db":0,"rms":0,"vpp":0},{"clip":false,"crest_db":0,"db":0,"dc":0,"ok":false,"peak":0,"peak_db":0,"rms":0,"vpp":0}],"lfo":{"Cycles":0,"Max":0,"Mean":0,"Min":0,"OK":false,"RateHz":0,"RisePct":0,"Shape":"","Vpp":0,"Why":""},"mod":{"AMCycles":0,"AMDB":0,"AMMax":0,"AMMin":0,"AMPct":0,"AMRate":0,"AMShape":"","FMCents":0,"FMCycles":0,"FMHz":0,"FMRate":0,"FMShape":"","Fc":0,"FlutterPct":0,"FreqMax":0,"FreqMin":0,"HasAM":false,"HasFM":false,"OK":false,"Seconds":0,"WFPct":0,"Why":"","WowPct":0},"note":"","paused":false,"paused_why":"","settings":{"a4":442,"ab_in":0,"ch":1,"cycles":0,"drift":false,"env_cv":false,"gate":0,"gate_v":0,"page":0,"post_s":0,"pre_s":0,"range":"","ref":"","slow":false,"trig_gate":false,"voct_auto":false},"sidebands":{"Beta":0,"Fc":0,"Fit":0,"Fm":0,"Lines":0,"OK":false,"Ratio":"","Why":""},"voct":[],"voct_fit":{"HFDevCents":0,"OK":false,"OctPerV":0,"Rows":[],"ScaleCents":0,"SpanOctaves":0,"TrimPct":0}}}
+
+=== POST /api/sound
+request body: {
+status 200
+header Content-Type: application/json
+body: 30 bytes, sha256 08ecb40607204ea8301f8b7d992348f1a9c3e2b49f0d270242120872aa1c1b60
+{"err":"bad json","ok":false}
+

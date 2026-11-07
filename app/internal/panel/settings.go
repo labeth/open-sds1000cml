@@ -93,11 +93,11 @@ func soundSettingsIn(s settings.Sound) SoundSettings {
 	if s.PostS == 0 && s.PreS == 0 {
 		s.PreS, s.PostS = 1, 4 // a file from before takes
 	}
-	return SoundSettings{
+	return cleanSoundSettings(SoundSettings{
 		A4: s.A4, Ch: s.Ch, Ref: s.Ref, Range: s.Range, Slow: s.Slow, Page: s.Page, Cycles: s.Cycles,
 		ABIn: s.ABIn, EnvCV: s.EnvCV, Gate: s.Gate, GateV: s.GateV, VOctAuto: s.VOctAuto,
 		PreS: s.PreS, PostS: s.PostS, TrigGate: s.TrigGate,
-	}.clean()
+	})
 }
 
 // serialSettingsOf is the serial trigger as the settings file keeps it, from

@@ -1,0 +1,34 @@
+=== GET /api/refs
+status 200
+header Content-Type: application/json
+body: 365 bytes, sha256 60ca66d5cb91e135b0efecba914c98eb6b957ee853809f5c7f8fa1a9ccb51524
+{"ok":true,"refs":[{"has":true,"show":true,"gen":2,"at":1700000000000,"cols":4,"c1":[1,2,3,4],"vdiv":[1,0.5],"off":[0,0],"probe":[10,1],"tdiv_s":0.001,"pos_frac":0.5,"setup":{"tdiv_s":0.001,"pos_frac":0.5,"vdiv":[1,0.5],"trig_src":0,"rising":true}},{"has":false,"show":false,"gen":0,"at":0,"cols":0,"vdiv":[0,0],"off":[0,0],"probe":[0,0],"tdiv_s":0,"pos_frac":0}]}
+
+=== POST /api/refs
+request body: {"slot":"B","op":"store"}
+status 200
+header Content-Type: application/json
+body: 400 bytes, sha256 86e7aaeed2de3b21d71e8e3f46e955e34a5eac734f4f641162177df6b9d6876c
+{"error":"","notice":"REF B stored","ok":true,"refs":[{"has":true,"show":true,"gen":2,"at":1700000000000,"cols":4,"c1":[1,2,3,4],"vdiv":[1,0.5],"off":[0,0],"probe":[10,1],"tdiv_s":0.001,"pos_frac":0.5,"setup":{"tdiv_s":0.001,"pos_frac":0.5,"vdiv":[1,0.5],"trig_src":0,"rising":true}},{"has":false,"show":false,"gen":0,"at":0,"cols":0,"vdiv":[0,0],"off":[0,0],"probe":[0,0],"tdiv_s":0,"pos_frac":0}]}
+
+=== POST /api/refs
+request body: {"slot":"A","op":"hide"}
+status 200
+header Content-Type: application/json
+body: 396 bytes, sha256 eb097328d22fccaaabe0bc7613c232be0f0a652294f1823a46a9d701ee4537fa
+{"error":"no hide","notice":"","ok":false,"refs":[{"has":true,"show":true,"gen":2,"at":1700000000000,"cols":4,"c1":[1,2,3,4],"vdiv":[1,0.5],"off":[0,0],"probe":[10,1],"tdiv_s":0.001,"pos_frac":0.5,"setup":{"tdiv_s":0.001,"pos_frac":0.5,"vdiv":[1,0.5],"trig_src":0,"rising":true}},{"has":false,"show":false,"gen":0,"at":0,"cols":0,"vdiv":[0,0],"off":[0,0],"probe":[0,0],"tdiv_s":0,"pos_frac":0}]}
+
+=== POST /api/refs
+request body: {"slot":"C","op":"store"}
+status 200
+header Content-Type: application/json
+body: 90 bytes, sha256 760bbcb24c6d7deed206ead4541ab1af41ca1578cafe161af1f79089a2103ea1
+{"error":"bad json: want {\"slot\":\"A\"|\"B\",\"op\":store|show|hide|clear}","ok":false}
+
+=== PUT /api/refs
+status 405
+header Content-Type: text/plain; charset=utf-8
+header X-Content-Type-Options: nosniff
+body: 17 bytes, sha256 d2f6fd88b6963f9402a0ed4b83b4b2786c959577986f92022a3f5a94338eb505
+GET or POST only
+

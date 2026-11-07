@@ -1,0 +1,30 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-WEB
+
+package webscope
+
+import (
+	"os/exec"
+	"strings"
+	"testing"
+
+	"github.com/labeth/open-dso-core/testenv"
+)
+
+// TestSuperresEtsJS runs the phase-coherent equivalent-time reconstruction
+// (superres_ets.js) under node: synthetic FREE-RUN frames of a near-Nyquist
+// clock at random phase + noise must recover the frequency, reconstruct the
+// period at the correct amplitude, gain measured ENOB, keep a square's
+// harmonics, and reject a pure-noise frame. Skips if node is absent (fails under CI_REQUIRE_BROWSER=1).
+// TRLC-LINKS: REQ-SDS-181
+func TestSuperresEtsJS(t *testing.T) {
+	testenv.NeedNode(t)
+	node, _ := exec.LookPath("node")
+	out, err := exec.CommandContext(t.Context(), node, "superres_ets.test.cjs").CombinedOutput()
+	t.Logf("superres_ets.test.cjs output:\n%s", out)
+	if err != nil {
+		t.Fatalf("superres_ets.js test failed: %v", err)
+	}
+	if !strings.Contains(string(out), "ALL PASS") {
+		t.Fatalf("superres_ets.js test did not report ALL PASS")
+	}
+}

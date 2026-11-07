@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/labeth/open-dso-core/uimodel"
 	"github.com/labeth/open-sds1000cml/app/internal/panel/wsview"
 )
 
@@ -23,14 +24,11 @@ import (
 // mask test's counts, the stack's status, COMPARE's trigger stability) are
 // not in the snapshot: they would wake every remote on every frame.
 
-// KeyStatus is one F-key label as drawn.
-type KeyStatus struct {
-	Label, Value string
-	Sel, Dim     bool
-}
+// KeyStatus is uimodel.KeyStatus.
+type KeyStatus = uimodel.KeyStatus
 
-// ToolSeg is one knob or push and its job now.
-type ToolSeg struct{ Knob, Job string }
+// ToolSeg is uimodel.ToolSeg.
+type ToolSeg = uimodel.ToolSeg
 
 // The controls the tool lines name.
 const (
@@ -45,129 +43,35 @@ const (
 	rowAgain     = "again"
 )
 
-// OptModel is one option of an enum row.
-type OptModel struct {
-	Value int
-	Text  string
-}
+// OptModel is uimodel.OptModel.
+type OptModel = uimodel.OptModel
 
-// ActModel is one action of an action row.
-type ActModel struct {
-	ID, Text  string
-	Available bool
-}
+// ActModel is uimodel.ActModel.
+type ActModel = uimodel.ActModel
 
-// RowModel is one setting: its id, what it is, its value and how to set it.
-type RowModel struct {
-	ID        string
-	Label     string
-	Kind      string // enum, number, action, bytes
-	Available bool   // in use now (else it is shown dim)
-	Help      string
-	Section   string     `json:",omitempty"` // the section header the LCD draws above this row
-	Why       string     `json:",omitempty"` // what puts the row in use, while it is not
-	Value     any        `json:",omitempty"` // raw: option value, number in Unit, or the match text
-	Text      string     // as written on the sheet
-	Options   []OptModel `json:",omitempty"`
-	Unit      string     `json:",omitempty"`
-	Min       *float64   `json:",omitempty"`
-	Max       *float64   `json:",omitempty"`
-	Step      *float64   `json:",omitempty"` // one knob step (absent: a ladder)
-	Ladder    []float64  `json:",omitempty"`
-	Presets   []string   `json:",omitempty"` // a number row's labelled values, run by /api/sheets/action
-	Actions   []ActModel `json:",omitempty"`
-}
+// RowModel is uimodel.RowModel.
+type RowModel = uimodel.RowModel
 
-// TabModel is one sheet tab.
-type TabModel struct {
-	ID, Name, Title, Key string
-	Rows                 []RowModel
-	Notes                []TabNote `json:",omitempty"` // the TRIG tab's status lines, as under its rows on the LCD
-}
+// TabModel is uimodel.TabModel.
+type TabModel = uimodel.TabModel
 
-// TabNote is one status line of a tab; Warn when it says what does not work.
-type TabNote struct {
-	Text string
-	Warn bool `json:",omitempty"`
-}
+// TabNote is uimodel.TabNote.
+type TabNote = uimodel.TabNote
 
-// SheetsModel is the whole sheet model for the remote.
-type SheetsModel struct {
-	Seq       uint64
-	SheetsSeq uint64 // the sheet values' count (Status.SheetsSeq) when this model was read
-	Tabs      []TabModel
-}
+// SheetsModel is uimodel.SheetsModel.
+type SheetsModel = uimodel.SheetsModel
 
-// SheetStatus is the LCD's open sheet.
-type SheetStatus struct {
-	Open     bool
-	Tab      string // tab id
-	TabName  string
-	TabTitle string
-	Tabs     []string // in this workspace's order
-	Edit     bool
-	Row      *RowModel // the highlighted row (an action row without its live status text)
-}
+// SheetStatus is uimodel.SheetStatus.
+type SheetStatus = uimodel.SheetStatus
 
-// PickerStatus is the byte picker or the match editor.
-type PickerStatus struct {
-	Open   bool
-	Mode   string // "pick" or "editor"
-	Tokens []string
-	Cursor int
-	KeySet string `json:",omitempty"`
-	Key    string `json:",omitempty"`
-}
+// PickerStatus is uimodel.PickerStatus.
+type PickerStatus = uimodel.PickerStatus
 
-// Status is the panel snapshot in /api/status: what the LCD and lamps show.
-type Status struct {
-	Seq         uint64
-	SheetsSeq   uint64 // moves only when a sheet value or a row's availability changes
-	AutosetBusy bool
-	AutosetMsg  string
-	Workspace   string
-	WorkspaceID string
-	View        string // the active workspace's view
-	Views       [wsview.Count]string
-	Mode        string // workspace, sheet, picker, editor
-	Sheet       SheetStatus
-	FKeys       [5]KeyStatus
-	Tool        []ToolSeg
-	AdjustRow   string `json:",omitempty"` // the row SCOPE's Adjust tunes (its label alone is ambiguous: CH1 and CH2 both have an Offset)
-	Again       string // the pane's again line (COMPARE: the key's job, not the trigger's stability)
-	AgainNext   string // what the workspace's key again shows next, whatever the LCD shows ("X-Y")
-	Notice      string
-	Remote      string
-	Picker      PickerStatus
-	Lamps       uint16
-	LampsLit    []string
-	Display     Display
-	Screen      string // on, saver or off (ADR-SCREEN-SAVER)
-	// the last Autoset sweep that ended and the rows it changed (a remote
-	// that started it books them as its own)
-	AutosetDone    uint64
-	AutosetChanged []string `json:",omitempty"`
-	// what REF A and B hold: a page reads them again (GET /api/refs) when
-	// one changes
-	Refs [2]RefTag
-}
+// Status is uimodel.Status.
+type Status = uimodel.Status
 
-// SetResult is the outcome of a remote set, action or typed entry. A
-// remote call (remoteCall) also says what it did, measured on the panel
-// goroutine: the rows whose value it changed ("workspace" too when it
-// switched it), the notice it raised, the sheet values' count after it and
-// the Autoset sweep it started.
-type SetResult struct {
-	OK        bool     `json:"ok"`
-	Row       string   `json:"row,omitempty"`
-	Value     any      `json:"value,omitempty"`
-	Text      string   `json:"text,omitempty"`
-	Error     string   `json:"error,omitempty"`
-	Changed   []string `json:"changed,omitempty"`
-	Notice    string   `json:"notice,omitempty"`
-	SheetsSeq uint64   `json:"sheetsSeq,omitempty"`
-	Autoset   uint64   `json:"autoset,omitempty"` // Status.AutosetDone names it when the sweep ends
-}
+// SetResult is uimodel.SetResult.
+type SetResult = uimodel.SetResult
 
 // remoteState is the published snapshot (guarded by Controller.rmu).
 type remoteState struct {
@@ -285,10 +189,10 @@ func (c *Controller) status(s *sv) Status {
 			rm.Text = "" // a live status (a mask test's counts, the stack's): /api/sheets has it
 		}
 		st.Sheet.Row = &rm
-		st.Tool = []ToolSeg{{"S/DIV", "tab"}, {ctlAdjust, "row"}, {ctlPush, "edit"}, {ctlPosition, "change the row"}, {ctlPush, "default"}}
+		st.Tool = []ToolSeg{{Knob: "S/DIV", Job: "tab"}, {Knob: ctlAdjust, Job: "row"}, {Knob: ctlPush, Job: "edit"}, {Knob: ctlPosition, Job: "change the row"}, {Knob: ctlPush, Job: "default"}}
 		switch u.sub {
 		case subMatch:
-			st.Tool = []ToolSeg{{ctlAdjust, "key"}, {ctlPush, "type"}, {ctlPosition, "cursor"}, {ctlPush, actClear}}
+			st.Tool = []ToolSeg{{Knob: ctlAdjust, Job: "key"}, {Knob: ctlPush, Job: "type"}, {Knob: ctlPosition, Job: "cursor"}, {Knob: ctlPush, Job: actClear}}
 		case subPick:
 			st.Tool = pickTool
 		}
@@ -319,7 +223,7 @@ func (c *Controller) status(s *sv) Status {
 }
 
 // pickTool is the byte picker's tool line.
-var pickTool = []ToolSeg{{ctlAdjust, "byte"}, {ctlPush, "trigger on it"}, {ctlPosition, "byte"}, {ctlPush, "back to start"}, {"Menu", "back"}}
+var pickTool = []ToolSeg{{Knob: ctlAdjust, Job: "byte"}, {Knob: ctlPush, Job: "trigger on it"}, {Knob: ctlPosition, Job: "byte"}, {Knob: ctlPush, Job: "back to start"}, {Knob: "Menu", Job: "back"}}
 
 // paneTool is the tool line in workspace mode (SCOPE's from its Adjust tag).
 // TRLC-LINKS: REQ-SDS-211, REQ-SDS-212
@@ -346,7 +250,7 @@ func paneTool(s *sv, v wsview.View) ([]ToolSeg, string) {
 	if p != nil {
 		var out []ToolSeg
 		for _, sg := range p.Tool {
-			out = append(out, ToolSeg{sg.Key, sg.Job})
+			out = append(out, ToolSeg{Knob: sg.Key, Job: sg.Job})
 		}
 		return out, p.Again
 	}
@@ -354,9 +258,9 @@ func paneTool(s *sv, v wsview.View) ([]ToolSeg, string) {
 	if r := adjTarget(s); r != nil {
 		adj = r.label
 	}
-	out := []ToolSeg{{ctlAdjust, adj}, {ctlPush, "open its sheet row"}}
+	out := []ToolSeg{{Knob: ctlAdjust, Job: adj}, {Knob: ctlPush, Job: "open its sheet row"}}
 	for _, sg := range posTool(s) {
-		out = append(out, ToolSeg{sg.Key, sg.Job})
+		out = append(out, ToolSeg{Knob: sg.Key, Job: sg.Job})
 	}
 	return out,
 		"F1 again: " + viewName(choose(s.viewMode == viewYT, viewXY, viewYT))
@@ -399,7 +303,7 @@ func rowModel(s *sv, r *row) RowModel {
 	case wsview.Enum:
 		m.Kind, m.Value = "enum", r.get(s)
 		for _, o := range r.options(s) {
-			m.Options = append(m.Options, OptModel{o.v, o.t})
+			m.Options = append(m.Options, OptModel{Value: o.v, Text: o.t})
 		}
 	case wsview.Number:
 		m.Kind, m.Value, m.Unit = "number", finiteOr(r.val(s)), r.unitFor(s)

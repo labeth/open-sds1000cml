@@ -6,6 +6,8 @@
 // builds it) and the LCD (which draws it) share one definition.
 package wsview
 
+import "github.com/labeth/open-dso-core/uimodel"
+
 // WS identifies a workspace; F1..F5 select them in this order.
 type WS int
 
@@ -19,7 +21,7 @@ const (
 )
 
 // Count is the number of workspaces.
-const Count = 5
+const Count = uimodel.WorkspaceCount
 
 // Names are the workspaces' full names, Tags their 4-letter rail tags.
 var (

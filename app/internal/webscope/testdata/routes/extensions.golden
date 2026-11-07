@@ -1,0 +1,148 @@
+=== POST /api/decoded/start
+request body: {}
+status 200
+header Content-Type: application/json
+body: 23 bytes, sha256 df918f7e4ee76c9e53c48bb6759477aa11becd91a0da242bf833f26a21150674
+{"epoch":0,"record":9}
+
+=== POST /api/decoded/start
+request body: {"nope":1}
+status 400
+header Content-Type: text/plain; charset=utf-8
+header X-Content-Type-Options: nosniff
+body: 27 bytes, sha256 4d10cba24337cb6778455845161371fafc3932491be10f7d3f588250266bbf91
+json: unknown field "nope"
+
+=== POST /api/decoded/start
+request body: {} {}
+status 400
+header Content-Type: text/plain; charset=utf-8
+header X-Content-Type-Options: nosniff
+body: 27 bytes, sha256 1fc5795a5dbb8eb2531ec4bd9fb8b91b9d8ab94718a50a9b965cff7e55799574
+expected one configuration
+
+=== GET /api/decoded/status?epoch=7&record=9
+status 200
+header Content-Type: application/json
+body: 431 bytes, sha256 63546963cb714956ba5a0ce9473d67082ed69940958a24dc7b000df6c1f8f6b1
+{"has_sample_timeline":false,"sample_first":0,"sample_last":0,"record_id":9,"event_epoch":7,"has_record_identity":false,"locked":false,"ready":false,"running":false,"frozen":true,"triggered":false,"prefetched":false,"words":0,"start":0,"trigger_index":0,"position":0,"origin":0,"revision":0,"map_id":0,"sample_rate_hz":0,"decimation":0,"sample_bits":0,"fraction_bits":0,"samples_per_word":0,"interleaved":false,"data_fault":false}
+
+=== GET /api/decoded/status?epoch=7
+status 400
+header Content-Type: text/plain; charset=utf-8
+header X-Content-Type-Options: nosniff
+body: 19 bytes, sha256 2bbbc0f3fc706059f2b91ed73e293f1ec042cc9700d82957eee1748851e723b7
+record is required
+
+=== GET /api/decoded/status?record=1
+status 400
+header Content-Type: text/plain; charset=utf-8
+header X-Content-Type-Options: nosniff
+body: 18 bytes, sha256 f08ce5cbbb64632bc48736740249a4ed7ab70529fa411208caddcde7082ddbd9
+epoch is required
+
+=== GET /api/decoded/record.bin?epoch=7&record=9&offset=0&words=4
+status 200
+header Cache-Control: no-store
+header Content-Length: 16
+header Content-Type: application/octet-stream
+body: 16 bytes, sha256 374708fff7719dd5979ec875d56cd2286f6d3cf7ec317a3b25632aab28ec37bb
+00000000  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|
+
+=== GET /api/decoded/record.bin?epoch=7&record=8&offset=0&words=4
+status 409
+header Content-Type: text/plain; charset=utf-8
+header X-Content-Type-Options: nosniff
+body: 15 bytes, sha256 b0f7948e7b5449062e59713233547c1e17312cf0fa6f45e26abed34a8c9c6572
+stale identity
+
+=== GET /api/decoded/record.bin?epoch=7&record=9&offset=1
+status 400
+header Content-Type: text/plain; charset=utf-8
+header X-Content-Type-Options: nosniff
+body: 19 bytes, sha256 847e6f7f57eb6149df4f915426ece65ec2bc68d6089a8d9a1fb2dd14f26b6231
+invalid word range
+
+=== GET /api/decoded/record.bin?epoch=7&record=9&words=1
+status 400
+header Content-Type: text/plain; charset=utf-8
+header X-Content-Type-Options: nosniff
+body: 19 bytes, sha256 a63804277f0b67dcca7f9153762ae5854b2d583451cf28ae74fa59c06cb21e09
+offset is required
+
+=== GET /api/decoded/events.bin?epoch=7&record=9
+status 200
+header Cache-Control: no-store
+header Content-Type: application/octet-stream
+header Trailer: X-Decoded-Error
+header X-Decoded-Record-Bytes: 32
+trailer X-Decoded-Error: transcript stopped
+body: 64 bytes, sha256 45ad00872dc53b1014830a0242dd29997769842a8aef57b8742155362d889188
+00000000  01 02 01 00 07 00 00 00  00 00 00 00 00 00 00 00  |................|
+00000010  00 00 00 00 00 00 00 00  a5 00 00 00 00 00 00 00  |................|
+00000020  01 05 00 00 07 00 00 00  01 00 00 00 00 00 00 00  |................|
+00000030  00 00 00 00 00 00 00 00  00 00 00 00 03 00 00 00  |................|
+
+=== GET /api/decoded/events.bin?epoch=7&record=1
+status 409
+header Content-Type: text/plain; charset=utf-8
+header X-Content-Type-Options: nosniff
+body: 15 bytes, sha256 b0f7948e7b5449062e59713233547c1e17312cf0fa6f45e26abed34a8c9c6572
+stale identity
+
+=== POST /api/decoded/end?epoch=7&record=9
+status 204
+body: 0 bytes, sha256 e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+
+=== GET /api/decoded/end?epoch=7&record=9
+status 404
+header Content-Type: text/plain; charset=utf-8
+header X-Content-Type-Options: nosniff
+body: 19 bytes, sha256 b16e15764b8bc06c5c3f9f19bc8b99fa48e7894aa5a6ccdad65da49bbf564793
+404 page not found
+
+=== POST /api/superres/fpga
+request body: {"records":20}
+status 200
+header Content-Type: application/json
+body: 366 bytes, sha256 660ed5c7bf68fc032a5c03d65aacd047205762247c9cfce492c43bafa7665c3f
+{"result":{"Mean":null,"Mean2":null,"Frames":0,"Rejected":0,"Hits":0,"Fill":0,"SigmaSingle":0,"SigmaStack":0,"SigmaMeasured":false,"BitsGained":0,"EffBits":0,"FineDtS":0,"EffRateSa":0},"hits":3,"crossings":4,"rejected":0,"records":20,"sample_s":2e-9,"factor":8,"bus_reads":0,"raw_words":0,"load_s":0,"stack_s":0,"capture_s":0,"scan_s":0,"upload_s":0,"download_s":0}
+
+=== POST /api/superres/fpga
+request body: {"records":200}
+status 409
+header Content-Type: text/plain; charset=utf-8
+header X-Content-Type-Options: nosniff
+body: 20 bytes, sha256 0c67c75ed23b8faa961579655bf950bc6fc572c3f1e57182506aa38e991e3066
+at most 100 records
+
+=== POST /api/superres/fpga
+request body: {"records":2,"bad":1}
+status 400
+header Content-Type: text/plain; charset=utf-8
+header X-Content-Type-Options: nosniff
+body: 26 bytes, sha256 daca8516dc18ac9668df2381b68f7132144c5eb6ba59c8a3b8a74e6d84c43525
+json: unknown field "bad"
+
+=== POST /api/superres/fpga
+request body: {"records":2} {}
+status 400
+header Content-Type: text/plain; charset=utf-8
+header X-Content-Type-Options: nosniff
+body: 21 bytes, sha256 5239bf12b9d30851422e1fa42ca2cee75896b9170839cb2274ae7835639cf800
+expected one request
+
+=== POST /api/superres/fpga
+request body: {"records":2,"stack":{"channel":1,"level":128},"match":{"points":16,"tolerance":0.2}}
+status 200
+header Content-Type: application/json
+body: 497 bytes, sha256 9d96e2d2fd7fba7ad9db340a1bc1c26f6abbffc8c04bb0ca8a3ddf40b4f3bf37
+{"result":{"Mean":null,"Mean2":null,"Frames":0,"Rejected":0,"Hits":0,"Fill":0,"SigmaSingle":0,"SigmaStack":0,"SigmaMeasured":false,"BitsGained":0,"EffBits":0,"FineDtS":0,"EffRateSa":0},"hits":3,"crossings":4,"rejected":0,"records":2,"sample_s":2e-9,"factor":8,"bus_reads":0,"raw_words":0,"load_s":0,"stack_s":0,"capture_s":0,"scan_s":0,"upload_s":0,"download_s":0,"template":[70,70,70,70,70,190,190,190,190,190,190,190,190,190,190,190],"template_stride":1,"template_pre":4,"template_threshold":3}
+
+=== GET /api/superres/fpga
+status 404
+header Content-Type: text/plain; charset=utf-8
+header X-Content-Type-Options: nosniff
+body: 19 bytes, sha256 b16e15764b8bc06c5c3f9f19bc8b99fa48e7894aa5a6ccdad65da49bbf564793
+404 page not found
+

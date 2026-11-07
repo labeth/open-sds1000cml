@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/labeth/open-dso-core/sound"
+	"github.com/labeth/open-dso-core/uimodel"
 	"github.com/labeth/open-sds1000cml/app/internal/engine"
 )
 
@@ -23,25 +24,8 @@ import (
 // nothing; the web page and the phone analyse their own copy of the stream
 // in the browser.
 
-// SoundSettings are SOUND's choices.
-type SoundSettings struct {
-	A4       float64 `json:"a4"`        // the tuner's reference, Hz
-	Ch       int     `json:"ch"`        // the tuned channel (the VCO in V/oct; its CV on the other)
-	Ref      string  `json:"ref"`       // the meters' 0 dB (sound.Presets)
-	Range    string  `json:"range"`     // the tuner's range: "", "bass", "high"
-	Slow     bool    `json:"slow"`      // the tuner's smoothing
-	Page     int     `json:"page"`      // the LCD's readout page (soundPages)
-	Cycles   int     `json:"cycles"`    // periods the cycle trace shows: 1, 2 or 4
-	ABIn     int     `json:"ab_in"`     // A/B: the input channel (the output on the other)
-	EnvCV    bool    `json:"env_cv"`    // the envelope is a CV read directly, not a tone's amplitude
-	Gate     int     `json:"gate"`      // the envelope's trigger: -1 the signal's own level, 0 C1, 1 C2 (a gate)
-	GateV    float64 `json:"gate_v"`    // its level, volts (the signal's: above its quiet mean)
-	VOctAuto bool    `json:"voct_auto"` // take V/oct points when the CV and pitch hold still
-	Drift    bool    `json:"drift"`     // log the pitch a second
-	PreS     float64 `json:"pre_s"`     // a triggered take's seconds before the trigger
-	PostS    float64 `json:"post_s"`    // and after it
-	TrigGate bool    `json:"trig_gate"` // a take's trigger is the gate (Gate, GateV), not the TRIG settings
-}
+// SoundSettings is uimodel.SoundSettings.
+type SoundSettings = uimodel.SoundSettings
 
 // The LCD's readout pages, the Adjust knob's order.
 const (
@@ -62,9 +46,9 @@ func defaultSoundSettings() SoundSettings {
 	return SoundSettings{A4: 440, Ref: "dbu", Cycles: 2, Gate: -1, GateV: 0.1, PreS: 1, PostS: 4}
 }
 
-// clean bounds every field.
+// cleanSoundSettings bounds every field.
 // TRLC-LINKS: REQ-SDS-273
-func (s SoundSettings) clean() SoundSettings {
+func cleanSoundSettings(s SoundSettings) SoundSettings {
 	if !(s.A4 >= 400 && s.A4 <= 480) {
 		s.A4 = 440
 	}
@@ -265,7 +249,7 @@ func (s *soundSvc) update(fn func(*SoundSettings)) SoundSettings {
 	defer s.mu.Unlock()
 	old := s.set
 	fn(&s.set)
-	s.set = s.set.clean()
+	s.set = cleanSoundSettings(s.set)
 	if s.set.Ch != old.Ch || s.set.Range != old.Range || s.set.Slow != old.Slow {
 		s.tuner = sound.Tuner{Slow: s.set.Slow}
 		s.strip, s.cycles, s.hz = nil, nil, 0

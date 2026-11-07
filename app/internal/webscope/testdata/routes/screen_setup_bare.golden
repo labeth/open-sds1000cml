@@ -1,0 +1,33 @@
+=== GET /api/screen.png
+status 503
+header Content-Type: text/plain; charset=utf-8
+header X-Content-Type-Options: nosniff
+body: 10 bytes, sha256 bb20c9d102974783981677bba14921f2f6adbfb98b356daacfb1e217098135c5
+no screen
+
+=== GET /api/setup
+status 200
+header Content-Type: application/json
+body: 46 bytes, sha256 9e263c266a77ed0bbb2c08cc7ecb44ba55d5d5008c3a23335481b6c17ee4e07c
+{"err":"setup memory unavailable","ok":false}
+
+=== POST /api/setup
+request body: {"op":"save","slot":4}
+status 200
+header Content-Type: application/json
+body: 46 bytes, sha256 9e263c266a77ed0bbb2c08cc7ecb44ba55d5d5008c3a23335481b6c17ee4e07c
+{"err":"setup memory unavailable","ok":false}
+
+=== POST /api/setup
+request body: {"op":"save","slot":0}
+status 200
+header Content-Type: application/json
+body: 39 bytes, sha256 1dc9c13c196090b6464005180618ceb58efb3d478b7eb84e14015b674b5f535e
+{"err":"slot must be 1-20","ok":false}
+
+=== GET /api/panel/scan
+status 200
+header Content-Type: application/json
+body: 35 bytes, sha256 860465b7edd69a70db8ea2c6379c9493409c7bc1bbdb2b1183dd37b5db6d7fc3
+{"err":"no panel scan","ok":false}
+

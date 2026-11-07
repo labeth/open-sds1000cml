@@ -1,0 +1,27 @@
+=== GET /api/record.bin
+status 400
+header Content-Type: text/plain; charset=utf-8
+header X-Content-Type-Options: nosniff
+body: 64 bytes, sha256 7e8aa1f0f32e6dafa01b69db09dc68f202d9f6fcbcac67e5f4c9118d84de8543
+sample_s: the sample interval wanted, in seconds (2e-9 or more)
+
+=== GET /api/record.bin?sample_s=1e-10
+status 400
+header Content-Type: text/plain; charset=utf-8
+header X-Content-Type-Options: nosniff
+body: 64 bytes, sha256 7e8aa1f0f32e6dafa01b69db09dc68f202d9f6fcbcac67e5f4c9118d84de8543
+sample_s: the sample interval wanted, in seconds (2e-9 or more)
+
+=== GET /api/record.bin?sample_s=2
+status 400
+header Content-Type: text/plain; charset=utf-8
+header X-Content-Type-Options: nosniff
+body: 64 bytes, sha256 7e8aa1f0f32e6dafa01b69db09dc68f202d9f6fcbcac67e5f4c9118d84de8543
+sample_s: the sample interval wanted, in seconds (2e-9 or more)
+
+=== GET /api/record.bin?sample_s=1e-6&wait_ms=1
+status 409
+header Content-Type: application/json
+body: 134 bytes, sha256 899023d21a01edf1d79add9d2e8c3733345131856acc48243eacb590fb2beadb
+{"seq":0,"n":0,"sample_s":0,"tdiv_s":0,"vpc1":0,"vpc2":0,"off1_v":0,"off2_v":0,"err":"this acquisition cannot serve sampled records"}
+

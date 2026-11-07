@@ -1,0 +1,93 @@
+=== GET /api/mask
+status 405
+header Content-Type: text/plain; charset=utf-8
+header X-Content-Type-Options: nosniff
+body: 10 bytes, sha256 978f7dd0de5d186d546284812c48fef9bc571fe48c5bfea755679017e070c2ba
+POST only
+
+=== POST /api/mask
+request body: {"lo":[1,2],"hi":[3],"win":2}
+status 200
+header Content-Type: application/json
+body: 37 bytes, sha256 0aa0ccc45d664a7165477b8f28eb4c257040142264d0c1481aee4c21931a295e
+{"err":"length mismatch","ok":false}
+
+=== POST /api/mask
+request body: {"lo":[-1,300],"hi":[10,20],"win":2,"ch":3,"tdiv_s":1e-6,"sample_s":1e-8}
+status 200
+header Content-Type: application/json
+body: 28 bytes, sha256 c75c5b5bcdc7978731d4d7c30f8eaabc1bd620a34d162e0550e724d979035dae
+{"gen":6,"ok":true,"win":2}
+
+=== POST /api/mask
+request body: {"lo_b64":"AQI=","hi_b64":"AwQ=","win":2,"if_gen":6}
+status 200
+header Content-Type: application/json
+body: 28 bytes, sha256 c016de072eecf4c746ee41ccd6beec26cdf21d256d0874cd1b9b1dd15238b443
+{"gen":7,"ok":true,"win":2}
+
+=== POST /api/mask
+request body: {"lo_b64":"AQI=","hi_b64":"AwQ=","win":2,"if_gen":1}
+status 200
+header Content-Type: application/json
+body: 96 bytes, sha256 1bf4bbf64c1c9710ef17d157f5200c99ee8c3d3992599bb1063cddd293f43f91
+{"err":"the scope's mask changed since this page installed it","gen":7,"ok":false,"stale":true}
+
+=== POST /api/mask
+request body: {"lo_b64":"AQI=","hi_b64":"AwQ=","win":3}
+status 200
+header Content-Type: application/json
+body: 37 bytes, sha256 0aa0ccc45d664a7165477b8f28eb4c257040142264d0c1481aee4c21931a295e
+{"err":"length mismatch","ok":false}
+
+=== POST /api/mask
+request body: {"lo":[]}
+status 200
+header Content-Type: application/json
+body: 35 bytes, sha256 46726df4b681dd1424b472eee8ef749b3e70694e8df793851d2c90f3d0df92e5
+{"cleared":true,"gen":7,"ok":true}
+
+=== POST /api/mask
+request body: [
+status 200
+header Content-Type: application/json
+body: 30 bytes, sha256 08ecb40607204ea8301f8b7d992348f1a9c3e2b49f0d270242120872aa1c1b60
+{"err":"bad json","ok":false}
+
+=== GET /api/maskfail
+status 200
+header Content-Type: application/json
+body: 334 bytes, sha256 fad483df6108908f64e895976e1b0be49a956db805673a50a022813dc56e2810
+{"at_ms":123,"c1":[128,142,148,142,128,114,108,114,128,142,148,142,128,114,108,114],"c2":[170,170,90,90,170,170,90,90,170,170,90,90,170,170,90,90],"count":1,"edge_x":7.5,"fail_code":200,"fail_col":3,"fail_sample":5,"i":0,"off1_v":12.3,"off2_v":-0.77,"ok":true,"sample_s":1e-8,"seq":12,"valid":16,"vpc1":0.4,"vpc2":0.04,"win_cols":16}
+
+=== GET /api/maskfail?i=0
+status 200
+header Content-Type: application/json
+body: 334 bytes, sha256 fad483df6108908f64e895976e1b0be49a956db805673a50a022813dc56e2810
+{"at_ms":123,"c1":[128,142,148,142,128,114,108,114,128,142,148,142,128,114,108,114],"c2":[170,170,90,90,170,170,90,90,170,170,90,90,170,170,90,90],"count":1,"edge_x":7.5,"fail_code":200,"fail_col":3,"fail_sample":5,"i":0,"off1_v":12.3,"off2_v":-0.77,"ok":true,"sample_s":1e-8,"seq":12,"valid":16,"vpc1":0.4,"vpc2":0.04,"win_cols":16}
+
+=== GET /api/maskfail?i=1
+status 200
+header Content-Type: application/json
+body: 47 bytes, sha256 15878dfeea8e6eeb8feab4a29c628a762b0edd960b927229a37b12455b92ca35
+{"count":1,"err":"no such failure","ok":false}
+
+=== GET /api/maskfail?i=x
+status 200
+header Content-Type: application/json
+body: 334 bytes, sha256 fad483df6108908f64e895976e1b0be49a956db805673a50a022813dc56e2810
+{"at_ms":123,"c1":[128,142,148,142,128,114,108,114,128,142,148,142,128,114,108,114],"c2":[170,170,90,90,170,170,90,90,170,170,90,90,170,170,90,90],"count":1,"edge_x":7.5,"fail_code":200,"fail_col":3,"fail_sample":5,"i":0,"off1_v":12.3,"off2_v":-0.77,"ok":true,"sample_s":1e-8,"seq":12,"valid":16,"vpc1":0.4,"vpc2":0.04,"win_cols":16}
+
+=== GET /api/bode
+status 200
+header Content-Type: application/json
+body: 79 bytes, sha256 27d8e6243ba0bed5025619d7f7343ff126da1c1e81f4fbe98232029458466a34
+{"freq":[1000,10000],"gain_db":[-0.1,-3],"n":2,"ok":true,"phase_deg":[-2,-45]}
+
+=== POST /api/bode
+request body: {}
+status 200
+header Content-Type: application/json
+body: 79 bytes, sha256 27d8e6243ba0bed5025619d7f7343ff126da1c1e81f4fbe98232029458466a34
+{"freq":[1000,10000],"gain_db":[-0.1,-3],"n":2,"ok":true,"phase_deg":[-2,-45]}
+

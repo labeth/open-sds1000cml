@@ -1,0 +1,13 @@
+=== GET /api/serial
+status 200
+header Content-Type: application/json
+body: 39 bytes, sha256 03a17ad2c6cf9142ba4a7668b546646e238f939d695197f47b5f1314f3a930f4
+{"err":"no serial trigger","ok":false}
+
+=== POST /api/serial
+request body: {"proto":1,"bytes":[300]}
+status 200
+header Content-Type: application/json
+body: 12 bytes, sha256 e5f1eb4d806641698a35efe20e098efd20d7d57a9b90ee69079d5bb650920726
+{"ok":true}
+
