@@ -20,7 +20,7 @@ import (
 // through its FPGA; the tuning knobs are the CML engine's drain and settle
 // timings.
 // TRLC-LINKS: REQ-SDS-013, REQ-SDS-022, REQ-SDS-141, REQ-SDS-162
-func (s *Scope) Extensions() []webserver.Route {
+func (s *Scope) extensions() []webserver.Route {
 	routes := s.decodedRoutes()
 	routes = append(routes, s.fpgaStackRoutes()...)
 	return append(routes,

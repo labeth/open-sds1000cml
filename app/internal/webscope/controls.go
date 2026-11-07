@@ -11,7 +11,6 @@ import (
 
 	"github.com/labeth/open-dso-core/hal"
 	"github.com/labeth/open-dso-core/webserver"
-	"github.com/labeth/open-dso-core/webserver/wire"
 	"github.com/labeth/open-sds1000cml/app/internal/analog"
 	"github.com/labeth/open-sds1000cml/app/internal/engine"
 )
@@ -244,164 +243,42 @@ func (s *Scope) endWebCapture(ctx context.Context) {
 	}
 }
 
-// triggers is the engine's zone and protocol triggers.
-type triggers struct{ s *Scope }
+// serialTrigger is the engine's protocol trigger as the web scope takes it.
+type serialTrigger struct{ s *Scope }
 
-// SetZones installs the zone-trigger rectangles (seconds from the edge by
-// display codes); an empty list clears them.
+// SerialConfig is the configuration as armed, where the engine reads it
+// back.
 // TRLC-LINKS: REQ-SDS-162
-func (t triggers) SetZones(zs []wire.Zone) {
-	out := make([]engine.Zone, 0, len(zs))
-	for _, z := range zs {
-		out = append(out, engine.Zone{DtLoS: z.DtLoS, DtHiS: z.DtHiS, CodeLo: z.CodeLo, CodeHi: z.CodeHi, Avoid: z.Avoid, Ch: z.Ch})
-	}
-	t.s.sc.SetZones(out)
-}
-
-// SerialConfig is the protocol trigger as armed (on the LCD, a phone or a
-// page) and its mode: a page shows it rather than replace it with its own
-// empty match.
-// TRLC-LINKS: REQ-SDS-162
-func (t triggers) SerialConfig() (any, int, bool) {
+func (t serialTrigger) SerialConfig() (engine.SerialParams, bool) {
 	sc, ok := t.s.sc.(interface{ SerialConfig() engine.SerialParams })
 	if !ok {
-		return nil, 0, false
+		return engine.SerialParams{}, false
 	}
-	return sc.SerialConfig(), t.s.sc.Snapshot().SerialMode, true
+	return sc.SerialConfig(), true
 }
 
-// SetSerial installs the protocol-trigger configuration (engine
-// SerialParams: {proto,chA,chB,baud,cpol,cpha,msb,addr,rw,bytes}). Arm and
-// disarm are separate, via /api/set {control:"serialmode"}. Match values
-// retain the protocol's word width. The SPI clock rate, the data delay and
-// the receiver stay the scope's: its BUS rows set them (bus.spi_clock,
-// bus.spi_delay, bus.receiver, the one path for the LCD, a phone and a
-// page), so a page's post, one running an older build's scripts too, never
-// replaces them.
 // TRLC-LINKS: REQ-SDS-162
-func (t triggers) SetSerial(decode func(v any) error) error {
-	s := t.s
-	var p engine.SerialParams
-	if err := decode(&p); err != nil {
-		return err
-	}
-	p.Proto = clampI(p.Proto, 0, engine.SerialProtocols-1) // 0 off … 10 flexray, 11 lin … 30 wiegand … 52 IR multi
-	p.ChA, p.ChB = p.ChA&1, p.ChB&1
-	p.RW = clampI(p.RW, 0, 2)
-	if p.Addr > 127 || p.Addr < -1 {
-		p.Addr = -1 // out of 7-bit range → "any" (never a silent never-match)
-	}
-	if p.Baud < 0 || p.Baud > 64_000_000 { // the fast image's UART receiver: 62.5 MBd
-		p.Baud = 0
-	}
-	if p.Bits != 0 {
-		hi := 16
-		switch p.Proto {
-		case 21, 30: // SIRC's and Wiegand's frame length
-			hi = 64
-		case 34, 35, 44, 52: // an RC code's bits, Oregon's version, the PJON mode, the IR multi protocol
-			hi = 64
-		case 41: // a T55xx command's bits
-			hi = 70
-		}
-		p.Bits = clampI(p.Bits, 1, hi)
-	}
-	if len(p.Bytes) > 64 { // a match pattern longer than a record is pointless
-		p.Bytes = p.Bytes[:64]
-	}
-	maxValue := 255
-	switch p.Proto {
-	case 1, 4: // UART / Manchester configurable data word
-		if p.Bits > 0 {
-			maxValue = (1 << p.Bits) - 1
-		}
-	case 5: // SENT nibble
-		maxValue = 15
-	case 7: // MIL-STD-1553 word
-		maxValue = 65535
-	case 8: // ARINC 429 data field
-		maxValue = 0x7ffff
-	case 29, 30: // MDIO header and data, Wiegand fields
-		maxValue = 0xffff
-	case 26: // an S/PDIF sample
-		maxValue = 0xffffff
-	case 28: // an SWD data word's low 31 bits
-		maxValue = 0x7fffffff
-	case 31, 32: // an encoder's or a stepper's step direction
-		maxValue = 1
-	case 35: // an Oregon nibble
-		maxValue = 15
-	case 52: // an IR multi address or command
-		maxValue = 0xffff
-	case 49: // a cJTAG scan's low 31 bits
-		maxValue = 0x7fffffff
-	}
-	for i := range p.Bytes {
-		p.Bytes[i] = clampI(p.Bytes[i], 0, maxValue)
-	}
-	if sc, ok := s.sc.(interface{ SerialConfig() engine.SerialParams }); ok {
-		cur := sc.SerialConfig()
-		p.SPIClockHz, p.SPIDelayNs, p.Fine = cur.SPIClockHz, cur.SPIDelayNs, cur.Fine
-	}
-	s.sc.SetSerialParams(p)
-	return nil
-}
-
-// SerialProtocols lists the protocols the trigger's images take.
-// TRLC-LINKS: REQ-SDS-162
-func (t triggers) SerialProtocols() any { return engine.SerialDecoderList() }
+func (t serialTrigger) SetSerialParams(p engine.SerialParams) { t.s.sc.SetSerialParams(p) }
 
 // TRLC-LINKS: REQ-SDS-162
-func clampI(v, lo, hi int) int {
-	if v < lo {
-		return lo
-	}
-	if v > hi {
-		return hi
-	}
-	return v
-}
+func (t serialTrigger) SerialMode() int { return t.s.sc.Snapshot().SerialMode }
 
-// masks is the engine's mask test.
-type masks struct{ s *Scope }
+// maskTest is the engine's mask test as the web scope takes it.
+type maskTest struct{ s *Scope }
 
-// SetMask installs a mask built on the page (display-window columns, win =
-// the engine's WinCols at build time); with the frame's timebase and
-// sample interval it compares only with frames of that identity.
 // TRLC-LINKS: REQ-SDS-162
-func (m masks) SetMask(mk wire.Mask) {
-	m.s.sc.SetMask(&engine.Mask{
-		Lo: mk.Lo, Hi: mk.Hi, WinCols: mk.WinCols, Ch: mk.Ch,
-		FrameIdent: mk.TdivS > 0 && mk.SampleS > 0, TdivS: mk.TdivS, SampleS: mk.SampleS, PeakDetect: mk.PeakDetect,
-	})
-}
+func (m maskTest) SetMask(mk *engine.Mask) { m.s.sc.SetMask(mk) }
 
 // ClearMask removes the mask with its test and counts (clearMask).
 // TRLC-LINKS: REQ-SDS-014, REQ-SDS-139
-func (m masks) ClearMask() { m.s.clearMask() }
+func (m maskTest) ClearMask() { m.s.clearMask() }
 
 // MaskGen names the mask installed (Stats.MaskGen).
 // TRLC-LINKS: REQ-SDS-162
-func (m masks) MaskGen() uint64 { return m.s.sc.Snapshot().MaskGen }
+func (m maskTest) MaskGen() uint64 { return m.s.sc.Snapshot().MaskGen }
 
-// MaskFails is the ring of captured failing frames, most recent last.
 // TRLC-LINKS: REQ-SDS-162
-func (m masks) MaskFails() []wire.MaskFail {
-	ring := m.s.sc.MaskFails()
-	out := make([]wire.MaskFail, len(ring))
-	for i, f := range ring {
-		out[i] = wire.MaskFail{
-			C1: f.C1, C2: f.C2, Valid: f.Valid, Seq: f.Seq, EdgeX: f.EdgeX, SampleS: f.SampleS, WinCols: f.WinCols,
-			AtNs: f.AtNs, FailCol: f.FailCol, FailCode: f.FailCode, FailSample: f.FailSample,
-		}
-	}
-	return out
-}
-
-// VertScales are the channels' offset volts and volts per code now
-// (vertScales).
-// TRLC-LINKS: REQ-SDS-164
-func (m masks) VertScales() (off, vpc [2]float64) { return m.s.vertScales() }
+func (m maskTest) MaskFails() []engine.MaskFail { return m.s.sc.MaskFails() }
 
 // clearMask removes the mask with its test and counts: through the panel
 // where there is one, which also stops a mask build or master stack under

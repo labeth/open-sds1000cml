@@ -1,9 +1,10 @@
-// Package webscope is the SDS1000CML+ as the shared web server sees it: it
-// implements open-dso-core's webserver.Scope over the engine, the frame
-// fan-out, the vertical front end and the panel controller, and adds the
-// scope's own routes. It is a pure producer/consumer against the engine: it
-// only calls staging setters and reads frame copies and stat snapshots —
-// never the bus (spec 09 §1).
+// Package webscope is the SDS1000CML+ as the shared web server sees it: the
+// core's web scope (scopeweb) over this scope's engine, frame fan-out,
+// vertical front end and panel controller, with the hooks for the state the
+// engine keeps outside the core's instrument model, and the scope's own
+// routes. It is a pure producer/consumer against the engine: it only calls
+// staging setters and reads frame copies and stat snapshots — never the bus
+// (spec 09 §1).
 // ENGMODEL-OWNER-UNIT: FU-APP-WEB
 package webscope
 
@@ -11,9 +12,9 @@ import (
 	"time"
 
 	"github.com/labeth/open-dso-core/sample"
+	"github.com/labeth/open-dso-core/scopeweb"
 	"github.com/labeth/open-dso-core/webserver"
-	"github.com/labeth/open-dso-core/webserver/shape"
-	"github.com/labeth/open-dso-core/webserver/wire"
+	"github.com/labeth/open-sds1000cml/app/internal/buildinfo"
 	"github.com/labeth/open-sds1000cml/app/internal/engine"
 )
 
@@ -117,18 +118,31 @@ type superresReporter interface {
 }
 
 // frameWaiter is the optional long-poll surface: implemented by main's
-// scopeSource (delegating to frames.Fanout.WaitNext). Handlers type-assert
-// for it so test doubles without it degrade to a short seq poll.
+// scopeSource (delegating to the fan-out's WaitNext). Test doubles without
+// it degrade to a short seq poll.
 // TRLC-LINKS: REQ-SDS-163
 type frameWaiter interface {
 	WaitNextFrame(last uint64, timeout time.Duration) uint64
 }
 
-// Scope is the SDS1000CML+ as webserver.Scope. Frame reads happen inside
-// Engine.WithFrame; a reply is fully assembled under the fan-out read lock
-// and the server writes it after the lock is released.
+// busSampler is the engine's lease of bus samples: while it holds, the
+// frames are records sampled at the interval leased.
+type busSampler interface {
+	LeaseBusSamples(float64, time.Duration)
+}
+
+// Scope is the SDS1000CML+ as webserver.Scope: the core's web scope
+// (scopeweb) over this scope's engine, with the hooks for what the engine
+// still keeps outside the core's instrument model. The status document is
+// the engine's own counters (engine.Stats) and the front end's state; the
+// controls are the engine's setters, the front end's and the board's
+// levels (run control in the engine's flags, the trigger level as the DAC
+// code the v1 page sends); the scales are the front end's analog range at
+// 25 codes a division with the offset read back from its DAC code. Each
+// goes to the core when the instrument model takes that state.
 // TRLC-LINKS: REQ-SDS-161, REQ-SDS-162, REQ-SDS-163, REQ-SDS-164
 type Scope struct {
+	*scopeweb.Scope
 	sc     Engine
 	fe     Analog
 	lv     Levels
@@ -143,17 +157,61 @@ type Scope struct {
 
 	// setups is the numbered setup store behind /api/setup (SetSetupMemory).
 	setups webserver.Setups
-
-	// meas is the frame measurements' cache: computed once per published
-	// frame and its measurement inputs, shared by every request.
-	meas shape.MeasCache
 }
 
 // New is the SDS1000CML+ scope over the engine sc and the board's levels lv;
 // fe and panel may be nil, and screen renders the LCD as a PNG.
 // TRLC-LINKS: REQ-SDS-161, REQ-SDS-162, REQ-SDS-163, REQ-SDS-164
 func New(sc Engine, fe Analog, lv Levels, panel Panel, screen func() []byte) *Scope {
-	return &Scope{sc: sc, fe: fe, lv: lv, panel: panel, screen: screen}
+	s := &Scope{sc: sc, fe: fe, lv: lv, panel: panel, screen: screen}
+	cfg := scopeweb.Config{
+		Frames:   frameSource{s},
+		Version:  buildinfo.String(),
+		Screen:   screen,
+		Routes:   s.extensions(),
+		Parts:    s.parts(),
+		Status:   s.status,
+		Controls: controlSetter{s},
+		Scales:   scales{s},
+		Quiet:    sc,
+	}
+	if panel != nil {
+		cfg.UI = panel
+	}
+	s.Scope = scopeweb.New(cfg)
+	return s
+}
+
+// parts are the core engine's parts this engine runs, as far as it (or a
+// test double) has them.
+// TRLC-LINKS: REQ-SDS-162, REQ-SDS-265, REQ-SDS-018
+func (s *Scope) parts() scopeweb.Parts {
+	p := scopeweb.Parts{
+		Zones:  s.sc,
+		Serial: serialTrigger{s},
+		Masks:  maskTest{s},
+		Bode:   s.sc,
+		Leases: leases{s},
+	}
+	if src, ok := s.sc.(scopeweb.SoundStream); ok {
+		p.Sound = src
+	}
+	if tk, ok := s.sc.(scopeweb.SoundTaker); ok {
+		p.SoundTakes = tk
+	}
+	if a, ok := s.panel.(scopeweb.SoundArbiter); ok {
+		p.SoundLease = a
+	}
+	if sp, ok := s.panel.(soundPanel); ok {
+		p.SoundControl = soundControls{s: s, sp: sp}
+	}
+	if cd, ok := s.sc.(scopeweb.ClientDecoder); ok {
+		p.ClientDecode = cd
+	}
+	if bs, ok := s.sc.(busSampler); ok {
+		p.RecordLease = bs.LeaseBusSamples
+	}
+	return p
 }
 
 // SetInvertSource wires the SCPI INVS shadow — the single source of truth for
@@ -169,93 +227,34 @@ func (s *Scope) SetInvertSource(fn func() [2]bool) { s.invSrc = fn }
 // TRLC-LINKS: REQ-SDS-219
 func (s *Scope) SetSetupMemory(m webserver.Setups) { s.setups = m }
 
-// UI is the panel controller: its keys and knobs, and the remote surfaces
-// it implements (webserver.UIRemote, UIWorkspaces, UIAutoFor, UIKeys,
-// UIPageStream, UIPageLeave).
-// TRLC-LINKS: REQ-SDS-162
-func (s *Scope) UI() (webserver.UIModel, bool) { return s.panel, s.panel != nil }
-
-// Refs is the panel's saved references (and webserver.RefActions where it
-// can change them).
-// TRLC-LINKS: REQ-SDS-138, REQ-SDS-227
-func (s *Scope) Refs() (webserver.Refs, bool) {
-	r, ok := s.panel.(webserver.Refs)
-	return r, ok
-}
-
-// Stream is the panel's decoded stream transcript.
-// TRLC-LINKS: REQ-SDS-018
-func (s *Scope) Stream() (webserver.Stream, bool) {
-	if s.panel == nil {
-		return nil, false
-	}
-	return stream{s.panel}, true
-}
-
-// Records takes sampled records where the engine leases its bus samples.
-// TRLC-LINKS: REQ-SDS-280
-func (s *Scope) Records() (webserver.Records, bool) {
-	l, ok := s.sc.(busSampler)
-	return records{s, l}, ok
-}
-
-// Triggers is the engine's zone and protocol triggers.
-// TRLC-LINKS: REQ-SDS-162
-func (s *Scope) Triggers() (webserver.Triggers, bool) { return triggers{s}, true }
-
-// Masks is the engine's mask test.
-// TRLC-LINKS: REQ-SDS-162
-func (s *Scope) Masks() (webserver.Masks, bool) { return masks{s}, true }
-
-// Bode is the engine's frequency-response curve.
-// TRLC-LINKS: REQ-SDS-162
-func (s *Scope) Bode() (webserver.Bode, bool) { return bode{s.sc}, true }
-
-// Screen is the LCD as rendered.
-// TRLC-LINKS: REQ-SDS-161
-func (s *Scope) Screen() (webserver.Screen, bool) { return screenPNG(s.screen), s.screen != nil }
-
 // Setups is the setup store wired with SetSetupMemory.
 // TRLC-LINKS: REQ-SDS-219
 func (s *Scope) Setups() (webserver.Setups, bool) { return s.setups, s.setups != nil }
 
-// screenPNG is the LCD render as webserver.Screen.
-type screenPNG func() []byte
+// frameSource is the engine's fan-out as the web scope reads it.
+type frameSource struct{ s *Scope }
 
-// TRLC-LINKS: REQ-SDS-161
-func (f screenPNG) PNG() []byte { return f() }
-
-// bode is the engine's Bode curve as wire points.
-type bode struct{ sc Engine }
-
-// TRLC-LINKS: REQ-SDS-162
-func (b bode) BodePoints() []wire.BodePoint {
-	pts := b.sc.BodePoints()
-	out := make([]wire.BodePoint, len(pts))
-	for i, p := range pts {
-		out[i] = wire.BodePoint{FreqHz: p.FreqHz, GainDB: p.GainDB, PhaseDeg: p.PhaseDeg}
-	}
-	return out
-}
-
-// waitFrame parks until a frame after since has published, or timeout.
 // TRLC-LINKS: REQ-SDS-163
-func (s *Scope) waitFrame(since uint64, timeout time.Duration) {
-	if fw, ok := s.sc.(frameWaiter); ok {
-		fw.WaitNextFrame(since, timeout)
-		return
+func (f frameSource) WithFrame(fn func(*sample.Frame)) { f.s.sc.WithFrame(fn) }
+
+// WaitNext parks until a frame after since has published, or timeout.
+// TRLC-LINKS: REQ-SDS-163
+func (f frameSource) WaitNext(since uint64, timeout time.Duration) uint64 {
+	if fw, ok := f.s.sc.(frameWaiter); ok {
+		return fw.WaitNextFrame(since, timeout)
 	}
 	// test doubles: degrade to a short seq poll
+	var seq uint64
 	for deadline := time.Now().Add(timeout); time.Now().Before(deadline); {
-		var seq uint64
-		s.sc.WithFrame(func(f *sample.Frame) {
-			if f != nil {
-				seq = f.Seq
+		f.s.sc.WithFrame(func(fr *sample.Frame) {
+			if fr != nil {
+				seq = fr.Seq
 			}
 		})
 		if seq != since {
-			return
+			return seq
 		}
 		time.Sleep(20 * time.Millisecond)
 	}
+	return seq
 }
