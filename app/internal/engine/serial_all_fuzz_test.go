@@ -131,7 +131,7 @@ func FuzzSerialAllProtocols(f *testing.F) {
 		}
 		_ = SoftStreamMode(p.Proto, p.Baud, p.Overdrive)
 		_ = unitMask(p)
-		if d, ok := serialDecoder(p.Proto); ok {
+		if d, ok := lookupSerialDecoder(p.Proto); ok {
 			for _, bl := range [][]uint8{b, nil} {
 				r := d.Decode(a, bl, sampleS, p)
 				for _, s := range r.Spans {

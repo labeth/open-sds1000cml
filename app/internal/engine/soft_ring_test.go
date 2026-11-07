@@ -228,7 +228,7 @@ func TestSoftRingPace(t *testing.T) {
 // that loses words goes on without the ring (the SRAM drum's slack).
 // TRLC-LINKS: REQ-SDS-035, REQ-SDS-240
 func TestSoftRingStartFallsBackOnce(t *testing.T) {
-	d, _ := serialDecoder(serDMX)
+	d, _ := lookupSerialDecoder(serDMX)
 	s := &softStream{ring: true, ringLog: 9, log: 12, decoder: d}
 	rings, plains := 0, 0
 	refuse := func(sramcapture.Config) error {

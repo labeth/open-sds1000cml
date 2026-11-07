@@ -634,7 +634,7 @@ const (
 // -1 when no unit ends near it.
 // TRLC-LINKS: REQ-SDS-013, REQ-SDS-223
 func frameUnitStart(a, b []uint8, sampleS float64, p SerialParams, at, lo int) float64 {
-	d, ok := serialDecoder(p.Proto)
+	d, ok := lookupSerialDecoder(p.Proto)
 	if !ok {
 		return -1
 	}

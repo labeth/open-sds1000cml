@@ -36,7 +36,7 @@ func decodeAlloc(d SerialDecoder, proto, n, per int) uint64 {
 // TRLC-LINKS: REQ-SDS-018
 func TestDecodersLinearOnBusyLine(t *testing.T) {
 	for proto := 1; proto < SerialProtocols; proto++ {
-		d, ok := serialDecoder(proto)
+		d, ok := lookupSerialDecoder(proto)
 		if !ok {
 			continue
 		}

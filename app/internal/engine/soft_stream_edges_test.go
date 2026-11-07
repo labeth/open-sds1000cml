@@ -63,7 +63,7 @@ func softEdgeRun(t *testing.T, proto int, p SerialParams, raw []byte, edges bool
 		plan = softPlan{log: softBitsLog(decode.StreamBitsMinPeriod), period: decode.StreamBitsMinPeriod, bits: true}
 	}
 	_, longest, quiet, _ := decode.StreamTiming(name, float64(p.Baud))
-	d, _ := serialDecoder(proto)
+	d, _ := lookupSerialDecoder(proto)
 	if !edges {
 		d.Edges = nil
 	}
@@ -105,7 +105,7 @@ func TestSoftStreamEdgesMatchSamples(t *testing.T) {
 		rng := rand.New(rand.NewSource(5))
 		n := 0
 		for proto, name := range softProtoNames {
-			d, _ := serialDecoder(proto)
+			d, _ := lookupSerialDecoder(proto)
 			if !decode.StreamBitsLine(name) {
 				if d.Edges != nil {
 					t.Errorf("%s: an edge decoder for a line the digital stream does not carry", name)

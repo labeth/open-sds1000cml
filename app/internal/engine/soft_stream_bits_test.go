@@ -121,7 +121,7 @@ func TestSoftStreamBitsToEvents(t *testing.T) {
 			}
 			// 13 samples a period, so edges fall anywhere in one.
 			raw := bitsWords(linLevels(13/period, float64(baud), frames), 13)
-			d, _ := serialDecoder(serLIN)
+			d, _ := lookupSerialDecoder(serLIN)
 			s := &softStream{
 				p: SerialParams{Proto: serLIN, Baud: baud, Threshold: 128, HaveThr: true}, proto: name, decoder: d,
 				mask: 0xff, gapFree: true, quiet: quiet, bits: true, trig: StreamManual,
@@ -190,7 +190,7 @@ func TestSoftStreamBitsQuietSkipped(t *testing.T) {
 			if skip {
 				k = 1
 			}
-			d, _ := serialDecoder(serLIN)
+			d, _ := lookupSerialDecoder(serLIN)
 			s := &softStream{
 				p: SerialParams{Proto: serLIN, Baud: baud, Threshold: 128, HaveThr: true}, proto: name, decoder: d,
 				mask: 0xff, gapFree: true, quiet: quiet, bits: true, trig: StreamManual,

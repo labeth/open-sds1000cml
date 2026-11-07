@@ -278,7 +278,7 @@ func (e *Engine) serialQualifyAt(f *sample.Frame, valid int, sampleS float64, at
 // and finds its match nearest at.target.
 // TRLC-LINKS: REQ-SDS-013
 func serialMatchIn(chA, chB []uint8, sampleS float64, p SerialParams, at anchorSpan) (bool, int) {
-	d, ok := serialDecoder(p.Proto)
+	d, ok := lookupSerialDecoder(p.Proto)
 	if !ok {
 		return false, -1
 	} // Unsupported protocols must never qualify a trigger.

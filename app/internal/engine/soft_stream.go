@@ -380,7 +380,7 @@ func softCaptureLog(feature float64) uint8 {
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
 func (e *Engine) beginSoftStream(ctx context.Context, p SerialParams, trig StreamTrigger, value int) (sramcapture.RecordIdentity, error) {
 	name, _ := softProtoName(p.Proto)
-	d, ok := serialDecoder(p.Proto)
+	d, ok := lookupSerialDecoder(p.Proto)
 	if name == "" || !ok {
 		return sramcapture.RecordIdentity{}, fmt.Errorf("no software stream for protocol %d", p.Proto)
 	}

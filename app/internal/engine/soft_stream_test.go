@@ -94,7 +94,7 @@ func TestSoftStreamPeakWordsToEvents(t *testing.T) {
 	}
 	raw := peakWords(linLevels(8/bucket, baud, frames), 8)
 	for _, stop := range []bool{false, true} {
-		d, _ := serialDecoder(serLIN)
+		d, _ := lookupSerialDecoder(serLIN)
 		s := &softStream{
 			p: SerialParams{Proto: serLIN, Baud: baud, Threshold: 128, HaveThr: true}, proto: name, decoder: d,
 			mask: 0xff, gapFree: true, quiet: quiet, log: uint8(log), trig: StreamManual, id: sramcapture.RecordIdentity{Epoch: softEpochBase | 1},

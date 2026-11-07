@@ -172,7 +172,7 @@ func TestFrameStartSequence(t *testing.T) {
 func TestFrameUnitStart(t *testing.T) {
 	clk, dat := spiWave([]int{0x48, 0x69}, 10)
 	p := SerialParams{Proto: serSPI, ChA: 0, ChB: 1, MSB: true, Pattern: []PatternElem{{Kind: patternStart}, {Kind: patternData}}}
-	d, _ := serialDecoder(serSPI)
+	d, _ := lookupSerialDecoder(serSPI)
 	res := d.Decode(clk, dat, 1e-6, p)
 	var first, second [2]int
 	n := 0

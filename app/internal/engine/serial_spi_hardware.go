@@ -71,6 +71,9 @@ func spiDelay16(ns float64, clockCh int) int {
 	return max(-128, min(127, phase+int(math.Round(ns*16))))
 }
 
+// The software SPI decoder reads the data line where this receiver does.
+func init() { spiDataDelayNs = SPIDelayFPGA }
+
 // SPIDelayFPGA is the delay after the sampling edge the receiver on the
 // samples reads SPI's data at for a delay of ns asked, with the clock on
 // clockCh: its register holds -8 to 8 ns with the channels' phase.

@@ -63,7 +63,7 @@ func SerialDecoderList() []SerialDecoder {
 }
 
 // TRLC-LINKS: REQ-SDS-013
-func serialDecoder(id int) (SerialDecoder, bool) {
+func lookupSerialDecoder(id int) (SerialDecoder, bool) {
 	serialDecoders.RLock()
 	d, ok := serialDecoders.byID[id]
 	serialDecoders.RUnlock()
@@ -92,6 +92,13 @@ func init() {
 
 // serialDecoderTable is the built-in decoders; a nil Match is filled in
 // by init.
+// spiDataDelayNs is where the scope's hardware SPI receiver reads the data
+// line for a delay asked after the clock's sampling edge, with the clock on
+// a channel: its register holds the delay in steps of its own, and the
+// software decoder reads the line where the receiver does so both agree.
+// Nil: at the delay asked.
+var spiDataDelayNs func(ns float64, clockCh int) float64
+
 // TRLC-LINKS: REQ-SDS-013
 func serialDecoderTable() []SerialDecoder {
 	return []SerialDecoder{
@@ -104,7 +111,11 @@ func serialDecoderTable() []SerialDecoder {
 		{ID: serSPI, Name: "SPI", Decode: func(a, b []uint8, sampleS float64, p SerialParams) decode.Result {
 			cfg := decode.SPICfg{Inverted: p.Inverted, CPOL: p.CPOL, CPHA: p.CPHA, MSB: p.MSB, Threshold: p.Threshold, HaveThr: p.HaveThr, DataLag: decode.SPIDataLag(p.ChA, sampleS)}
 			if sampleS > 0 {
-				cfg.DataDelay = SPIDelayFPGA(p.SPIDelayNs, p.ChA) * 1e-9 / sampleS // as the FPGA's receiver reads it
+				delayNs := p.SPIDelayNs
+				if spiDataDelayNs != nil {
+					delayNs = spiDataDelayNs(delayNs, p.ChA)
+				}
+				cfg.DataDelay = delayNs * 1e-9 / sampleS // as the scope's receiver reads it
 			}
 			return decode.SPI(a, b, sampleS, cfg)
 		}},

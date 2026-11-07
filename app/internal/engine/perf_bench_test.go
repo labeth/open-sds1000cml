@@ -587,8 +587,8 @@ func BenchmarkMatchSequence(b *testing.B) {
 // TRLC-LINKS: REQ-SDS-013
 func BenchmarkSerialDecoder(b *testing.B) {
 	for b.Loop() {
-		serialDecoder(serUART)
-		serialDecoder(serI2C)
+		lookupSerialDecoder(serUART)
+		lookupSerialDecoder(serI2C)
 	}
 }
 

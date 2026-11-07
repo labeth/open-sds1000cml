@@ -204,7 +204,7 @@ func clientTestStream(t *testing.T, proto int, p SerialParams, pushN int) *softS
 		plan = softPlan{log: softBitsLog(decode.StreamBitsMinPeriod), period: decode.StreamBitsMinPeriod, bits: true}
 	}
 	_, longest, quiet, _ := decode.StreamTiming(name, float64(p.Baud))
-	d, _ := serialDecoder(proto)
+	d, _ := lookupSerialDecoder(proto)
 	s := &softStream{
 		p: p, proto: name, decoder: d, mask: unitMask(p), gapFree: true, quiet: quiet, bits: true,
 		trig: StreamManual, id: sramcapture.RecordIdentity{Epoch: softEpochBase | 7},

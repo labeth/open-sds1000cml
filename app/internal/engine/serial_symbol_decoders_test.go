@@ -17,7 +17,7 @@ func TestSymbolTriggerAgreesWithDecoders(t *testing.T) {
 	for _, tc := range symbolCases() {
 		t.Run(tc.name, func(t *testing.T) {
 			w := tc.wave()
-			d, ok := serialDecoder(tc.p.Proto)
+			d, ok := lookupSerialDecoder(tc.p.Proto)
 			if !ok {
 				t.Fatal("no software decoder registered")
 			}

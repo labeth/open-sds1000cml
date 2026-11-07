@@ -21,7 +21,7 @@ func TestPacketTriggerBoundaries(t *testing.T) {
 		{serUSB, "start"},
 		{serFlexRay, "start"},
 	} {
-		d, _ := serialDecoder(tc.id)
+		d, _ := lookupSerialDecoder(tc.id)
 		t.Run(d.Name, func(t *testing.T) {
 			a := decode.Span{Kind: "data", Val: 0x41, I0: 10, I1: 19}
 			b := decode.Span{Kind: "data", Val: 0x42, I0: 20, I1: 29}

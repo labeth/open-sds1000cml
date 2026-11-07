@@ -98,7 +98,7 @@ func TestSoftStreamPaceFrameOrdinals(t *testing.T) {
 	_, longest, quiet, _ := decode.StreamTiming(name, baud)
 	for _, period := range []int{16, 64, 13, 90, 166, 251} {
 		raw := bitsWords(levels, 2*period)
-		d, _ := serialDecoder(serLIN)
+		d, _ := lookupSerialDecoder(serLIN)
 		s := &softStream{
 			p: SerialParams{Proto: serLIN, Baud: baud, Threshold: 128, HaveThr: true}, proto: name, decoder: d,
 			mask: 0xff, gapFree: true, quiet: quiet, bits: true, trig: StreamManual,
