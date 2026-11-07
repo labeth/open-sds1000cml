@@ -41,14 +41,17 @@ func (in instrument) State() core.State {
 	case st.Norm:
 		s.Sweep = hal.NormalSweep
 	}
+	// The shared commands see this scope's trigger as the edge trigger: its
+	// source, slope and level serve every type the engine runs.
 	src := h.trigSource()
-	s.Trigger = core.Edge{Source: hal.Source{Kind: hal.Analog, Index: src}, Slope: hal.Falling}
+	edge := hal.TrigStage{Node: hal.NodeEdge, Source: hal.Source{Kind: hal.Analog, Index: src}, Levels: hal.Levels{Slope: hal.Falling}}
 	if st.TrigRising {
-		s.Trigger.Slope = hal.Rising
+		edge.Levels.Slope = hal.Rising
 	}
 	if v, ok := h.lv.TrigLevel(src); ok {
-		s.Trigger.LevelV = v
+		edge.Levels.High = v
 	}
+	s.Trigger.Configs[core.TrigEdge] = core.TrigConfig{Stages: []hal.TrigStage{edge}}
 	for ch := range 2 {
 		p := h.probe(ch)
 		c := hal.Channel{
@@ -82,8 +85,9 @@ func (in instrument) Change(fn func(*core.State) error) error {
 	if err := fn(&s); err != nil {
 		return err
 	}
-	if len(s.Channels) != len(old.Channels) || s.Mode != old.Mode || s.Trigger.Coupling != old.Trigger.Coupling ||
-		s.Trigger.NoiseReject != old.Trigger.NoiseReject || s.Trigger.HoldoffS != old.Trigger.HoldoffS || s.Depth != old.Depth {
+	t, ot := s.Trigger.Active(), old.Trigger.Active()
+	if len(s.Channels) != len(old.Channels) || s.Mode != old.Mode || t.Coupling != ot.Coupling ||
+		t.NoiseReject != ot.NoiseReject || t.HoldoffS != ot.HoldoffS || s.Depth != old.Depth {
 		return errFixed
 	}
 	if s.TimeDivS != old.TimeDivS {
@@ -96,18 +100,17 @@ func (in instrument) Change(fn func(*core.State) error) error {
 	if s.DelayS != old.DelayS {
 		h.sc.SetTrigPosFrac(math.Min(1, math.Max(0, .5+s.DelayS/(10*h.sc.Snapshot().TdivS))))
 	}
-	t, ot := s.Trigger, old.Trigger
-	if t.Source != ot.Source {
-		if t.Source.Kind != hal.Analog || t.Source.Index < 0 || t.Source.Index > 1 {
+	if src := s.Trigger.Source(); src != old.Trigger.Source() {
+		if src.Kind != hal.Analog || src.Index < 0 || src.Index > 1 {
 			return errFixed
 		}
-		h.sc.SetTrigSource(t.Source.Index)
+		h.sc.SetTrigSource(src.Index)
 	}
-	if t.Slope != ot.Slope {
-		h.sc.SetTrigSlope(t.Slope == hal.Rising)
+	if sl := s.Trigger.Slope(); sl != old.Trigger.Slope() {
+		h.sc.SetTrigSlope(sl == hal.Rising)
 	}
-	if t.LevelV != ot.LevelV {
-		h.trlvV = h.lv.SetTrigLevel(t.LevelV, t.Source.Index)
+	if lv := s.Trigger.LevelV(); lv != old.Trigger.LevelV() {
+		h.trlvV = h.lv.SetTrigLevel(lv, s.Trigger.Source().Index)
 	}
 	if s.Sweep != old.Sweep || s.Running != old.Running {
 		switch {
