@@ -19,32 +19,31 @@ import (
 func buildHUD(e *engine.Engine, fe *analog.FrontEnd) render.HUD {
 	st := e.Snapshot()
 	hud := render.HUD{
-		C1VdivV: 1, C2VdivV: 1, TdivS: st.TdivS,
+		Ch: [render.MaxChans]render.Channel{{VdivV: 1, Show: true}, {VdivV: 1, Show: true}}, TdivS: st.TdivS,
 		TrigSrc: st.TrigSource, TrigRising: st.TrigRising,
 		TrigType: st.TrigType, TrigQual: render.TrigQual(st.TrigQual), SerialArmed: st.SerialMode != 0, ZoneTrig: st.ZoneMode != 0,
 		SerialMatch: matchText(e.SerialConfig()),
 		Running:     st.Running, Norm: st.Norm, Single: st.Single, RecordS: st.RecordS,
-		TrigPosFrac: st.TrigPosFrac, TwoChan: true,
-		ShowC1: true, ShowC2: true,
+		TrigPosFrac: st.TrigPosFrac, NumChans: 2,
 		URL: lcd.DeviceURL(), // cached; re-enumerates at most every few seconds
 	}
 	if fe != nil {
 		idx, _ := fe.Snapshot()
-		hud.C1VdivV = analog.Detents[idx[0]].VdivV
-		hud.C2VdivV = analog.Detents[idx[1]].VdivV
-		hud.Zoom1 = analog.Detents[idx[0]].Zoom
-		hud.Zoom2 = analog.Detents[idx[1]].Zoom
-		hud.Probe1 = fe.ProbeFactor(0)
-		hud.Probe2 = fe.ProbeFactor(1)
-		hud.Cpl1 = fe.Coupling(0)
-		hud.Cpl2 = fe.Coupling(1)
+		hud.Ch[0].VdivV = analog.Detents[idx[0]].VdivV
+		hud.Ch[1].VdivV = analog.Detents[idx[1]].VdivV
+		hud.Ch[0].Zoom = analog.Detents[idx[0]].Zoom
+		hud.Ch[1].Zoom = analog.Detents[idx[1]].Zoom
+		hud.Ch[0].Probe = fe.ProbeFactor(0)
+		hud.Ch[1].Probe = fe.ProbeFactor(1)
+		hud.Ch[0].Cpl = fe.Coupling(0)
+		hud.Ch[1].Cpl = fe.Coupling(1)
 		// AC removes the DC in software (mean → centre), so the ground marker
 		// belongs at centre; leave it at 0 for an AC-coupled channel.
-		if st.OffC1 != 0 && hud.Cpl1 != analog.CplAC {
-			hud.OffC1V = fe.OffsetVolts(0, st.OffC1)
+		if st.OffC1 != 0 && hud.Ch[0].Cpl != analog.CplAC {
+			hud.Ch[0].OffV = fe.OffsetVolts(0, st.OffC1)
 		}
-		if st.OffC2 != 0 && hud.Cpl2 != analog.CplAC {
-			hud.OffC2V = fe.OffsetVolts(1, st.OffC2)
+		if st.OffC2 != 0 && hud.Ch[1].Cpl != analog.CplAC {
+			hud.Ch[1].OffV = fe.OffsetVolts(1, st.OffC2)
 		}
 	}
 	// Loading indicator, after a short grace so fast frames never flash it.
@@ -63,18 +62,18 @@ func buildHUD(e *engine.Engine, fe *analog.FrontEnd) render.HUD {
 		decided := st.Norm || hud.SerialArmed || hud.ZoneTrig || hud.TrigType != 0
 		hud.Waiting = decided && since > time.Duration(math.Max(1, 25*st.TdivS)*float64(time.Second))
 	}
-	srcVdiv, srcOff := hud.C1VdivV, hud.OffC1V
+	srcVdiv, srcOff := hud.Ch[0].VdivV, hud.Ch[0].OffV
 	if st.TrigSource == 1 {
-		srcVdiv, srcOff = hud.C2VdivV, hud.OffC2V
+		srcVdiv, srcOff = hud.Ch[1].VdivV, hud.Ch[1].OffV
 	}
 	if st.TrigCode != 0 && srcVdiv > 0 {
 		// Include the source channel's offset so the level marker sits in the
 		// same display frame as the (offset-shifted) trace and ground marker —
 		// otherwise centring a signal with DC pushes the marker off-screen.
 		hud.TrigLvlDiv = (e.TrigVoltsAt(st.TrigCode, st.TrigSource) + srcOff) / srcVdiv
-		probe := hud.Probe1
+		probe := hud.Ch[0].Probe
 		if st.TrigSource == 1 {
-			probe = hud.Probe2
+			probe = hud.Ch[1].Probe
 		}
 		hud.TrigLvlV = e.TrigVoltsAt(st.TrigCode, st.TrigSource) * max(probe, 1)
 	}
@@ -108,7 +107,7 @@ func buildHUD(e *engine.Engine, fe *analog.FrontEnd) render.HUD {
 			}
 		}
 		d, v := pc.Snapshot() // the display state and the workspace UI, read together
-		hud.ShowC1, hud.ShowC2, hud.ChanExplicit = d.ShowC1, d.ShowC2, true
+		hud.Ch[0].Show, hud.Ch[1].Show, hud.ChanExplicit = d.ShowC1, d.ShowC2, true
 		hud.ShowMeas, hud.MeasItems = d.ShowMeas, d.MeasItems
 		hud.ViewMode, hud.MathMode, hud.FFTSrc = d.ViewMode, d.MathMode, d.FFTSrc
 		hud.AutosetBusy, hud.AutosetMsg = d.AutosetBusy, d.AutosetMsg
@@ -139,7 +138,7 @@ func buildHUD(e *engine.Engine, fe *analog.FrontEnd) render.HUD {
 	}
 	if sh := scpiCtrl.Load(); sh != nil { // display-level INVS: the SCPI shadow is the truth
 		inv := sh.Inverted()
-		hud.Inv1, hud.Inv2 = inv[0], inv[1]
+		hud.Ch[0].Inv, hud.Ch[1].Inv = inv[0], inv[1]
 	}
 	// Zone/mask overlay state (engine-side test; render parity with the web).
 	hud.ZoneMode, hud.MaskMode = st.ZoneMode, st.MaskMode

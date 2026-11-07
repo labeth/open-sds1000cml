@@ -128,13 +128,13 @@ func renderSigOf(f *sample.Frame, hud render.HUD, live bool) renderSig {
 		curType: hud.CurType, curSel: hud.CurSel, ui: uiSig(hud.UI),
 		url:  hud.URL, // an IP appearing/changing must repaint a held display
 		tdiv: hud.TdivS, zoomOff: hud.ZoomOff,
-		c1v: hud.C1VdivV, c2v: hud.C2VdivV, off1: hud.OffC1V, off2: hud.OffC2V,
+		c1v: hud.Ch[0].VdivV, c2v: hud.Ch[1].VdivV, off1: hud.Ch[0].OffV, off2: hud.Ch[1].OffV,
 		trig: hud.TrigLvlDiv, curX: hud.CurX, curY: hud.CurY,
-		probe1: hud.Probe1, probe2: hud.Probe2, cpl1: hud.Cpl1, cpl2: hud.Cpl2,
-		inv1: hud.Inv1, inv2: hud.Inv2, // an INVS flip must repaint a held display
+		probe1: hud.Ch[0].Probe, probe2: hud.Ch[1].Probe, cpl1: hud.Ch[0].Cpl, cpl2: hud.Ch[1].Cpl,
+		inv1: hud.Ch[0].Inv, inv2: hud.Ch[1].Inv, // an INVS flip must repaint a held display
 		showMeas: hud.ShowMeas, persist: hud.Persist,
 		running: hud.Running, single: hud.Single, norm: hud.Norm,
-		trigd: hud.Trigd, live: live, showC1: hud.ShowC1, showC2: hud.ShowC2,
+		trigd: hud.Trigd, live: live, showC1: hud.Ch[0].Show, showC2: hud.Ch[1].Show,
 		waitS: waitSecond(hud),
 		curOn: hud.CurOn,
 		ref0:  hud.RefShow[0], ref1: hud.RefShow[1],
@@ -181,8 +181,8 @@ func hudExtraSig(hud *render.HUD) uint64 {
 	flag(hud.SerialArmed)
 	h.str(hud.SerialMatch)
 	flag(hud.ZoneTrig)
-	num(hud.Zoom1)
-	num(hud.Zoom2)
+	num(hud.Ch[0].Zoom)
+	num(hud.Ch[1].Zoom)
 	flag(hud.ChanExplicit)
 	num(hud.DecBaud)
 	num(hud.DecChA)

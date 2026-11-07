@@ -15,7 +15,7 @@ import (
 func benchHUD() render.HUD {
 	var hud render.HUD
 	hud.UI = wsview.View{}
-	hud.TdivS, hud.C1VdivV, hud.Running, hud.Notice = 1e-6, 0.5, true, "AUTO: square 1 kHz"
+	hud.TdivS, hud.Ch[0].VdivV, hud.Running, hud.Notice = 1e-6, 0.5, true, "AUTO: square 1 kHz"
 	hud.AutosetMsg, hud.MeasItems = "", []string{"Vpp", "Freq", "Rise"}
 	return hud
 }
