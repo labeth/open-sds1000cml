@@ -5,6 +5,7 @@ package scpi
 import (
 	"fmt"
 	"math"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -225,10 +226,8 @@ func only(truth string, others ...string) core.Handler {
 		if arg == truth {
 			return nil
 		}
-		for _, o := range others {
-			if arg == o {
-				return c.Error(core.ErrDataOutOfRange)
-			}
+		if slices.Contains(others, arg) {
+			return c.Error(core.ErrDataOutOfRange)
 		}
 		return c.Error(core.ErrHeader)
 	}

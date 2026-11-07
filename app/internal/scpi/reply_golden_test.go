@@ -64,6 +64,7 @@ func goldenScope() *fakeScope {
 
 // goldenFull is a handler with every optional part present.
 func goldenFull(tb testing.TB) *Handler {
+	tb.Helper()
 	fs := goldenScope()
 	fe := &fakeFE{fs: fs, probe: [2]float64{1, 1}}
 	h := New(fs, liveFE{fe}, board.New(fs, fe), nil, func() []byte { return []byte("BMPDATA") }, tb.Logf)
@@ -74,6 +75,7 @@ func goldenFull(tb testing.TB) *Handler {
 
 // goldenBare is a handler without front end, display, screenshot or setups.
 func goldenBare(tb testing.TB) *Handler {
+	tb.Helper()
 	fs := goldenScope()
 	return New(fs, nil, board.New(fs, nil), nil, nil, tb.Logf)
 }

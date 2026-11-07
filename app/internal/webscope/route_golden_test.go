@@ -9,6 +9,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -19,6 +20,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"slices"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -353,7 +355,7 @@ func (g *goldenEngine) EndWebDecodedCapture(context.Context) (bool, error) {
 // TRLC-LINKS: REQ-SDS-022
 func (g *goldenEngine) SetPanelScan(p sramcapture.PanelConfig) error {
 	if p.Half == 0 {
-		return fmt.Errorf("half must be set")
+		return errors.New("half must be set")
 	}
 	return nil
 }
@@ -424,7 +426,7 @@ func (g *goldenEngine) EndDecodedCapture(ctx context.Context, id sramcapture.Rec
 // TRLC-LINKS: REQ-SDS-141
 func (g *goldenEngine) FPGAStack(_ context.Context, req engine.FPGAStackRequest) (engine.FPGAStackResult, error) {
 	if req.Records > 100 {
-		return engine.FPGAStackResult{}, fmt.Errorf("at most 100 records")
+		return engine.FPGAStackResult{}, errors.New("at most 100 records")
 	}
 	return engine.FPGAStackResult{Hits: 3, Crossings: 4, Records: req.Records, SampleS: 2e-9, Factor: 8}, nil
 }
@@ -599,7 +601,7 @@ func (g *goldenSetups) SaveSetup(n int) error {
 // TRLC-LINKS: REQ-SDS-219
 func (g *goldenSetups) RecallSetup(n int) error {
 	if n == 3 {
-		return fmt.Errorf("slot 3 is empty")
+		return errors.New("slot 3 is empty")
 	}
 	return nil
 }
@@ -659,7 +661,7 @@ func routeCases() []routeCase {
 			if err := json.Unmarshal(replies[2], &c); err != nil {
 				panic(err)
 			}
-			rq.shown, rq.path = rq.path, strings.Replace(rq.path, "CLAIMED", fmt.Sprint(c.Epoch), 1)
+			rq.shown, rq.path = rq.path, strings.Replace(rq.path, "CLAIMED", strconv.FormatUint(c.Epoch, 10), 1)
 		}},
 		{name: "status_full", srv: full(goldenDeep), reqs: []routeReq{rget("/api/status")}},
 		{name: "status_bare", srv: bare, reqs: []routeReq{rget("/api/status"), rpost("/api/status", "{}")}},

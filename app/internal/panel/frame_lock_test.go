@@ -21,7 +21,7 @@ func TestBusSearchHoldsTheFrameOnlyToCopyIt(t *testing.T) {
 	// a busy line: a UART's characters over noise-like level changes
 	rng := rand.New(rand.NewSource(1))
 	f := uartFrame([]string{"Hi!\r\n", "OK\r\n"}, 460800, 100e-6, 100e-9, 250000)
-	for i := 0; i < len(f.Codes8(1)); i++ {
+	for i := range len(f.Codes8(1)) {
 		if rng.Intn(7) == 0 {
 			f.Codes8(1)[i] = uint8(rng.Intn(256))
 		}
