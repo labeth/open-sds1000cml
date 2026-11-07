@@ -211,14 +211,15 @@ func (v *viewReads) windows(m sramcapture.Metadata, ws []hal.Window, fs []*sampl
 	return ws, fs
 }
 
-// got notes what each distinct view's read gave: the board's windows after
-// the screen's, in the order windows put them.
+// got notes what each distinct view's read gave: the frames of the board's
+// windows after the screen's, in the order windows put them, each cut to
+// what its window got.
 // TRLC-LINKS: REQ-SDS-021
-func (v *viewReads) got(b recordReader) {
-	k := 1
+func (v *viewReads) got(fs []*sample.Frame) {
+	k := 0
 	for s, r := range v {
 		if r != nil && (s == 0 || v[0] != r) {
-			r.got = b.Written(k)
+			r.got = fs[k].Len()
 			k++
 		}
 	}

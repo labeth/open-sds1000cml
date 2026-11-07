@@ -850,16 +850,16 @@ func (p recPlatform) Service() {
 }
 
 type recReader struct {
-	recordReader
+	hal.Readout
 	h *halLog
 }
 
-func (r recReader) ReadContext(ctx context.Context, req hal.ReadRequest, dst []*sample.Frame, yield func()) error {
+func (r recReader) Read(ctx context.Context, req hal.ReadRequest, dst []*sample.Frame, yield func()) error {
 	var b strings.Builder
 	for _, w := range req.Windows {
 		fmt.Fprintf(&b, " {%v %d+%d points %d %v}", w.Role, w.StartSample, w.Span, w.Points, w.Want)
 	}
-	err := r.recordReader.ReadContext(ctx, req, dst, yield)
+	err := r.Readout.Read(ctx, req, dst, yield)
 	r.h.add("Readout.Read%s -> %v", b.String(), err)
 	return err
 }

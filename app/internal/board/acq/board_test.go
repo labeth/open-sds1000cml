@@ -258,7 +258,7 @@ func TestReadWindows(t *testing.T) {
 	f := RecordFrame(2048)
 	b.StageLamps(0x0102)
 	b.StageOffsetDAC(0, 7)
-	if err := b.Readout().Read(hal.ReadRequest{Windows: []hal.Window{Window(b.Record(), sample.Main, 1024, 1024, 0)}}, []*sample.Frame{f}, b.Platform().Service); err != nil {
+	if err := b.Readout().Read(context.Background(), hal.ReadRequest{Windows: []hal.Window{Window(b.Record(), sample.Main, 1024, 1024, 0)}}, []*sample.Frame{f}, b.Platform().Service); err != nil {
 		t.Fatal(err)
 	}
 	if len(m.recalls) != 1 || m.recalls[0] != "RecallForward" {
@@ -273,7 +273,7 @@ func TestReadWindows(t *testing.T) {
 	}
 	env, edge := RecordFrame(2048), RecordFrame(512)
 	ws := []hal.Window{Window(b.Record(), sample.Main, 0, 4096, 4), Window(b.Record(), sample.Edge, 1792, 256, 0)}
-	if err := b.Readout().Read(hal.ReadRequest{Windows: ws}, []*sample.Frame{env, edge}, nil); err != nil {
+	if err := b.Readout().Read(context.Background(), hal.ReadRequest{Windows: ws}, []*sample.Frame{env, edge}, nil); err != nil {
 		t.Fatal(err)
 	}
 	r := m.reads[0]
@@ -281,7 +281,7 @@ func TestReadWindows(t *testing.T) {
 		t.Fatalf("reads %+v", r)
 	}
 	bad := hal.Window{Role: sample.Main, StartSample: 1, Span: 2}
-	if err := b.Readout().Read(hal.ReadRequest{Windows: []hal.Window{bad}}, []*sample.Frame{f}, nil); err == nil {
+	if err := b.Readout().Read(context.Background(), hal.ReadRequest{Windows: []hal.Window{bad}}, []*sample.Frame{f}, nil); err == nil {
 		t.Fatal("a window of half a word read")
 	}
 }

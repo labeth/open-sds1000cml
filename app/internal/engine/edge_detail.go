@@ -47,7 +47,7 @@ func (e *Engine) recallEdgeWindow(ctx context.Context, m sramcapture.Metadata, w
 	e.hw().SetRecord(m)
 	e.readWins = append(e.readWins[:0], acq.Window(m, sample.Edge, start, edgeWindowWords, 0))
 	e.readFrames = append(e.readFrames[:0], f)
-	if err := e.reader().ReadContext(ctx, hal.ReadRequest{Windows: e.readWins}, e.readFrames, e.yield()); err != nil || e.reader().Written(0) != n {
+	if err := e.reader().Read(ctx, hal.ReadRequest{Windows: e.readWins}, e.readFrames, e.yield()); err != nil || f.Len() != n {
 		return nil
 	}
 	f.SampleS, f.Content = 1/m.SampleRateHz, sample.RawDecimated

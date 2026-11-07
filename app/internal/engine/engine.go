@@ -7,7 +7,6 @@
 package engine
 
 import (
-	"context"
 	"math"
 	"sync"
 	"sync/atomic"
@@ -335,7 +334,7 @@ type Engine struct {
 	acqr                  hal.Acquirer
 	plat                  hal.Platform
 	readYield             func()          // the readout's yield: the board's Service
-	rdx                   recordReader    // the board's readout under a context
+	rdx                   hal.Readout     // the board's readout
 	readWins              []hal.Window    // a read's windows, kept between reads (owner)
 	readFrames            []*sample.Frame // and their frames
 	adc                   adcHealth       // the converters' health checks (adc_health.go)
@@ -623,7 +622,7 @@ func (e *Engine) useMemory(m acq.Memory) {
 	e.board.SetImages(e.images)
 	e.acqr, e.plat = e.board.Acquirer(), e.board.Platform()
 	e.readYield = e.plat.Service
-	e.rdx = e.board
+	e.rdx = e.board.Readout()
 }
 
 // hw is the acquisition board, built over the record memory on first use
@@ -653,15 +652,7 @@ func (e *Engine) platform() hal.Platform { e.hw(); return e.plat }
 func (e *Engine) yield() func() { e.hw(); return e.readYield }
 
 // TRLC-LINKS: REQ-SDS-001
-func (e *Engine) reader() recordReader { e.hw(); return e.rdx }
-
-// recordReader is the board's Readout.Read under a context that abandons
-// a long read, with what each window got: the owner loop cancels a read
-// nobody wants any more, and tells a short window from a full one.
-type recordReader interface {
-	ReadContext(ctx context.Context, req hal.ReadRequest, dst []*sample.Frame, yield func()) error
-	Written(i int) int
-}
+func (e *Engine) reader() hal.Readout { e.hw(); return e.rdx }
 
 // New builds an engine over cfg's bus, filling in the defaults for the zero
 // fields; Run starts its owner loop.

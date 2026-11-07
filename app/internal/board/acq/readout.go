@@ -90,18 +90,23 @@ type readoutFacet Board
 
 // Read reads req's windows of the halted record into dst (one frame a
 // window), each frame sized by the caller. yield runs between the bursts
-// of a long read. A main window that does not fill its frame is
-// ErrShortRead; another window's frame is cut to what it got.
+// of a long read; ctx abandons it between them (a raw read nobody wants
+// any more, a sound stream taking the fabric); without a deadline of its
+// own a read gives up after readTimeout. A main window that does not fill
+// its frame is ErrShortRead; another window's frame is cut to what it got.
 // TRLC-LINKS: REQ-SDS-010, REQ-SDS-040
-func (r *readoutFacet) Read(req hal.ReadRequest, dst []*sample.Frame, yield func()) error {
+func (r *readoutFacet) Read(ctx context.Context, req hal.ReadRequest, dst []*sample.Frame, yield func()) error {
 	b := (*Board)(r)
-	ctx, cancel := context.WithTimeout(context.Background(), readTimeout)
-	defer cancel()
-	if err := b.ReadContext(ctx, req, dst, yield); err != nil {
+	if _, ok := ctx.Deadline(); !ok {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, readTimeout)
+		defer cancel()
+	}
+	if err := b.readRecord(ctx, req, dst, yield); err != nil {
 		return err
 	}
 	for i, f := range dst {
-		if n := b.Written(i); n != f.Len() {
+		if n := b.scratch.written[i]; n != f.Len() {
 			if req.Windows[i].Role == sample.Main {
 				return ErrShortRead
 			}
@@ -194,14 +199,13 @@ func Window(m sramcapture.Metadata, role sample.Role, offset, words, bucket uint
 	return w
 }
 
-// ReadContext is Read under ctx: a cancelled context abandons a long read
-// between its bursts (a raw read nobody wants any more, a sound stream
-// taking the fabric). One raw main window streams in bursts, yield between
-// them; any other set of windows is one isolated recall of the record.
-// Written(i) is how many samples a channel window i got; the frames keep
-// their lengths, so the caller tells a short window from a full one.
+// readRecord reads req's windows into dst. One raw main window streams in
+// bursts, yield between them; any other set of windows is one isolated
+// recall of the record. scratch.written[i] is how many samples a channel
+// window i got; the frames keep their lengths, so Read tells a short
+// window from a full one.
 // TRLC-LINKS: REQ-SDS-010, REQ-SDS-040
-func (b *Board) ReadContext(ctx context.Context, req hal.ReadRequest, dst []*sample.Frame, yield func()) error {
+func (b *Board) readRecord(ctx context.Context, req hal.ReadRequest, dst []*sample.Frame, yield func()) error {
 	m := b.rec
 	b.scratch.written = b.scratch.written[:0]
 	if len(dst) != len(req.Windows) {
@@ -256,16 +260,6 @@ func (b *Board) ReadContext(ctx context.Context, req hal.ReadRequest, dst []*sam
 		b.count(func(d *boardDiag) { d.ReadErrs++ })
 	}
 	return err
-}
-
-// Written is how many samples a channel the last read put in its i-th
-// window's frame.
-// TRLC-LINKS: REQ-SDS-010, REQ-SDS-040
-func (b *Board) Written(i int) int {
-	if i < 0 || i >= len(b.scratch.written) {
-		return 0
-	}
-	return b.scratch.written[i]
 }
 
 // Recall streams words [offset, offset+count) of the frozen record into

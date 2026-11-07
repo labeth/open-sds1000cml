@@ -417,21 +417,8 @@ func (c *sramCycle) Frame(_ context.Context, _ core.Capture, a core.Armed) (*sam
 	var err error
 	if bucket != 0 {
 		views, got, err = e.recallEnvelope(ctx, f, m, plan.Screen, recallOffset, recallWords, bucket, envBuckets)
-	} else if key := (heldKey{m, recallOffset, recallWords}); replay && c.held.key == key {
-		// A stopped record re-shown at a new V/div, offset or timebase:
-		// the recall is already in memory, skip seconds of SRAM readout.
-		got = c.held.restore(f)
 	} else {
-		e.hw().SetRecord(m)
-		e.readWins = append(e.readWins[:0], acq.Window(m, sample.Main, recallOffset, recallWords, 0))
-		e.readFrames = append(e.readFrames[:0], f)
-		err = e.reader().ReadContext(ctx, hal.ReadRequest{Windows: e.readWins}, e.readFrames, e.yield())
-		got = e.reader().Written(0)
-		if err == nil && recallOffset == 0 && recallWords == m.Length && got == f.Len() {
-			c.held.store(key, f)
-		} else if !replay {
-			c.held.key = heldKey{} // a new capture: the held record is gone
-		}
+		got, err = c.readRaw(ctx, f, m, recallOffset, recallWords)
 	}
 	recalledAt := e.clk.Now()
 	c.recalledAt = recalledAt
@@ -656,6 +643,34 @@ func (c *sramCycle) Frame(_ context.Context, _ core.Capture, a core.Armed) (*sam
 		e.serialHeld, e.zoneHeld = 0, 0
 	}
 	return f, core.Verdict{Qualified: qualified, Complete: averageDone, FullRecall: fullRecall, UserForced: userForced, MaskStop: maskStop}, true
+}
+
+// readRaw reads words [offset, offset+words) of record m raw into f, or
+// restores them from the held recall when a stopped record is re-shown at
+// a new V/div, offset or timebase (seconds of SRAM readout skipped); a
+// whole record read is held for such replays. got is the samples a channel
+// f holds.
+// TRLC-LINKS: REQ-SDS-010, REQ-SDS-033, REQ-SDS-040
+func (c *sramCycle) readRaw(ctx context.Context, f *sample.Frame, m sramcapture.Metadata, offset, words uint32) (got int, err error) {
+	e := c.e
+	key := heldKey{m, offset, words}
+	if c.replay && c.held.key == key {
+		return c.held.restore(f), nil
+	}
+	e.hw().SetRecord(m)
+	e.readWins = append(e.readWins[:0], acq.Window(m, sample.Main, offset, words, 0))
+	e.readFrames = append(e.readFrames[:0], f)
+	err = e.reader().Read(ctx, hal.ReadRequest{Windows: e.readWins}, e.readFrames, e.yield())
+	if err == nil {
+		got = f.Len()
+	}
+	switch {
+	case err == nil && offset == 0 && words == m.Length:
+		c.held.store(key, f)
+	case !c.replay:
+		c.held.key = heldKey{} // a new capture: the held record is gone
+	}
+	return got, err
 }
 
 // Liveness is AUTO's rule for captures the serial or zone gate rejected.

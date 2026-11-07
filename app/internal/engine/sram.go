@@ -4,6 +4,7 @@ package engine
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math"
 	"time"
@@ -829,14 +830,17 @@ func (e *Engine) recallEnvelope(ctx context.Context, f *sample.Frame, m sramcapt
 	screenWin := acq.Window(m, sample.Main, offset, bucket*count, bucket)
 	ws, fs := views.windows(m, append(e.readWins[:0], screenWin), append(e.readFrames[:0], f))
 	e.readWins, e.readFrames = ws, fs
-	err := e.reader().ReadContext(ctx, hal.ReadRequest{Windows: ws}, fs, e.yield())
-	if err != nil && views != (viewReads{}) {
+	err := e.reader().Read(ctx, hal.ReadRequest{Windows: ws}, fs, e.yield())
+	if err != nil && views != (viewReads{}) && !errors.Is(err, acq.ErrShortRead) {
 		views = viewReads{}
-		err = e.reader().ReadContext(ctx, hal.ReadRequest{Windows: ws[:1]}, fs[:1], e.yield())
-	} else {
-		views.got(e.reader())
+		err = e.reader().Read(ctx, hal.ReadRequest{Windows: ws[:1]}, fs[:1], e.yield())
+	} else if err == nil {
+		views.got(fs[1:])
 	}
-	n := e.reader().Written(0)
+	n := 0
+	if err == nil {
+		n = f.Len()
+	}
 	rejects, last := e.hw().EnvelopeDiagnostics()
 	e.mu.Lock()
 	e.stats.EnvelopeRejects, e.stats.EnvelopeLast = rejects, last
