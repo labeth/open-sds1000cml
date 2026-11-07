@@ -20,10 +20,9 @@ jobs:
         working-directory: ${{ matrix.module }}
     steps:
       - uses: actions/checkout@v4
-      # The app requires open-dso-core from ../../open-dso-core (app/go.mod's
-      # replace) until the core is released and pinned by tag.
+      # app and ota require open-dso-core from ../../open-dso-core (their go.mod
+      # replaces) until the core is released and pinned by tag.
       - name: Check out open-dso-core
-        if: matrix.module == 'app'
         uses: actions/checkout@v4
         with:
           repository: labeth/open-dso-core
@@ -31,7 +30,6 @@ jobs:
           path: .dso-core
           token: ${{ secrets.DSO_CORE_TOKEN || github.token }}
       - name: Place open-dso-core next to the repository
-        if: matrix.module == 'app'
         working-directory: ${{ github.workspace }}
         run: mv .dso-core ../open-dso-core
 
@@ -80,10 +78,9 @@ jobs:
         module: [app, ota]
     steps:
       - uses: actions/checkout@v4
-      # The app requires open-dso-core from ../../open-dso-core (app/go.mod's
-      # replace) until the core is released and pinned by tag.
+      # app and ota require open-dso-core from ../../open-dso-core (their go.mod
+      # replaces) until the core is released and pinned by tag.
       - name: Check out open-dso-core
-        if: matrix.module == 'app'
         uses: actions/checkout@v4
         with:
           repository: labeth/open-dso-core
@@ -91,7 +88,6 @@ jobs:
           path: .dso-core
           token: ${{ secrets.DSO_CORE_TOKEN || github.token }}
       - name: Place open-dso-core next to the repository
-        if: matrix.module == 'app'
         working-directory: ${{ github.workspace }}
         run: mv .dso-core ../open-dso-core
       - uses: actions/setup-go@v5
@@ -116,10 +112,9 @@ jobs:
         working-directory: ${{ matrix.module }}
     steps:
       - uses: actions/checkout@v4
-      # The app requires open-dso-core from ../../open-dso-core (app/go.mod's
-      # replace) until the core is released and pinned by tag.
+      # app and ota require open-dso-core from ../../open-dso-core (their go.mod
+      # replaces) until the core is released and pinned by tag.
       - name: Check out open-dso-core
-        if: matrix.module == 'app'
         uses: actions/checkout@v4
         with:
           repository: labeth/open-dso-core
@@ -127,7 +122,6 @@ jobs:
           path: .dso-core
           token: ${{ secrets.DSO_CORE_TOKEN || github.token }}
       - name: Place open-dso-core next to the repository
-        if: matrix.module == 'app'
         working-directory: ${{ github.workspace }}
         run: mv .dso-core ../open-dso-core
       - uses: actions/setup-go@v5
@@ -154,8 +148,8 @@ jobs:
       PW_VERSION: 1.58.2 # pin: cache key + reproducible lane (matches the dev machines)
     steps:
       - uses: actions/checkout@v4
-      # The app requires open-dso-core from ../../open-dso-core (app/go.mod's
-      # replace) until the core is released and pinned by tag.
+      # app and ota require open-dso-core from ../../open-dso-core (their go.mod
+      # replaces) until the core is released and pinned by tag.
       - name: Check out open-dso-core
         uses: actions/checkout@v4
         with:
@@ -231,8 +225,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      # The app requires open-dso-core from ../../open-dso-core (app/go.mod's
-      # replace) until the core is released and pinned by tag.
+      # app and ota require open-dso-core from ../../open-dso-core (their go.mod
+      # replaces) until the core is released and pinned by tag.
       - name: Check out open-dso-core
         uses: actions/checkout@v4
         with:
@@ -292,8 +286,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      # The app requires open-dso-core from ../../open-dso-core (app/go.mod's
-      # replace) until the core is released and pinned by tag.
+      # app and ota require open-dso-core from ../../open-dso-core (their go.mod
+      # replaces) until the core is released and pinned by tag.
       - name: Check out open-dso-core
         uses: actions/checkout@v4
         with:
@@ -382,8 +376,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      # The app requires open-dso-core from ../../open-dso-core (app/go.mod's
-      # replace) until the core is released and pinned by tag.
+      # app and ota require open-dso-core from ../../open-dso-core (their go.mod
+      # replaces) until the core is released and pinned by tag.
       - name: Check out open-dso-core
         uses: actions/checkout@v4
         with:
