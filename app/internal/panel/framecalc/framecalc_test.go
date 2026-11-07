@@ -140,3 +140,63 @@ func TestParams(t *testing.T) {
 		t.Fatalf("UART: %+v", p)
 	}
 }
+
+// as12bit is f with its codes as 12-bit words left-aligned in 16 bits (each
+// code its high byte), as a 12-bit scope's frame holds the same screen.
+// TRLC-LINKS: REQ-SDS-018
+func as12bit(f *sample.Frame) *sample.Frame {
+	g := *f
+	g.Traces = make([]sample.Trace, len(f.Traces))
+	for ch, t := range f.Traces {
+		w := make([]uint16, len(t.Codes8))
+		for i, c := range t.Codes8 {
+			w[i] = uint16(c) << 8
+		}
+		g.Traces[ch] = sample.Trace{
+			Ch: ch, Valid: t.Valid, Codes16: w, CodesPerDiv: 25 * 256,
+			Format: sample.CodeFormat{Bits: 12, Storage: sample.U16, Shift: 4, Max: 0xFFF0, Mid: 0x8000},
+		}
+	}
+	return &g
+}
+
+// A 12-bit frame decodes, is searched and makes its spectrum on the 8-bit
+// view: what an 8-bit frame of the same screen gives.
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-070
+func TestTwelveBitFramesReadAsTheirEightBitView(t *testing.T) {
+	const spb = 20
+	var w []uint8
+	bit := func(b int) {
+		for range spb {
+			w = append(w, uint8(40+170*b))
+		}
+	}
+	for range 4 {
+		for _, c := range []int{0x48, 0x69, 0x55, 0xAA} {
+			bit(0)
+			for k := range 8 {
+				bit(c >> k & 1)
+			}
+			bit(1)
+			bit(1)
+		}
+	}
+	f := &sample.Frame{SampleS: 1 / (115200.0 * spb), Traces: []sample.Trace{{Codes8: w, Valid: len(w)}, {Ch: 1, Codes8: w, Valid: len(w)}}}
+	g := as12bit(f)
+	p := DecodeParams{Proto: ProtoUART, Baud: 115200, Format: "hex"}
+	if a, b := Decode(f, p), Decode(g, p); a.Text != b.Text || a.Text == "" {
+		t.Fatalf("decoded %q from 12 bits, %q from 8", b.Text, a.Text)
+	}
+	if a, b := Detect(f, "hex"), Detect(g, "hex"); a.Proto != b.Proto || a.Text != b.Text {
+		t.Fatalf("found %q %q in 12 bits, %q %q in 8", b.Proto, b.Text, a.Proto, a.Text)
+	}
+	s8 := sineFrame(4096, 64, 80, 0)
+	a, okA := Spectrum(s8, 0, s8.SampleS)
+	b, okB := Spectrum(as12bit(s8), 0, s8.SampleS)
+	if !okA || !okB || a.PeakK != b.PeakK || a.Peak != b.Peak {
+		t.Fatalf("spectrum peak %v at %d from 12 bits, %v at %d from 8", b.Peak, b.PeakK, a.Peak, a.PeakK)
+	}
+	if _, ok := Spectrum(s8, 2, s8.SampleS); ok {
+		t.Fatal("a spectrum of a channel the frame has not")
+	}
+}

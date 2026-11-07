@@ -193,20 +193,34 @@ type decodeEntry struct {
 	ok  bool
 }
 
-// Channel returns a frame channel's valid samples; C2 falls back to C1 when
-// the frame has no second channel.
+// codes8 is trace ch's codes on the 8-bit view the decoders and the
+// spectrum read: 8-bit codes as they are, a wider converter's words mapped
+// onto it (decode.Codes8); nil without the trace.
 // TRLC-LINKS: REQ-SDS-018
-func Channel(f *sample.Frame, ch, valid int) []uint8 {
-	if ch == 1 && len(f.Codes8(1)) >= valid {
-		return f.Codes8(1)[:valid]
+func codes8(f *sample.Frame, ch int) []uint8 {
+	if ch < 0 || ch >= len(f.Traces) {
+		return nil
 	}
-	return f.Codes8(0)[:valid]
+	if t := &f.Traces[ch]; t.Format.Storage == sample.U16 {
+		return decode.Codes8(t)
+	}
+	return f.Traces[ch].Codes8
 }
 
-// Valid clamps a frame's valid-sample count into its C1 slice.
+// Channel is trace ch's first valid codes on the 8-bit view; the first
+// trace's when ch's is short of them.
+// TRLC-LINKS: REQ-SDS-018
+func Channel(f *sample.Frame, ch, valid int) []uint8 {
+	if c := codes8(f, ch); ch > 0 && len(c) >= valid {
+		return c[:valid]
+	}
+	return codes8(f, 0)[:valid]
+}
+
+// Valid clamps a frame's valid-sample count into its first trace's codes.
 // TRLC-LINKS: REQ-SDS-018
 func Valid(f *sample.Frame) int {
-	return min(max(f.Len(), 1), len(f.Codes8(0)))
+	return min(max(f.Len(), 1), len(codes8(f, 0)))
 }
 
 // Decode decodes f's valid samples with p, reusing the last result for the
@@ -215,7 +229,7 @@ func Valid(f *sample.Frame) int {
 // A zero Seq and Content (a hand-built frame) is never cached.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-214
 func Decode(f *sample.Frame, p DecodeParams) decode.Result {
-	if f == nil || len(f.Codes8(0)) == 0 || p.Proto == ProtoOff || p.Proto == ProtoAuto {
+	if f == nil || len(codes8(f, 0)) == 0 || p.Proto == ProtoOff || p.Proto == ProtoAuto {
 		return decode.Result{}
 	}
 	valid := Valid(f)
@@ -377,7 +391,7 @@ func decodePhys(p DecodeParams, a, b []uint8, sampleS float64) decode.Result {
 // detection is asked for, never per frame.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-214, REQ-SDS-222
 func Detect(f *sample.Frame, format string) decode.Result {
-	if f == nil || len(f.Codes8(0)) == 0 {
+	if f == nil || len(codes8(f, 0)) == 0 {
 		return decode.Result{}
 	}
 	valid := Valid(f)
@@ -626,12 +640,15 @@ type specKey struct {
 
 var specCache struct {
 	sync.Mutex
-	slot [2]struct {
-		key  specKey
-		spec Spec
-		ok   bool
-		at   time.Time // when it was taken (a held spectrum's age; zero unheld)
-	}
+	slot []specSlot // by channel
+}
+
+// specSlot is one channel's cached spectrum.
+type specSlot struct {
+	key  specKey
+	spec Spec
+	ok   bool
+	at   time.Time // when it was taken (a held spectrum's age; zero unheld)
 }
 
 // Spectrum returns channel ch's spectrum of frame f at sampleS seconds per
@@ -664,12 +681,11 @@ func SpectrumHeld(f *sample.Frame, ch int, sampleS float64) (Spec, bool) {
 // hold after it was taken.
 // TRLC-LINKS: REQ-SDS-070, REQ-SDS-216
 func spectrum(f *sample.Frame, ch int, sampleS float64, hold time.Duration) (Spec, bool) {
-	if f == nil || f.Flags.Has(sample.Envelope) || len(f.Codes8(0)) == 0 {
+	if f == nil || f.Flags.Has(sample.Envelope) || len(codes8(f, 0)) == 0 || ch < 0 || ch >= len(f.Traces) {
 		return Spec{}, false
 	}
-	ch &= 1
 	valid := Valid(f)
-	if ch == 1 && len(f.Codes8(1)) < valid {
+	if ch > 0 && len(codes8(f, ch)) < valid {
 		return Spec{}, false
 	}
 	n := 1
@@ -689,6 +705,9 @@ func spectrum(f *sample.Frame, ch int, sampleS float64, hold time.Duration) (Spe
 	cacheable := key.id || key.seq
 	specCache.Lock()
 	defer specCache.Unlock()
+	if ch >= len(specCache.slot) {
+		specCache.slot = append(specCache.slot, make([]specSlot, ch+1-len(specCache.slot))...)
+	}
 	s := &specCache.slot[ch]
 	if cacheable && s.ok && s.key == key {
 		return s.spec, true
@@ -754,7 +773,7 @@ func SpectrumRows(f *sample.Frame, ch int, sampleS float64) []Spec {
 	if k < 2 {
 		return []Spec{full}
 	}
-	src := Channel(f, ch&1, Valid(f))
+	src := Channel(f, ch, Valid(f))
 	seg := RowFFT * full.Stride
 	out := make([]Spec, 0, k)
 	for i := range k {
