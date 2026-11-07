@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"math"
 
-	"github.com/labeth/open-sds1000cml/app/internal/engine"
+	"github.com/labeth/open-dso-core/sample"
 	"github.com/labeth/open-sds1000cml/app/internal/panel/framecalc"
 	"github.com/labeth/open-sds1000cml/app/internal/panel/wsview"
 )
@@ -83,8 +83,8 @@ func heat(t float64) uint16 {
 // than a row a capture. effNyq is the frame's Nyquist, for a frame without a
 // sample interval.
 // TRLC-LINKS: REQ-SDS-068
-func (sg *Spectrogram) Push(f *engine.Frame, ch int, effNyq float64) {
-	if f == nil || len(f.C1) == 0 {
+func (sg *Spectrogram) Push(f *sample.Frame, ch int, effNyq float64) {
+	if f == nil || len(f.Codes8(0)) == 0 {
 		return
 	}
 	sampleS := f.SampleS

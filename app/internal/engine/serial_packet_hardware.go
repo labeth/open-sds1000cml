@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/labeth/open-dso-core/decode"
+	"github.com/labeth/open-dso-core/sample"
 	"github.com/labeth/open-sds1000cml/app/internal/sramcapture"
 )
 
@@ -496,7 +497,7 @@ const arincBitSamples = 8
 // first time the current decode parameters need them; hardware ARINC
 // triggering and streaming wait for them.
 // TRLC-LINKS: REQ-SDS-018
-func (e *Engine) noteARINCLevels(f *Frame) {
+func (e *Engine) noteARINCLevels(f *sample.Frame) {
 	if e.arincAux.Load() != 0 {
 		return
 	}
@@ -511,21 +512,21 @@ func (e *Engine) noteARINCLevels(f *Frame) {
 	// the bits, read in milliseconds where the full-rate record of 200us/div
 	// takes seconds (and a decimated envelope asked for none: the trigger
 	// waited for a record something else asked for).
-	if planned, _ := e.serialPlanParams(p); p.Proto != serARINC || !serialThresholdOK(&planned) || f.Valid < 8 {
+	if planned, _ := e.serialPlanParams(p); p.Proto != serARINC || !serialThresholdOK(&planned) || f.Len() < 8 {
 		return
 	}
-	resolves := f.Decimation <= 1 || p.Baud > 0 && f.SampleS > 0 && f.SampleS*arincBitSamples <= 1/float64(p.Baud)
+	resolves := uint32(f.AcqDecim) <= 1 || p.Baud > 0 && f.SampleS > 0 && f.SampleS*arincBitSamples <= 1/float64(p.Baud)
 	switch {
-	case (f.PeakDetect || f.IsEnv) && p.Baud > 0:
+	case (f.Content == sample.PeakPairs || f.Flags.Has(sample.Envelope)) && p.Baud > 0:
 		e.lease(&e.sampleLease, time.Second)
 		return
-	case f.PeakDetect || f.IsEnv || !resolves:
+	case f.Content == sample.PeakPairs || f.Flags.Has(sample.Envelope) || !resolves:
 		e.lease(&e.decodeLease, time.Second)
 		return
 	}
-	codes := f.C1[:f.Valid]
+	codes := f.Codes8(0)[:f.Len()]
 	if p.ChA == 1 {
-		codes = f.C2[:f.Valid]
+		codes = f.Codes8(1)[:f.Len()]
 	}
 	e.arincAux.Store(arincLevels(codes, p))
 }

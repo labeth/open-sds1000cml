@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/labeth/open-dso-core/sound"
-	"github.com/labeth/open-sds1000cml/app/internal/analog"
 	"github.com/labeth/open-sds1000cml/app/internal/engine"
 	"github.com/labeth/open-sds1000cml/app/internal/panel/wsview"
 )
@@ -502,7 +501,7 @@ func (c *Controller) soundAutoFit(stop chan struct{}) {
 		}
 		active = true
 		b := e.SoundLatest(int(0.3*info.RateHz), nil, nil)
-		idx, _ := c.fe.Snapshot()
+		idx := c.vposs()
 		for ch := range 2 {
 			if done[ch] {
 				continue
@@ -512,21 +511,22 @@ func (c *Controller) soundAutoFit(stop chan struct{}) {
 				q = b.Q2
 			}
 			if sound.ClipCodes(q) {
-				_ = c.setVdivIdx(ch, idx[ch]+2)
+				_ = c.setVdivPos(ch, idx[ch]+2)
 				continue
 			}
 			l := sound.Measure(c.snd.volts(b, ch, nil))
 			p := c.fe.ProbeFactor(ch)
-			want := len(analog.Detents) - 1
-			for i, d := range analog.Detents {
-				if d.VdivV*p*6 >= l.Vpp {
+			lad := c.ladder(ch)
+			want := len(lad) - 1
+			for i, d := range lad {
+				if d.vdiv*p*6 >= l.Vpp {
 					want = i
 					break
 				}
 			}
-			c.fe.SetOffset(ch, -(l.Max+l.Min)/2/p)
+			c.lv.SetOffset(ch, -(l.Max+l.Min)/2/p)
 			done[ch] = want == idx[ch]
-			_ = c.setVdivIdx(ch, want)
+			_ = c.setVdivPos(ch, want)
 		}
 	}
 	switch {

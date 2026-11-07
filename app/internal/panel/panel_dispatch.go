@@ -10,7 +10,6 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/labeth/open-sds1000cml/app/internal/analog"
 	"github.com/labeth/open-sds1000cml/app/internal/engine"
 )
 
@@ -231,22 +230,19 @@ func (c *Controller) resync() {
 }
 
 // resyncInto is resync, leaving the engine stats it read in st and
-// returning the front end's detents; ok false when it read nothing
+// returning the channels' V/div at the BNC; ok false when it read nothing
 // (Autoset sweeping).
 // TRLC-LINKS: REQ-SDS-135
-func (c *Controller) resyncInto(st *engine.Stats) (idx [2]int, ok bool) {
+func (c *Controller) resyncInto(st *engine.Stats) (vdiv [2]float64, ok bool) {
 	// Autoset owns the shadows while it sweeps (it writes them under mu on its own
 	// goroutine). Skip here so the injected-knob path can't race it either.
 	c.mu.Lock()
 	busy := c.autosetBusy
 	c.mu.Unlock()
 	if busy {
-		return idx, false
+		return vdiv, false
 	}
 	*st = c.eng.Snapshot()
-	if st.TrigCode != 0 {
-		c.trigCode = st.TrigCode
-	}
 	c.mu.Lock()
 	c.running, c.norm, c.single = st.Running, st.Norm, st.Single // guarded — pushLEDs reads these
 	c.mu.Unlock()
@@ -257,10 +253,9 @@ func (c *Controller) resyncInto(st *engine.Stats) (idx [2]int, ok bool) {
 		}
 	}
 	if c.fe != nil {
-		idx, _ = c.fe.Snapshot()
-		c.vIdx = idx
+		vdiv = [2]float64{c.fe.VdivV(0), c.fe.VdivV(1)}
 	}
-	return idx, true
+	return vdiv, true
 }
 
 // knob services AT MOST ONE knob per event, walking the fixed priority order
@@ -330,8 +325,7 @@ func (c *Controller) dispatch(name string, dir, steps int) {
 		// CW (+1) → smaller V/div, toward "mV" on the knob's printed arc
 		// ("V ... mV"); the detents are ascending. It turned the other way,
 		// against the marking.
-		c.vIdx[ch] = clampInt(c.vIdx[ch]-dir, 0, len(analog.Detents)-1)
-		if err := c.fe.SetVdiv(ch, c.vIdx[ch]); err != nil {
+		if err := c.setVpos(ch, clampInt(c.vpos(ch)-dir, 0, len(c.ladder(ch))-1)); err != nil {
 			c.logf("panel: SetVdiv: %v", err)
 		}
 	case "ch1pos", "ch2pos":
@@ -345,18 +339,13 @@ func (c *Controller) dispatch(name string, dir, steps int) {
 		// Offset step is 0.2 displayed div per accel-step on every detent;
 		// positive steps raise the trace. A fixed 20 DAC codes was 0.2 div at
 		// 1 V/div but 2 div at 2 mV/div and 0.02 div at 10 V/div.
-		idx, _ := c.fe.Snapshot()
-		v := c.fe.OffsetReqV(ch) + float64(dir*steps)*panelOffsetStepDiv*analog.Detents[idx[ch]].VdivV
-		c.fe.SetOffset(ch, v)
+		v := c.fe.OffsetReqV(ch) + float64(dir*steps)*panelOffsetStepDiv*c.fe.VdivV(ch)
+		c.lv.SetOffset(ch, v)
 	case "triglevel":
-		// Sign trap: CW RAISES the level, which LOWERS the code
-		// (−911 codes/V). The step is 40 codes per accel step at 1 V/div,
-		// scaled by the source's displayed V/div (at least one code): a fixed
-		// 40 codes was 22 div at 2 mV/div.
-		nc := int(c.trigCode) - dir*c.trigStepCodes()*steps
-		nc = clampInt(nc, engine.TrigCodeMin, engine.TrigCodeMax)
-		c.trigCode = uint16(nc) //nolint:gosec // G115: clamped to the trigger code range just above
-		c.eng.SetTrigLevelCode(c.trigCode)
+		// CW raises the level. The step is 40 level steps (DAC codes) per
+		// accel step at 1 V/div, scaled by the source's displayed V/div (at
+		// least one): a fixed 40 was 22 div at 2 mV/div.
+		c.lv.StepTrigLevel(dir*c.trigSteps()*steps, c.eng.Snapshot().TrigSource&1)
 	case "adjust":
 		// The workspace's tool, the sheet's row, or the picker's byte.
 		c.adjustTurn(dir, steps)
@@ -369,25 +358,25 @@ func (c *Controller) dispatch(name string, dir, steps int) {
 // panelOffsetStepDiv is the position knob's step in displayed divisions.
 const panelOffsetStepDiv = 0.2
 
-// panelTrigStepCodesPerVdiv is the trigger-level knob's step in trigger codes
-// per volt of the source channel's V/div (40 codes at 1 V/div, 0.044 div).
-const panelTrigStepCodesPerVdiv = 40.0
+// panelTrigStepsPerVdiv is the trigger-level knob's step in level steps
+// (TrigLevelGrid, one DAC code) per volt of the source channel's V/div at
+// the BNC (40 at 1 V/div, 0.044 div).
+const panelTrigStepsPerVdiv = 40.0
 
-// trigStepCodes is the trigger-level knob step for the current source.
+// trigSteps is the trigger-level knob step for the current source.
 // TRLC-LINKS: REQ-SDS-135
-func (c *Controller) trigStepCodes() int {
+func (c *Controller) trigSteps() int {
 	if c.fe == nil {
-		return int(panelTrigStepCodesPerVdiv)
+		return int(panelTrigStepsPerVdiv)
 	}
-	idx, _ := c.fe.Snapshot()
-	return trigStepCodesAt(idx, c.eng.Snapshot().TrigSource&1)
+	return trigStepsAt([2]float64{c.fe.VdivV(0), c.fe.VdivV(1)}, c.eng.Snapshot().TrigSource&1)
 }
 
-// trigStepCodesAt is trigStepCodes for the V/div detents idx and trigger
-// source src already read (snap holds both).
+// trigStepsAt is trigSteps for the channels' V/div at the BNC vdiv and
+// trigger source src already read (snap holds both).
 // TRLC-LINKS: REQ-SDS-135
-func trigStepCodesAt(idx [2]int, src int) int {
-	return max(1, int(math.Round(panelTrigStepCodesPerVdiv*analog.Detents[idx[src]].VdivV)))
+func trigStepsAt(vdiv [2]float64, src int) int {
+	return max(1, int(math.Round(panelTrigStepsPerVdiv*vdiv[src])))
 }
 
 // setTrigMid is SET TO 50%: the trigger level at the midpoint of the source
@@ -401,14 +390,5 @@ func (c *Controller) setTrigMid() {
 		c.toast(fmt.Sprintf("Set to 50 %%: no signal on C%d", src+1), 1500*time.Millisecond)
 		return
 	}
-	mid := (m[src].Vmax + m[src].Vmin) / 2
-	codeF := 31437 - 911*mid
-	if c.fe != nil {
-		codeF = c.fe.TrigCode(mid, src)
-	}
-	code := uint16(min(max(math.Round(codeF), engine.TrigCodeMin), engine.TrigCodeMax))
-	c.mu.Lock()
-	c.trigCode = code
-	c.mu.Unlock()
-	c.eng.SetTrigLevelCode(code)
+	c.lv.SetTrigLevel((m[src].Vmax+m[src].Vmin)/2, src)
 }

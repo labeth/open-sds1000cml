@@ -11,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/labeth/open-dso-core/sample"
 	"github.com/labeth/open-dso-core/webserver/wire"
 	"github.com/labeth/open-sds1000cml/app/internal/engine"
 )
@@ -50,7 +51,7 @@ func refReply(s *Server, cols int, full bool, since uint64) wire.FrameReply {
 		posFrac = 0.5
 	}
 	var rep wire.FrameReply
-	s.sc.WithFrame(func(f *engine.Frame) {
+	s.sc.WithFrame(func(f *sample.Frame) {
 		rep = s.buildReply(f, cols, full, since, off, vpc, posFrac, st.Running && !st.Single)
 	})
 	return rep
@@ -103,48 +104,69 @@ func TestBinFrameParity(t *testing.T) {
 	}
 	shapes := []struct {
 		name string
-		f    *engine.Frame
+		f    *sample.Frame
 		want byte // expected flag bits
 	}{
-		{"native-windowed", func() *engine.Frame {
+		{"native-windowed", func() *sample.Frame {
 			c1, c2 := deepC(2048)
-			return &engine.Frame{
-				C1: c1, C2: c2, Seq: 11, Valid: 2048, WinCols: 2048,
-				EdgeX: 1024, TdivS: 500e-6, DisplayedS: 500e-6, SampleS: 800e-9,
+			return &sample.Frame{
+				Seq:       11,
+				WinPoints: 2048,
+				TriggerAt: 1024,
+				SampleS:   800e-9,
+				Snapshot:  sample.Settings{TdivS: 500e-6, DisplayedS: 500e-6},
+				Traces:    []sample.Trace{{Codes8: c1, Valid: 2048}, {Ch: 1, Codes8: c2, Valid: 2048}},
 			}
 		}(), 0},
-		{"native-interp", func() *engine.Frame {
+		{"native-interp", func() *sample.Frame {
 			c1, c2 := deepC(400)
-			return &engine.Frame{
-				C1: c1, C2: c2, Seq: 12, Valid: 400, WinCols: 320,
-				EdgeX: 200, Interp: true, TdivS: 1e-6, DisplayedS: 1e-6, SampleS: 25e-9,
+			return &sample.Frame{
+				Seq:       12,
+				WinPoints: 320,
+				TriggerAt: 200,
+				SampleS:   25e-9,
+				Flags:     sample.Interp,
+				Snapshot:  sample.Settings{TdivS: 1e-6, DisplayedS: 1e-6},
+				Traces:    []sample.Trace{{Codes8: c1, Valid: 400}, {Ch: 1, Codes8: c2, Valid: 400}},
 			}
 		}(), 0},
-		{"deep-trig-edge-start", func() *engine.Frame {
+		{"deep-trig-edge-start", func() *sample.Frame {
 			c1, c2 := deepC(6144)
 			// Edge near the record start: the record is served VERBATIM (the client
 			// centres it), so there are no head/tail margins regardless of edge pos.
-			return &engine.Frame{
-				C1: c1, C2: c2, Seq: 13, Valid: 6144, WinCols: 2048,
-				EdgeX: 100, TdivS: 1e-3, DisplayedS: 1e-3, SampleS: 1.6e-6,
+			return &sample.Frame{
+				Seq:       13,
+				WinPoints: 2048,
+				TriggerAt: 100,
+				SampleS:   1.6e-6,
+				Snapshot:  sample.Settings{TdivS: 1e-3, DisplayedS: 1e-3},
+				Traces:    []sample.Trace{{Codes8: c1, Valid: 6144}, {Ch: 1, Codes8: c2, Valid: 6144}},
 			}
 		}(), wire.FlagDeep},
-		{"deep-trig-edge-end", func() *engine.Frame {
+		{"deep-trig-edge-end", func() *sample.Frame {
 			c1, c2 := deepC(6144)
 			// Edge near the record end: still served verbatim, still no margins.
-			return &engine.Frame{
-				C1: c1, C2: c2, Seq: 14, Valid: 6144, WinCols: 2048,
-				EdgeX: 6100, TdivS: 1e-3, DisplayedS: 1e-3, SampleS: 1.6e-6,
+			return &sample.Frame{
+				Seq:       14,
+				WinPoints: 2048,
+				TriggerAt: 6100,
+				SampleS:   1.6e-6,
+				Snapshot:  sample.Settings{TdivS: 1e-3, DisplayedS: 1e-3},
+				Traces:    []sample.Trace{{Codes8: c1, Valid: 6144}, {Ch: 1, Codes8: c2, Valid: 6144}},
 			}
 		}(), wire.FlagDeep},
-		{"deep-freerun", func() *engine.Frame {
+		{"deep-freerun", func() *sample.Frame {
 			c1, c2 := deepC(6144)
-			return &engine.Frame{
-				C1: c1, C2: c2, Seq: 15, Valid: 6144, WinCols: 2048,
-				EdgeX: -1, TdivS: 1e-3, DisplayedS: 1e-3, SampleS: 1.6e-6,
+			return &sample.Frame{
+				Seq:       15,
+				WinPoints: 2048,
+				TriggerAt: -1,
+				SampleS:   1.6e-6,
+				Snapshot:  sample.Settings{TdivS: 1e-3, DisplayedS: 1e-3},
+				Traces:    []sample.Trace{{Codes8: c1, Valid: 6144}, {Ch: 1, Codes8: c2, Valid: 6144}},
 			}
 		}(), wire.FlagDeep},
-		{"envelope", func() *engine.Frame {
+		{"envelope", func() *sample.Frame {
 			mk := func(base int) []uint8 {
 				e := make([]uint8, 800)
 				for i := range e {
@@ -153,10 +175,14 @@ func TestBinFrameParity(t *testing.T) {
 				return e
 			}
 			c1, c2 := deepC(800)
-			return &engine.Frame{
-				C1: c1, C2: c2, Seq: 16, Valid: 800, WinCols: 800, EdgeX: -1,
-				IsEnv: true, EnvCols: 800, EnvMin: mk(0), EnvMax: mk(50), EnvMin2: mk(100), EnvMax2: mk(150),
-				TdivS: 0.01, DisplayedS: 0.01, SampleS: 1e-4,
+			return &sample.Frame{
+				Seq:       16,
+				WinPoints: 800,
+				TriggerAt: -1,
+				SampleS:   1e-4,
+				Flags:     sample.Envelope,
+				Snapshot:  sample.Settings{TdivS: 0.01, DisplayedS: 0.01},
+				Traces:    []sample.Trace{{Codes8: c1, Valid: 800, Min8: mk(0)[:800], Max8: mk(50)[:800]}, {Ch: 1, Codes8: c2, Valid: 800, Min8: mk(100)[:800], Max8: mk(150)[:800]}},
 			}
 		}(), wire.FlagEnv},
 	}
@@ -178,7 +204,7 @@ func TestBinFrameParity(t *testing.T) {
 			if !reflect.DeepEqual(gh, wh) {
 				t.Fatalf("header mismatch:\n got %+v\nwant %+v", gh, wh)
 			}
-			if tc.f.IsEnv {
+			if tc.f.Flags.Has(sample.Envelope) {
 				if len(pay) != 4*got.Cols {
 					t.Fatalf("env payload %d bytes, want %d", len(pay), 4*got.Cols)
 				}
@@ -216,7 +242,7 @@ func TestBinFrameParity(t *testing.T) {
 // TRLC-LINKS: REQ-SDS-163
 func TestBinFrameUnchanged(t *testing.T) {
 	c := make([]uint8, 2048)
-	f := &engine.Frame{C1: c, C2: c, Seq: 9, Valid: 2048, WinCols: 2048, EdgeX: 100, SampleS: 1e-6}
+	f := &sample.Frame{Seq: 9, WinPoints: 2048, TriggerAt: 100, SampleS: 1e-6, Traces: []sample.Trace{{Codes8: c, Valid: 2048}, {Ch: 1, Codes8: c, Valid: 2048}}}
 	fs := &fakeScope{frame: f, fresh: true}
 	s := newServer(fs, nil, nil, nil)
 	rep, flags, pay := getBin(t, s, "/api/frame.bin?since=9&cols=2048&full=1")
@@ -238,7 +264,7 @@ func TestBinFrameUnchanged(t *testing.T) {
 // TRLC-LINKS: REQ-SDS-163
 func TestBinFrameLongPollDegrade(t *testing.T) {
 	c := make([]uint8, 256)
-	f := &engine.Frame{C1: c, C2: c, Seq: 3, Valid: 256, WinCols: 256, EdgeX: 128, SampleS: 1e-6}
+	f := &sample.Frame{Seq: 3, WinPoints: 256, TriggerAt: 128, SampleS: 1e-6, Traces: []sample.Trace{{Codes8: c, Valid: 256}, {Ch: 1, Codes8: c, Valid: 256}}}
 	fs := &fakeScope{frame: f, fresh: true}
 	s := newServer(fs, nil, nil, nil)
 	rep, _, _ := getBin(t, s, "/api/frame.bin?since=3&waitms=50")
@@ -259,7 +285,7 @@ func TestMeasCacheReuse(t *testing.T) {
 			c1[i], c2[i] = 200, 210
 		}
 	}
-	f := &engine.Frame{C1: c1, C2: c2, Seq: 21, Valid: 512, WinCols: 512, EdgeX: 256, SampleS: 1e-6}
+	f := &sample.Frame{Seq: 21, WinPoints: 512, TriggerAt: 256, SampleS: 1e-6, Traces: []sample.Trace{{Codes8: c1, Valid: 512}, {Ch: 1, Codes8: c2, Valid: 512}}}
 	fs := &fakeScope{frame: f, fresh: true}
 	s := newServer(fs, nil, nil, nil)
 
@@ -305,10 +331,15 @@ func TestBinFrameRawShape(t *testing.T) {
 		c1[i] = uint8(i % 251)
 		c2[i] = uint8((i * 3) % 249)
 	}
-	f := &engine.Frame{
-		C1: c1, C2: c2, Seq: 31, Valid: n, WinCols: 200,
-		EdgeX: 123.625, TdivS: 5e-6, DisplayedS: 5e-6, SampleS: 1e-8, Ptp: 140, Trigd: true,
-		Degraded: true,
+	f := &sample.Frame{
+		Seq:       31,
+		WinPoints: 200,
+		TriggerAt: 123.625,
+		SampleS:   1e-8,
+		SourcePtp: 140,
+		Snapshot:  sample.Settings{TdivS: 5e-6, DisplayedS: 5e-6},
+		Status:    sample.Status{Triggered: true, Degraded: true},
+		Traces:    []sample.Trace{{Codes8: c1, Valid: n}, {Ch: 1, Codes8: c2, Valid: n}},
 	}
 	fs := &fakeScope{frame: f, fresh: true}
 	s := newServer(fs, nil, nil, nil)
@@ -413,8 +444,8 @@ func TestSpectrumFeedLeasesSpectrumFrames(t *testing.T) {
 // TRLC-LINKS: REQ-SDS-163
 func TestBinTriggerPositionEndpoints(t *testing.T) {
 	for _, pos := range []float64{0, 1} {
-		f := &engine.Frame{C1: make([]uint8, 2048), C2: make([]uint8, 2048), Seq: 1, Valid: 2048, WinCols: 512, EdgeX: 1024, SampleS: 2e-9}
-		scope := &fakeScope{frameGen: func() *engine.Frame { return f }, stats: engine.Stats{TrigPosFrac: pos}}
+		f := &sample.Frame{Seq: 1, WinPoints: 512, TriggerAt: 1024, SampleS: 2e-9, Traces: []sample.Trace{{Codes8: make([]uint8, 2048), Valid: 2048}, {Ch: 1, Codes8: make([]uint8, 2048), Valid: 2048}}}
+		scope := &fakeScope{frameGen: func() *sample.Frame { return f }, stats: engine.Stats{TrigPosFrac: pos}}
 		s := newServer(scope, nil, nil, nil)
 		rep, _, _ := getBin(t, s, "/api/frame.bin?cols=800")
 		if rep.EdgeFrac != pos {

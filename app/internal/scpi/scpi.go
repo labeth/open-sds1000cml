@@ -16,6 +16,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/labeth/open-dso-core/sample"
 	"github.com/labeth/open-sds1000cml/app/internal/engine"
 )
 
@@ -23,30 +24,35 @@ import (
 // TRLC-LINKS: REQ-SDS-024
 type Scope interface {
 	Snapshot() engine.Stats
-	WithFrame(fn func(*engine.Frame))
+	WithFrame(fn func(*sample.Frame))
 	SetRunning(on bool)
 	SetNorm(on bool)
 	SetSingle()
 	SetTdiv(tdivS float64) (engine.Band, bool)
-	SetTrigLevelCode(code uint16) uint16
 	SetTrigSlope(rising bool)
 	SetTrigSource(ch int)
-	SetOffsetDAC(ch int, code uint16)
 	SetAcqMode(m int)
 	SetAvgCount(n int)
 }
 
-// Analog is the vertical front end; may be nil.
+// Analog is the vertical front end, in volts at the BNC; may be nil.
 // TRLC-LINKS: REQ-SDS-024
 type Analog interface {
-	SetVdiv(ch, idx int) error
-	Snapshot() (idx [2]int, emitted bool)
-	SetOffset(ch int, volts float64) uint16
-	OffsetVolts(ch int, code uint16) float64
+	SetVdivV(ch int, v float64) error
+	VdivV(ch int) float64
+	RangeV(ch int) float64 // the analog range's V/div the codes are on
 	SetProbe(ch int, x float64)
 	SetCoupling(ch, mode int) error
-	TrigVolts(code uint16, srcCh int) float64
-	TrigCode(volts float64, srcCh int) float64
+}
+
+// Levels is the trigger level and the offsets in volts, over the DACs the
+// board stages: the trigger level at the probe tip, the offsets at the BNC.
+// TRLC-LINKS: REQ-SDS-024
+type Levels interface {
+	SetTrigLevel(v float64, src int) float64
+	TrigLevel(src int) (float64, bool)
+	SetOffset(ch int, v float64) float64
+	OffsetIn(ch int, st engine.Stats) float64
 }
 
 // Display is the device display/panel surface (implemented by
@@ -88,6 +94,7 @@ const (
 type Handler struct {
 	sc   Scope
 	fe   Analog
+	lv   Levels
 	disp Display
 	shot Screenshot
 	logf func(string, ...any)
@@ -194,9 +201,9 @@ const setupSlots = 20
 // New is a handler for sc; fe, disp and shot may be nil, and the commands
 // that need them then answer with an error.
 // TRLC-LINKS: REQ-SDS-024
-func New(sc Scope, fe Analog, disp Display, shot Screenshot, logf func(string, ...any)) *Handler {
+func New(sc Scope, fe Analog, lv Levels, disp Display, shot Screenshot, logf func(string, ...any)) *Handler {
 	return &Handler{
-		sc: sc, fe: fe, disp: disp, shot: shot, logf: logf,
+		sc: sc, fe: fe, lv: lv, disp: disp, shot: shot, logf: logf,
 		chdr: "SHORT", wfSP: 1,
 		tra:    [2]bool{true, true},
 		cpl:    [2]string{"D1M", "D1M"},

@@ -10,6 +10,7 @@ package webscope
 import (
 	"time"
 
+	"github.com/labeth/open-dso-core/sample"
 	"github.com/labeth/open-dso-core/webserver"
 	"github.com/labeth/open-dso-core/webserver/shape"
 	"github.com/labeth/open-dso-core/webserver/wire"
@@ -23,16 +24,14 @@ import (
 // TRLC-LINKS: REQ-SDS-161, REQ-SDS-162, REQ-SDS-163, REQ-SDS-164
 type Engine interface {
 	Snapshot() engine.Stats
-	WithFrame(fn func(*engine.Frame))
+	WithFrame(fn func(*sample.Frame))
 	QuietRLock()   // block during the engine's load-sensitive windows (settle+drain)
 	QuietRUnlock() // release
 	SetRunning(bool)
 	SetNorm(bool)
 	SetTdiv(float64) (engine.Band, bool)
-	SetTrigLevelCode(uint16) uint16
 	SetTrigSlope(rising bool)
 	SetTrigSource(ch int)
-	SetOffsetDAC(ch int, code uint16)
 	SetETS(on bool)
 	SetTrigType(t int)
 	SetPulseParams(lvlFrac, wMinNs, wMaxNs float64, cond int)
@@ -75,18 +74,31 @@ type Engine interface {
 // when the SPI nodes are unavailable.
 // TRLC-LINKS: REQ-SDS-161, REQ-SDS-162, REQ-SDS-163, REQ-SDS-164
 type Analog interface {
-	SetVdiv(ch, idx int) error
-	Snapshot() (idx [2]int, emitted bool)
-	SetOffset(ch int, volts float64) uint16
-	OffsetVolts(ch int, code uint16) float64
+	SetVdivV(ch int, v float64) error
+	VdivV(ch int) float64  // at the BNC
+	RangeV(ch int) float64 // the analog range's V/div the codes are on
+	Zoom(ch int) int
+	Emitted() bool
 	CalSource() string
 	DCVolts(ch int, meanCode float64) float64
 	SetProbe(ch int, x float64)
 	ProbeFactor(ch int) float64
 	SetCoupling(ch, mode int) error
 	Coupling(ch int) int
+	// The v1 page's trigger level is the comparator DAC code: the status
+	// document gives its volts and the calibration the page converts a drag
+	// with (triglevelcode, trig_zero, trig_cpv).
 	TrigVolts(code uint16, srcCh int) float64
 	TrigCalActive(srcCh int) (zero, cpv float64)
+}
+
+// Levels is the board's trigger level and offsets: offsets in volts at the
+// BNC, and the v1 page's trigger control as the DAC code it sends.
+// TRLC-LINKS: REQ-SDS-161, REQ-SDS-162
+type Levels interface {
+	SetTrigLevelCode(code uint16) uint16
+	SetOffset(ch int, v float64) float64
+	OffsetIn(ch int, st engine.Stats) float64
 }
 
 // Panel is the front-panel injection surface (spec 08 §6): drive any button or
@@ -119,6 +131,7 @@ type frameWaiter interface {
 type Scope struct {
 	sc     Engine
 	fe     Analog
+	lv     Levels
 	panel  Panel
 	screen func() []byte // PNG of the current LCD render (device-screen view)
 
@@ -136,11 +149,11 @@ type Scope struct {
 	meas shape.MeasCache
 }
 
-// New is the SDS1000CML+ scope over the engine sc; fe and panel may be nil,
-// and screen renders the LCD as a PNG.
+// New is the SDS1000CML+ scope over the engine sc and the board's levels lv;
+// fe and panel may be nil, and screen renders the LCD as a PNG.
 // TRLC-LINKS: REQ-SDS-161, REQ-SDS-162, REQ-SDS-163, REQ-SDS-164
-func New(sc Engine, fe Analog, panel Panel, screen func() []byte) *Scope {
-	return &Scope{sc: sc, fe: fe, panel: panel, screen: screen}
+func New(sc Engine, fe Analog, lv Levels, panel Panel, screen func() []byte) *Scope {
+	return &Scope{sc: sc, fe: fe, lv: lv, panel: panel, screen: screen}
 }
 
 // SetInvertSource wires the SCPI INVS shadow — the single source of truth for
@@ -235,7 +248,7 @@ func (s *Scope) waitFrame(since uint64, timeout time.Duration) {
 	// test doubles: degrade to a short seq poll
 	for deadline := time.Now().Add(timeout); time.Now().Before(deadline); {
 		var seq uint64
-		s.sc.WithFrame(func(f *engine.Frame) {
+		s.sc.WithFrame(func(f *sample.Frame) {
 			if f != nil {
 				seq = f.Seq
 			}

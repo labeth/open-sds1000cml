@@ -199,8 +199,11 @@ func checkUIInvariants(c *Controller) []string {
 		fail("tdivIdx %d", c.tdivIdx)
 	}
 	for ch := range 2 {
-		if c.vIdx[ch] < 0 || c.vIdx[ch] >= len(analog.Detents) {
-			fail("vIdx[%d]=%d", ch, c.vIdx[ch])
+		if c.fe == nil {
+			break
+		}
+		if _, ok := analog.PlanVdiv(c.fe.VdivV(ch)); !ok {
+			fail("C%d at %g V/div, off the ladder", ch+1, c.fe.VdivV(ch))
 		}
 	}
 	if !inInts(c.zoom, zoomFactors...) || c.zoomOff < -0.5 || c.zoomOff > 0.5 {
@@ -233,8 +236,8 @@ func checkUIInvariants(c *Controller) []string {
 	if len(c.meas) > maxMeasItems {
 		fail("%d readouts", len(c.meas))
 	}
-	if c.trigCode < engine.TrigCodeMin || c.trigCode > engine.TrigCodeMax {
-		fail("trigCode %d", c.trigCode)
+	if code := c.eng.Snapshot().TrigCode; code != 0 && (code < engine.TrigCodeMin || code > engine.TrigCodeMax) {
+		fail("trigger level code %d", code)
 	}
 	c.mu.Unlock()
 

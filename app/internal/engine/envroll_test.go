@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/labeth/open-dso-core/sample"
 	"github.com/labeth/open-sds1000cml/app/internal/iface"
 )
 
@@ -85,20 +86,20 @@ func TestEnvelopeFrame(t *testing.T) {
 		t.Fatal("envelope drained before halt")
 	}
 	f, fresh := e.Consume()
-	if !fresh || !f.IsEnv || f.EnvCols != envDisplayCols {
-		t.Fatalf("env frame: fresh=%v isEnv=%v cols=%d", fresh, f.IsEnv, f.EnvCols)
+	if !fresh || !f.Flags.Has(sample.Envelope) || len(f.Min8(0)) != envDisplayCols {
+		t.Fatalf("env frame: fresh=%v isEnv=%v cols=%d", fresh, f.Flags.Has(sample.Envelope), len(f.Min8(0)))
 	}
 	// Capture carries centring margin (217 display + 2×128); WinCols is the span.
-	if f.Valid != 473 || f.WinCols != 217 {
-		t.Fatalf("env geometry: valid=%d win=%d, want 473/217", f.Valid, f.WinCols)
+	if f.Len() != 473 || f.WinPoints != 217 {
+		t.Fatalf("env geometry: valid=%d win=%d, want 473/217", f.Len(), f.WinPoints)
 	}
 	// The square wave (56..200) must appear as a wide band in min/max.
-	lo, hi := f.EnvMin[400], f.EnvMax[400]
+	lo, hi := f.Min8(0)[400], f.Max8(0)[400]
 	if lo > 60 || hi < 195 {
 		t.Fatalf("env band at col 400 = [%d,%d], want ≈[56,200]", lo, hi)
 	}
-	if f.EdgeX != -1 {
-		t.Fatalf("env EdgeX = %v, want -1", f.EdgeX)
+	if f.TriggerAt != -1 {
+		t.Fatalf("env EdgeX = %v, want -1", f.TriggerAt)
 	}
 	// Envelope publishes every frame, both modes.
 	if s := e.Snapshot(); s.Published != 6 {
@@ -142,10 +143,10 @@ func TestRollBand(t *testing.T) {
 		}
 	}
 	f, fresh := e.Consume()
-	if !fresh || !f.IsEnv || f.Valid != rollWin || f.RollCodes {
-		t.Fatalf("roll frame: fresh=%v isEnv=%v valid=%d rollcodes=%v", fresh, f.IsEnv, f.Valid, f.RollCodes)
+	if !fresh || !f.Flags.Has(sample.Envelope) || f.Len() != rollWin || f.Traces[0].CodesPerDiv != CodesPerDiv {
+		t.Fatalf("roll frame: fresh=%v isEnv=%v valid=%d codes/div=%v", fresh, f.Flags.Has(sample.Envelope), f.Len(), f.Traces[0].CodesPerDiv)
 	}
-	if !f.Coherent {
+	if !f.Status.Coherent {
 		t.Fatal("roll frame with live words must be coherent")
 	}
 }
@@ -177,8 +178,8 @@ func TestRollToRealTimeTransition(t *testing.T) {
 	// The next real-time frame must clear the envelope metadata.
 	e.oneFrame(false)
 	f, fresh := e.Consume()
-	if !fresh || f.IsEnv || f.EnvCols != 0 {
-		t.Fatalf("stale envelope metadata after roll→real-time: isEnv=%v cols=%d", f.IsEnv, f.EnvCols)
+	if !fresh || f.Flags.Has(sample.Envelope) || len(f.Min8(0)) != 0 {
+		t.Fatalf("stale envelope metadata after roll→real-time: isEnv=%v cols=%d", f.Flags.Has(sample.Envelope), len(f.Min8(0)))
 	}
 }
 
@@ -212,17 +213,17 @@ func TestETSFrame(t *testing.T) {
 	if !fresh {
 		t.Fatal("ETS frame not published")
 	}
-	if f.Valid != 829 || f.WinCols != 829 || !f.Interp {
-		t.Fatalf("ETS geometry: valid=%d win=%d interp=%v, want 829/829/true", f.Valid, f.WinCols, f.Interp)
+	if f.Len() != 829 || f.WinPoints != 829 || !f.Flags.Has(sample.Interp) {
+		t.Fatalf("ETS geometry: valid=%d win=%d interp=%v, want 829/829/true", f.Len(), f.WinPoints, f.Flags.Has(sample.Interp))
 	}
-	if f.IsEnv || f.EnvCols != 0 {
+	if f.Flags.Has(sample.Envelope) || len(f.Min8(0)) != 0 {
 		t.Fatal("ETS frame carries envelope metadata")
 	}
 	// 32 distinct phase bins ≥ factor/4 (13): the reconstruction path runs.
-	if f.EdgeX < 0 {
-		t.Fatalf("ETS reconstruction expected (EdgeX=%v)", f.EdgeX)
+	if f.TriggerAt < 0 {
+		t.Fatalf("ETS reconstruction expected (EdgeX=%v)", f.TriggerAt)
 	}
-	_, _, p := ptp(f.C1[:f.Valid])
+	_, _, p := ptp(f.Codes8(0)[:f.Len()])
 	if p < etsEdgeMinPtp {
 		t.Fatalf("ETS reconstruction ptp = %d, want ≥ %d", p, etsEdgeMinPtp)
 	}
@@ -241,11 +242,11 @@ func TestETSFallbackOnFlat(t *testing.T) {
 	e.transition(false, true)
 	e.etsFrame(false)
 	f, fresh := e.Consume()
-	if !fresh || f.EdgeX != -1 {
-		t.Fatalf("flat ETS: fresh=%v edge=%v, want honest flat fallback", fresh, f.EdgeX)
+	if !fresh || f.TriggerAt != -1 {
+		t.Fatalf("flat ETS: fresh=%v edge=%v, want honest flat fallback", fresh, f.TriggerAt)
 	}
-	if f.Valid != 829 {
-		t.Fatalf("flat fallback valid=%d", f.Valid)
+	if f.Len() != 829 {
+		t.Fatalf("flat fallback valid=%d", f.Len())
 	}
 }
 

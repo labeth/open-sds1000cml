@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/labeth/open-dso-core/decode"
-	"github.com/labeth/open-sds1000cml/app/internal/analog"
+	"github.com/labeth/open-sds1000cml/app/internal/board"
 	"github.com/labeth/open-sds1000cml/app/internal/engine"
 	"github.com/labeth/open-sds1000cml/app/internal/panel/wsview"
 )
@@ -326,7 +326,9 @@ type sv struct {
 	sndRow soundRowInfo  // and what its rows show
 
 	fe       bool
-	vidx     [2]int
+	vert     [2]vstep     // each channel's V/div step
+	ladder   [2][]float64 // each channel's V/div ladder at the probe tip
+	offRange [2]float64   // each channel's offset range (±) at the BNC
 	probe    [2]float64
 	cpl      [2]int
 	offV     [2]float64 // requested input-referred offset volts
@@ -335,9 +337,12 @@ type sv struct {
 	hasInv   bool
 	inv      [2]bool
 	trigV    float64 // the trigger level at the probe tip
-	trigLo   float64 // the level's range (the code window), tip volts
-	trigHi   float64
-	trigStep float64 // one Level knob step, tip volts
+	// trigSaved is the trigger level as the board keeps it: equal for equal
+	// levels, set or not.
+	trigSaved board.TrigLevelSaved
+	trigLo    float64 // the level's range (the code window), tip volts
+	trigHi    float64
+	trigStep  float64 // one Level knob step, tip volts
 
 	hasSerial bool
 	serial    engine.SerialParams
@@ -417,7 +422,7 @@ type sv struct {
 // srcVdiv is a channel's displayed V/div at the probe tip.
 // TRLC-LINKS: REQ-SDS-212
 func (s *sv) vdivTip(ch int) float64 {
-	return analog.Detents[s.vidx[ch&1]].VdivV * s.probe[ch&1]
+	return s.vert[ch&1].vdiv * s.probe[ch&1]
 }
 
 // matchTokens is the serial trigger's match as editor tokens.

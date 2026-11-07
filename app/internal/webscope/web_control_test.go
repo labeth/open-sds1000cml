@@ -12,6 +12,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/labeth/open-dso-core/sample"
 	"github.com/labeth/open-sds1000cml/app/internal/engine"
 	"github.com/labeth/open-sds1000cml/app/internal/panel"
 )
@@ -155,10 +156,14 @@ func TestACCouplingRemovesDC(t *testing.T) {
 			c1[i] = 190
 		}
 	}
-	fs := &fakeScope{frameGen: func() *engine.Frame {
-		return &engine.Frame{
-			C1: c1, C2: c1, Seq: 3, Valid: N, WinCols: N, EdgeX: N / 2,
-			TdivS: 500e-6, DisplayedS: 500e-6, SampleS: 800e-9,
+	fs := &fakeScope{frameGen: func() *sample.Frame {
+		return &sample.Frame{
+			Seq:       3,
+			WinPoints: N,
+			TriggerAt: N / 2,
+			SampleS:   800e-9,
+			Snapshot:  sample.Settings{TdivS: 500e-6, DisplayedS: 500e-6},
+			Traces:    []sample.Trace{{Codes8: c1, Valid: N}, {Ch: 1, Codes8: c1, Valid: N}},
 		}
 	}}
 	fa := &fakeAnalog{}

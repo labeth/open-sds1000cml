@@ -8,6 +8,8 @@ import (
 	"math"
 	"slices"
 	"sync"
+
+	"github.com/labeth/open-dso-core/sample"
 )
 
 // Frequency Response Analysis (Bode plot) — docs/bode-plan.md. With FRA armed,
@@ -104,7 +106,7 @@ func (e *Engine) BodePoints() []BodePoint {
 // bodeEval computes the transfer-function point for a locked frame and, if
 // valid, updates its log-frequency bin. Runs on the engine goroutine.
 // TRLC-LINKS: REQ-SDS-066
-func (e *Engine) bodeEval(f *Frame, valid int, sampleS float64) {
+func (e *Engine) bodeEval(f *sample.Frame, valid int, sampleS float64) {
 	if sampleS <= 0 || valid < 8 {
 		e.bodeInvalidate("no samples")
 		return
@@ -113,13 +115,13 @@ func (e *Engine) bodeEval(f *Frame, valid int, sampleS float64) {
 	refCh, dutCh, scale := e.bode.refCh, e.bode.dutCh, e.bode.scale
 	e.bode.mu.Unlock()
 
-	ref := f.C1
-	dut := f.C1
+	ref := f.Codes8(0)
+	dut := f.Codes8(0)
 	if refCh == 1 {
-		ref = f.C2
+		ref = f.Codes8(1)
 	}
 	if dutCh == 1 {
-		dut = f.C2
+		dut = f.Codes8(1)
 	}
 	if len(ref) < valid || len(dut) < valid {
 		return

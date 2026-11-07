@@ -8,6 +8,7 @@ import (
 	"math"
 	"strconv"
 
+	"github.com/labeth/open-dso-core/sample"
 	"github.com/labeth/open-dso-core/superres"
 	"github.com/labeth/open-sds1000cml/app/internal/engine"
 	"github.com/labeth/open-sds1000cml/app/internal/sramcapture"
@@ -87,24 +88,24 @@ func (c *Controller) srFPGARun() {
 	var sig []uint8
 	var fine []float64
 	var sampleS, edgeX float64
-	c.frameFn(func(f *engine.Frame) {
-		if f == nil || f.IsEnv || f.Valid < 8 || f.Valid > len(f.C1) {
+	c.frameFn(func(f *sample.Frame) {
+		if f == nil || f.Flags.Has(sample.Envelope) || f.Len() < 8 || f.Len() > len(f.Codes8(0)) {
 			return
 		}
-		src, q := f.C1, f.Q1
-		if ch == 1 && len(f.C2) >= f.Valid {
-			src, q = f.C2, f.Q2
+		src, q := f.Codes8(0), f.Precision(0)
+		if ch == 1 && len(f.Codes8(1)) >= f.Len() {
+			src, q = f.Codes8(1), f.Precision(1)
 		}
-		sig = append([]uint8(nil), src[:f.Valid]...)
-		fine = make([]float64, f.Valid)
+		sig = append([]uint8(nil), src[:f.Len()]...)
+		fine = make([]float64, f.Len())
 		for i := range fine {
-			if len(q) >= f.Valid {
+			if len(q) >= f.Len() {
 				fine[i] = float64(q[i]) / 256
 			} else {
 				fine[i] = float64(src[i])
 			}
 		}
-		sampleS, edgeX = f.SampleS, f.EdgeX
+		sampleS, edgeX = f.SampleS, f.TriggerAt
 	})
 	level, hysteresis, ok := fpgaLevel(sig)
 	if !ok {

@@ -6,7 +6,7 @@ import (
 	"math"
 	"testing"
 
-	"github.com/labeth/open-sds1000cml/app/internal/engine"
+	"github.com/labeth/open-dso-core/sample"
 )
 
 // Golden coverage for the core LCD views (see golden_test.go for the harness).
@@ -32,15 +32,19 @@ func goldenClamp(v float64) uint8 {
 // goldenFrame builds a render-ready dual-channel frame from two per-sample
 // generators, windowed across the whole record and centred on its middle.
 // TRLC-LINKS: REQ-SDS-021
-func goldenFrame(n int, g1, g2 func(i int) float64) *engine.Frame {
-	f := &engine.Frame{
-		C1: make([]uint8, n), C2: make([]uint8, n),
-		Valid: n, WinCols: n, EdgeX: float64(n) / 2,
-		Ptp: 144, TdivS: 500e-6, SampleS: 800e-9, Trigd: true,
+func goldenFrame(n int, g1, g2 func(i int) float64) *sample.Frame {
+	f := &sample.Frame{
+		WinPoints: n,
+		TriggerAt: float64(n) / 2,
+		SourcePtp: 144,
+		SampleS:   800e-9,
+		Snapshot:  sample.Settings{TdivS: 500e-6},
+		Status:    sample.Status{Triggered: true},
+		Traces:    []sample.Trace{{Codes8: make([]uint8, n), Valid: n}, {Ch: 1, Codes8: make([]uint8, n), Valid: n}},
 	}
 	for i := range n {
-		f.C1[i] = goldenClamp(g1(i))
-		f.C2[i] = goldenClamp(g2(i))
+		f.Codes8(0)[i] = goldenClamp(g1(i))
+		f.Codes8(1)[i] = goldenClamp(g2(i))
 	}
 	return f
 }
@@ -48,7 +52,7 @@ func goldenFrame(n int, g1, g2 func(i int) float64) *engine.Frame {
 // goldenYTFrame is the bread-and-butter Y-T fixture: a square wave on C1 with
 // a rising edge exactly at EdgeX (=n/2), and a sine on C2.
 // TRLC-LINKS: REQ-SDS-021
-func goldenYTFrame() *engine.Frame {
+func goldenYTFrame() *sample.Frame {
 	const n = 2048
 	return goldenFrame(n,
 		func(i int) float64 { // 512-sample period square, rising edge at 1024
@@ -126,14 +130,17 @@ func goldenUARTWave(bytes []int, spb, n int) []uint8 {
 func TestGoldenYTDecodeUART(t *testing.T) {
 	const n, spb = 1024, 16
 	const sampleS = 1e-6
-	f := &engine.Frame{
-		C1:    goldenUARTWave([]int{0x4F, 0x4B, 0x21}, spb, n), // "OK!"
-		C2:    make([]uint8, n),
-		Valid: n, WinCols: n, EdgeX: float64(n) / 2,
-		Ptp: 170, TdivS: 100e-6, SampleS: sampleS, Trigd: true,
+	f := &sample.Frame{
+		WinPoints: n,
+		TriggerAt: float64(n) / 2,
+		SourcePtp: 170,
+		SampleS:   sampleS,
+		Snapshot:  sample.Settings{TdivS: 100e-6},
+		Status:    sample.Status{Triggered: true},
+		Traces:    []sample.Trace{{Codes8: goldenUARTWave([]int{0x4F, 0x4B, 0x21}, spb, n), Valid: n}, {Ch: 1, Codes8: make([]uint8, n), Valid: n}},
 	}
-	for i := range f.C2 {
-		f.C2[i] = 210 // idle-high second channel
+	for i := range f.Codes8(1) {
+		f.Codes8(1)[i] = 210 // idle-high second channel
 	}
 	h := defaultHUD()
 	h.TdivS, h.SampleS = 100e-6, sampleS
@@ -161,7 +168,7 @@ func TestGoldenFFTPeaks(t *testing.T) {
 			return 128 + 70*math.Sin(205*th) + 18*math.Sin(614*th) + 7*math.Sin(1024*th)
 		},
 		func(i int) float64 { return 128 + 50*math.Sin(2*math.Pi*410*float64(i)/n) })
-	f.TdivS, f.SampleS = 20e-6, sampleS
+	f.Snapshot.TdivS, f.SampleS = 20e-6, sampleS
 	h := defaultHUD()
 	h.TdivS, h.SampleS = 20e-6, sampleS
 	h.ViewMode = 2
@@ -204,22 +211,23 @@ func TestGoldenMeasurePanel(t *testing.T) {
 // TRLC-LINKS: REQ-SDS-021
 func TestGoldenEnvelope(t *testing.T) {
 	const cols = 800
-	f := &engine.Frame{
-		C1: make([]uint8, cols), C2: make([]uint8, cols),
-		EnvMin: make([]uint8, cols), EnvMax: make([]uint8, cols),
-		EnvMin2: make([]uint8, cols), EnvMax2: make([]uint8, cols),
-		Valid: cols, WinCols: cols, EdgeX: -1,
-		IsEnv: true, EnvCols: cols,
-		Ptp: 130, TdivS: 100e-3, SampleS: 1e-3,
+	f := &sample.Frame{
+		WinPoints: cols,
+		TriggerAt: -1,
+		SourcePtp: 130,
+		SampleS:   1e-3,
+		Flags:     sample.Envelope,
+		Snapshot:  sample.Settings{TdivS: 100e-3},
+		Traces:    []sample.Trace{{Codes8: make([]uint8, cols), Valid: cols, Min8: make([]uint8, cols)[:cols], Max8: make([]uint8, cols)[:cols]}, {Ch: 1, Codes8: make([]uint8, cols), Valid: cols, Min8: make([]uint8, cols)[:cols], Max8: make([]uint8, cols)[:cols]}},
 	}
 	for i := range cols {
 		amp := 40 + 25*math.Sin(2*math.Pi*3*float64(i)/cols) // C1: AM band
-		f.EnvMin[i] = goldenClamp(128 - amp)
-		f.EnvMax[i] = goldenClamp(128 + amp)
+		f.Min8(0)[i] = goldenClamp(128 - amp)
+		f.Max8(0)[i] = goldenClamp(128 + amp)
 		a2 := 6 + 4*math.Sin(2*math.Pi*5*float64(i)/cols) // C2: thin low band
-		f.EnvMin2[i] = goldenClamp(40 - a2)
-		f.EnvMax2[i] = goldenClamp(40 + a2)
-		f.C1[i], f.C2[i] = 128, 128 // benign codes: no CLIP flag, flat readouts
+		f.Min8(1)[i] = goldenClamp(40 - a2)
+		f.Max8(1)[i] = goldenClamp(40 + a2)
+		f.Codes8(0)[i], f.Codes8(1)[i] = 128, 128 // benign codes: no CLIP flag, flat readouts
 	}
 	h := defaultHUD()
 	h.TdivS, h.SampleS = 100e-3, 1e-3

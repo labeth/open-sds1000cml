@@ -7,7 +7,7 @@ import (
 	"math"
 	"testing"
 
-	"github.com/labeth/open-sds1000cml/app/internal/engine"
+	"github.com/labeth/open-dso-core/sample"
 )
 
 // heat() is the colour primitive shared by the device waterfall and (mirrored)
@@ -247,7 +247,7 @@ func TestSpectrogramBreaker50(t *testing.T) {
 			buf[i] = sgClamp8(fam.gen(i, n, rng))
 		}
 		sg := NewSpectrogram()
-		fr := &engine.Frame{C1: buf, C2: buf, Valid: n, SampleS: dt}
+		fr := &sample.Frame{SampleS: dt, Traces: []sample.Trace{{Codes8: buf, Valid: n}, {Ch: 1, Codes8: buf, Valid: n}}}
 		func() {
 			defer func() {
 				if r := recover(); r != nil {
@@ -277,7 +277,7 @@ func TestSpectrogramFloorEdges(t *testing.T) {
 	for i := range buf {
 		buf[i] = sgClamp8(128 + 90*math.Sin(2*math.Pi*nyq*0.1*float64(i)*dt))
 	}
-	fr := &engine.Frame{C1: buf, C2: buf, Valid: n, SampleS: dt}
+	fr := &sample.Frame{SampleS: dt, Traces: []sample.Trace{{Codes8: buf, Valid: n}, {Ch: 1, Codes8: buf, Valid: n}}}
 	for _, floor := range []float64{-60, -40, -1, -0.0001, 0, 1, math.NaN(), math.Inf(-1)} {
 		sg := NewSpectrogram()
 		sg.floorDB = floor
@@ -303,18 +303,18 @@ func TestSpectrogramPushGuards(t *testing.T) {
 	}
 	type gc struct {
 		name string
-		fr   *engine.Frame
+		fr   *sample.Frame
 		ch   int
 		nyq  float64
 	}
 	cases := []gc{
 		{"nil-frame", nil, 0, 1e8},
-		{"nil-c2-ch1", &engine.Frame{C1: buf, C2: nil, Valid: 4096, SampleS: 2e-9}, 1, 1e8},
-		{"valid-too-small", &engine.Frame{C1: buf[:16], Valid: 16, SampleS: 2e-9}, 0, 1e8},
-		{"valid-over-len", &engine.Frame{C1: buf, Valid: 99999, SampleS: 2e-9}, 0, 1e8},
-		{"nyq-zero", &engine.Frame{C1: buf, C2: buf, Valid: 4096, SampleS: 2e-9}, 0, 0},
-		{"nyq-nan", &engine.Frame{C1: buf, C2: buf, Valid: 4096, SampleS: 2e-9}, 0, math.NaN()},
-		{"nyq-inf", &engine.Frame{C1: buf, C2: buf, Valid: 4096, SampleS: 2e-9}, 0, math.Inf(1)},
+		{"nil-c2-ch1", &sample.Frame{SampleS: 2e-9, Traces: []sample.Trace{{Codes8: buf, Valid: 4096}, {Ch: 1, Codes8: nil, Valid: 4096}}}, 1, 1e8},
+		{"valid-too-small", &sample.Frame{SampleS: 2e-9, Traces: []sample.Trace{{Codes8: buf[:16], Valid: 16}, {Ch: 1, Valid: 16}}}, 0, 1e8},
+		{"valid-over-len", &sample.Frame{SampleS: 2e-9, Traces: []sample.Trace{{Codes8: buf, Valid: 99999}, {Ch: 1, Valid: 99999}}}, 0, 1e8},
+		{"nyq-zero", &sample.Frame{SampleS: 2e-9, Traces: []sample.Trace{{Codes8: buf, Valid: 4096}, {Ch: 1, Codes8: buf, Valid: 4096}}}, 0, 0},
+		{"nyq-nan", &sample.Frame{SampleS: 2e-9, Traces: []sample.Trace{{Codes8: buf, Valid: 4096}, {Ch: 1, Codes8: buf, Valid: 4096}}}, 0, math.NaN()},
+		{"nyq-inf", &sample.Frame{SampleS: 2e-9, Traces: []sample.Trace{{Codes8: buf, Valid: 4096}, {Ch: 1, Codes8: buf, Valid: 4096}}}, 0, math.Inf(1)},
 	}
 	for _, c := range cases {
 		func() {
@@ -356,7 +356,7 @@ func TestSpectrogramPushDegenerate(t *testing.T) {
 			}()
 			seq++
 			sg := NewSpectrogram()
-			sg.Push(&engine.Frame{C1: src, C2: src, Valid: len(src), SampleS: 2e-9, Seq: seq}, 0, 0)
+			sg.Push(&sample.Frame{SampleS: 2e-9, Seq: seq, Traces: []sample.Trace{{Codes8: src, Valid: len(src)}, {Ch: 1, Codes8: src, Valid: len(src)}}}, 0, 0)
 			if sg.Rows() > 0 && !(sg.effNyq > 0) {
 				t.Errorf("%s: a row painted with span %g", name, sg.effNyq)
 			}

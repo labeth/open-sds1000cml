@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/labeth/open-dso-core/sample"
 	"github.com/labeth/open-sds1000cml/app/internal/engine"
 	"github.com/labeth/open-sds1000cml/app/internal/panel/framecalc"
 )
@@ -120,7 +121,7 @@ func TestSuperresRows(t *testing.T) {
 	eng.SetRunning(false)
 	fr := smallFrame()
 	fr.SampleS = 1e-9
-	c.SetFrameSource(func(fn func(*engine.Frame)) { fn(fr) })
+	c.SetFrameSource(func(fn func(*sample.Frame)) { fn(fr) })
 	press(t, c, "acquire")
 	goRow(t, c, "acq.superres")
 	pickKey(t, c, "On")
@@ -241,7 +242,7 @@ func TestCursorAtTriggerZoomed(t *testing.T) {
 	r := newViewRig(t)
 	c := r.c
 	f := toneFrame("")
-	f.WinCols = f.Valid / 4 // a record of 4 screens
+	f.WinPoints = f.Len() / 4 // a record of 4 screens
 	r.show(f)
 	r.eng.set(func(st *engine.Stats) { st.TrigPosFrac = 0.3 })
 	for _, set := range [][2]string{{"curs.mode", "Time"}, {"time.zoom", "10x"}, {"time.zoom_pos", "1"}} {

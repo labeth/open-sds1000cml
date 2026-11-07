@@ -6,6 +6,7 @@ import (
 	"math"
 	"time"
 
+	"github.com/labeth/open-sds1000cml/app/internal/board"
 	"github.com/labeth/open-sds1000cml/app/internal/engine"
 	"github.com/labeth/open-sds1000cml/app/internal/panel/wsview"
 )
@@ -201,32 +202,30 @@ func (c *Controller) snap() *sv {
 		s.memDepth = md.MemDepth()
 	}
 	src := s.st.TrigSource & 1
+	g := c.lv.TrigLevelGrid(src)
+	s.trigLo, s.trigHi = g.Min, g.Max
+	s.trigV = c.lv.TrigLevelOrIn(s.st, 0, src)
+	s.trigSaved = board.SaveTrigLevelIn(s.st)
 	if c.fe != nil {
 		s.fe = true
-		s.vidx, _ = c.fe.Snapshot()
-		c.snapChannels(s)
-		s.trigLo = c.fe.TrigVolts(engine.TrigCodeMax, src)
-		s.trigHi = c.fe.TrigVolts(engine.TrigCodeMin, src)
-		if s.st.TrigCode != 0 {
-			s.trigV = c.fe.TrigVolts(s.st.TrigCode, src)
-		} else {
-			s.trigV = c.fe.TrigVolts(uint16(clampInt(int(c.fe.TrigCode(0, src)+0.5), engine.TrigCodeMin, engine.TrigCodeMax)), src) //nolint:gosec // G115: clamped to the trigger code range
+		for ch := range 2 {
+			s.vert[ch] = c.vstepOf(ch)
+			s.offRange[ch] = c.fe.OffsetRangeV(ch)
 		}
+		c.snapChannels(s)
 	} else {
 		s.probe = [2]float64{1, 1}
-		s.trigLo, s.trigHi = engine.TrigLevelVolts(engine.TrigCodeMax), engine.TrigLevelVolts(engine.TrigCodeMin)
-		if s.st.TrigCode != 0 {
-			s.trigV = engine.TrigLevelVolts(s.st.TrigCode)
-		}
-		for ch := range s.vidx {
-			s.vidx[ch] = 8 // 1 V/div without a front end
-		}
+		s.vert = [2]vstep{noFrontEnd, noFrontEnd}
+		s.offRange = [2]float64{40, 40}
 	}
-	step := int(panelTrigStepCodesPerVdiv) // trigStepCodes, on the detents and source read above
+	for ch := range 2 {
+		s.ladder[ch] = c.tipLadder(ch)
+	}
+	step := int(panelTrigStepsPerVdiv) // trigSteps, on the V/div and source read above
 	if c.fe != nil {
-		step = trigStepCodesAt(s.vidx, src)
+		step = trigStepsAt([2]float64{s.vert[0].vdiv, s.vert[1].vdiv}, src)
 	}
-	s.trigStep = float64(step) / 911 * s.probe[src]
+	s.trigStep = board.TrigStepsV(step) * s.probe[src]
 	if c.inverter != nil {
 		s.hasInv, s.inv = true, c.inverter.Inverted()
 	}

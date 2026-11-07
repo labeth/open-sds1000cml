@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/labeth/open-dso-core/measure"
+	"github.com/labeth/open-dso-core/sample"
 	"github.com/labeth/open-sds1000cml/app/internal/engine"
 )
 
@@ -42,7 +43,7 @@ func replyValue(t *testing.T, out string) float64 {
 func TestMEADDelays(t *testing.T) {
 	h, fs := newH(t)
 	const n, per, lag = 1000, 100, 10
-	fs.frame = &engine.Frame{C1: square(n, per, 5), C2: square(n, per, 5+lag), Valid: n, SampleS: 1e-9, EdgeX: 500, WinCols: 500}
+	fs.frame = &sample.Frame{SampleS: 1e-9, TriggerAt: 500, WinPoints: 500, Traces: []sample.Trace{{Codes8: square(n, per, 5), Valid: n}, {Ch: 1, Codes8: square(n, per, 5+lag), Valid: n}}}
 	for _, tc := range []struct {
 		arg  string
 		want float64
@@ -63,7 +64,7 @@ func TestMEADDelays(t *testing.T) {
 			t.Errorf("%s: %q want %q", c, out, want)
 		}
 	}
-	fs.frame = &engine.Frame{C1: make([]uint8, n), C2: square(n, per, 5), Valid: n, SampleS: 1e-9}
+	fs.frame = &sample.Frame{SampleS: 1e-9, Traces: []sample.Trace{{Codes8: make([]uint8, n), Valid: n}, {Ch: 1, Codes8: square(n, per, 5), Valid: n}}}
 	if out := do(t, h, "C1-C2:MEAD? FRR"); out != "C1-C2:MEAD FRR,****\n" {
 		t.Errorf("flat source: %q", out)
 	}
@@ -91,7 +92,7 @@ func TestCRVACursorValues(t *testing.T) {
 	for i := range c {
 		c[i] = uint8(128 + i/10) // a ramp: code 128 at sample 0
 	}
-	fs.frame = &engine.Frame{C1: c, C2: c, Valid: 1000, SampleS: 1e-9, EdgeX: 500, WinCols: 1000}
+	fs.frame = &sample.Frame{SampleS: 1e-9, TriggerAt: 500, WinPoints: 1000, Traces: []sample.Trace{{Codes8: c, Valid: 1000}, {Ch: 1, Codes8: c, Valid: 1000}}}
 	if out := do(t, h, "C1:CRVA? HREL"); out != "C1:CRVA OFF\n" {
 		t.Fatalf("cursors off: %q", out)
 	}

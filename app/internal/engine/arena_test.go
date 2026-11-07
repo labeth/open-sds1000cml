@@ -14,13 +14,13 @@ func TestArenaPublishConsume(t *testing.T) {
 	}
 
 	w := a.Write()
-	w.C1[0] = 42
+	w.Codes8(0)[0] = 42
 	w.Seq = 1
 	a.Publish()
 
 	f, fresh := a.Consume()
-	if !fresh || f.Seq != 1 || f.C1[0] != 42 {
-		t.Fatalf("consume: fresh=%v seq=%d c1[0]=%d", fresh, f.Seq, f.C1[0])
+	if !fresh || f.Seq != 1 || f.Codes8(0)[0] != 42 {
+		t.Fatalf("consume: fresh=%v seq=%d c1[0]=%d", fresh, f.Seq, f.Codes8(0)[0])
 	}
 
 	// No new publish → the held frame is re-presented, not fresh.
@@ -32,17 +32,17 @@ func TestArenaPublishConsume(t *testing.T) {
 	// Triple-buffer no-tear: after the consumer took frame 1, two more
 	// publishes must never drain into the consumer's held slot.
 	held := f
-	heldVal := held.C1[0]
+	heldVal := held.Codes8(0)[0]
 	for seq := uint64(2); seq <= 3; seq++ {
 		w := a.Write()
 		if w == held {
 			t.Fatal("producer handed the consumer's held slot")
 		}
-		w.C1[0] = uint8(seq * 10)
+		w.Codes8(0)[0] = uint8(seq * 10)
 		w.Seq = seq
 		a.Publish()
 	}
-	if held.C1[0] != heldVal {
+	if held.Codes8(0)[0] != heldVal {
 		t.Fatal("consumer's held frame was overwritten (tear)")
 	}
 	f3, fresh := a.Consume()

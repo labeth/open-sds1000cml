@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/labeth/open-dso-core/decode"
+	"github.com/labeth/open-dso-core/sample"
 	"github.com/labeth/open-sds1000cml/app/internal/analog"
 	"github.com/labeth/open-sds1000cml/app/internal/engine"
 	"github.com/labeth/open-sds1000cml/app/internal/panel/framecalc"
@@ -242,7 +243,7 @@ func (c *Controller) measureMsgs() busMsgs {
 	res, sampleS, ok := c.decodeOnScreen()
 	valid := 0
 	if !ok {
-		all := func(*engine.Frame, bool) bool { return true }
+		all := func(*sample.Frame, bool) bool { return true }
 		l := c.detectWith(true, false, all, c.decodeOnScreen, decimatedWait)
 		res, sampleS, ok = l.res, l.sampleS, l.found
 	}
@@ -250,7 +251,7 @@ func (c *Controller) measureMsgs() busMsgs {
 		return busMsgs{}
 	}
 	if c.frameFn != nil {
-		c.frameFn(func(f *engine.Frame) {
+		c.frameFn(func(f *sample.Frame) {
 			if f != nil {
 				valid = framecalc.Valid(f)
 			}
@@ -522,9 +523,9 @@ func (c *Controller) measureSlower(m busMsgs, featureS float64) busMsgs {
 			// envelope or a screen's sampled record shown first (a DCF77
 			// pulse read off them is nothing, and the look gave up in 50 ms,
 			// one search in five)
-			accept := func(f *engine.Frame, _ bool) bool {
-				return (f.TdivS == 0 || math.Abs(f.TdivS-at) <= 1e-3*at) && (after == 0 || f.Seq > after) &&
-					!f.IsEnv && f.SampleS > 0 && featureS/f.SampleS >= readableFeature
+			accept := func(f *sample.Frame, _ bool) bool {
+				return (f.Snapshot.TdivS == 0 || math.Abs(f.Snapshot.TdivS-at) <= 1e-3*at) && (after == 0 || f.Seq > after) &&
+					!f.Flags.Has(sample.Envelope) && f.SampleS > 0 && featureS/f.SampleS >= readableFeature
 			}
 			valid := 0 // the decoded record's own, which its last message's cut is judged by
 			decodeAt := func() (decode.Result, float64, bool) {

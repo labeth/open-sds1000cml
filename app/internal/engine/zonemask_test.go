@@ -2,19 +2,23 @@
 
 package engine
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/labeth/open-dso-core/sample"
+)
 
 // mkFrame builds a synthetic frame: baseline 100, with a pulse of `code` over
 // sample range [pLo,pHi).
 // TRLC-LINKS: REQ-SDS-014
-func zmFrame(n int, code uint8, pLo, pHi int) *Frame {
-	f := &Frame{C1: make([]uint8, n), C2: make([]uint8, n), Valid: n}
+func zmFrame(n int, code uint8, pLo, pHi int) *sample.Frame {
+	f := &sample.Frame{Traces: []sample.Trace{{Codes8: make([]uint8, n), Valid: n}, {Ch: 1, Codes8: make([]uint8, n), Valid: n}}}
 	for i := range n {
-		f.C1[i] = 100
+		f.Codes8(0)[i] = 100
 		if i >= pLo && i < pHi {
-			f.C1[i] = code
+			f.Codes8(0)[i] = code
 		}
-		f.C2[i] = 100
+		f.Codes8(1)[i] = 100
 	}
 	return f
 }

@@ -6,27 +6,30 @@ import (
 	"math"
 	"testing"
 
+	"github.com/labeth/open-dso-core/sample"
 	"github.com/labeth/open-sds1000cml/app/internal/engine"
 	"github.com/labeth/open-sds1000cml/app/internal/panel/framecalc"
 	"github.com/labeth/open-sds1000cml/app/internal/panel/wsview"
 )
 
 // TRLC-LINKS: REQ-SDS-021
-func testFrame(valid int) *engine.Frame {
-	f := &engine.Frame{
-		C1: make([]uint8, valid), C2: make([]uint8, valid),
-		EnvMin: make([]uint8, 800), EnvMax: make([]uint8, 800),
-		EnvMin2: make([]uint8, 800), EnvMax2: make([]uint8, 800),
-		Valid: valid, WinCols: valid, EdgeX: float64(valid) / 2,
-		Ptp: 144, Seq: 1, TdivS: 500e-6, SampleS: 800e-9,
+func testFrame(valid int) *sample.Frame {
+	f := &sample.Frame{
+		WinPoints: valid,
+		TriggerAt: float64(valid) / 2,
+		SourcePtp: 144,
+		Seq:       1,
+		SampleS:   800e-9,
+		Snapshot:  sample.Settings{TdivS: 500e-6},
+		Traces:    []sample.Trace{{Codes8: make([]uint8, valid), Valid: valid}, {Ch: 1, Codes8: make([]uint8, valid), Valid: valid}},
 	}
-	for i := range f.C1 {
+	for i := range f.Codes8(0) {
 		if (i/128)%2 == 0 {
-			f.C1[i] = 200
+			f.Codes8(0)[i] = 200
 		} else {
-			f.C1[i] = 56
+			f.Codes8(0)[i] = 56
 		}
-		f.C2[i] = 128
+		f.Codes8(1)[i] = 128
 	}
 	return f
 }
@@ -75,10 +78,10 @@ func TestRenderPersistence(t *testing.T) {
 	h := defaultHUD()
 	h.Persist = true
 	h.ShowC1, h.ShowC2 = true, false
-	flat := func(v uint8) *engine.Frame {
+	flat := func(v uint8) *sample.Frame {
 		f := testFrame(2048)
-		for i := range f.C1 {
-			f.C1[i] = v
+		for i := range f.Codes8(0) {
+			f.Codes8(0)[i] = v
 		}
 		return f
 	}
@@ -113,9 +116,9 @@ func TestRenderPersistence(t *testing.T) {
 // TRLC-LINKS: REQ-SDS-021, REQ-SDS-070
 func TestRenderAltViews(t *testing.T) {
 	f := testFrame(2048)
-	f.C2 = make([]uint8, len(f.C2))
-	for i := range f.C2 { // give C2 a ramp so X-Y/math aren't degenerate
-		f.C2[i] = uint8(i % 200)
+	f.Traces[1].Codes8 = make([]uint8, len(f.Codes8(1)))
+	for i := range f.Codes8(1) { // give C2 a ramp so X-Y/math aren't degenerate
+		f.Codes8(1)[i] = uint8(i % 200)
 	}
 
 	xy := NewMemSurface()
@@ -307,11 +310,13 @@ func TestRenderHeldFrameStripRed(t *testing.T) {
 // TRLC-LINKS: REQ-SDS-021
 func TestRenderEnvelopeBranch(t *testing.T) {
 	f := testFrame(4096)
-	f.IsEnv = true
-	f.EnvCols = 800
+	f.Flags.Set(sample.Envelope, true)
+	for ch := range f.Traces {
+		f.Traces[ch].Min8, f.Traces[ch].Max8 = make([]uint8, 800), make([]uint8, 800)
+	}
 	for i := range 800 {
-		f.EnvMin[i], f.EnvMax[i] = 80, 180
-		f.EnvMin2[i], f.EnvMax2[i] = 100, 140
+		f.Min8(0)[i], f.Max8(0)[i] = 80, 180
+		f.Min8(1)[i], f.Max8(1)[i] = 100, 140
 	}
 	m := NewMemSurface()
 	Render(m, f, defaultHUD(), true)
@@ -333,12 +338,12 @@ func TestRenderNilFrame(t *testing.T) {
 // TRLC-LINKS: REQ-SDS-021
 func TestRenderFlatRailNoFabrication(t *testing.T) {
 	f := testFrame(2048)
-	for i := range f.C1 {
-		f.C1[i] = 128
-		f.C2[i] = 128
+	for i := range f.Codes8(0) {
+		f.Codes8(0)[i] = 128
+		f.Codes8(1)[i] = 128
 	}
-	f.EdgeX = -1
-	f.Ptp = 0
+	f.TriggerAt = -1
+	f.SourcePtp = 0
 	m := NewMemSurface()
 	Render(m, f, defaultHUD(), true)
 	// Flat rail draws at mid-screen; strip red (ptp < 8 even though fresh).

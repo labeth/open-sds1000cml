@@ -8,6 +8,7 @@ import (
 	"runtime/debug"
 	"time"
 
+	"github.com/labeth/open-dso-core/sample"
 	"github.com/labeth/open-sds1000cml/app/internal/iface"
 )
 
@@ -222,8 +223,8 @@ func (e *Engine) oneFrame(norm bool) { //nolint:gocyclo,funlen // one native-fas
 	// loop gate (they used to scan the same bytes twice); re-scanned only after a
 	// re-drain actually changes the data. loC1/hiC1/pC1 stay valid for the final
 	// record and seed the single canonical scan below.
-	loC1, hiC1, pC1 := ptp(f.C1[:cols])
-	rd := realDepthP(f.C1[:cols], pC1)
+	loC1, hiC1, pC1 := ptp(f.Codes8(0)[:cols])
+	rd := realDepthP(f.Codes8(0)[:cols], pC1)
 	e.lastFirstHalf = nativeFast && rd*4 < cols*3 // raw half-record rate (before re-capture)
 	maxRetry := int(e.tuneMaxRetry.Load())
 	// Re-capture only when the comparator FIRED and the record still kept a dead
@@ -239,8 +240,8 @@ func (e *Engine) oneFrame(norm bool) { //nolint:gocyclo,funlen // one native-fas
 		}
 		e.haltSettle(nativeFast)
 		e.drainQuiet(f, cols)
-		loC1, hiC1, pC1 = ptp(f.C1[:cols])
-		rd = realDepthP(f.C1[:cols], pC1)
+		loC1, hiC1, pC1 = ptp(f.Codes8(0)[:cols])
+		rd = realDepthP(f.Codes8(0)[:cols], pC1)
 	}
 	drainTime := e.clk.Now().Sub(drainStart)
 	// Degraded = the comparator fired but the dead tail survived every
@@ -280,8 +281,8 @@ func (e *Engine) oneFrame(norm bool) { //nolint:gocyclo,funlen // one native-fas
 	mode := int(e.acqMode.Load())
 	if mode == AcqEres {
 		if l := clampEresLen(int(e.eresLen.Load())); l > 1 {
-			eresBoxcar(f.C1[:cols], l, e.eresScratch)
-			eresBoxcar(f.C2[:cols], l, e.eresScratch)
+			eresBoxcar(f.Codes8(0)[:cols], l, e.eresScratch)
+			eresBoxcar(f.Codes8(1)[:cols], l, e.eresScratch)
 		}
 	}
 
@@ -289,10 +290,10 @@ func (e *Engine) oneFrame(norm bool) { //nolint:gocyclo,funlen // one native-fas
 	// decimated frame is coherent when triggered (anchored+filled) OR an
 	// AUTO free-run full record; that is the `ready` gate that let us drain.
 	coherent := haltOK && (nativeFast || ready)
-	disc := f.C1[:usable]
+	disc := f.Codes8(0)[:usable]
 	discIsC2 := int(e.trigSrc.Load()) == 1
 	if discIsC2 {
-		disc = f.C2[:usable]
+		disc = f.Codes8(1)[:usable]
 	}
 	// Canonical scan of the discrimination record — reuse the retry loop's C1
 	// scan unless the data differs (C2 source, a clamped untriggered record) or
@@ -362,21 +363,21 @@ func (e *Engine) oneFrame(norm bool) { //nolint:gocyclo,funlen // one native-fas
 		}
 	}
 
-	f.Valid = usable
-	f.WinCols = e.band.WinCols()
-	f.Interp = nativeFast
-	f.IsEnv, f.EnvCols = false, 0
-	f.Ptp = p
-	f.Trigd = sawTrig
-	f.TrigPos = trigPos
-	f.Coherent = coherent
-	f.Degraded = degraded
-	f.HaltOK = haltOK
-	f.RollCodes, f.FullRate = false, false
-	f.TdivS = e.band.TdivS
-	f.DisplayedS = e.band.DisplayedSdivS()
+	f.SetLen(usable)
+	f.WinPoints = e.band.WinCols()
+	f.Flags.Set(sample.Interp, nativeFast)
+	f.Flags.Set(sample.Envelope, false)
+	setEnvCols(f, 0)
+	f.SourcePtp = p
+	f.Status.Triggered = sawTrig
+	f.Status.Coherent = coherent
+	f.Status.Degraded = degraded
+	f.Status.Done = haltOK
+	f.Content = sample.RawDecimated
+	f.Snapshot.TdivS = e.band.TdivS
+	f.Snapshot.DisplayedS = e.band.DisplayedSdivS()
 	f.SampleS = e.band.CaptureIntervalNs() * 1e-9
-	f.Norm = norm
+	f.Snapshot.Norm = norm
 
 	// Publish policy — ONLY DISPLAY FRAMES THAT HAVE A LOCK (spec 03 §7.4, spec 05 §4,
 	// spec 04 §8.2). A "lock" is a validated triggered event on the captured CONTENT:
@@ -418,7 +419,7 @@ func (e *Engine) oneFrame(norm bool) { //nolint:gocyclo,funlen // one native-fas
 		// instead HOLDs (waits for a trigger that cannot come) via the default.
 		publish = true
 		edgeX = -1
-		f.Trigd = false
+		f.Status.Triggered = false
 		e.flatHeld = 0
 	case nativeFast && !norm && !qualifier && (!sawTrig || !sigPresent):
 		// AUTO native-fast, comparator did NOT fire within the budget (untriggered), or it fired
@@ -433,7 +434,7 @@ func (e *Engine) oneFrame(norm bool) { //nolint:gocyclo,funlen // one native-fas
 		// on noise is not a trigger (Trigd = false).
 		publish = true
 		edgeX = -1
-		f.Trigd = false
+		f.Status.Triggered = false
 		e.flatHeld = 0
 	case (nativeFast || !norm) && !qualifier && !sigPresent:
 		// NORM native-fast flat (trigger-hold with an honest 60-frame refresh), or AUTO
@@ -465,7 +466,7 @@ func (e *Engine) oneFrame(norm bool) { //nolint:gocyclo,funlen // one native-fas
 			stale := !e.lastPubAt.IsZero() && e.clk.Now().Sub(e.lastPubAt) >= autoLivenessMaxWait
 			if e.flatHeld >= nativeFlatFallbck || stale {
 				edgeX = -1 // honest unlocked refresh; never fabricate an edge
-				f.Trigd = false
+				f.Status.Triggered = false
 				publish = true
 				e.flatHeld = 0
 			}
@@ -493,7 +494,7 @@ func (e *Engine) oneFrame(norm bool) { //nolint:gocyclo,funlen // one native-fas
 			e.serialMatches.Add(1)
 			if anchor >= 0 && anchor < cols {
 				edgeX = float64(anchor) // centre the matched byte
-				f.Trigd = true
+				f.Status.Triggered = true
 			}
 		case norm || !e.autoLivenessDue(&e.serialHeld, serialFallback):
 			publish = false // (an AUTO liveness frame is displayed, but not observed)
@@ -551,7 +552,7 @@ func (e *Engine) oneFrame(norm bool) { //nolint:gocyclo,funlen // one native-fas
 	if !publish {
 		edgeX = -1 // held frames never leave the arena; keep metadata sane
 	}
-	f.EdgeX = edgeX
+	f.TriggerAt = edgeX
 
 	// AVERAGE (spec 03 §7.4): only published, coherent, edge-aligned frames
 	// enter the ring; the published samples become the ring mean. Flat
@@ -567,7 +568,7 @@ func (e *Engine) oneFrame(norm bool) { //nolint:gocyclo,funlen // one native-fas
 			}
 			e.avg.push(f, edgeX)
 			e.avg.meanInto(f) // rewrites samples, Valid and EdgeX (centre)
-			edgeX = f.EdgeX
+			edgeX = f.TriggerAt
 		}
 	}
 
@@ -668,7 +669,7 @@ func (e *Engine) oneFrame(norm bool) { //nolint:gocyclo,funlen // one native-fas
 	} else {
 		e.deadEvidence(false)
 	}
-	e.paceHold(start, publish && f.Trigd) // holdoff extends the floor after a real trigger
+	e.paceHold(start, publish && f.Status.Triggered) // holdoff extends the floor after a real trigger
 }
 
 // gcControl is the owner loop's controlled collection (the gc_ctl knob):

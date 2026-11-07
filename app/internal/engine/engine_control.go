@@ -6,6 +6,7 @@ import (
 	"math"
 	"time"
 
+	"github.com/labeth/open-dso-core/sample"
 	"github.com/labeth/open-sds1000cml/app/internal/sramcapture"
 )
 
@@ -223,13 +224,13 @@ func (e *Engine) SetChannelCoupling(ch, mode int) {
 // their coupling, so a switch to AC (or NORMAL, which publishes nothing while
 // it waits) starts from a known mean.
 // TRLC-LINKS: REQ-SDS-011
-func (e *Engine) noteChannelMeans(f *Frame) {
+func (e *Engine) noteChannelMeans(f *sample.Frame) {
 	for ch := range e.chMeanCode {
-		sig := f.C1
+		sig := f.Codes8(0)
 		if ch == 1 {
-			sig = f.C2
+			sig = f.Codes8(1)
 		}
-		n := min(f.Valid, len(sig))
+		n := min(f.Len(), len(sig))
 		if n <= 0 {
 			continue
 		}

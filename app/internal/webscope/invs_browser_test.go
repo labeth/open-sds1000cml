@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/labeth/open-dso-core/sample"
 	"github.com/labeth/open-dso-core/testenv"
 	"github.com/labeth/open-sds1000cml/app/internal/engine"
 )
@@ -32,10 +33,14 @@ func TestINVSBrowser(t *testing.T) {
 	for i := range N {
 		c1[i], c2[i] = 178, 88
 	}
-	gen := func() *engine.Frame {
-		return &engine.Frame{
-			C1: c1, C2: c2, Seq: 7, Valid: N, WinCols: N, EdgeX: -1, // flat → centre
-			TdivS: 500e-6, DisplayedS: 500e-6, SampleS: 800e-9,
+	gen := func() *sample.Frame {
+		return &sample.Frame{
+			Seq:       7,
+			WinPoints: N,
+			TriggerAt: -1,
+			SampleS:   800e-9,
+			Snapshot:  sample.Settings{TdivS: 500e-6, DisplayedS: 500e-6},
+			Traces:    []sample.Trace{{Codes8: c1, Valid: N}, {Ch: 1, Codes8: c2, Valid: N}},
 		}
 	}
 	fs := &fakeScope{frameGen: gen, stats: engine.Stats{Running: true, TrigPosFrac: 0.5}}

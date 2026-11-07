@@ -12,6 +12,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/labeth/open-dso-core/sample"
 	"github.com/labeth/open-sds1000cml/app/internal/analog"
 	"github.com/labeth/open-sds1000cml/app/internal/engine"
 	"github.com/labeth/open-sds1000cml/app/internal/lcd"
@@ -77,7 +78,7 @@ type viewRig struct {
 	fe    *fakeFE
 	clk   *testClock
 	fmu   sync.Mutex // f: the super-res loop reads it from its goroutine
-	f     *engine.Frame
+	f     *sample.Frame
 	seq   uint64
 	spect *lcd.Spectrogram
 }
@@ -114,11 +115,11 @@ func newViewRig(t *testing.T) *viewRig {
 	t.Helper()
 	fe := &fakeFE{idx: [2]int{8, 8}}
 	eng := &bodeEng{fakeEng: newEng()}
-	c := New(eng, bwlFE{fe}, -1, engine.SupportedTdivs(), 500e-6, t.Logf)
+	c := newCtl(eng, bwlFE{fe}, -1, engine.SupportedTdivs(), 500e-6, t.Logf)
 	c.decode(idle(), true)
 	c.detectSync = true
 	r := &viewRig{t: t, c: c, eng: eng, fe: fe, clk: withClock(c), spect: lcd.NewSpectrogram()}
-	c.SetFrameSource(func(fn func(*engine.Frame)) {
+	c.SetFrameSource(func(fn func(*sample.Frame)) {
 		r.fmu.Lock()
 		f := r.f
 		r.fmu.Unlock()
@@ -134,18 +135,18 @@ var rigContent atomic.Uint64
 
 // show publishes capture f (a new Seq) and lets the panel analyse it.
 // TRLC-LINKS: REQ-SDS-211, REQ-SDS-212, REQ-SDS-214, REQ-SDS-215, REQ-SDS-216, REQ-SDS-217, REQ-SDS-218
-func (r *viewRig) show(f *engine.Frame) {
+func (r *viewRig) show(f *sample.Frame) {
 	r.seq++
 	f.Seq = r.seq
-	if f.Content == 0 { // the shared decode cache keys frames by content: unique across rigs
-		f.Content = rigContent.Add(1)
+	if f.ContentID == 0 { // the shared decode cache keys frames by content: unique across rigs
+		f.ContentID = rigContent.Add(1)
 	}
 	r.fmu.Lock()
 	r.f = f
 	r.fmu.Unlock()
-	r.eng.set(func(st *engine.Stats) { st.Seq, st.TdivS = r.seq, f.TdivS })
+	r.eng.set(func(st *engine.Stats) { st.Seq, st.TdivS = r.seq, f.Snapshot.TdivS })
 	r.c.OnFrame(f)
-	if f.SampleS > 0 && !f.IsEnv {
+	if f.SampleS > 0 && !f.Flags.Has(sample.Envelope) {
 		d, _ := r.c.Snapshot()
 		r.spect.Push(f, d.FFTSrc, 0.5/f.SampleS)
 	}
@@ -177,7 +178,7 @@ func (r *viewRig) hud() lcd.HUD {
 		h.BodeFreq, h.BodeGain, h.BodePhase = append(h.BodeFreq, p.FreqHz), append(h.BodeGain, p.GainDB), append(h.BodePhase, p.PhaseDeg)
 	}
 	if r.f != nil {
-		h.SampleS, h.Trigd = r.f.SampleS, r.f.Trigd
+		h.SampleS, h.Trigd = r.f.SampleS, r.f.Status.Triggered
 	}
 	return h
 }
@@ -211,7 +212,7 @@ func (r *viewRig) shot(name string) wsview.View {
 // one after another at baud, gapS of idle between them, n samples sampleS
 // apart, triggered at the record's middle.
 // TRLC-LINKS: REQ-SDS-211, REQ-SDS-212, REQ-SDS-214, REQ-SDS-215, REQ-SDS-216, REQ-SDS-217, REQ-SDS-218
-func uartFrame(msgs []string, baud, gapS, sampleS float64, n int) *engine.Frame {
+func uartFrame(msgs []string, baud, gapS, sampleS float64, n int) *sample.Frame {
 	c1, c2 := make([]uint8, n), make([]uint8, n)
 	for i := range c1 {
 		c1[i], c2[i] = 210, 210
@@ -238,20 +239,32 @@ func uartFrame(msgs []string, baud, gapS, sampleS float64, n int) *engine.Frame 
 	for i := range c1 { // a little ringing on the edges' flat tops
 		c1[i] = uint8(int(c1[i]) + int(2*math.Sin(float64(i)*0.7)))
 	}
-	return &engine.Frame{
-		C1: c1, C2: c2, Valid: n, WinCols: n, EdgeX: float64(n) / 2, Ptp: 170,
-		TdivS: float64(n) * sampleS / 10, SampleS: sampleS, Trigd: true, FullRate: true,
+	return &sample.Frame{
+		WinPoints: n,
+		TriggerAt: float64(n) / 2,
+		SourcePtp: 170,
+		SampleS:   sampleS,
+		Content:   sample.RawFullRate,
+		Snapshot:  sample.Settings{TdivS: float64(n) * sampleS / 10},
+		Status:    sample.Status{Triggered: true},
+		Traces:    []sample.Trace{{Codes8: c1, Valid: n}, {Ch: 1, Codes8: c2, Valid: n}},
 	}
 }
 
 // toneFrame is a 1 kHz square on C1 and a 3 kHz sine on C2 over 5 ms.
 // TRLC-LINKS: REQ-SDS-211, REQ-SDS-212, REQ-SDS-214, REQ-SDS-215, REQ-SDS-216, REQ-SDS-217, REQ-SDS-218
-func toneFrame(filter string) *engine.Frame {
+func toneFrame(filter string) *sample.Frame {
 	const n = 20000
 	sampleS := 5e-3 / n
-	f := &engine.Frame{
-		C1: make([]uint8, n), C2: make([]uint8, n), Valid: n, WinCols: n, EdgeX: n / 2, Ptp: 150,
-		TdivS: 500e-6, SampleS: sampleS, Trigd: true, Filter: filter,
+	f := &sample.Frame{
+		WinPoints: n,
+		TriggerAt: n / 2,
+		SourcePtp: 150,
+		SampleS:   sampleS,
+		Cond:      sample.Conditioning{Filter: filter},
+		Snapshot:  sample.Settings{TdivS: 500e-6},
+		Status:    sample.Status{Triggered: true},
+		Traces:    []sample.Trace{{Codes8: make([]uint8, n), Valid: n}, {Ch: 1, Codes8: make([]uint8, n), Valid: n}},
 	}
 	for i := range n {
 		ph := float64(i-n/2) * sampleS * 1e3
@@ -259,8 +272,8 @@ func toneFrame(filter string) *engine.Frame {
 		if ph-math.Floor(ph) < 0.5 {
 			v = 196
 		}
-		f.C1[i] = uint8(v + 2*math.Sin(float64(i)*1.3))
-		f.C2[i] = uint8(128 + 50*math.Sin(2*math.Pi*3*ph))
+		f.Codes8(0)[i] = uint8(v + 2*math.Sin(float64(i)*1.3))
+		f.Codes8(1)[i] = uint8(128 + 50*math.Sin(2*math.Pi*3*ph))
 	}
 	return f
 }

@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/labeth/open-dso-core/measure"
+	"github.com/labeth/open-dso-core/sample"
 	"github.com/labeth/open-sds1000cml/app/internal/analog"
 	"github.com/labeth/open-sds1000cml/app/internal/engine"
 )
@@ -83,47 +84,46 @@ func (h *Handler) pava(ch int, arg string) []byte {
 	if _, ok := pavaParam[arg]; !ok && arg != "ALL" {
 		return errTok(errHeader)
 	}
-	vdiv := 1.0
+	vdiv, offV := 1.0, 0.0
 	if h.fe != nil {
-		idx, _ := h.fe.Snapshot()
-		vdiv = analog.Vdiv(idx[ch&1]) // codes are on the analog range
-	}
-	st := h.sc.Snapshot()
-	offCode := st.OffC1
-	if ch == 1 {
-		offCode = st.OffC2
-	}
-	offV := 0.0
-	if offCode != 0 && h.fe != nil {
-		offV = h.fe.OffsetVolts(ch, offCode)
+		vdiv = h.fe.RangeV(ch & 1) // codes are on the analog range
+		offV = h.lv.OffsetIn(ch, h.sc.Snapshot())
 	}
 	probe := h.probe(ch)
 	cpl := h.coupling(ch)
 	var r *measure.Result
-	h.sc.WithFrame(func(f *engine.Frame) {
-		if f == nil || f.Valid == 0 {
+	h.sc.WithFrame(func(f *sample.Frame) {
+		if f == nil || f.Len() == 0 || ch >= len(f.Traces) {
 			return
 		}
-		sig, q := f.C1, f.Q1
-		if ch == 1 {
-			sig, q = f.C2, f.Q2
+		// The measurement reads the trace on the 8-bit view at its own codes
+		// a division; a wider converter's words are measured as Q8.8 there.
+		t := &f.Traces[ch]
+		sig, q := t.Codes8, t.Precision
+		if t.Format.Storage == sample.U16 {
+			sig, q = t.View8(), nil
 		}
-		valid := min(f.Valid, len(sig))
+		vpc := vdiv / t.CodesPerDiv8() * probe
+		valid := min(f.Len(), len(sig))
 		if len(q) >= valid {
 			q = q[:valid]
 		} else {
 			q = nil
 		}
 		from := 0
-		if a, b := f.MeasureRange(); b-a < valid { // a roll view's captured stretch
+		if a, b := engine.MeasureRange(f); b-a < valid { // a roll view's captured stretch
 			from, valid = a, b
 			if q != nil {
 				q = q[a:b]
 			}
 		}
-		r = measure.ComputeAcquisition(sig[from:valid], q, vdiv/25*probe, offV*probe, f.SampleS, cpl, f.FilterGuard)
-		if r != nil && f.PeakDetect {
-			r = r.WithEnvelopeTiming(sig[:valid], vdiv/25*probe, offV*probe, f.SampleS).WithEdgeDetail(vdiv/25*probe, offV*probe, f.EdgeWindows(ch)...)
+		if t.Format.Storage == sample.U16 {
+			r = measure.ComputeTrace(t, from, valid, vpc, offV*probe, f.SampleS, cpl, f.Cond.Guard)
+		} else {
+			r = measure.ComputeAcquisition(sig[from:valid], q, vpc, offV*probe, f.SampleS, cpl, f.Cond.Guard)
+		}
+		if r != nil && f.Content == sample.PeakPairs {
+			r = r.WithEnvelopeTiming(sig[:valid], vpc, offV*probe, f.SampleS).WithEdgeDetail(vpc, offV*probe, engine.EdgeWindows(f, ch)...)
 		}
 	})
 	if r != nil && h.inverted(ch) {

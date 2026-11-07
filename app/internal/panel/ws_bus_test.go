@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/labeth/open-sds1000cml/app/internal/engine"
+	"github.com/labeth/open-dso-core/sample"
 )
 
 // BUS: the list holds the complete packets still while the messages repeat;
@@ -113,7 +113,7 @@ func TestBusEyeTools(t *testing.T) {
 // boundary and falling mid-bit, n samples sampleS apart; the bit grid starts
 // phase samples into the record.
 // TRLC-LINKS: REQ-SDS-215
-func prbsSPIFrame(bitS, sampleS float64, n int, phase float64) *engine.Frame {
+func prbsSPIFrame(bitS, sampleS float64, n int, phase float64) *sample.Frame {
 	c1, c2 := make([]uint8, n), make([]uint8, n)
 	spb := bitS / sampleS
 	lfsr := 0x7f
@@ -131,9 +131,15 @@ func prbsSPIFrame(bitS, sampleS float64, n int, phase float64) *engine.Frame {
 			c2[i] = 210
 		}
 	}
-	return &engine.Frame{
-		C1: c1, C2: c2, Valid: n, WinCols: n, EdgeX: float64(n) / 2, Ptp: 170,
-		TdivS: float64(n) * sampleS / 10, SampleS: sampleS, Trigd: true, FullRate: true,
+	return &sample.Frame{
+		WinPoints: n,
+		TriggerAt: float64(n) / 2,
+		SourcePtp: 170,
+		SampleS:   sampleS,
+		Content:   sample.RawFullRate,
+		Snapshot:  sample.Settings{TdivS: float64(n) * sampleS / 10},
+		Status:    sample.Status{Triggered: true},
+		Traces:    []sample.Trace{{Codes8: c1, Valid: n}, {Ch: 1, Codes8: c2, Valid: n}},
 	}
 }
 
@@ -145,7 +151,7 @@ func prbsSPIFrame(bitS, sampleS float64, n int, phase float64) *engine.Frame {
 func TestBusEyeAccumulatesAnSPIBus(t *testing.T) {
 	r := newViewRig(t)
 	c := r.c
-	frame := func(k int) *engine.Frame { return prbsSPIFrame(500e-9, 24e-9, 5000, 3+float64(k)*0.37) }
+	frame := func(k int) *sample.Frame { return prbsSPIFrame(500e-9, 24e-9, 5000, 3+float64(k)*0.37) }
 	r.show(frame(0))
 	press(t, c, "f2") // BUS finds the bus
 	if d, _ := c.Snapshot(); d.DecProto == 0 {
@@ -186,26 +192,26 @@ func TestBusEyeAccumulatesAnSPIBus(t *testing.T) {
 func TestBusEyeFoldsOnlyFullRateFrames(t *testing.T) {
 	r := newViewRig(t)
 	c := r.c
-	raw := func(k int) *engine.Frame { return prbsSPIFrame(500e-9, 24e-9, 5000, 3+float64(k)*0.37) }
+	raw := func(k int) *sample.Frame { return prbsSPIFrame(500e-9, 24e-9, 5000, 3+float64(k)*0.37) }
 	r.show(raw(0))
 	press(t, c, "f2") // BUS finds the bus
 	if d, _ := c.Snapshot(); d.DecProto == 0 {
 		t.Fatalf("BUS found no bus: %q", c.View().Notice)
 	}
-	others := []func(k int) *engine.Frame{
-		func(k int) *engine.Frame { // the live envelope: ordered (min, max) pairs
+	others := []func(k int) *sample.Frame{
+		func(k int) *sample.Frame { // the live envelope: ordered (min, max) pairs
 			f := prbsSPIFrame(500e-9, 96e-9, 1250, 1+float64(k)*0.21)
-			f.PeakDetect, f.Ordered, f.CaptureSampleS, f.FullRate = true, true, 24e-9, false
+			f.Content, f.Flags, f.CaptureS = sample.PeakPairs, f.Flags|sample.Ordered, 24e-9
 			return f
 		},
-		func(k int) *engine.Frame { // a decimated record
+		func(k int) *sample.Frame { // a decimated record
 			f := prbsSPIFrame(500e-9, 48e-9, 2500, 2+float64(k)*0.29)
-			f.Decimation, f.FullRate = 2, false
+			f.AcqDecim, f.Content = 2, sample.RawDecimated
 			return f
 		},
-		func(k int) *engine.Frame { // an averaged record at the full rate's spacing
+		func(k int) *sample.Frame { // an averaged record at the full rate's spacing
 			f := raw(k + 50)
-			f.Filter, f.FullRate = "; average 16", false
+			f.Cond.Filter, f.Content = "; average 16", sample.RawDecimated
 			return f
 		},
 	}
@@ -288,7 +294,7 @@ func TestBusListNamesAddressAndFault(t *testing.T) {
 			q := 1 / 100e3 / 4 / 100e-9
 			start := 8*q + 3*q // idle, START, SCL low
 			for i := int(start + 8*4*q); i < int(start+9*4*q); i++ {
-				f.C2[i] = 210
+				f.Codes8(1)[i] = 210
 			}
 		}
 		r.show(f)

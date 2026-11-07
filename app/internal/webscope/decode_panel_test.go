@@ -8,6 +8,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/labeth/open-dso-core/sample"
 	"github.com/labeth/open-sds1000cml/app/internal/engine"
 	"github.com/labeth/open-sds1000cml/app/internal/panel"
 	"github.com/labeth/open-sds1000cml/app/internal/panel/framecalc"
@@ -137,7 +138,7 @@ func (p *decodePanel) detect() {
 	var res framecalc.DecodeParams
 	var note string
 	found := false
-	p.sc.WithFrame(func(f *engine.Frame) {
+	p.sc.WithFrame(func(f *sample.Frame) {
 		r := framecalc.Detect(f, "hex")
 		proto := framecalc.ProtoOf(r.Proto)
 		if !r.OK || proto == 0 {

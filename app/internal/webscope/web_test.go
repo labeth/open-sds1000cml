@@ -10,6 +10,10 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/labeth/open-dso-core/hal"
+	"github.com/labeth/open-dso-core/sample"
+	"github.com/labeth/open-sds1000cml/app/internal/analog"
+	"github.com/labeth/open-sds1000cml/app/internal/board"
 	"github.com/labeth/open-sds1000cml/app/internal/engine"
 )
 
@@ -24,8 +28,8 @@ import (
 type fakeScope struct {
 	mu       sync.Mutex
 	stats    engine.Stats
-	frame    *engine.Frame
-	frameGen func() *engine.Frame // when set, WithFrame serves this instead
+	frame    *sample.Frame
+	frameGen func() *sample.Frame // when set, WithFrame serves this instead
 	fresh    bool
 
 	running  *bool
@@ -384,7 +388,7 @@ func (f *fakeScope) Snapshot() engine.Stats {
 }
 
 // TRLC-LINKS: REQ-SDS-163
-func (f *fakeScope) WithFrame(fn func(*engine.Frame)) {
+func (f *fakeScope) WithFrame(fn func(*sample.Frame)) {
 	f.mu.Lock()
 	fr := f.frame
 	if f.frameGen != nil {
@@ -507,4 +511,44 @@ func TestRootServesUI(t *testing.T) {
 	if rec.Code != 200 || !bytes.Contains(rec.Body.Bytes(), []byte("open-sds1000cml")) {
 		t.Fatalf("root: code=%d", rec.Code)
 	}
+}
+
+// TRLC-LINKS: REQ-SDS-162
+func (f *fakeAnalog) SetVdivV(ch int, v float64) error {
+	idx, ok := analog.PlanVdiv(v)
+	if !ok {
+		return hal.Refuse("V/div", "not a ladder step")
+	}
+	return f.SetVdiv(ch, idx)
+}
+
+// TRLC-LINKS: REQ-SDS-164
+func (f *fakeAnalog) VdivV(int) float64 { return analog.Detents[f.idx].VdivV }
+
+// TRLC-LINKS: REQ-SDS-164
+func (f *fakeAnalog) RangeV(int) float64 { return analog.Vdiv(f.idx) }
+
+// TRLC-LINKS: REQ-SDS-164
+func (f *fakeAnalog) Zoom(int) int { return analog.Detents[f.idx].Zoom }
+
+// TRLC-LINKS: REQ-SDS-164
+func (f *fakeAnalog) Emitted() bool { return f.set }
+
+// TRLC-LINKS: REQ-SDS-162
+func (f *fakeAnalog) TrigCode(v float64, srcCh int) float64 {
+	return 31437 - 911*v/f.ProbeFactor(srcCh)
+}
+
+// levelsFor is the board's levels over a test scope and front end, as the
+// app wires them.
+// TRLC-LINKS: REQ-SDS-161
+func levelsFor(sc Engine, fe Analog) Levels {
+	be, ok := sc.(board.Engine)
+	if !ok {
+		return nil
+	}
+	if bf, ok := fe.(board.FrontEnd); ok {
+		return board.New(be, bf)
+	}
+	return board.New(be, nil)
 }

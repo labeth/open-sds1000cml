@@ -5,12 +5,15 @@ package scpi
 import (
 	"bytes"
 	"encoding/binary"
+	"errors"
 	"math"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/labeth/open-dso-core/sample"
 	"github.com/labeth/open-sds1000cml/app/internal/analog"
+	"github.com/labeth/open-sds1000cml/app/internal/board"
 	"github.com/labeth/open-sds1000cml/app/internal/engine"
 )
 
@@ -20,7 +23,7 @@ import (
 // TRLC-LINKS: REQ-SDS-024
 type fakeScope struct {
 	stats engine.Stats
-	frame *engine.Frame
+	frame *sample.Frame
 	calls []string
 }
 
@@ -28,7 +31,25 @@ type fakeScope struct {
 func (f *fakeScope) Snapshot() engine.Stats { return f.stats }
 
 // TRLC-LINKS: REQ-SDS-024
-func (f *fakeScope) WithFrame(fn func(*engine.Frame)) { fn(f.frame) }
+func (f *fakeScope) WithFrame(fn func(*sample.Frame)) { fn(asPublished(f.frame)) }
+
+// asPublished gives frame f's traces the format the engine's frames state,
+// where a test left it out: 8-bit codes at 25 a division.
+// TRLC-LINKS: REQ-SDS-024
+func asPublished(f *sample.Frame) *sample.Frame {
+	if f == nil {
+		return nil
+	}
+	for i := range f.Traces {
+		if t := &f.Traces[i]; t.Format.Storage == 0 {
+			t.Format = engine.CodeFormat
+			if t.CodesPerDiv == 0 {
+				t.CodesPerDiv = engine.CodesPerDiv
+			}
+		}
+	}
+	return f
+}
 
 // TRLC-LINKS: REQ-SDS-024
 func (f *fakeScope) SetRunning(on bool) {
@@ -128,7 +149,20 @@ type fakeFE struct {
 }
 
 // TRLC-LINKS: REQ-SDS-024
-func (f *fakeFE) SetVdiv(ch, idx int) error { f.idx[ch] = idx; return nil }
+func (f *fakeFE) SetVdivV(ch int, v float64) error {
+	idx, ok := analog.PlanVdiv(v)
+	if !ok {
+		return errors.New("not a ladder step")
+	}
+	f.idx[ch] = idx
+	return nil
+}
+
+// TRLC-LINKS: REQ-SDS-024
+func (f *fakeFE) VdivV(ch int) float64 { return analog.Detents[f.idx[ch]].VdivV }
+
+// TRLC-LINKS: REQ-SDS-024
+func (f *fakeFE) RangeV(ch int) float64 { return analog.Vdiv(f.idx[ch]) }
 
 // TRLC-LINKS: REQ-SDS-024
 func (f *fakeFE) Snapshot() ([2]int, bool) { return f.idx, true }
@@ -179,18 +213,21 @@ func (d *fakeDisplay) SetMenuOpen(on bool) { d.menu = on }
 // TRLC-LINKS: REQ-SDS-024
 func newH(tb testing.TB) (*Handler, *fakeScope) {
 	tb.Helper()
-	f := &engine.Frame{
-		C1: make([]uint8, 2048), C2: make([]uint8, 2048),
-		Valid: 2048, WinCols: 2048, Seq: 3, SampleS: 800e-9, EdgeX: -1,
+	f := &sample.Frame{
+		WinPoints: 2048,
+		Seq:       3,
+		SampleS:   800e-9,
+		TriggerAt: -1,
+		Traces:    []sample.Trace{{Codes8: make([]uint8, 2048), Valid: 2048}, {Ch: 1, Codes8: make([]uint8, 2048), Valid: 2048}},
 	}
-	for i := range f.C1 {
-		f.C1[i] = uint8(i % 200)
+	for i := range f.Codes8(0) {
+		f.Codes8(0)[i] = uint8(i % 200)
 	}
 	fs := &fakeScope{
 		stats: engine.Stats{Running: true, TdivS: 500e-6, AvgCount: 16, TrigRising: true, TrigPosFrac: .5},
 		frame: f,
 	}
-	return New(fs, nil, nil, nil, tb.Logf), fs
+	return New(fs, nil, board.New(fs, nil), nil, nil, tb.Logf), fs
 }
 
 // newHFE is newH plus a truthful fake front end (VDIV/OFST round-trips) and a
@@ -200,7 +237,7 @@ func newHFE(tb testing.TB) (*Handler, *fakeScope, *fakeFE) {
 	tb.Helper()
 	h, fs := newH(tb)
 	fe := &fakeFE{fs: fs, probe: [2]float64{1, 1}}
-	h.fe = fe
+	h.fe, h.lv = fe, board.New(fs, fe)
 	h.disp = &fakeDisplay{}
 	return h, fs, fe
 }
@@ -344,7 +381,7 @@ func TestWavedesc(t *testing.T) {
 		t.Fatalf("HORIZ_OFFSET = %v", ho)
 	}
 	// A triggered frame places t=0 at its exact trigger sample.
-	fs.frame.EdgeX = 500.25
+	fs.frame.TriggerAt = 500.25
 	out = h.HandleLine([]byte("C1:WF? DESC\n"))
 	d = out[len(head) : len(head)+346]
 	if ho := math.Float64frombits(binary.LittleEndian.Uint64(d[180:])); math.Abs(ho-(-500.25*800e-9)) > 1e-12 {
@@ -557,10 +594,10 @@ func TestInvertedSnapshot(t *testing.T) {
 // TRLC-LINKS: REQ-SDS-024
 func TestRollRescale(t *testing.T) {
 	h, fs := newH(t)
-	fs.frame.RollCodes = true
+	fs.frame.Traces[0].CodesPerDiv, fs.frame.Traces[1].CodesPerDiv = engine.RollCodesPerDiv, engine.RollCodesPerDiv
 	// Roll codes are HALF-scale: a +25 roll deviation is +50 deep codes.
-	for i := range fs.frame.C1 {
-		fs.frame.C1[i] = 153 // +25 from centre → deep +50 → 178
+	for i := range fs.frame.Codes8(0) {
+		fs.frame.Codes8(0)[i] = 153 // +25 from centre → deep +50 → 178
 	}
 	do(t, h, "WFSU SP,1,NP,4,FP,0")
 	out := h.HandleLine([]byte("C1:WF? DAT2\n"))
@@ -570,8 +607,8 @@ func TestRollRescale(t *testing.T) {
 		t.Fatalf("roll rescale: %d, want +50 (deviation doubled)", int8(payload[0]))
 	}
 	// Clamp: a +100 roll deviation would be +200 deep → clamp to 255.
-	for i := range fs.frame.C1 {
-		fs.frame.C1[i] = 228
+	for i := range fs.frame.Codes8(0) {
+		fs.frame.Codes8(0)[i] = 228
 	}
 	out = h.HandleLine([]byte("C1:WF? DAT2\n"))
 	if int8(out[len(head)]) != 127 {
@@ -610,7 +647,7 @@ func TestPAVAMeasuresPublishedFrame(t *testing.T) {
 			c[i] = 153
 		}
 	}
-	fs.frame = &engine.Frame{Seq: 1, Valid: n, C1: c, C2: c, SampleS: 2e-9}
+	fs.frame = &sample.Frame{Seq: 1, SampleS: 2e-9, Traces: []sample.Trace{{Valid: n, Codes8: c}, {Ch: 1, Valid: n, Codes8: c}}}
 	if got := do(t, h, "C1:PAVA? AMPL"); got != "C1:PAVA AMPL,2.000000E+00V\n" {
 		t.Fatalf("AMPL = %q", got)
 	}
@@ -620,7 +657,7 @@ func TestPAVAMeasuresPublishedFrame(t *testing.T) {
 	if got := do(t, h, "C1:PAVA? NOPE"); got != "Command header error\n" {
 		t.Fatalf("unknown parameter = %q", got)
 	}
-	fs.frame.PeakDetect = true // timing at bucket resolution; edges inside a bucket are unknown
+	fs.frame.Content = sample.PeakPairs // timing at bucket resolution; edges inside a bucket are unknown
 	if got := do(t, h, "C1:PAVA? FREQ"); got != "C1:PAVA FREQ,1.000000E+06Hz\n" {
 		t.Fatalf("peak-detect FREQ = %q", got)
 	}
@@ -646,7 +683,7 @@ func TestPAVAZoomedDetentUsesAnalogRange(t *testing.T) {
 			c[i] = 153
 		}
 	}
-	fs.frame = &engine.Frame{Seq: 1, Valid: n, C1: c, C2: c, SampleS: 2e-9}
+	fs.frame = &sample.Frame{Seq: 1, SampleS: 2e-9, Traces: []sample.Trace{{Valid: n, Codes8: c}, {Ch: 1, Valid: n, Codes8: c}}}
 	if got := do(t, h, "C1:PAVA? AMPL"); got != "C1:PAVA AMPL,2.000000E-02V\n" {
 		t.Fatalf("AMPL at 2 mV/div = %q, want 20 mV", got)
 	}
@@ -801,7 +838,7 @@ func TestPAVAAll(t *testing.T) {
 			c[i] = 153
 		}
 	}
-	fs.frame = &engine.Frame{Seq: 1, Valid: n, C1: c, C2: c, SampleS: 2e-9}
+	fs.frame = &sample.Frame{Seq: 1, SampleS: 2e-9, Traces: []sample.Trace{{Valid: n, Codes8: c}, {Ch: 1, Valid: n, Codes8: c}}}
 	all := strings.TrimSuffix(do(t, h, "C1:PAVA? ALL"), "\n")
 	parts := strings.Split(strings.TrimPrefix(all, "C1:PAVA ALL,"), ",")
 	if len(parts) != 2*len(pavaOrder) {
@@ -827,5 +864,30 @@ func TestATTNRefusesNonFinite(t *testing.T) {
 		if p := fe.probe[0]; p != 10 {
 			t.Errorf("C1:ATTN %s left the probe at %v, want 10 kept", v, p)
 		}
+	}
+}
+
+// PAVA? measures a 12-bit trace on its 8-bit view at its own codes a
+// division: the same square as 8-bit codes reads the same.
+// TRLC-LINKS: REQ-SDS-024
+func TestPAVAReadsTwelveBitTraces(t *testing.T) {
+	h, fs := newH(t)
+	n := 5000
+	c := make([]uint8, n)
+	w := make([]uint16, n)
+	for i := range c {
+		c[i] = 78
+		if (i/250)%2 == 1 {
+			c[i] = 178
+		}
+		w[i] = uint16(c[i]) << 8
+	}
+	fs.frame = &sample.Frame{Seq: 1, SampleS: 2e-9, Traces: []sample.Trace{{Valid: n, Codes8: c}, {Ch: 1, Valid: n, Codes8: c}}}
+	want := do(t, h, "C1:PAVA? ALL")
+	f12 := sample.CodeFormat{Bits: 12, Storage: sample.U16, Shift: 4, Max: 0xFFF0, Mid: 0x8000}
+	fs.frame = &sample.Frame{Seq: 2, SampleS: 2e-9, Traces: []sample.Trace{
+		{Valid: n, Codes16: w, Format: f12, CodesPerDiv: 25 * 256}, {Ch: 1, Valid: n, Codes16: w, Format: f12, CodesPerDiv: 25 * 256}}}
+	if got := do(t, h, "C1:PAVA? ALL"); got != want || !strings.Contains(want, "AMPL,4.00") {
+		t.Fatalf("12-bit PAVA? ALL\n%q\nwant the 8-bit\n%q", got, want)
 	}
 }

@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/labeth/open-sds1000cml/app/internal/engine"
+	"github.com/labeth/open-dso-core/sample"
 	"github.com/labeth/open-sds1000cml/app/internal/panel/framecalc"
 )
 
@@ -14,7 +14,7 @@ import (
 // flat): break, sync, protected identifier, two data bytes and the enhanced
 // checksum, every 4 ms.
 // TRLC-LINKS: REQ-SDS-214, REQ-SDS-223, REQ-SDS-238
-func linFrameRecord() *engine.Frame {
+func linFrameRecord() *sample.Frame {
 	const n, sampleS, baud = 20000, 1e-6, 19200.0
 	c1, c2 := make([]uint8, n), make([]uint8, n)
 	for i := range c1 {
@@ -58,9 +58,15 @@ func linFrameRecord() *engine.Frame {
 		char(0xff - sum)
 		t = start + 4000
 	}
-	return &engine.Frame{
-		C1: c1, C2: c2, Valid: n, WinCols: n, EdgeX: n / 2, Ptp: 170,
-		TdivS: n * sampleS / 10, SampleS: sampleS, Trigd: true, FullRate: true,
+	return &sample.Frame{
+		WinPoints: n,
+		TriggerAt: n / 2,
+		SourcePtp: 170,
+		SampleS:   sampleS,
+		Content:   sample.RawFullRate,
+		Snapshot:  sample.Settings{TdivS: n * sampleS / 10},
+		Status:    sample.Status{Triggered: true},
+		Traces:    []sample.Trace{{Codes8: c1, Valid: n}, {Ch: 1, Codes8: c2, Valid: n}},
 	}
 }
 

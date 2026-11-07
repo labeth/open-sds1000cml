@@ -9,6 +9,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/labeth/open-dso-core/sample"
 	"github.com/labeth/open-dso-core/testenv"
 	"github.com/labeth/open-sds1000cml/app/internal/engine"
 )
@@ -37,7 +38,7 @@ func testSuperresBrowserBand(t *testing.T, band string) {
 		rng ^= rng << 17
 		return float64(rng%1e6) / 1e6
 	}
-	gen := func() *engine.Frame {
+	gen := func() *sample.Frame {
 		n++
 		jitter := (rnd() - 0.5) * 6 // ±3 samples of trigger phase
 		c1 := make([]uint8, N)
@@ -52,9 +53,14 @@ func testSuperresBrowserBand(t *testing.T, band string) {
 			c1[i] = uint8(v)
 			c2[i] = uint8(128 + 30*math.Sin(2*math.Pi*float64(i)/512))
 		}
-		return &engine.Frame{
-			C1: c1, C2: c2, Seq: n, Valid: N, WinCols: N, EdgeX: N / 2,
-			TdivS: 500e-6, DisplayedS: 500e-6, SampleS: 800e-9, Trigd: true,
+		return &sample.Frame{
+			Seq:       n,
+			WinPoints: N,
+			TriggerAt: N / 2,
+			SampleS:   800e-9,
+			Snapshot:  sample.Settings{TdivS: 500e-6, DisplayedS: 500e-6},
+			Status:    sample.Status{Triggered: true},
+			Traces:    []sample.Trace{{Codes8: c1, Valid: N}, {Ch: 1, Codes8: c2, Valid: N}},
 		}
 	}
 	fs := &fakeScope{frameGen: gen, stats: engine.Stats{Running: true, TrigPosFrac: 0.5, BandKind: band}}

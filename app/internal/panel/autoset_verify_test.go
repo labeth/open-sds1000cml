@@ -5,6 +5,8 @@ package panel
 import (
 	"testing"
 
+	"github.com/labeth/open-dso-core/sample"
+	"github.com/labeth/open-sds1000cml/app/internal/board"
 	"github.com/labeth/open-sds1000cml/app/internal/engine"
 )
 
@@ -30,10 +32,10 @@ func (f *fireEng) AcqLog(int) ([]engine.AcqSample, float64) {
 // TRLC-LINKS: REQ-SDS-137
 func TestAutosetVerifyTrigLevelScansIntoBand(t *testing.T) {
 	fe := &fireEng{fireLo: 30200, fireHi: 33400}
-	c := &Controller{eng: fe}
+	c := &Controller{eng: fe, lv: board.New(fe, nil)}
 	fe.level = 29000 // the (wrong) computed commit
 	stop := make(chan struct{})
-	if !c.verifyTrigLevel(stop, 29000) {
+	if !c.verifyTrigLevel(stop, engine.TrigLevelVolts(29000)) {
 		t.Fatal("verify reported cancelled")
 	}
 	if fe.level < fe.fireLo || fe.level > fe.fireHi {
@@ -45,10 +47,10 @@ func TestAutosetVerifyTrigLevelScansIntoBand(t *testing.T) {
 // TRLC-LINKS: REQ-SDS-137
 func TestAutosetVerifyTrigLevelKeepsComputedWhenNothingFires(t *testing.T) {
 	fe := &fireEng{fireLo: 1, fireHi: 2} // outside the DAC range → never fires
-	c := &Controller{eng: fe}
+	c := &Controller{eng: fe, lv: board.New(fe, nil)}
 	fe.level = 31000
 	stop := make(chan struct{})
-	if !c.verifyTrigLevel(stop, 31000) {
+	if !c.verifyTrigLevel(stop, engine.TrigLevelVolts(31000)) {
 		t.Fatal("verify reported cancelled")
 	}
 	if fe.level != 31000 {
@@ -60,12 +62,12 @@ func TestAutosetVerifyTrigLevelKeepsComputedWhenNothingFires(t *testing.T) {
 func TestAutosetSRAMUsesPublishedTriggerEvidence(t *testing.T) {
 	e := &fakeEng{stats: engine.Stats{BandKind: "sram"}}
 	c := &Controller{eng: e}
-	f := &engine.Frame{Coherent: true, Trigd: true}
-	c.SetFrameSource(func(fn func(*engine.Frame)) { fn(f) })
+	f := &sample.Frame{Status: sample.Status{Coherent: true, Triggered: true}, Traces: []sample.Trace{{}, {Ch: 1}}}
+	c.SetFrameSource(func(fn func(*sample.Frame)) { fn(f) })
 	if !c.trigFiring() {
 		t.Fatal("ignored SRAM frame trigger")
 	}
-	f.Trigd = false
+	f.Status.Triggered = false
 	if c.trigFiring() {
 		t.Fatal("forced SRAM frame counted as triggered")
 	}

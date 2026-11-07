@@ -8,6 +8,7 @@ import (
 	"sync/atomic"
 
 	"github.com/labeth/open-dso-core/decode"
+	"github.com/labeth/open-dso-core/sample"
 	"github.com/labeth/open-sds1000cml/app/internal/sramcapture"
 )
 
@@ -31,25 +32,25 @@ type qualExtent struct {
 // learnQualExtentOf is learnQualExtent with the channels' extents taken
 // from lv when it is given.
 // TRLC-LINKS: REQ-SDS-011
-func (e *Engine) learnQualExtentOf(f *Frame, sc [2]chScale, lv *frameLevels) {
-	if f == nil || f.Valid < 64 {
+func (e *Engine) learnQualExtentOf(f *sample.Frame, sc [2]chScale, lv *frameLevels) {
+	if f == nil || f.Len() < 64 {
 		return
 	}
 	for ch := range 2 {
-		codes := f.C1
+		codes := f.Codes8(0)
 		if ch == 1 {
-			codes = f.C2
+			codes = f.Codes8(1)
 		}
-		if len(codes) < f.Valid || !(sc[ch].vdiv > 0) {
+		if len(codes) < f.Len() || !(sc[ch].vdiv > 0) {
 			continue
 		}
 		var lo, hi int
 		var ok bool
 		if lv != nil {
-			lv.of(ch, codes[:f.Valid])
+			lv.of(ch, codes[:f.Len()])
 			lo, hi, ok = lv.extLo[ch], lv.extHi[ch], lv.extOK[ch]
 		} else {
-			lo, hi, ok = decode.Extent(codes[:f.Valid])
+			lo, hi, ok = decode.Extent(codes[:f.Len()])
 		}
 		if !ok {
 			continue
@@ -76,7 +77,7 @@ func (e *Engine) learnQualExtentOf(f *Frame, sc [2]chScale, lv *frameLevels) {
 // transient, which widens the learned extent (at 10 V/div a pulse level is
 // planned off the signal).
 // TRLC-LINKS: REQ-SDS-011, REQ-SDS-013
-func (e *Engine) learnLevels(f *Frame, sc [2]chScale, feAtArm uint64) {
+func (e *Engine) learnLevels(f *sample.Frame, sc [2]chScale, feAtArm uint64) {
 	if feAtArm == e.feGen.Load() && feAtArm == e.learnFE {
 		var lv frameLevels // one histogram a channel for both
 		e.learnSerialLevelsOf(f, sc, &lv)
@@ -190,9 +191,9 @@ func qualName(kind uint8) string {
 // have fired (the qualifier fires sramcapture.QualFireNs later, a slope
 // QualSlopeFireNs). The FPGA decided the trigger; only its position moves.
 // TRLC-LINKS: REQ-SDS-011
-func placeQualified(f *Frame, disc []uint8, q []uint16, qc sramcapture.QualifierConfig, level uint8) float64 {
-	x := f.EdgeX
-	if !f.Trigd || !(x >= 0) || f.PeakDetect {
+func placeQualified(f *sample.Frame, disc []uint8, q []uint16, qc sramcapture.QualifierConfig, level uint8) float64 {
+	x := f.TriggerAt
+	if !f.Status.Triggered || !(x >= 0) || f.Content == sample.PeakPairs {
 		return x
 	}
 	if f.SampleS > 0 {
@@ -204,14 +205,14 @@ func placeQualified(f *Frame, disc []uint8, q []uint16, qc sramcapture.Qualifier
 	}
 	switch qc.Kind {
 	case sramcapture.QualPulse:
-		return refineTriggerEdge(disc, q, f.Valid, x, float64(level), qc.Negative)
+		return refineTriggerEdge(disc, q, f.Len(), x, float64(level), qc.Negative)
 	case sramcapture.QualSlope:
 		if qc.Negative {
-			return refineTriggerEdge(disc, q, f.Valid, x, float64(qc.LevelA), false)
+			return refineTriggerEdge(disc, q, f.Len(), x, float64(qc.LevelA), false)
 		}
-		return refineTriggerEdge(disc, q, f.Valid, x, float64(qc.LevelB), true)
+		return refineTriggerEdge(disc, q, f.Len(), x, float64(qc.LevelB), true)
 	case sramcapture.QualVideo:
-		end := refineTriggerEdge(disc, q, f.Valid, x, float64(level), qc.Negative)
+		end := refineTriggerEdge(disc, q, f.Len(), x, float64(level), qc.Negative)
 		// back to the sync's leading edge, at most a line sync's width before
 		span := 8e-6 / f.SampleS
 		for i := int(end); i > 0 && float64(int(end)-i) <= span; i-- {

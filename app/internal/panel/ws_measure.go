@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/labeth/open-dso-core/measure"
+	"github.com/labeth/open-dso-core/sample"
 	"github.com/labeth/open-sds1000cml/app/internal/engine"
 	"github.com/labeth/open-sds1000cml/app/internal/panel/framecalc"
 	"github.com/labeth/open-sds1000cml/app/internal/panel/wsview"
@@ -85,8 +86,8 @@ func (c *Controller) seedMeas() {
 // statKey is what the statistics depend on: a change starts them again.
 // TRLC-LINKS: REQ-SDS-217
 func statKey(s *sv) string {
-	return fmt.Sprint(s.vidx, s.probe, s.cpl, s.offV, s.st.TdivS, s.st.TrigSource, s.st.TrigRising, s.st.TrigType,
-		s.st.TrigCode, s.st.AcqMode, s.st.AvgCount, s.st.EresLen, s.meas, s.inv)
+	return fmt.Sprint(s.vert, s.probe, s.cpl, s.offV, s.st.TdivS, s.st.TrigSource, s.st.TrigRising, s.st.TrigType,
+		s.trigSaved, s.st.AcqMode, s.st.AvgCount, s.st.EresLen, s.meas, s.inv)
 }
 
 // statsResetLocked zeroes the statistics (c.amu held).
@@ -113,7 +114,7 @@ func measTabOpen(s *sv) bool { return s.ui.open && sheetTabs[s.ui.tab].id == tab
 
 // measVals measures the channels in need: every parameter's value.
 // TRLC-LINKS: REQ-SDS-217
-func measVals(a *anaState, s *sv, f *engine.Frame, need [2]bool) {
+func measVals(a *anaState, s *sv, f *sample.Frame, need [2]bool) {
 	for ch := range 2 {
 		a.allOK[ch] = false
 		if !need[ch] {
@@ -161,8 +162,8 @@ func windowParams(m *measure.Result) map[int]bool {
 // measFrame is MEASURE's analysis: the cursors' trace volts, the
 // measurements and their statistics.
 // TRLC-LINKS: REQ-SDS-217
-func (c *Controller) measFrame(a *anaState, s *sv, f *engine.Frame) {
-	if f.IsEnv {
+func (c *Controller) measFrame(a *anaState, s *sv, f *sample.Frame) {
+	if f.Flags.Has(sample.Envelope) {
 		return
 	}
 	if s.curOn && s.curType == 0 {
@@ -190,8 +191,9 @@ func (c *Controller) measFrame(a *anaState, s *sv, f *engine.Frame) {
 		a.stats, a.statLast = map[measItem]*Stats{}, map[measItem]float64{}
 	}
 	// An edge-window reading is counted once, on the frame it is new to.
-	freshEdge := f.EdgeRead == 0 || f.EdgeRead != a.statEdge
-	a.statEdge = f.EdgeRead
+	edgeRead := engine.EdgeRead(f)
+	freshEdge := edgeRead == 0 || edgeRead != a.statEdge
+	a.statEdge = edgeRead
 	anyOn := false
 	for _, it := range s.meas {
 		if !a.allOK[it.ch] {
@@ -478,14 +480,14 @@ func cursorLines(s *sv, liveV [2][2]float64, liveOK [2]bool) []wsview.Span {
 
 // cursorTraceVolts reads each channel's trace at the time cursors.
 // TRLC-LINKS: REQ-SDS-217
-func cursorTraceVolts(f *engine.Frame, s *sv) (v [2][2]float64, ok [2]bool) {
-	if f == nil || f.IsEnv || len(f.C1) == 0 {
+func cursorTraceVolts(f *sample.Frame, s *sv) (v [2][2]float64, ok [2]bool) {
+	if f == nil || f.Flags.Has(sample.Envelope) || len(f.Codes8(0)) == 0 {
 		return v, ok
 	}
-	g := geom{valid: framecalc.Valid(f), winCols: f.WinCols, edgeX: f.EdgeX, sampleS: f.SampleS}
+	g := geom{valid: framecalc.Valid(f), winCols: f.WinPoints, edgeX: f.TriggerAt, sampleS: f.SampleS}
 	left, win := windowOf(g, s)
 	for ch := range 2 {
-		if ch == 1 && len(f.C2) < g.valid {
+		if ch == 1 && len(f.Codes8(1)) < g.valid {
 			continue
 		}
 		sig := framecalc.Channel(f, ch, g.valid)

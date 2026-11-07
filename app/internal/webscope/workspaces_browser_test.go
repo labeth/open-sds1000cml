@@ -11,6 +11,7 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/labeth/open-dso-core/sample"
 	"github.com/labeth/open-dso-core/testenv"
 	"github.com/labeth/open-dso-core/webserver/wire"
 	"github.com/labeth/open-sds1000cml/app/internal/engine"
@@ -61,7 +62,7 @@ func (w *wsScope) Calls() []string {
 // WithFrame advances while running; SINGLE stops after one capture, or after a
 // full block in block-average mode.
 // TRLC-LINKS: REQ-SDS-219
-func (w *wsScope) WithFrame(fn func(*engine.Frame)) {
+func (w *wsScope) WithFrame(fn func(*sample.Frame)) {
 	z := w.fuzzScope
 	z.mu.Lock()
 	filter := ""
@@ -85,12 +86,12 @@ func (w *wsScope) WithFrame(fn func(*engine.Frame)) {
 	}
 	f := z.frameLocked()
 	z.mu.Unlock()
-	f.C1, f.C2 = w.sig(f.Seq)
-	f.Filter = filter
+	f.Traces[0].Codes8, f.Traces[1].Codes8 = w.sig(f.Seq)
+	f.Cond.Filter = filter
 	if w.sampleS > 0 {
 		f.SampleS = w.sampleS
-		f.TdivS = w.sampleS * fuzzN / 10
-		f.DisplayedS = f.TdivS
+		f.Snapshot.TdivS = w.sampleS * fuzzN / 10
+		f.Snapshot.DisplayedS = f.Snapshot.TdivS
 	}
 	fn(f)
 }

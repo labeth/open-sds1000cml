@@ -2,7 +2,11 @@
 
 package engine
 
-import "math"
+import (
+	"math"
+
+	"github.com/labeth/open-dso-core/sample"
+)
 
 // triggerRefineSpan is how far either side of the hardware trigger index the
 // exact crossing is sought. The FPGA reports the trigger per SRAM word (two
@@ -104,9 +108,9 @@ func confirmTriggerEdge(sig []uint8, q []uint16, valid int, edgeX, level float64
 // what the TRIG tab warns on. Envelope frames hold bucket extremes, not
 // samples in time order: they are checked, not refined.
 // TRLC-LINKS: REQ-SDS-011
-func (e *Engine) placeEdgeTrigger(f *Frame, disc []uint8, q []uint16, level float64, rising bool) bool {
-	confirmed := confirmTriggerEdge(disc, q, f.Valid, f.EdgeX, level, rising, f.PeakDetect)
-	if !confirmed && f.Decimation > 1 {
+func (e *Engine) placeEdgeTrigger(f *sample.Frame, disc []uint8, q []uint16, level float64, rising bool) bool {
+	confirmed := confirmTriggerEdge(disc, q, f.Len(), f.TriggerAt, level, rising, f.Content == sample.PeakPairs)
+	if !confirmed && uint32(f.AcqDecim) > 1 {
 		// the comparators read the raw samples, with a re-arm band past the
 		// converters' spread (planHysteresis), and decimated a crossing holds
 		// for a sample of every converter (ADR-EDGE-TRIGGER-RAW): no
@@ -117,9 +121,8 @@ func (e *Engine) placeEdgeTrigger(f *Frame, disc []uint8, q []uint16, level floa
 		return true
 	}
 	e.noteNoiseTrigger(!confirmed)
-	if confirmed && !f.PeakDetect {
-		f.EdgeX = refineTriggerEdge(disc, q, f.Valid, f.EdgeX, level, rising)
-		f.TrigPos = int(f.EdgeX)
+	if confirmed && f.Content != sample.PeakPairs {
+		f.TriggerAt = refineTriggerEdge(disc, q, f.Len(), f.TriggerAt, level, rising)
 	}
 	return confirmed
 }

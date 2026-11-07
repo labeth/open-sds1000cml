@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/labeth/open-dso-core/measure"
+	"github.com/labeth/open-dso-core/sample"
 	"github.com/labeth/open-sds1000cml/app/internal/analog"
 	"github.com/labeth/open-sds1000cml/app/internal/engine"
 )
@@ -23,7 +24,7 @@ func TestRailing(t *testing.T) {
 	c, _, _ := newC(t)
 
 	// helper: build an N-sample channel where `railed` of them are pinned high.
-	mk := func(n, railed int, env bool) *engine.Frame {
+	mk := func(n, railed int, env bool) *sample.Frame {
 		s := make([]uint8, n)
 		for i := range s {
 			s[i] = 128 // mid-screen, well clear of both rails
@@ -31,9 +32,11 @@ func TestRailing(t *testing.T) {
 		for i := 0; i < railed && i < n; i++ {
 			s[i] = 255
 		}
-		return &engine.Frame{C1: s, C2: s, Valid: n, IsEnv: env}
+		f := &sample.Frame{Traces: []sample.Trace{{Codes8: s, Valid: n}, {Ch: 1, Codes8: s, Valid: n}}}
+		f.Flags.Set(sample.Envelope, env)
+		return f
 	}
-	use := func(f *engine.Frame) { c.SetFrameSource(func(fn func(*engine.Frame)) { fn(f) }) }
+	use := func(f *sample.Frame) { c.SetFrameSource(func(fn func(*sample.Frame)) { fn(f) }) }
 
 	// Clean trace: nothing at the rails → not railing.
 	use(mk(1000, 0, false))
@@ -62,7 +65,7 @@ func TestRailing(t *testing.T) {
 		for i := range 80 {
 			s[i] = 0
 		}
-		use(&engine.Frame{C1: s, C2: s, Valid: 1000})
+		use(&sample.Frame{Traces: []sample.Trace{{Codes8: s, Valid: 1000}, {Ch: 1, Codes8: s, Valid: 1000}}})
 		if !c.railing(0) {
 			t.Errorf("bottom-rail (code 0) not reported as railing")
 		}
@@ -92,7 +95,7 @@ func TestRailing(t *testing.T) {
 		for i := range 80 {
 			railed[i] = 255
 		}
-		use(&engine.Frame{C1: clean, C2: railed, Valid: 1000})
+		use(&sample.Frame{Traces: []sample.Trace{{Codes8: clean, Valid: 1000}, {Ch: 1, Codes8: railed, Valid: 1000}}})
 		if c.railing(0) {
 			t.Errorf("C1 clean but ch0 reported railing")
 		}
@@ -111,14 +114,14 @@ func TestRailing(t *testing.T) {
 // TRLC-LINKS: REQ-SDS-137
 func TestOffScreenSaturated(t *testing.T) {
 	c, _, _ := newC(t)
-	use := func(f *engine.Frame) { c.SetFrameSource(func(fn func(*engine.Frame)) { fn(f) }) }
+	use := func(f *sample.Frame) { c.SetFrameSource(func(fn func(*sample.Frame)) { fn(f) }) }
 
 	// Every sample at code 251: pinned at the top edge, but below the 254 rail.
 	edge := make([]uint8, 1000)
 	for i := range edge {
 		edge[i] = 251
 	}
-	use(&engine.Frame{C1: edge, C2: edge, Valid: 1000})
+	use(&sample.Frame{Traces: []sample.Trace{{Codes8: edge, Valid: 1000}, {Ch: 1, Codes8: edge, Valid: 1000}}})
 	if c.railing(0) {
 		t.Fatalf("code-251 edge should NOT count as hard ADC-railing (0%% at rails)")
 	}
@@ -135,7 +138,7 @@ func TestOffScreenSaturated(t *testing.T) {
 			centred[i] = 226 // ~+3.9 div → midpoint 128
 		}
 	}
-	use(&engine.Frame{C1: centred, C2: centred, Valid: 1000})
+	use(&sample.Frame{Traces: []sample.Trace{{Codes8: centred, Valid: 1000}, {Ch: 1, Codes8: centred, Valid: 1000}}})
 	if c.offScreen(0) {
 		t.Errorf("centred full-screen signal flagged off-screen — would false-coarsen")
 	}
@@ -148,8 +151,8 @@ func TestAutosetNoSignalRestoresRequestedOffsets(t *testing.T) {
 	eng.stats.TdivS = 1e-6
 	fe.offReqV = [2]float64{-1.35, 0.65}
 	before := fe.offReqV
-	c.SetFrameSource(func(fn func(*engine.Frame)) {
-		fn(&engine.Frame{C1: []uint8{128, 128, 128, 128, 128, 128, 128, 128}, C2: []uint8{128, 128, 128, 128, 128, 128, 128, 128}, Valid: 8, SampleS: 2e-9})
+	c.SetFrameSource(func(fn func(*sample.Frame)) {
+		fn(&sample.Frame{SampleS: 2e-9, Traces: []sample.Trace{{Codes8: []uint8{128, 128, 128, 128, 128, 128, 128, 128}, Valid: 8}, {Ch: 1, Codes8: []uint8{128, 128, 128, 128, 128, 128, 128, 128}, Valid: 8}}})
 	})
 	c.runAutoset(make(chan struct{}))
 	if fe.offReqV != before {
@@ -178,8 +181,10 @@ func TestAutosetLeasesSampleFrames(t *testing.T) {
 			sig[i] = 200
 		}
 	}
-	c.SetFrameSource(func(fn func(*engine.Frame)) {
-		fn(&engine.Frame{C1: sig, C2: sig, Valid: len(sig), SampleS: 50e-9, IsEnv: len(leaser.leases) == 0})
+	c.SetFrameSource(func(fn func(*sample.Frame)) {
+		f := &sample.Frame{SampleS: 50e-9, Traces: []sample.Trace{{Codes8: sig, Valid: len(sig)}, {Ch: 1, Codes8: sig, Valid: len(sig)}}}
+		f.Flags.Set(sample.Envelope, len(leaser.leases) == 0)
+		fn(f)
 	})
 	stop := make(chan struct{})
 	for i := range 2 {
@@ -203,8 +208,8 @@ func TestAutosetEndsItsSampleLease(t *testing.T) {
 	c, e, _ := newC(t)
 	leaser := &autosetSampleEngine{fakeEng: e}
 	c.eng = leaser
-	c.SetFrameSource(func(fn func(*engine.Frame)) {
-		fn(&engine.Frame{C1: make([]uint8, 200), C2: make([]uint8, 200), Valid: 200, SampleS: 50e-9})
+	c.SetFrameSource(func(fn func(*sample.Frame)) {
+		fn(&sample.Frame{SampleS: 50e-9, Traces: []sample.Trace{{Codes8: make([]uint8, 200), Valid: 200}, {Ch: 1, Codes8: make([]uint8, 200), Valid: 200}}})
 	})
 	c.runAutoset(make(chan struct{}))
 	if n := len(leaser.leases); n < 2 || leaser.leases[n-1] != 0 {
@@ -246,21 +251,21 @@ func TestAutosetKeepsABurstsSwing(t *testing.T) {
 		}
 		idle[i] = 200 + uint8(i%2)*2
 	}
-	c.SetFrameSource(func(fn func(*engine.Frame)) {
+	c.SetFrameSource(func(fn func(*sample.Frame)) {
 		sig := idle
 		if e.stats.TdivS <= 1e-6 {
 			sig = burst
 		}
-		fn(&engine.Frame{C1: sig, C2: sig, Valid: len(sig), SampleS: 50e-9})
+		fn(&sample.Frame{SampleS: 50e-9, Traces: []sample.Trace{{Codes8: sig, Valid: len(sig)}, {Ch: 1, Codes8: sig, Valid: len(sig)}}})
 	})
 	c.runAutoset(make(chan struct{}))
 	vidx, _ := fe.Snapshot()
 	got := fe.offReqV
-	want := detentFor(160*analog.Vdiv(nearestDetent(2.0))/25, goalScope.fill) // the burst read at the sweep's 2 V/div
+	want := ladderStepFor(testLadder, 160*analog.Vdiv(nearestLadderStep(testLadder, 2.0))/25, goalScope.fill) // the burst read at the sweep's 2 V/div
 	// the midpoint the burst reads at that scale: the offset centres it (an
 	// idle-only capture's midpoint, its rail, must not re-centre it)
 	for ch := range 2 {
-		c.setVdiv(ch, nearestDetent(2.0))
+		c.setVdiv(ch, nearestLadderStep(testLadder, 2.0))
 	}
 	e.stats.TdivS = 1e-6
 	m, _ := c.measureChans()
@@ -286,7 +291,7 @@ func TestAutosetFindsALogicSignalThroughA10xProbe(t *testing.T) {
 		e.stats.TdivS = 1e-6
 		fe.SetProbe(0, pr.set)
 		fe.SetProbe(1, pr.set)
-		c.SetFrameSource(func(fn func(*engine.Frame)) {
+		c.SetFrameSource(func(fn func(*sample.Frame)) {
 			idx, _ := fe.Snapshot()
 			var codes [2][]uint8
 			for ch := range 2 {
@@ -300,7 +305,7 @@ func TestAutosetFindsALogicSignalThroughA10xProbe(t *testing.T) {
 					codes[ch] = append(codes[ch], uint8(math.Max(0, math.Min(255, math.Round(code)))))
 				}
 			}
-			fn(&engine.Frame{C1: codes[0], C2: codes[1], Valid: 400, SampleS: 50e-9})
+			fn(&sample.Frame{SampleS: 50e-9, Traces: []sample.Trace{{Codes8: codes[0], Valid: 400}, {Ch: 1, Codes8: codes[1], Valid: 400}}})
 		})
 		c.runAutoset(make(chan struct{}))
 		c.mu.Lock()
@@ -327,12 +332,12 @@ func TestAutosetFindsALogicSignalThroughA10xProbe(t *testing.T) {
 func TestAutosetLooksAgainForASparseBus(t *testing.T) {
 	_, base, fe := newC(t)
 	e := &searchViewEng{fakeEng: base}
-	c := New(e, fe, -1, engine.SupportedTdivs(), 500e-6, t.Logf)
+	c := newCtl(e, fe, -1, engine.SupportedTdivs(), 500e-6, t.Logf)
 	c.decode(idle(), true)
 	base.stats.TdivS = 1e-6
 	fe.SetProbe(0, 1)
 	fe.SetProbe(1, 1)
-	c.SetFrameSource(func(fn func(*engine.Frame)) {
+	c.SetFrameSource(func(fn func(*sample.Frame)) {
 		idx, _ := fe.Snapshot()
 		if e.search.Load() { // a whole record holds a frame
 			var codes []uint8
@@ -343,7 +348,7 @@ func TestAutosetLooksAgainForASparseBus(t *testing.T) {
 				}
 				codes = append(codes, uint8(math.Round(128+(tip-1.65)/10/analog.Vdiv(idx[0])*25)))
 			}
-			fn(&engine.Frame{C1: codes, C2: codes, Valid: len(codes), SampleS: 1e-4})
+			fn(&sample.Frame{SampleS: 1e-4, Traces: []sample.Trace{{Codes8: codes, Valid: len(codes)}, {Ch: 1, Codes8: codes, Valid: len(codes)}}})
 			return
 		}
 		// a quiet line: a swing over the least one the sweep counts, no timing
@@ -352,7 +357,7 @@ func TestAutosetLooksAgainForASparseBus(t *testing.T) {
 			noise[i] = 128
 		}
 		noise[500] = 134
-		fn(&engine.Frame{C1: noise, C2: noise, Valid: len(noise), SampleS: 1e-6})
+		fn(&sample.Frame{SampleS: 1e-6, Traces: []sample.Trace{{Codes8: noise, Valid: len(noise)}, {Ch: 1, Codes8: noise, Valid: len(noise)}}})
 	})
 	c.runAutoset(make(chan struct{}))
 	c.mu.Lock()
@@ -395,8 +400,8 @@ func TestSmallActiveLine(t *testing.T) {
 		c1, c2 int
 		want   bool
 	}{{4, 0, true}, {0, 4, true}, {6, 5, true}, {0, 0, false}, {4, 30, false}, {12, 0, false}} {
-		f := &engine.Frame{C1: line(tc.c1), C2: line(tc.c2), Valid: 1000}
-		c.SetFrameSource(func(fn func(*engine.Frame)) { fn(f) })
+		f := &sample.Frame{Traces: []sample.Trace{{Codes8: line(tc.c1), Valid: 1000}, {Ch: 1, Codes8: line(tc.c2), Valid: 1000}}}
+		c.SetFrameSource(func(fn func(*sample.Frame)) { fn(f) })
 		if got := c.smallActive(); got != tc.want {
 			t.Errorf("swings %d/%d codes: smallActive %v, want %v", tc.c1, tc.c2, got, tc.want)
 		}

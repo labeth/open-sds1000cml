@@ -6,8 +6,7 @@ import (
 	"fmt"
 	"math"
 
-	"github.com/labeth/open-sds1000cml/app/internal/analog"
-	"github.com/labeth/open-sds1000cml/app/internal/engine"
+	"github.com/labeth/open-dso-core/sample"
 )
 
 // edges holds a channel's interpolated 50 % crossings (sample positions).
@@ -84,12 +83,16 @@ func (h *Handler) mead(a, b int, arg string) []byte {
 		return errTok(errHeader)
 	}
 	value, unit := math.NaN(), "S"
-	h.sc.WithFrame(func(f *engine.Frame) {
-		if f == nil || f.Valid < 4 || len(f.C1) < f.Valid || len(f.C2) < f.Valid || !(f.SampleS > 0) {
+	h.sc.WithFrame(func(f *sample.Frame) {
+		if f == nil || f.Len() < 4 || a >= len(f.Traces) || b >= len(f.Traces) || !(f.SampleS > 0) {
 			return
 		}
-		ch := [2][]uint8{f.C1[:f.Valid], f.C2[:f.Valid]}
-		ea, eb := findEdges(ch[a]), findEdges(ch[b])
+		// Both channels' edges on the 8-bit view.
+		va, vb := view8(&f.Traces[a]), view8(&f.Traces[b])
+		if len(va) < f.Len() || len(vb) < f.Len() {
+			return
+		}
+		ea, eb := findEdges(va[:f.Len()]), findEdges(vb[:f.Len()])
 		if ea == nil || eb == nil {
 			return
 		}
@@ -123,9 +126,9 @@ func (h *Handler) mead(a, b int, arg string) []byte {
 				}
 			}
 		case "SKEW":
-			centre := f.EdgeX
+			centre := f.TriggerAt
 			if centre < 0 {
-				centre = float64(f.Valid) / 2
+				centre = float64(f.Len()) / 2
 			}
 			nearest := func(xs []float64) (float64, bool) {
 				best, ok := 0.0, false
@@ -188,22 +191,11 @@ func (h *Handler) crva(ch int, arg string) []byte {
 	}
 	probe := h.probe(ch)
 	vdiv, dispVdiv := 1.0, 1.0
-	if h.fe != nil {
-		idx, _ := h.fe.Snapshot()
-		i := idx[ch&1]
-		vdiv = analog.Vdiv(i)
-		if i >= 0 && i < len(analog.Detents) {
-			dispVdiv = analog.Detents[i].VdivV
-		}
-	}
 	st := h.sc.Snapshot()
-	offCode := st.OffC1
-	if ch == 1 {
-		offCode = st.OffC2
-	}
 	offV := 0.0
-	if offCode != 0 && h.fe != nil {
-		offV = h.fe.OffsetVolts(ch, offCode)
+	if h.fe != nil {
+		vdiv, dispVdiv = h.fe.RangeV(ch&1), h.fe.VdivV(ch&1)
+		offV = h.lv.OffsetIn(ch, st)
 	}
 	if arg == "VREL" {
 		level := func(fy float64) float64 { return (0.5-fy)*8*dispVdiv*probe - offV*probe }
@@ -216,25 +208,23 @@ func (h *Handler) crva(ch int, arg string) []byte {
 	}
 	dt := (x[1] - x[0]) * 10 * tdiv
 	val := [2]string{noReading, noReading}
-	h.sc.WithFrame(func(f *engine.Frame) {
-		if f == nil || f.Valid < 2 || f.WinCols < 2 {
+	h.sc.WithFrame(func(f *sample.Frame) {
+		if f == nil || f.Len() < 2 || f.WinPoints < 2 || ch >= len(f.Traces) {
 			return
 		}
-		sig := f.C1
-		if ch == 1 {
-			sig = f.C2
-		}
-		if len(sig) < f.Valid {
+		t := &f.Traces[ch]
+		sig, cpd := view8(t), t.CodesPerDiv8()
+		if len(sig) < f.Len() {
 			return
 		}
-		centre := f.EdgeX
+		centre := f.TriggerAt
 		if centre < 0 {
-			centre = float64(f.Valid) * posFrac
+			centre = float64(f.Len()) * posFrac
 		}
 		for k := range val {
-			i := int(math.Round(centre + (x[k]-posFrac)*float64(f.WinCols)))
-			if i >= 0 && i < f.Valid {
-				val[k] = sciV((float64(sig[i])-128)*vdiv/25*probe - offV*probe)
+			i := int(math.Round(centre + (x[k]-posFrac)*float64(f.WinPoints)))
+			if i >= 0 && i < f.Len() {
+				val[k] = sciV((float64(sig[i])-sample.Mid8)*vdiv/cpd*probe - offV*probe)
 			}
 		}
 	})
@@ -243,4 +233,14 @@ func (h *Handler) crva(ch int, arg string) []byte {
 		inv = fmt.Sprintf("%.2EHz", 1/math.Abs(dt))
 	}
 	return h.reply(header, fmt.Sprintf("HREL,%s,%s,%s,%s", sciS(dt), inv, val[0], val[1]))
+}
+
+// view8 is trace t's codes on the 8-bit view: 8-bit codes as they are (their
+// whole slice), wider words mapped.
+// TRLC-LINKS: REQ-SDS-024
+func view8(t *sample.Trace) []uint8 {
+	if t.Format.Storage == sample.U16 {
+		return t.View8()
+	}
+	return t.Codes8
 }

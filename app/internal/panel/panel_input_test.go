@@ -260,17 +260,16 @@ func TestTrigScanSpansScreen(t *testing.T) {
 	c, _, fe := newC(t)
 	fe.idx = [2]int{2, 2} // 10 mV/div
 	fe.offReqV[0] = 0.02  // trace raised 2 div: 0 V sits at +2 div
-	codes := c.trigScanCodes()
-	if len(codes) != 10 {
-		t.Fatalf("%d codes", len(codes))
+	levels := c.trigScanLevels()
+	if len(levels) != 10 {
+		t.Fatalf("%d levels", len(levels))
 	}
 	// Screen bottom (-4.5 div) is -0.045-0.02 V, top (+4.5 div) +0.045-0.02 V.
-	lo, hi := 31437-911*(-0.065), 31437-911*0.025
-	if d := float64(codes[0]) - lo; d < -1 || d > 1 {
-		t.Fatalf("first %d, want %.0f", codes[0], lo)
+	if d := levels[0] + 0.065; d < -1e-9 || d > 1e-9 {
+		t.Fatalf("first %v, want -0.065", levels[0])
 	}
-	if d := float64(codes[9]) - hi; d < -1 || d > 1 {
-		t.Fatalf("last %d, want %.0f", codes[9], hi)
+	if d := levels[9] - 0.025; d < -1e-9 || d > 1e-9 {
+		t.Fatalf("last %v, want 0.025", levels[9])
 	}
 }
 

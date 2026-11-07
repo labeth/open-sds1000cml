@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/labeth/open-dso-core/measure"
-	"github.com/labeth/open-sds1000cml/app/internal/engine"
+	"github.com/labeth/open-dso-core/sample"
 )
 
 // MEASURE reads an inverted channel's live envelope with the complement duty,
@@ -17,15 +17,15 @@ import (
 // TRLC-LINKS: REQ-SDS-217
 func TestMeasureInvertedEnvelopeDuty(t *testing.T) {
 	n := 2048
-	f := &engine.Frame{C1: make([]uint8, n), C2: make([]uint8, n), Valid: n, WinCols: n, SampleS: 96e-9, PeakDetect: true, Ordered: true}
+	f := &sample.Frame{WinPoints: n, SampleS: 96e-9, Content: sample.PeakPairs, Flags: sample.Ordered, Traces: []sample.Trace{{Codes8: make([]uint8, n), Valid: n}, {Ch: 1, Codes8: make([]uint8, n), Valid: n}}}
 	for b := range n / 2 {
 		v := uint8(78)
 		if b%104 < 31 {
 			v = 178
 		}
-		f.C1[2*b], f.C1[2*b+1] = v, v
+		f.Codes8(0)[2*b], f.Codes8(0)[2*b+1] = v, v
 	}
-	s := &sv{probe: [2]float64{1, 1}, vidx: [2]int{10, 10}, hasInv: true}
+	s := &sv{probe: [2]float64{1, 1}, vert: [2]vstep{testLadder[10], testLadder[10]}, hasInv: true}
 	plain := measureCh(f, s, 0)
 	s.inv[0] = true
 	inv := measureCh(f, s, 0)
@@ -68,7 +68,7 @@ func TestStatisticsCountAnEdgeReadingOnce(t *testing.T) {
 		}
 		env[2*b], env[2*b+1] = v, v
 	}
-	win := func(ramp int) *engine.EdgeWindow { // a rising edge over ramp samples
+	win := func(ramp int) *sample.Frame { // a rising edge over ramp samples
 		w := make([]uint8, 2048)
 		for i := range w {
 			switch {
@@ -80,22 +80,23 @@ func TestStatisticsCountAnEdgeReadingOnce(t *testing.T) {
 				w[i] = 178
 			}
 		}
-		return &engine.EdgeWindow{C1: w, C2: w, SampleS: 2e-9, Full: true}
+		return &sample.Frame{SampleS: 2e-9, Content: sample.RawFullRate, Traces: []sample.Trace{{Codes8: w, Valid: len(w)}, {Ch: 1, Codes8: w, Valid: len(w)}}}
 	}
 	c := &Controller{clock: func() time.Time { return time.Unix(0, 0) }}
 	s := &sv{
-		probe: [2]float64{1, 1}, vidx: [2]int{10, 10}, chDisp: [2]bool{true, true},
+		probe: [2]float64{1, 1}, vert: [2]vstep{testLadder[10], testLadder[10]}, chDisp: [2]bool{true, true},
 		meas: []measItem{{0, measIndex("rise")}, {0, measIndex("pkpk")}},
 	}
 	first, second := win(10), win(14)
-	for seq, w := range []*engine.EdgeWindow{first, first, first, second} {
+	for seq, w := range []*sample.Frame{first, first, first, second} {
 		read := uint64(1)
 		if w == second {
 			read = 2
 		}
-		f := &engine.Frame{
-			Seq: uint64(seq + 1), C1: env, C2: env, Valid: n, WinCols: n, SampleS: 96e-9, PeakDetect: true, Ordered: true,
-			Edge: w, EdgeRead: read,
+		f := &sample.Frame{
+			Seq: uint64(seq + 1), WinPoints: n, SampleS: 96e-9, Content: sample.PeakPairs, Flags: sample.Ordered,
+			Traces:  []sample.Trace{{Codes8: env, Valid: n}, {Ch: 1, Codes8: env, Valid: n}},
+			Details: []sample.Detail{{Role: sample.Edge, Read: read, Frame: w}},
 		}
 		c.measFrame(&c.ana, s, f)
 	}

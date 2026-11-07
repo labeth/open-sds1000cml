@@ -14,8 +14,10 @@ import (
 	"time"
 
 	"github.com/labeth/open-dso-core/decode"
+	"github.com/labeth/open-dso-core/hal"
+	"github.com/labeth/open-dso-core/sample"
 	"github.com/labeth/open-dso-core/superres"
-	"github.com/labeth/open-sds1000cml/app/internal/analog"
+	"github.com/labeth/open-sds1000cml/app/internal/board"
 	"github.com/labeth/open-sds1000cml/app/internal/engine"
 	"github.com/labeth/open-sds1000cml/app/internal/settings"
 )
@@ -25,8 +27,6 @@ import (
 type Engine interface {
 	ReadMatrix() ([5]uint16, bool)
 	SetLEDs(word uint16)
-	SetOffsetDAC(ch int, code uint16)
-	SetTrigLevelCode(code uint16) uint16
 	SetTdiv(tdivS float64) (engine.Band, bool)
 	SetNorm(on bool)
 	SetRunning(on bool)
@@ -53,22 +53,37 @@ type Engine interface {
 	AcqLog(n int) ([]engine.AcqSample, float64)
 }
 
-// Analog is the off-bus V/div front end; nil → V/div knobs claim-and-ignore.
+// Analog is the off-bus V/div front end, in volts at the BNC (the HAL's
+// Ladder is at the probe tip); nil → V/div knobs claim-and-ignore. The
+// offsets are set through the board's levels (Levels).
 // TRLC-LINKS: REQ-SDS-135
 type Analog interface {
-	SetVdiv(ch, idx int) error
-	Snapshot() ([2]int, bool)
-	SetOffset(ch int, volts float64) uint16
+	Ladder(ch int) []hal.Step
+	SetVdivV(ch int, v float64) error
+	VdivV(ch int) float64
+	RangeV(ch int) float64 // the analog range's V/div the codes are on
 	OffsetReqV(ch int) float64
-	OffsetVolts(ch int, code uint16) float64 // calibrated per-detent DAC code → volts
-	OffsetK(ch int) float64                  // offset slope (codes/volt) for the current detent
+	OffsetRangeV(ch int) float64
 	SetCoupling(ch, mode int) error
 	Coupling(ch int) int
 	SetProbe(ch int, x float64)
 	ProbeFactor(ch int) float64
-	TrigCode(volts float64, srcCh int) float64
-	TrigVolts(code uint16, srcCh int) float64
-	SetTrigCalDetent(ch, detent int, c analog.TrigCal)
+}
+
+// Levels is the board's trigger level and offsets in volts over the DACs it
+// stages (*board.Levels).
+// TRLC-LINKS: REQ-SDS-135
+type Levels interface {
+	SetTrigLevel(v float64, src int) float64
+	TrigLevelOrIn(st engine.Stats, v float64, src int) float64
+	StepTrigLevel(n, src int) float64
+	TrigLevelGrid(src int) hal.Grid
+	SaveTrigLevel() board.TrigLevelSaved
+	RestoreTrigLevel(s board.TrigLevelSaved)
+	ResetTrigLevel()
+	SetOffset(ch int, v float64) float64
+	OffsetIn(ch int, st engine.Stats) float64
+	OffsetStagedIn(ch int, st engine.Stats) float64
 }
 
 // The engine's and the front end's optional capabilities: one that has the
@@ -173,16 +188,15 @@ func accel(raw uint16) int {
 type Controller struct {
 	eng   Engine
 	fe    Analog
+	lv    Levels
 	keyFD int
 	logf  func(string, ...any)
 
-	tdivs    []float64
-	tdivIdx  int
-	vIdx     [2]int
-	trigCode uint16
-	running  bool
-	norm     bool
-	single   bool // a single-shot is armed/waiting → SINGLE lamp
+	tdivs   []float64
+	tdivIdx int
+	running bool
+	norm    bool
+	single  bool // a single-shot is armed/waiting → SINGLE lamp
 
 	prev     [5]uint16
 	havePrev bool
@@ -321,7 +335,7 @@ type Controller struct {
 
 	// frameFn reads the latest published frame (fo.WithFrame) for autoset; nil
 	// until SetFrameSource is called (AUTO then falls back to plain AUTO/run).
-	frameFn func(func(*engine.Frame))
+	frameFn func(func(*sample.Frame))
 	// autoset runs as a background sweep; autosetStop cancels it (second AUTO).
 	autosetBusy bool
 	autosetStop chan struct{}
@@ -402,17 +416,16 @@ type Controller struct {
 	videoNeg                             bool
 }
 
-// New builds the controller. The timebase ladder is injected (the controller
+// New builds the controller over the engine, the front end and the board's
+// levels lv. The timebase ladder is injected (the controller
 // does not own it); startTdiv seeds the knob index. All shadows are seeded
 // WITHOUT driving anything — the inherited analog state stays untouched
 // until the user turns a knob (spec 08 §7).
 // TRLC-LINKS: REQ-SDS-135
-func New(eng Engine, fe Analog, keyFD int, tdivs []float64, startTdiv float64, logf func(string, ...any)) *Controller {
+func New(eng Engine, fe Analog, lv Levels, keyFD int, tdivs []float64, startTdiv float64, logf func(string, ...any)) *Controller {
 	c := &Controller{
-		eng: eng, fe: fe, keyFD: keyFD, logf: logf,
+		eng: eng, fe: fe, lv: lv, keyFD: keyFD, logf: logf,
 		tdivs:        tdivs,
-		vIdx:         [2]int{analog.BootDetent, analog.BootDetent},
-		trigCode:     31437, // 0 V threshold (measured global fit zero)
 		chDisp:       [2]bool{true, true},
 		curPend:      &cursorHome,
 		inject:       make(chan func(), 32),

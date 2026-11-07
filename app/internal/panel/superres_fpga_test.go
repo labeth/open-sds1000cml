@@ -9,6 +9,7 @@ import (
 	"testing/synctest"
 	"time"
 
+	"github.com/labeth/open-dso-core/sample"
 	"github.com/labeth/open-dso-core/superres"
 	"github.com/labeth/open-sds1000cml/app/internal/engine"
 )
@@ -41,7 +42,7 @@ func TestSuperresFPGARun(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		_, base, fe := newC(t)
 		eng := &fpgaFakeEng{fakeEng: base, requests: make(chan engine.FPGAStackRequest, 1)}
-		c := New(eng, fe, -1, engine.SupportedTdivs(), 500e-6, t.Logf)
+		c := newCtl(eng, fe, -1, engine.SupportedTdivs(), 500e-6, t.Logf)
 		c.decode(idle(), true)
 		n := 256
 		sig := make([]uint8, n)
@@ -54,8 +55,8 @@ func TestSuperresFPGARun(t *testing.T) {
 		for i := range flat {
 			flat[i] = 128
 		}
-		fr := &engine.Frame{C1: flat, C2: sig, Valid: n, EdgeX: 32, SampleS: 2e-9}
-		c.SetFrameSource(func(fn func(*engine.Frame)) { fn(fr) })
+		fr := &sample.Frame{TriggerAt: 32, SampleS: 2e-9, Traces: []sample.Trace{{Codes8: flat, Valid: n}, {Ch: 1, Codes8: sig, Valid: n}}}
+		c.SetFrameSource(func(fn func(*sample.Frame)) { fn(fr) })
 		press(t, c, "acquire")
 		goRow(t, c, "acq.superres")
 		pickKey(t, c, "On")
@@ -106,15 +107,15 @@ func TestSuperresFPGAMatchRun(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		_, base, fe := newC(t)
 		eng := &fpgaFakeEng{fakeEng: base, requests: make(chan engine.FPGAStackRequest, 1)}
-		c := New(eng, fe, -1, engine.SupportedTdivs(), 500e-6, t.Logf)
+		c := newCtl(eng, fe, -1, engine.SupportedTdivs(), 500e-6, t.Logf)
 		c.decode(idle(), true)
 		n := 256
 		sig := make([]uint8, n)
 		for i := range sig {
 			sig[i] = uint8(40 + (i*7)%160)
 		}
-		fr := &engine.Frame{C1: sig, C2: sig, Valid: n, EdgeX: 60, SampleS: 2e-9}
-		c.SetFrameSource(func(fn func(*engine.Frame)) { fn(fr) })
+		fr := &sample.Frame{TriggerAt: 60, SampleS: 2e-9, Traces: []sample.Trace{{Codes8: sig, Valid: n}, {Ch: 1, Codes8: sig, Valid: n}}}
+		c.SetFrameSource(func(fn func(*sample.Frame)) { fn(fr) })
 		press(t, c, "acquire")
 		goRow(t, c, "acq.sr_stop")
 		pickKey(t, c, "FPGA+match")
@@ -143,8 +144,8 @@ func TestSuperresArmDeepWindowStaysResponsive(t *testing.T) {
 	for i := range sig {
 		sig[i] = uint8(60 + 80*((i/37)%2)) // square wave, period 74
 	}
-	fr := &engine.Frame{C1: sig, C2: sig, Valid: n, EdgeX: float64(n / 2), SampleS: 3.2e-8, WinCols: 156314}
-	c.SetFrameSource(func(fn func(*engine.Frame)) { fn(fr) })
+	fr := &sample.Frame{TriggerAt: float64(n / 2), SampleS: 3.2e-8, WinPoints: 156314, Traces: []sample.Trace{{Codes8: sig, Valid: n}, {Ch: 1, Codes8: sig, Valid: n}}}
+	c.SetFrameSource(func(fn func(*sample.Frame)) { fn(fr) })
 	start := time.Now()
 	r := c.SheetSet("acq.superres", nil, "On")
 	if d := time.Since(start); d > 2*time.Second {
@@ -172,9 +173,9 @@ func TestSuperresFPGACancel(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		_, base, fe := newC(t)
 		eng := &cancellableFPGAEng{base, make(chan context.Context, 1)}
-		c := New(eng, fe, -1, engine.SupportedTdivs(), 500e-6, t.Logf)
-		c.SetFrameSource(func(fn func(*engine.Frame)) {
-			fn(&engine.Frame{C1: []uint8{40, 200, 40, 200, 40, 200, 40, 200}, Valid: 8, EdgeX: 4, SampleS: 2e-9})
+		c := newCtl(eng, fe, -1, engine.SupportedTdivs(), 500e-6, t.Logf)
+		c.SetFrameSource(func(fn func(*sample.Frame)) {
+			fn(&sample.Frame{TriggerAt: 4, SampleS: 2e-9, Traces: []sample.Trace{{Codes8: []uint8{40, 200, 40, 200, 40, 200, 40, 200}, Valid: 8}, {Ch: 1, Valid: 8}}})
 		})
 		c.srFPGARun()
 		ctx := <-eng.started
@@ -213,15 +214,15 @@ func TestSuperresFPGACancel(t *testing.T) {
 func TestSuperresOnInFPGAModeRunsTheFPGA(t *testing.T) {
 	_, base, fe := newC(t)
 	eng := &fpgaFakeEng{fakeEng: base, requests: make(chan engine.FPGAStackRequest, 1)}
-	c := New(eng, fe, -1, engine.SupportedTdivs(), 500e-6, t.Logf)
+	c := newCtl(eng, fe, -1, engine.SupportedTdivs(), 500e-6, t.Logf)
 	c.decode(idle(), true)
 	n := 200000 // a deep window, past the software stack's limit
 	sig := make([]uint8, n)
 	for i := range sig {
 		sig[i] = uint8(40 + (i*7)%160)
 	}
-	fr := &engine.Frame{C1: sig, C2: sig, Valid: n, EdgeX: 32, SampleS: 2e-9}
-	c.SetFrameSource(func(fn func(*engine.Frame)) { fn(fr) })
+	fr := &sample.Frame{TriggerAt: 32, SampleS: 2e-9, Traces: []sample.Trace{{Codes8: sig, Valid: n}, {Ch: 1, Codes8: sig, Valid: n}}}
+	c.SetFrameSource(func(fn func(*sample.Frame)) { fn(fr) })
 	if res := c.SheetSet("acq.sr_stop", nil, "FPGA rec"); !res.OK {
 		t.Fatalf("stop on: %+v", res)
 	}
@@ -249,8 +250,8 @@ func TestSuperresTooDeepSaysTheRemedyOnTheLCD(t *testing.T) {
 	for i := range sig {
 		sig[i] = uint8(40 + (i*7)%160)
 	}
-	fr := &engine.Frame{C1: sig, C2: sig, Valid: n, EdgeX: 32, SampleS: 32e-9}
-	c.SetFrameSource(func(fn func(*engine.Frame)) { fn(fr) })
+	fr := &sample.Frame{TriggerAt: 32, SampleS: 32e-9, Traces: []sample.Trace{{Codes8: sig, Valid: n}, {Ch: 1, Codes8: sig, Valid: n}}}
+	c.SetFrameSource(func(fn func(*sample.Frame)) { fn(fr) })
 	if res := c.SheetSet("acq.superres", nil, "On"); res.OK {
 		t.Fatal("a 156k-sample window stacked in software")
 	}

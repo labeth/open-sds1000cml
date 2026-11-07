@@ -33,7 +33,7 @@ func TestSoundTunerAndMetersTakeTurns(t *testing.T) {
 		func(t float64) float64 { return 0.5 * math.Sin(2*math.Pi*1000*t) },
 	}, 4)
 	e := &countEng{soundEng: se, reads: map[int]int{}}
-	c := New(e, &fakeFE{idx: [2]int{8, 8}}, -1, engine.SupportedTdivs(), 500e-6, t.Logf)
+	c := newCtl(e, &fakeFE{idx: [2]int{8, 8}}, -1, engine.SupportedTdivs(), 500e-6, t.Logf)
 	c.snd.setLCD(true, true)
 	now := time.Now()
 	se.next = int(se.fs)
@@ -62,7 +62,7 @@ func TestSoundModulationOnceAWindow(t *testing.T) {
 		func(float64) float64 { return 0 },
 	}, 14)
 	e := &countEng{soundEng: se, reads: map[int]int{}}
-	c := New(e, &fakeFE{idx: [2]int{8, 8}}, -1, engine.SupportedTdivs(), 500e-6, t.Logf)
+	c := newCtl(e, &fakeFE{idx: [2]int{8, 8}}, -1, engine.SupportedTdivs(), 500e-6, t.Logf)
 	c.snd.setLCD(true, true)
 	c.SetSoundSettings(SoundSettings{A4: 440, Page: soundPageMod, Cycles: 2, Gate: -1})
 	now := time.Now()
@@ -85,7 +85,7 @@ func TestSoundViewStatusTool(t *testing.T) {
 		func(t float64) float64 { return math.Sin(2 * math.Pi * 440 * t) },
 		func(float64) float64 { return 0 },
 	}, 1)
-	c := New(se, &fakeFE{idx: [2]int{8, 8}}, -1, engine.SupportedTdivs(), 500e-6, t.Logf)
+	c := newCtl(se, &fakeFE{idx: [2]int{8, 8}}, -1, engine.SupportedTdivs(), 500e-6, t.Logf)
 	c.decode(idle(), true)
 	press(t, c, "f3", "f3", "f3", "f3")
 	st := c.PanelStatus()
@@ -109,7 +109,7 @@ func TestSoundModulationNeedsASwing(t *testing.T) {
 			return amp * math.Sin(2*math.Pi*440*t+20.0/1200*math.Ln2*440/6*-math.Cos(2*math.Pi*6*t))
 		}
 		se := newSoundEng([2]func(float64) float64{vib, func(float64) float64 { return 0 }}, 14)
-		c := New(se, &fakeFE{idx: [2]int{8, 8}}, -1, engine.SupportedTdivs(), 500e-6, t.Logf)
+		c := newCtl(se, &fakeFE{idx: [2]int{8, 8}}, -1, engine.SupportedTdivs(), 500e-6, t.Logf)
 		c.snd.setLCD(true, true)
 		c.SetSoundSettings(SoundSettings{A4: 440, Page: soundPageMod, Cycles: 2, Gate: -1})
 		now := time.Now()

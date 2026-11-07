@@ -11,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/labeth/open-dso-core/sample"
 	"github.com/labeth/open-dso-core/testenv"
 	"github.com/labeth/open-sds1000cml/app/internal/engine"
 	"github.com/labeth/open-sds1000cml/app/internal/panel"
@@ -159,7 +160,7 @@ func (p *soundPanelFake) SoundWant(_, _ bool) {}
 // TRLC-LINKS: REQ-SDS-274, REQ-SDS-265
 func TestSoundBrowser(t *testing.T) {
 	testenv.NeedNode(t)
-	gen := func() *engine.Frame {
+	gen := func() *sample.Frame {
 		const N = 1024
 		c1 := make([]uint8, N)
 		c2 := make([]uint8, N)
@@ -167,7 +168,7 @@ func TestSoundBrowser(t *testing.T) {
 			c1[i] = uint8(128 + 60*math.Sin(2*math.Pi*8*float64(i)/N))
 			c2[i] = 128
 		}
-		return &engine.Frame{C1: c1, C2: c2, Seq: 1, Valid: N, WinCols: N, EdgeX: -1, TdivS: 1e-3, DisplayedS: 1e-3, SampleS: 1e-5, Trigd: true}
+		return &sample.Frame{Seq: 1, WinPoints: N, TriggerAt: -1, SampleS: 1e-5, Snapshot: sample.Settings{TdivS: 1e-3, DisplayedS: 1e-3}, Status: sample.Status{Triggered: true}, Traces: []sample.Trace{{Codes8: c1, Valid: N}, {Ch: 1, Codes8: c2, Valid: N}}}
 	}
 	sc := &soundScope{fakeScope: &fakeScope{frameGen: gen, stats: engine.Stats{Running: true, TrigPosFrac: 0.5}}, t0: time.Now(), fs: 500e6 / 8192}
 	pp := &soundPanelFake{set: panel.SoundSettings{A4: 440, Ref: "dbu", Cycles: 2, Gate: -1, GateV: 0.1}}

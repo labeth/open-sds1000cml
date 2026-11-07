@@ -13,9 +13,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/labeth/open-dso-core/sample"
 	"github.com/labeth/open-dso-core/testenv"
 	"github.com/labeth/open-dso-core/webserver/wire"
-	"github.com/labeth/open-sds1000cml/app/internal/engine"
 )
 
 // recordScope is a fake scope whose bus-sample lease turns its frames from
@@ -55,17 +55,18 @@ func (r *recordScope) leasedAt() float64 {
 
 // TRLC-LINKS: REQ-SDS-280
 func (r *recordScope) init() {
-	r.frameGen = func() *engine.Frame {
+	r.frameGen = func() *sample.Frame {
 		r.mu.Lock()
 		defer r.mu.Unlock()
 		r.seq++
-		f := &engine.Frame{Seq: r.seq, SampleS: 1e-6, PeakDetect: true, Valid: 2048, C1: make([]uint8, 2048), C2: make([]uint8, 2048), TdivS: 1e-3}
+		f := &sample.Frame{Seq: r.seq, SampleS: 1e-6, Content: sample.PeakPairs, Snapshot: sample.Settings{TdivS: 1e-3}, Traces: []sample.Trace{{Valid: 2048, Codes8: make([]uint8, 2048)}, {Ch: 1, Valid: 2048, Codes8: make([]uint8, 2048)}}}
 		if r.leased > 0 {
 			n := 200000
-			f.PeakDetect, f.SampleS, f.Valid = false, r.leased, n
-			f.C1, f.C2 = make([]uint8, n), make([]uint8, n)
-			for i := range f.C1 {
-				f.C1[i], f.C2[i] = uint8(i), uint8(255-i%256)
+			f.Content, f.SampleS = sample.RawDecimated, r.leased
+			f.SetLen(n)
+			f.Traces[0].Codes8, f.Traces[1].Codes8 = make([]uint8, n), make([]uint8, n)
+			for i := range f.Codes8(0) {
+				f.Codes8(0)[i], f.Codes8(1)[i] = uint8(i), uint8(255-i%256)
 			}
 		}
 		return f

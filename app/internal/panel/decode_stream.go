@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/labeth/open-dso-core/decode"
+	"github.com/labeth/open-dso-core/sample"
 	"github.com/labeth/open-sds1000cml/app/internal/engine"
 	"github.com/labeth/open-sds1000cml/app/internal/panel/framecalc"
 	"github.com/labeth/open-sds1000cml/app/internal/panel/wsview"
@@ -98,7 +99,7 @@ func (c *Controller) startStream() {
 			c.eng.SetRunning(true)
 		}
 		if !ok {
-			all := func(*engine.Frame, bool) bool { return true }
+			all := func(*sample.Frame, bool) bool { return true }
 			l := c.detectWith(true, false, all, c.decodeOnScreen, decimatedWait)
 			res, sampleS, ok = l.res, l.sampleS, l.found
 		}

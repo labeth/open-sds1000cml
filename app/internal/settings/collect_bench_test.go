@@ -14,7 +14,7 @@ import (
 func BenchmarkCollect(b *testing.B) {
 	e, fe, pc, _ := rig(b)
 	for b.Loop() {
-		settings.Collect(e, fe, pc)
+		settings.Collect(e, fe, pc, ext(e, fe))
 	}
 }
 
@@ -51,6 +51,6 @@ func TestSaveWritesAChange(t *testing.T) {
 func BenchmarkCollectEngineAnalog(b *testing.B) {
 	e, fe, _, _ := rig(b)
 	for b.Loop() {
-		settings.Collect(e, fe, nil)
+		settings.Collect(e, fe, nil, ext(e, fe))
 	}
 }

@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/labeth/open-sds1000cml/app/internal/engine"
+	"github.com/labeth/open-dso-core/sample"
 )
 
 // A bus search and a decode of the screen run on a copy of the frame: the
@@ -21,9 +21,9 @@ func TestBusSearchHoldsTheFrameOnlyToCopyIt(t *testing.T) {
 	// a busy line: a UART's characters over noise-like level changes
 	rng := rand.New(rand.NewSource(1))
 	f := uartFrame([]string{"Hi!\r\n", "OK\r\n"}, 460800, 100e-6, 100e-9, 250000)
-	for i := 0; i < len(f.C2); i++ {
+	for i := 0; i < len(f.Codes8(1)); i++ {
 		if rng.Intn(7) == 0 {
-			f.C2[i] = uint8(rng.Intn(256))
+			f.Codes8(1)[i] = uint8(rng.Intn(256))
 		}
 	}
 	// Each call lends a fresh snapshot and wipes it once the callback
@@ -31,14 +31,14 @@ func TestBusSearchHoldsTheFrameOnlyToCopyIt(t *testing.T) {
 	// the snapshot itself rather than a copy finds nothing. The time bound
 	// is far above a copy and far below a search.
 	var held time.Duration
-	c.SetFrameSource(func(fn func(*engine.Frame)) {
-		g := *f
-		g.C1, g.C2 = append([]uint8(nil), f.C1...), append([]uint8(nil), f.C2...)
+	c.SetFrameSource(func(fn func(*sample.Frame)) {
+		var g sample.Frame
+		g.CopyFrom(f)
 		t0 := time.Now()
 		fn(&g)
 		held += time.Since(t0)
-		clear(g.C1)
-		clear(g.C2)
+		clear(g.Codes8(0))
+		clear(g.Codes8(1))
 	})
 	check := func(name string, run func() bool) {
 		held = 0

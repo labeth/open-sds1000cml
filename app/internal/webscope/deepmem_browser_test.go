@@ -10,6 +10,7 @@ import (
 	"sync/atomic"
 	"testing"
 
+	"github.com/labeth/open-dso-core/sample"
 	"github.com/labeth/open-dso-core/testenv"
 	"github.com/labeth/open-sds1000cml/app/internal/engine"
 )
@@ -26,7 +27,7 @@ func TestDeepMemBrowser(t *testing.T) {
 	const depth, winCols = 6144, 2048
 	const edge = 2677.0 // mid-record trigger edge (as seen on the device)
 	var seq atomic.Int64
-	gen := func() *engine.Frame {
+	gen := func() *sample.Frame {
 		n := seq.Add(1)
 		c1 := make([]uint8, depth)
 		c2 := make([]uint8, depth)
@@ -40,9 +41,13 @@ func TestDeepMemBrowser(t *testing.T) {
 			}
 			c2[i] = uint8(128 + 40*math.Sin(2*math.Pi*float64(i)/128))
 		}
-		return &engine.Frame{
-			C1: c1, C2: c2, Seq: uint64(n), Valid: depth, WinCols: winCols,
-			EdgeX: edge, TdivS: 500e-6, DisplayedS: 500e-6, SampleS: 500e-6 * 10 / winCols,
+		return &sample.Frame{
+			Seq:       uint64(n),
+			WinPoints: winCols,
+			TriggerAt: edge,
+			SampleS:   500e-6 * 10 / winCols,
+			Snapshot:  sample.Settings{TdivS: 500e-6, DisplayedS: 500e-6},
+			Traces:    []sample.Trace{{Codes8: c1, Valid: depth}, {Ch: 1, Codes8: c2, Valid: depth}},
 		}
 	}
 	fs := &fakeScope{frameGen: gen, stats: engine.Stats{Running: true, TrigPosFrac: 0.5}}

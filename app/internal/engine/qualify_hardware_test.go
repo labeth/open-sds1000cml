@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/labeth/open-dso-core/sample"
 	"github.com/labeth/open-sds1000cml/app/internal/sramcapture"
 )
 
@@ -35,7 +36,7 @@ func learnSquare(e *Engine) {
 			w[i] = 213
 		}
 	}
-	e.learnQualExtent(&Frame{C1: w, C2: w, Valid: len(w), SampleS: 1e-8}, [2]chScale{{1, 0}, {1, 0}})
+	e.learnQualExtent(&sample.Frame{SampleS: 1e-8, Traces: []sample.Trace{{Codes8: w, Valid: len(w)}, {Ch: 1, Codes8: w, Valid: len(w)}}}, [2]chScale{{1, 0}, {1, 0}})
 }
 
 // Pulse, slope and video triggers are the FPGA's (owner rule: software never
@@ -160,7 +161,7 @@ func TestQualifiedTriggerIsPlacedOnItsEvent(t *testing.T) {
 			sig[i] = 40
 		}
 	}
-	f := &Frame{C1: sig, Valid: n, SampleS: 1e-8, EdgeX: 1272, Trigd: true}
+	f := &sample.Frame{SampleS: 1e-8, TriggerAt: 1272, Status: sample.Status{Triggered: true}, Traces: []sample.Trace{{Codes8: sig, Valid: n}, {Ch: 1, Valid: n}}}
 	q := sramcapture.QualifierConfig{Enabled: true, Kind: sramcapture.QualVideo, Negative: true}
 	if x := placeQualified(f, sig, nil, q, 88); math.Abs(x-800) > 1 {
 		t.Fatalf("video placed at %.1f, want the sync's leading edge 800", x)
@@ -241,7 +242,7 @@ func TestTriggerStatusSaysTheImageLoads(t *testing.T) {
 // TRLC-LINKS: REQ-SDS-011
 func TestLevelsAreNotLearnedAcrossAFrontEndWrite(t *testing.T) {
 	e, _, _ := qualEngine(t)
-	square := func(lo, hi uint8) *Frame {
+	square := func(lo, hi uint8) *sample.Frame {
 		w := make([]uint8, 4000)
 		for i := range w {
 			w[i] = lo
@@ -249,7 +250,7 @@ func TestLevelsAreNotLearnedAcrossAFrontEndWrite(t *testing.T) {
 				w[i] = hi
 			}
 		}
-		return &Frame{C1: w, C2: w, Valid: len(w), SampleS: 1e-8}
+		return &sample.Frame{SampleS: 1e-8, Traces: []sample.Trace{{Codes8: w, Valid: len(w)}, {Ch: 1, Codes8: w, Valid: len(w)}}}
 	}
 	sc := [2]chScale{{1, 0}, {1, 0}}
 	extent := func() (float64, float64) {

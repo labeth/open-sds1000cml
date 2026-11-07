@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"math"
 
-	"github.com/labeth/open-sds1000cml/app/internal/analog"
+	"github.com/labeth/open-dso-core/sample"
 	"github.com/labeth/open-sds1000cml/app/internal/engine"
 )
 
@@ -22,8 +22,8 @@ func (h *Handler) waveform(ch int, arg string) []byte {
 
 	var payload []byte
 	var ok bool
-	h.sc.WithFrame(func(f *engine.Frame) {
-		if f == nil || f.Valid == 0 {
+	h.sc.WithFrame(func(f *sample.Frame) {
+		if f == nil || f.Len() == 0 {
 			return
 		}
 		ok = true
@@ -54,14 +54,14 @@ func (h *Handler) waveform(ch int, arg string) []byte {
 // (centred 128); roll-ring codes are half-scale and must be rescaled before
 // export (spec 11 §4 code-scale trap).
 // TRLC-LINKS: REQ-SDS-024
-func (h *Handler) dat2(ch int, f *engine.Frame) []byte {
-	sig := f.C1
+func (h *Handler) dat2(ch int, f *sample.Frame) []byte {
+	sig := f.Codes8(0)
 	if ch == 1 {
-		sig = f.C2
+		sig = f.Codes8(1)
 	}
 	valid := max(
 		// Valid>len invariant slip must not panic the VXI readout
-		min(f.Valid,
+		min(f.Len(),
 
 			len(sig)), 0)
 	sig = sig[:valid]
@@ -75,7 +75,7 @@ func (h *Handler) dat2(ch int, f *engine.Frame) []byte {
 		np = most
 	}
 	out := make([]byte, np)
-	if !f.RollCodes {
+	if !engine.HalfScale(f) {
 		// The common case without the roll branch in the loop.
 		for i := range out {
 			out[i] = sig[h.wfFP+i*sp] ^ 0x80
@@ -84,13 +84,11 @@ func (h *Handler) dat2(ch int, f *engine.Frame) []byte {
 	}
 	for i := range np {
 		v := sig[h.wfFP+i*sp]
-		if f.RollCodes {
-			// Legacy roll FIFO codes are half-scale, so a roll deviation d
-			// represents 2·d deep codes. Double the deviation (clamped) so it
-			// reads correctly under the DESC's Vdiv/25 gain (spec 11 §4). No
-			// current engine path sets RollCodes.
-			v = uint8(min(max(128+(int(v)-128)*2, 0), 255))
-		}
+		// Legacy roll FIFO codes are half-scale, so a roll deviation d
+		// represents 2·d deep codes. Double the deviation (clamped) so it
+		// reads correctly under the DESC's Vdiv/25 gain (spec 11 §4). No
+		// current engine path makes half-scale frames.
+		v = uint8(min(max(128+(int(v)-128)*2, 0), 255))
 		// Two's-complement code about the grid centre: COMM_TYPE 0 is a
 		// signed byte, and LeCroy/Siglent hosts read volts = code·gain −
 		// offset with codes above 127 taken as negative. Sending the raw
@@ -102,7 +100,7 @@ func (h *Handler) dat2(ch int, f *engine.Frame) []byte {
 
 // wavedesc builds the 346-byte WAVEDESC (little-endian, COMM_ORDER=1).
 // TRLC-LINKS: REQ-SDS-024
-func (h *Handler) wavedesc(ch int, f *engine.Frame) []byte {
+func (h *Handler) wavedesc(ch int, f *sample.Frame) []byte {
 	d := make([]byte, 346)
 	copy(d[0:], "WAVEDESC")
 	copy(d[16:], "DSO")
@@ -115,10 +113,10 @@ func (h *Handler) wavedesc(ch int, f *engine.Frame) []byte {
 	le16(32, 0) // COMM_TYPE: 8-bit
 	le16(34, 1) // COMM_ORDER: LOFIRST
 	le32(36, 346)
-	n := f.Valid
+	n := f.Len()
 	le32(60, n) // WAVE_ARRAY_1 = count × 1 byte
 	le32(116, n)
-	le32(120, f.WinCols)
+	le32(120, f.WinPoints)
 	le32(124, 0)
 	le32(128, n-1)
 	le32(132, h.wfFP)
@@ -128,20 +126,14 @@ func (h *Handler) wavedesc(ch int, f *engine.Frame) []byte {
 
 	vdiv := 1.0
 	if h.fe != nil {
-		idx, _ := h.fe.Snapshot()
-		vdiv = analog.Vdiv(idx[ch&1]) // codes are on the analog range (zoomed detents)
+		vdiv = h.fe.RangeV(ch & 1) // codes are on the analog range (zoomed detents)
 	}
 	gain := float32(vdiv / 25 * h.probe(ch)) // WF? scale: 25 codes/div (spec 11 §4)
 	f32(156, gain)
 
 	off := 0.0
-	st := h.sc.Snapshot()
-	code := st.OffC1
-	if ch == 1 {
-		code = st.OffC2
-	}
-	if code != 0 && h.fe != nil {
-		off = h.fe.OffsetVolts(ch, code) * h.probe(ch) // tip volts, like the gain
+	if h.fe != nil {
+		off = h.lv.OffsetIn(ch, h.sc.Snapshot()) * h.probe(ch) // tip volts, like the gain
 	}
 	f32(160, float32(off))
 	f32(164, 127)
@@ -149,12 +141,12 @@ func (h *Handler) wavedesc(ch int, f *engine.Frame) []byte {
 	f32(176, float32(f.SampleS)) // HORIZ_INTERVAL = 1/SARA
 	// HORIZ_OFFSET: time of sample 0 from the trigger, at its exact
 	// (sub-sample) position; a record without a trigger keeps the centre.
-	trig := float64(f.Valid) / 2
-	if f.EdgeX >= 0 && f.EdgeX < float64(f.Valid) {
-		trig = f.EdgeX
+	trig := float64(f.Len()) / 2
+	if f.TriggerAt >= 0 && f.TriggerAt < float64(f.Len()) {
+		trig = f.TriggerAt
 	}
 	f64(180, -trig*f.SampleS)
-	f64(188, -(float64(f.Valid) * f.SampleS / 2)) // first-pixel offset
+	f64(188, -(float64(f.Len()) * f.SampleS / 2)) // first-pixel offset
 	copy(d[196:], "V")                            // VERTUNIT
 	copy(d[244:], "s")                            // HORUNIT
 	le16(344, ch)                                 // WAVE_SOURCE (0-based)

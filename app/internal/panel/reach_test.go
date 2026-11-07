@@ -9,6 +9,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/labeth/open-dso-core/sample"
 	"github.com/labeth/open-sds1000cml/app/internal/engine"
 	"github.com/labeth/open-sds1000cml/app/internal/panel/wsview"
 )
@@ -102,13 +103,13 @@ func setsRow(id, text string) func(*testing.T, *viewRig) {
 
 // smallFrame is a short square wave super-res can stack in software.
 // TRLC-LINKS: REQ-SDS-212
-func smallFrame() *engine.Frame {
+func smallFrame() *sample.Frame {
 	n := 256
 	sig := make([]uint8, n)
 	for i := range sig {
 		sig[i] = uint8(40 + (i*7)%160)
 	}
-	return &engine.Frame{C1: sig, C2: sig, Valid: n, WinCols: n, EdgeX: 32, SampleS: 2e-9, TdivS: 500e-6, Trigd: true}
+	return &sample.Frame{WinPoints: n, TriggerAt: 32, SampleS: 2e-9, Snapshot: sample.Settings{TdivS: 500e-6}, Status: sample.Status{Triggered: true}, Traces: []sample.Trace{{Codes8: sig, Valid: n}, {Ch: 1, Codes8: sig, Valid: n}}}
 }
 
 // rigFor is a rig in context x, showing a short capture super-res can stack.

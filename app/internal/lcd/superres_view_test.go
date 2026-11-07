@@ -6,7 +6,7 @@ import (
 	"math"
 	"testing"
 
-	"github.com/labeth/open-sds1000cml/app/internal/engine"
+	"github.com/labeth/open-dso-core/sample"
 	"github.com/labeth/open-sds1000cml/app/internal/panel/framecalc"
 )
 
@@ -212,7 +212,7 @@ func TestSuperresReviewRoutesByViewMode(t *testing.T) {
 		func(b int) float64 { return 128 + 80*math.Sin(2*math.Pi*7e6*float64(b)*fineDt) },
 	)
 	h.ShowC1, h.ShowC2, h.TwoChan = true, true, true
-	var f *engine.Frame // review ignores the live frame; nil must be safe
+	var f *sample.Frame // review ignores the live frame; nil must be safe
 
 	yt := NewMemSurface()
 	hyt := h

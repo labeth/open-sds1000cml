@@ -9,8 +9,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/labeth/open-dso-core/sample"
 	"github.com/labeth/open-dso-core/testenv"
-	"github.com/labeth/open-sds1000cml/app/internal/engine"
 )
 
 // TestVisualMIDIBrowser: a MIDI bus (two notes on, one off) decodes in BUS,
@@ -44,7 +44,7 @@ func (a *audioScope) LeaseBusSamples(sampleS float64, _ time.Duration) {
 }
 
 // TRLC-LINKS: REQ-SDS-280
-func (a *audioScope) WithFrame(fn func(*engine.Frame)) {
+func (a *audioScope) WithFrame(fn func(*sample.Frame)) {
 	a.mu.Lock()
 	leased := a.leased
 	a.mu.Unlock()
@@ -61,7 +61,7 @@ func (a *audioScope) WithFrame(fn func(*engine.Frame)) {
 
 // i2sRecord is a record of I2S sampled every dt (see audioScope).
 // TRLC-LINKS: REQ-SDS-280
-func i2sRecord(seq uint64, dt float64) *engine.Frame {
+func i2sRecord(seq uint64, dt float64) *sample.Frame {
 	const fs, slot = 48000.0, 32
 	bitS := 1 / (fs * 2 * slot)
 	n := int(0.012 / dt) // 12 ms
@@ -83,7 +83,7 @@ func i2sRecord(seq uint64, dt float64) *engine.Frame {
 		c2[i] = map[bool]uint8{true: 230, false: 25}[dj >= 0 && bit == 1]
 		_ = frame
 	}
-	return &engine.Frame{Seq: seq, SampleS: dt, Valid: n, C1: c1, C2: c2, TdivS: 1e-3, WinCols: n}
+	return &sample.Frame{Seq: seq, SampleS: dt, WinPoints: n, Snapshot: sample.Settings{TdivS: 1e-3}, Traces: []sample.Trace{{Valid: n, Codes8: c1}, {Ch: 1, Valid: n, Codes8: c2}}}
 }
 
 // TestVisualAudioBrowser: the Visual view's Digital audio captures a whole

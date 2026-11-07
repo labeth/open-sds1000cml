@@ -7,7 +7,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/labeth/open-sds1000cml/app/internal/engine"
+	"github.com/labeth/open-dso-core/sample"
 	"github.com/labeth/open-sds1000cml/app/internal/panel"
 )
 
@@ -28,7 +28,7 @@ func (s *fakeRefStore) export() [2]panel.RefExport {
 }
 
 // TRLC-LINKS: REQ-SDS-227
-func (s *fakeRefStore) act(frames func(func(*engine.Frame)), slot int, op string) panel.SetResult {
+func (s *fakeRefStore) act(frames func(func(*sample.Frame)), slot int, op string) panel.SetResult {
 	if slot < 0 || slot > 1 {
 		return panel.SetResult{Error: "no slot"}
 	}
@@ -38,16 +38,16 @@ func (s *fakeRefStore) act(frames func(func(*engine.Frame)), slot int, op string
 	switch op {
 	case "store":
 		var e panel.RefExport
-		frames(func(f *engine.Frame) {
-			if f == nil || len(f.C1) == 0 || f.IsEnv {
+		frames(func(f *sample.Frame) {
+			if f == nil || len(f.Codes8(0)) == 0 || f.Flags.Has(sample.Envelope) {
 				return
 			}
-			valid := min(max(f.Valid, 1), len(f.C1))
-			win := f.WinCols
+			valid := min(max(f.Len(), 1), len(f.Codes8(0)))
+			win := f.WinPoints
 			if win <= 0 || win > valid {
 				win = valid
 			}
-			xc := f.EdgeX
+			xc := f.TriggerAt
 			if xc < 0 {
 				xc = float64(valid) / 2
 			}
@@ -63,8 +63,8 @@ func (s *fakeRefStore) act(frames func(func(*engine.Frame)), slot int, op string
 				return out
 			}
 			e = panel.RefExport{
-				Has: true, Show: true, Cols: panel.RefCols, C1: cols(f.C1), C2: cols(f.C2), Vdiv: [2]float64{1, 1},
-				Probe: [2]float64{1, 1}, TdivS: f.TdivS, PosFrac: .5, At: time.Now().UnixMilli(),
+				Has: true, Show: true, Cols: panel.RefCols, C1: cols(f.Codes8(0)), C2: cols(f.Codes8(1)), Vdiv: [2]float64{1, 1},
+				Probe: [2]float64{1, 1}, TdivS: f.Snapshot.TdivS, PosFrac: .5, At: time.Now().UnixMilli(),
 			}
 		})
 		if !e.Has {
@@ -92,7 +92,7 @@ func (s *fakeRefStore) act(frames func(func(*engine.Frame)), slot int, op string
 // refsOnlyPanel is a scope with references and no keys (the page's AUTO is
 // refused, as with no panel).
 type refsOnlyPanel struct {
-	frames func(func(*engine.Frame))
+	frames func(func(*sample.Frame))
 	refs   fakeRefStore
 }
 

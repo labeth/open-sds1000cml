@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/labeth/open-dso-core/decode"
+	"github.com/labeth/open-dso-core/sample"
 	"github.com/labeth/open-sds1000cml/app/internal/engine"
 	"github.com/labeth/open-sds1000cml/app/internal/panel/framecalc"
 )
@@ -46,14 +47,14 @@ func TestBusSearchTakesADecimatedRecordFirst(t *testing.T) {
 	}{{115200, false}, {921600, true}} {
 		_, base, fe := newC(t)
 		eng := &searchLeaseEng{fakeEng: base}
-		ctl := New(eng, fe, -1, engine.SupportedTdivs(), 200e-6, t.Logf)
+		ctl := newCtl(eng, fe, -1, engine.SupportedTdivs(), 200e-6, t.Logf)
 		ctl.decode(idle(), true)
 		ctl.detectSync = true
 		msgs := []string{"Hi U\x55\xaa\x0f\xf0"}
 		raw := uartFrame(msgs, c.baud, 30e-6, 2e-9, 1000000)
 		dec := uartFrame(msgs, c.baud, 30e-6, 244e-9, 8192)
 		env := envelope2(raw, 244)
-		ctl.SetFrameSource(func(fn func(*engine.Frame)) {
+		ctl.SetFrameSource(func(fn func(*sample.Frame)) {
 			f := *env
 			switch {
 			case eng.raw.Load():
@@ -66,11 +67,11 @@ func TestBusSearchTakesADecimatedRecordFirst(t *testing.T) {
 		auto := func() (decode.Result, float64, bool) {
 			var res decode.Result
 			var sampleS float64
-			ctl.frameFn(func(f *engine.Frame) {
-				if f.PeakDetect || f.IsEnv {
+			ctl.frameFn(func(f *sample.Frame) {
+				if f.Content == sample.PeakPairs || f.Flags.Has(sample.Envelope) {
 					return
 				}
-				res, sampleS = decode.AutodetectFast(f.C1[:f.Valid], f.C2[:f.Valid], f.SampleS, "hex")
+				res, sampleS = decode.AutodetectFast(f.Codes8(0)[:f.Len()], f.Codes8(1)[:f.Len()], f.SampleS, "hex")
 			})
 			return res, sampleS, res.OK && res.Proto == "uart"
 		}
@@ -97,14 +98,14 @@ func TestBusSearchTakesADecimatedRecordFirst(t *testing.T) {
 func TestBusSearchReadsAShortFullRateRecord(t *testing.T) {
 	_, base, fe := newC(t)
 	eng := &searchLeaseEng{fakeEng: base}
-	ctl := New(eng, fe, -1, engine.SupportedTdivs(), 500e-6, t.Logf)
+	ctl := newCtl(eng, fe, -1, engine.SupportedTdivs(), 500e-6, t.Logf)
 	ctl.decode(idle(), true)
 	ctl.detectSync = true
 	msgs := []string{"Hi U\x55\xaa\x0f\xf0"}
 	raws := map[float64]int{}
-	ctl.SetFrameSource(func(fn func(*engine.Frame)) {
+	ctl.SetFrameSource(func(fn func(*sample.Frame)) {
 		tdiv := eng.Snapshot().TdivS
-		var f engine.Frame
+		var f sample.Frame
 		switch {
 		case eng.raw.Load():
 			raws[tdiv]++
@@ -114,7 +115,7 @@ func TestBusSearchReadsAShortFullRateRecord(t *testing.T) {
 		default:
 			f = *envelope2(uartFrame(msgs, 2e6, 5e-6, 2e-9, 100000), 50)
 		}
-		f.TdivS = tdiv
+		f.Snapshot.TdivS = tdiv
 		fn(&f)
 	})
 	ctl.runDetect()
@@ -198,18 +199,18 @@ func TestBusSearchLooksPastAScantUART(t *testing.T) {
 		for i := range idle {
 			idle[i] = 210
 		}
-		ctl.SetFrameSource(func(fn func(*engine.Frame)) {
+		ctl.SetFrameSource(func(fn func(*sample.Frame)) {
 			tdiv := eng.Snapshot().TdivS
-			var f engine.Frame
+			var f sample.Frame
 			switch {
 			case tdiv < 50e-6:
 				f = *short
 			case tdiv >= 200e-6 && c.atFull:
 				f = *uartFrame([]string{"Hi U\x55\xaa"}, 115200, 30e-6, 256e-9, 8192)
 			default:
-				f = engine.Frame{C1: idle, C2: idle, Valid: len(idle), WinCols: len(idle), SampleS: 2e-9}
+				f = sample.Frame{WinPoints: len(idle), SampleS: 2e-9, Traces: []sample.Trace{{Codes8: idle, Valid: len(idle)}, {Ch: 1, Codes8: idle, Valid: len(idle)}}}
 			}
-			f.TdivS = tdiv
+			f.Snapshot.TdivS = tdiv
 			fn(&f)
 		})
 		ctl.setTdivNearest(5e-6)
@@ -267,7 +268,7 @@ func TestBusSearchSkipsAFullRateRecordTheDecimatedOneResolves(t *testing.T) {
 	}{{"resolved", 300, false}, {"edges too close", 4, true}} {
 		_, base, fe := newC(t)
 		eng := &searchLeaseEng{fakeEng: base}
-		ctl := New(eng, fe, -1, engine.SupportedTdivs(), 10e-6, t.Logf)
+		ctl := newCtl(eng, fe, -1, engine.SupportedTdivs(), 10e-6, t.Logf)
 		ctl.decode(idle(), true)
 		ctl.detectSync = true
 		// edges c.run to 2*c.run samples apart, irregular (no clock); C2 idles
@@ -281,21 +282,21 @@ func TestBusSearchSkipsAFullRateRecordTheDecimatedOneResolves(t *testing.T) {
 			square[i], idleC2[i] = level, 210
 		}
 		raws := map[float64]int{}
-		ctl.SetFrameSource(func(fn func(*engine.Frame)) {
+		ctl.SetFrameSource(func(fn func(*sample.Frame)) {
 			tdiv := eng.Snapshot().TdivS
-			var f engine.Frame
+			var f sample.Frame
 			switch {
 			case eng.raw.Load():
 				raws[tdiv]++
-				f = engine.Frame{C1: square, C2: idleC2, Valid: len(square), WinCols: len(square), SampleS: 2e-9}
+				f = sample.Frame{WinPoints: len(square), SampleS: 2e-9, Traces: []sample.Trace{{Codes8: square, Valid: len(square)}, {Ch: 1, Codes8: idleC2, Valid: len(square)}}}
 			case eng.sampled.Load() && tdiv >= 200e-6:
 				f = *uartFrame([]string{"Hi U\x55\xaa"}, 115200, 30e-6, 256e-9, 8192)
 			case eng.sampled.Load():
-				f = engine.Frame{C1: square, C2: idleC2, Valid: len(square), WinCols: len(square), SampleS: 32e-9}
+				f = sample.Frame{WinPoints: len(square), SampleS: 32e-9, Traces: []sample.Trace{{Codes8: square, Valid: len(square)}, {Ch: 1, Codes8: idleC2, Valid: len(square)}}}
 			default:
 				f = *envelope2(uartFrame([]string{"Hi"}, 115200, 30e-6, 2e-9, 100000), 50)
 			}
-			f.TdivS = tdiv
+			f.Snapshot.TdivS = tdiv
 			fn(&f)
 		})
 		ctl.setTdivNearest(10e-6)
@@ -321,20 +322,20 @@ func TestDetectionWaitsOutAnImageLoad(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		c, e, _ := newC(t)
 		stale := uartFrame([]string{"old bus\r\n"}, 115200, 60e-6, 100e-9, 20000)
-		stale.Seq, stale.Content = 7, 7001
+		stale.Seq, stale.ContentID = 7, 7001
 		var loading atomic.Bool
 		loading.Store(true)
 		var seq atomic.Uint64
 		seq.Store(100)
 		e.set(func(st *engine.Stats) { st.Running, st.Busy = true, "loading general image" })
-		c.SetFrameSource(func(fn func(*engine.Frame)) {
+		c.SetFrameSource(func(fn func(*sample.Frame)) {
 			if loading.Load() {
 				fn(stale)
 				return
 			}
 			f := fastUART()
 			f.Seq = seq.Add(1)
-			f.Content = 9000 + f.Seq
+			f.ContentID = 9000 + f.Seq
 			fn(f)
 		})
 		go func() {
@@ -342,7 +343,7 @@ func TestDetectionWaitsOutAnImageLoad(t *testing.T) {
 			e.set(func(st *engine.Stats) { st.Busy = "" })
 			loading.Store(false)
 		}()
-		all := func(*engine.Frame, bool) bool { return true }
+		all := func(*sample.Frame, bool) bool { return true }
 		l := c.detectWith(false, false, all, c.detectOnScreen, 150*time.Millisecond)
 		if !l.found || l.res.Baud != 460800 {
 			t.Fatalf("the search read baud %d (found %v): the frame from before the image load", l.res.Baud, l.found)
@@ -358,8 +359,8 @@ func TestAutoEndsTheSearchRunning(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		c, e, _ := newC(t)
 		e.set(func(st *engine.Stats) { st.Running = true })
-		c.SetFrameSource(func(func(*engine.Frame)) {}) // no frame comes
-		none := func(*engine.Frame, bool) bool { return false }
+		c.SetFrameSource(func(func(*sample.Frame)) {}) // no frame comes
+		none := func(*sample.Frame, bool) bool { return false }
 		go func() {
 			time.Sleep(100 * time.Millisecond)
 			c.mu.Lock()
@@ -393,22 +394,22 @@ func TestBusSearchLooksSlowerFirstForAFewByteUART(t *testing.T) {
 	}
 	for _, c := range []struct {
 		name  string
-		slow  func() *engine.Frame
+		slow  func() *sample.Frame
 		proto int
 	}{
 		{"a LIN bus", linFrameRecord, framecalc.ProtoLIN},
-		{"the UART again", func() *engine.Frame {
+		{"the UART again", func() *sample.Frame {
 			return uartFrame([]string{"Hi U\x55\xaa"}, 19200, 0, 4e-6, 25000)
 		}, framecalc.ProtoUART},
 	} {
 		_, base, fe := newC(t)
 		eng := &searchLeaseEng{fakeEng: base}
-		ctl := New(eng, fe, -1, engine.SupportedTdivs(), 500e-6, t.Logf)
+		ctl := newCtl(eng, fe, -1, engine.SupportedTdivs(), 500e-6, t.Logf)
 		ctl.decode(idle(), true)
 		ctl.detectSync = true
-		ctl.SetFrameSource(func(fn func(*engine.Frame)) {
+		ctl.SetFrameSource(func(fn func(*sample.Frame)) {
 			tdiv := eng.Snapshot().TdivS
-			var f engine.Frame
+			var f sample.Frame
 			switch {
 			case eng.raw.Load():
 				t.Errorf("%s: a full-rate record read at %g s/div", c.name, tdiv)
@@ -416,11 +417,11 @@ func TestBusSearchLooksSlowerFirstForAFewByteUART(t *testing.T) {
 			case tdiv >= 5e-3:
 				f = *c.slow()
 			case tdiv < 400e-6: // between frames at the full-rate timebase
-				f = engine.Frame{C1: idle5k, C2: idle5k, Valid: len(idle5k), WinCols: len(idle5k), SampleS: 400e-9}
+				f = sample.Frame{WinPoints: len(idle5k), SampleS: 400e-9, Traces: []sample.Trace{{Codes8: idle5k, Valid: len(idle5k)}, {Ch: 1, Codes8: idle5k, Valid: len(idle5k)}}}
 			default: // five bytes of the frame at 500us/div
 				f = *uartFrame([]string{"\x55\x12\xa5\x5a\x2c"}, 19200, 0, 1e-6, 5000)
 			}
-			f.TdivS = tdiv
+			f.Snapshot.TdivS = tdiv
 			fn(&f)
 		})
 		ctl.setTdivNearest(500e-6)

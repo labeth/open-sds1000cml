@@ -10,6 +10,7 @@ import (
 	"sync/atomic"
 	"testing"
 
+	"github.com/labeth/open-dso-core/sample"
 	"github.com/labeth/open-dso-core/testenv"
 	"github.com/labeth/open-sds1000cml/app/internal/engine"
 )
@@ -35,7 +36,7 @@ func TestFFTBrowser(t *testing.T) {
 		}
 		return uint8(v + 0.5)
 	}
-	gen := func() *engine.Frame {
+	gen := func() *sample.Frame {
 		n := seq.Add(1)
 		phase := float64(n) * 0.6
 		// Both tones stay strong (28..52) so neither peak ever disappears; only
@@ -55,9 +56,13 @@ func TestFFTBrowser(t *testing.T) {
 				ampB*math.Sin(2*math.Pi*37*float64(i)/N) +
 				ampA*math.Sin(2*math.Pi*50*float64(i)/N))
 		}
-		return &engine.Frame{
-			C1: c1, C2: c2, Seq: uint64(n), Valid: N, WinCols: N,
-			EdgeX: -1, TdivS: 500e-6, DisplayedS: 500e-6, SampleS: 800e-9,
+		return &sample.Frame{
+			Seq:       uint64(n),
+			WinPoints: N,
+			TriggerAt: -1,
+			SampleS:   800e-9,
+			Snapshot:  sample.Settings{TdivS: 500e-6, DisplayedS: 500e-6},
+			Traces:    []sample.Trace{{Codes8: c1, Valid: N}, {Ch: 1, Codes8: c2, Valid: N}},
 		}
 	}
 

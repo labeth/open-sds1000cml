@@ -50,7 +50,7 @@ func (s *slowScope) apply() {
 func TestTdivPendingAndOpc(t *testing.T) {
 	sc := &slowScope{}
 	sc.stats.TdivS = 5e-9
-	h := New(sc, nil, nil, nil, t.Logf)
+	h := New(sc, nil, nil, nil, nil, t.Logf)
 	h.HandleLine([]byte("TDIV 10S"))
 	if got := string(h.HandleLine([]byte("TDIV?"))); got != "TDIV 1.00E+01s\n" {
 		t.Fatalf("TDIV? while switching: %q", got)
@@ -72,7 +72,7 @@ func TestTdivPendingAndOpc(t *testing.T) {
 // success for any argument), and HCSU? answers.
 // TRLC-LINKS: REQ-SDS-024
 func TestHCSUFixedBMP(t *testing.T) {
-	h := New(&fakeScope{}, nil, nil, nil, t.Logf)
+	h := New(&fakeScope{}, nil, nil, nil, nil, t.Logf)
 	for cmd, want := range map[string]string{
 		"HCSU?": "HCSU DEV,BMP\n", "HCSU DEV,BMP": "", "HCSU DEV,PNG": "Data out of range\n",
 		"HCSU DEV": "Command header error\n", "HCSU PSIZE,A4": "Data out of range\n",

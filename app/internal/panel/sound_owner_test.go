@@ -8,6 +8,7 @@ import (
 	"testing/synctest"
 	"time"
 
+	"github.com/labeth/open-dso-core/sample"
 	"github.com/labeth/open-sds1000cml/app/internal/engine"
 	"github.com/labeth/open-sds1000cml/app/internal/settings"
 )
@@ -36,7 +37,7 @@ func (e *soundEng) leaseActive() bool { return time.Now().Before(e.lease) }
 func TestSoundDriftEndsWithSound(t *testing.T) {
 	tone := func(float64) float64 { return 0 }
 	e := newSoundEng([2]func(float64) float64{tone, tone}, 30)
-	c := New(e, &fakeFE{idx: [2]int{8, 8}}, -1, engine.SupportedTdivs(), 500e-6, t.Logf)
+	c := newCtl(e, &fakeFE{idx: [2]int{8, 8}}, -1, engine.SupportedTdivs(), 500e-6, t.Logf)
 	c.decode(idle(), true)
 
 	// Power-on with a setup that kept Drift on: it comes back off.
@@ -93,7 +94,7 @@ func TestSoundDriftEndsWithSound(t *testing.T) {
 func TestSoundLCDTakesTheScopeBack(t *testing.T) {
 	quiet := func(float64) float64 { return 0 }
 	e := newSoundEng([2]func(float64) float64{quiet, quiet}, 1)
-	c := New(e, &fakeFE{idx: [2]int{8, 8}}, -1, engine.SupportedTdivs(), 500e-6, t.Logf)
+	c := newCtl(e, &fakeFE{idx: [2]int{8, 8}}, -1, engine.SupportedTdivs(), 500e-6, t.Logf)
 	c.decode(idle(), true)
 	lease := func() { e.LeaseSound(3 * time.Second) }
 
@@ -203,7 +204,7 @@ func TestSoundAutoTakesTheScopeFirst(t *testing.T) {
 		}
 		var mu sync.Mutex
 		blind, seen := 0, 0
-		c.SetFrameSource(func(fn func(*engine.Frame)) {
+		c.SetFrameSource(func(fn func(*sample.Frame)) {
 			mu.Lock()
 			if e.leased() {
 				blind++
@@ -213,7 +214,7 @@ func TestSoundAutoTakesTheScopeFirst(t *testing.T) {
 			}
 			seen++
 			mu.Unlock()
-			fn(&engine.Frame{C1: sig, C2: sig, Valid: len(sig), SampleS: 50e-9})
+			fn(&sample.Frame{SampleS: 50e-9, Traces: []sample.Trace{{Codes8: sig, Valid: len(sig)}, {Ch: 1, Codes8: sig, Valid: len(sig)}}})
 		})
 		lease := func() { e.LeaseSound(3 * time.Second) }
 		if !c.SoundRemoteLease("", lease) {
@@ -260,7 +261,7 @@ func TestSoundAutoTakesTheScopeFirst(t *testing.T) {
 func TestSoundNoticeNamesBothPages(t *testing.T) {
 	quiet := func(float64) float64 { return 0 }
 	e := newSoundEng([2]func(float64) float64{quiet, quiet}, 1)
-	c := New(e, &fakeFE{idx: [2]int{8, 8}}, -1, engine.SupportedTdivs(), 500e-6, t.Logf)
+	c := newCtl(e, &fakeFE{idx: [2]int{8, 8}}, -1, engine.SupportedTdivs(), 500e-6, t.Logf)
 	c.decode(idle(), true)
 	lease := func() { e.LeaseSound(3 * time.Second) }
 	for _, who := range []string{"", "phone", "", "phone"} {

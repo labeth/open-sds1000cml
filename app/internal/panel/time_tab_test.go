@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/labeth/open-sds1000cml/app/internal/engine"
+	"github.com/labeth/open-dso-core/sample"
 )
 
 // The TIME tab names the converters' sample interval: on a peak-detect
@@ -16,7 +16,7 @@ import (
 func TestTimeTabNamesTheRealSampling(t *testing.T) {
 	c, _, _ := newC(t)
 	sig := make([]uint8, 4096)
-	c.OnFrame(&engine.Frame{Seq: 1, C1: sig, C2: sig, Valid: 4096, WinCols: 2049, SampleS: 488e-9, CaptureSampleS: 2e-9, PeakDetect: true, TdivS: 100e-6})
+	c.OnFrame(&sample.Frame{Seq: 1, WinPoints: 2049, SampleS: 488e-9, CaptureS: 2e-9, Content: sample.PeakPairs, Snapshot: sample.Settings{TdivS: 100e-6}, Traces: []sample.Trace{{Codes8: sig, Valid: 4096}, {Ch: 1, Codes8: sig, Valid: 4096}}})
 	press(t, c, "horizmenu")
 	var text []string
 	for _, sp := range c.View().Sheet.Status {

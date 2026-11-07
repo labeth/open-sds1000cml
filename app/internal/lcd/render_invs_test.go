@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"testing"
 
+	"github.com/labeth/open-dso-core/sample"
 	"github.com/labeth/open-sds1000cml/app/internal/engine"
 )
 
@@ -31,15 +32,19 @@ func traceRows(sf *MemSurface, col uint16) (minY, maxY int, found bool) {
 }
 
 // TRLC-LINKS: REQ-SDS-021
-func flatFrame(v1, v2 uint8) *engine.Frame {
+func flatFrame(v1, v2 uint8) *sample.Frame {
 	const n = 2048
-	f := &engine.Frame{
-		C1: make([]uint8, n), C2: make([]uint8, n),
-		Valid: n, WinCols: n, Seq: 1, EdgeX: -1, // flat capture → centre on the record
-		TdivS: 500e-6, DisplayedS: 500e-6, SampleS: 800e-9, Ptp: 0,
+	f := &sample.Frame{
+		WinPoints: n,
+		Seq:       1,
+		TriggerAt: -1,
+		SampleS:   800e-9,
+		SourcePtp: 0,
+		Snapshot:  sample.Settings{TdivS: 500e-6, DisplayedS: 500e-6},
+		Traces:    []sample.Trace{{Codes8: make([]uint8, n), Valid: n}, {Ch: 1, Codes8: make([]uint8, n), Valid: n}},
 	}
 	for i := range n {
-		f.C1[i], f.C2[i] = v1, v2
+		f.Codes8(0)[i], f.Codes8(1)[i] = v1, v2
 	}
 	return f
 }
@@ -98,16 +103,15 @@ func TestRenderINVSFlipsTrace(t *testing.T) {
 // TRLC-LINKS: REQ-SDS-021
 func TestRenderINVSFlipsEnvelope(t *testing.T) {
 	const n = 400
-	f := &engine.Frame{
-		C1: make([]uint8, 8), C2: make([]uint8, 8), Valid: 8, Seq: 1,
-		IsEnv: true, EnvCols: n,
-		EnvMin: make([]uint8, n), EnvMax: make([]uint8, n),
-		EnvMin2: make([]uint8, n), EnvMax2: make([]uint8, n),
-		TdivS: 0.1, DisplayedS: 0.1,
+	f := &sample.Frame{
+		Seq:      1,
+		Flags:    sample.Envelope,
+		Snapshot: sample.Settings{TdivS: 0.1, DisplayedS: 0.1},
+		Traces:   []sample.Trace{{Codes8: make([]uint8, 8), Valid: 8, Min8: make([]uint8, n)[:n], Max8: make([]uint8, n)[:n]}, {Ch: 1, Codes8: make([]uint8, 8), Valid: 8, Min8: make([]uint8, n)[:n], Max8: make([]uint8, n)[:n]}},
 	}
 	for i := range n {
-		f.EnvMin[i], f.EnvMax[i] = 100, 150
-		f.EnvMin2[i], f.EnvMax2[i] = 60, 70
+		f.Min8(0)[i], f.Max8(0)[i] = 100, 150
+		f.Min8(1)[i], f.Max8(1)[i] = 60, 70
 	}
 	hud := HUD{
 		C1VdivV: 1, C2VdivV: 1, TdivS: 0.1, TrigPosFrac: 0.5,
@@ -152,13 +156,13 @@ func TestTriggerPositionMarkerEndpoints(t *testing.T) {
 // TRLC-LINKS: REQ-SDS-021, REQ-SDS-018
 func TestLeftEdgeTraceDecodeAndZoneAlignment(t *testing.T) {
 	const n = 1024
-	f := &engine.Frame{C1: goldenUARTWave([]int{0x4f, 0x4b, 0x21}, 16, n), Valid: n, WinCols: n, EdgeX: 0, SampleS: 1e-6}
+	f := &sample.Frame{WinPoints: n, TriggerAt: 0, SampleS: 1e-6, Traces: []sample.Trace{{Codes8: goldenUARTWave([]int{0x4f, 0x4b, 0x21}, 16, n), Valid: n}, {Ch: 1, Valid: n}}}
 	hud := HUD{DecProto: 2, DecBaud: 62500, Zones: []engine.Zone{{DtLoS: 0, DtHiS: 100e-6, CodeLo: 100, CodeHi: 160}}}
 	for _, tc := range []struct {
 		name string
 		draw func(Surface, float64, float64)
 	}{
-		{"trace", func(sf Surface, xc, pf float64) { drawTrace(sf, f.C1, n, xc, false, colC1, pf) }},
+		{"trace", func(sf Surface, xc, pf float64) { drawTrace(sf, f.Codes8(0), n, xc, false, colC1, pf) }},
 		{"decode", func(sf Surface, xc, pf float64) { drawDecode(sf, fullPlot, f, hud, n, xc, pf) }},
 		{"zone", func(sf Surface, xc, pf float64) { drawZoneMask(sf, fullPlot, f, hud, n, xc, pf) }},
 	} {
@@ -187,7 +191,7 @@ func TestMaskOverlayThroughTime(t *testing.T) {
 	}
 	hud := HUD{MaskMode: 1, MaskLo: lo, MaskHi: hi, MaskWin: 1000, MaskTdivS: 100e-9, MaskSampleS: 1e-9, TrigPosFrac: .5}
 	draw := func(n int, sampleS float64) *MemSurface {
-		f := &engine.Frame{C1: make([]uint8, n), Valid: n, WinCols: n, EdgeX: float64(n) / 2, SampleS: sampleS, TdivS: 100e-9}
+		f := &sample.Frame{WinPoints: n, TriggerAt: float64(n) / 2, SampleS: sampleS, Snapshot: sample.Settings{TdivS: 100e-9}, Traces: []sample.Trace{{Codes8: make([]uint8, n), Valid: n}, {Ch: 1, Valid: n}}}
 		sf := NewMemSurface()
 		drawZoneMask(sf, fullPlot, f, hud, n, float64(n)/2, .5)
 		return sf

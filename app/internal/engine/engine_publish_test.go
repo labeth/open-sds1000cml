@@ -5,6 +5,7 @@ package engine
 import (
 	"testing"
 
+	"github.com/labeth/open-dso-core/sample"
 	"github.com/labeth/open-sds1000cml/app/internal/iface"
 )
 
@@ -27,16 +28,16 @@ func TestDecimatedAutoPublishes(t *testing.T) {
 	if !fresh || f.Seq != 3 {
 		t.Fatalf("consume: fresh=%v seq=%d, want fresh seq 3", fresh, f.Seq)
 	}
-	if f.Valid != decimDrain || f.WinCols != 2048 || f.Interp {
-		t.Fatalf("frame geom: valid=%d win=%d interp=%v, want %d/2048", f.Valid, f.WinCols, f.Interp, decimDrain)
+	if f.Len() != decimDrain || f.WinPoints != 2048 || f.Flags.Has(sample.Interp) {
+		t.Fatalf("frame geom: valid=%d win=%d interp=%v, want %d/2048", f.Len(), f.WinPoints, f.Flags.Has(sample.Interp), decimDrain)
 	}
-	if f.EdgeX < 0 {
-		t.Fatalf("EdgeX = %v, want a real crossing", f.EdgeX)
+	if f.TriggerAt < 0 {
+		t.Fatalf("EdgeX = %v, want a real crossing", f.TriggerAt)
 	}
-	if f.C1[0] != 200 || f.C2[0] != 60 {
-		t.Fatalf("drain content: C1[0]=%d C2[0]=%d, want 200/60", f.C1[0], f.C2[0])
+	if f.Codes8(0)[0] != 200 || f.Codes8(1)[0] != 60 {
+		t.Fatalf("drain content: C1[0]=%d C2[0]=%d, want 200/60", f.Codes8(0)[0], f.Codes8(1)[0])
 	}
-	if f.IsEnv || f.EnvCols != 0 {
+	if f.Flags.Has(sample.Envelope) || len(f.Min8(0)) != 0 {
 		t.Fatal("envelope metadata not cleared")
 	}
 	// Every pop was covered by BURST_REMAIN (no read past the record).
@@ -183,8 +184,8 @@ func TestDecimatedAutoWrongSlopeLiveness(t *testing.T) {
 		t.Fatalf("AUTO froze: %d holds, 0 liveness publishes (want >=1 per %d holds)", s.Held, nativeFlatFallbck)
 	}
 	f, _ := e.Consume()
-	if f.EdgeX >= 0 || f.Trigd {
-		t.Fatalf("liveness frame must be honest/unlocked: EdgeX=%v Trigd=%v", f.EdgeX, f.Trigd)
+	if f.TriggerAt >= 0 || f.Status.Triggered {
+		t.Fatalf("liveness frame must be honest/unlocked: EdgeX=%v Trigd=%v", f.TriggerAt, f.Status.Triggered)
 	}
 	// NORM: strictly held, no liveness.
 	fb2 := newFakeBus()
@@ -237,8 +238,8 @@ func TestDecimatedAutoLivenessTimeBound(t *testing.T) {
 		t.Fatalf("time-bound liveness did not fire: published=%d, want 1", s.Published)
 	}
 	f, _ := e.Consume()
-	if f.EdgeX >= 0 || f.Trigd {
-		t.Fatalf("liveness frame must be honest/unlocked: EdgeX=%v Trigd=%v", f.EdgeX, f.Trigd)
+	if f.TriggerAt >= 0 || f.Status.Triggered {
+		t.Fatalf("liveness frame must be honest/unlocked: EdgeX=%v Trigd=%v", f.TriggerAt, f.Status.Triggered)
 	}
 }
 
@@ -314,10 +315,10 @@ func TestEdgeLevelOffSignalDoesNotLock(t *testing.T) {
 	if !fresh {
 		t.Fatal("AUTO off-signal frame never reached the arena")
 	}
-	if f.EdgeX >= 0 {
-		t.Fatalf("AUTO off-signal EdgeX=%v, want -1 (no lock — the level is off the wave)", f.EdgeX)
+	if f.TriggerAt >= 0 {
+		t.Fatalf("AUTO off-signal EdgeX=%v, want -1 (no lock — the level is off the wave)", f.TriggerAt)
 	}
-	if f.Trigd {
+	if f.Status.Triggered {
 		t.Fatal("AUTO off-signal frame marked Trigd; an off-wave level must not claim a trigger")
 	}
 
@@ -339,8 +340,8 @@ func TestEdgeLevelOffSignalDoesNotLock(t *testing.T) {
 	e3.bringUp()
 	e3.oneFrame(false)
 	f3, fresh3 := e3.Consume()
-	if !fresh3 || f3.EdgeX < 0 {
-		t.Fatalf("ON-signal AUTO: fresh=%v EdgeX=%v, want a real crossing (lock)", fresh3, f3.EdgeX)
+	if !fresh3 || f3.TriggerAt < 0 {
+		t.Fatalf("ON-signal AUTO: fresh=%v EdgeX=%v, want a real crossing (lock)", fresh3, f3.TriggerAt)
 	}
 }
 
@@ -367,8 +368,8 @@ func TestDecimatedFlatFallback(t *testing.T) {
 		t.Fatalf("flat DC fallback did not publish: published=%d, want 1", s.Published)
 	}
 	f, fresh := e.Consume()
-	if !fresh || f.EdgeX != -1 {
-		t.Fatalf("DC fallback frame: fresh=%v EdgeX=%v, want fresh EdgeX=-1", fresh, f.EdgeX)
+	if !fresh || f.TriggerAt != -1 {
+		t.Fatalf("DC fallback frame: fresh=%v EdgeX=%v, want fresh EdgeX=-1", fresh, f.TriggerAt)
 	}
 }
 
@@ -391,15 +392,15 @@ func TestLevelAnchoredCentering(t *testing.T) {
 	// No level set (boot): anchors at the mid-level (~128) crossing near centre.
 	e.oneFrame(false) // AUTO publishes regardless of slope validation
 	f, _ := e.Consume()
-	midEdge := f.EdgeX
+	midEdge := f.TriggerAt
 
 	// Level display code ≈ 200 (volts 2.25 @ 1 V/div): crosses strictly later.
 	e.SetTrigLevelCode(uint16(31434 - 2110))
 	e.serviceCommands()
 	e.oneFrame(false)
 	f2, _ := e.Consume()
-	if f2.EdgeX <= midEdge+200 {
-		t.Fatalf("level-anchored EdgeX %v not well past mid-level %v (level ignored)", f2.EdgeX, midEdge)
+	if f2.TriggerAt <= midEdge+200 {
+		t.Fatalf("level-anchored EdgeX %v not well past mid-level %v (level ignored)", f2.TriggerAt, midEdge)
 	}
 }
 
@@ -425,8 +426,8 @@ func TestNativeFastAutoFreeRunUntriggered(t *testing.T) {
 	e.bringUp()
 	e.oneFrame(false)
 	f, fresh := e.Consume()
-	if !fresh || f.EdgeX != -1 {
-		t.Fatalf("native-fast AUTO untriggered: fresh=%v EdgeX=%v, want fresh EdgeX=-1 (free-run)", fresh, f.EdgeX)
+	if !fresh || f.TriggerAt != -1 {
+		t.Fatalf("native-fast AUTO untriggered: fresh=%v EdgeX=%v, want fresh EdgeX=-1 (free-run)", fresh, f.TriggerAt)
 	}
 
 	// NORM, comparator silent → HOLD (no publish).
@@ -461,11 +462,11 @@ func TestNativeFastContentGate(t *testing.T) {
 	// from the full deep record (spec 04 §11 trigger-hold path).
 	e.oneFrame(false)
 	f, fresh := e.Consume()
-	if !fresh || f.Valid != maxRecordCols || !f.Interp {
-		t.Fatalf("native-fast edge frame: fresh=%v valid=%d interp=%v", fresh, f.Valid, f.Interp)
+	if !fresh || f.Len() != maxRecordCols || !f.Flags.Has(sample.Interp) {
+		t.Fatalf("native-fast edge frame: fresh=%v valid=%d interp=%v", fresh, f.Len(), f.Flags.Has(sample.Interp))
 	}
-	if f.EdgeX < 0 {
-		t.Fatalf("native-fast edge frame not centred: EdgeX=%v", f.EdgeX)
+	if f.TriggerAt < 0 {
+		t.Fatalf("native-fast edge frame not centred: EdgeX=%v", f.TriggerAt)
 	}
 
 	// Comparator fires but the content is a flat rail (the common DC-input case: a mid-scale
@@ -478,8 +479,8 @@ func TestNativeFastContentGate(t *testing.T) {
 	for i := range 3 {
 		e.oneFrame(false)
 		f, fresh = e.Consume()
-		if !fresh || f.EdgeX != -1 || f.Trigd {
-			t.Fatalf("flat AUTO native-fast frame %d: fresh=%v EdgeX=%v trigd=%v, want a fresh unlocked refresh", i, fresh, f.EdgeX, f.Trigd)
+		if !fresh || f.TriggerAt != -1 || f.Status.Triggered {
+			t.Fatalf("flat AUTO native-fast frame %d: fresh=%v EdgeX=%v trigd=%v, want a fresh unlocked refresh", i, fresh, f.TriggerAt, f.Status.Triggered)
 		}
 	}
 	// NORM keeps the trigger-hold with the honest 60-frame flat fallback.
@@ -491,7 +492,7 @@ func TestNativeFastContentGate(t *testing.T) {
 	}
 	e.oneFrame(true)
 	f, fresh = e.Consume()
-	if !fresh || f.EdgeX != -1 {
-		t.Fatalf("NORM flat fallback: fresh=%v EdgeX=%v, want fresh EdgeX=-1", fresh, f.EdgeX)
+	if !fresh || f.TriggerAt != -1 {
+		t.Fatalf("NORM flat fallback: fresh=%v EdgeX=%v, want fresh EdgeX=-1", fresh, f.TriggerAt)
 	}
 }

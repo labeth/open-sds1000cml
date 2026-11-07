@@ -5,7 +5,7 @@ package lcd
 import (
 	"testing"
 
-	"github.com/labeth/open-sds1000cml/app/internal/engine"
+	"github.com/labeth/open-dso-core/sample"
 	"github.com/labeth/open-sds1000cml/app/internal/panel/wsview"
 )
 
@@ -38,9 +38,9 @@ func TestDenseTraceKeepsSpikes(t *testing.T) {
 // Running, a frame from another timebase is not drawn under the new label.
 // TRLC-LINKS: REQ-SDS-021
 func TestStaleTimebaseFrameNotDrawn(t *testing.T) {
-	f := &engine.Frame{Seq: 1, C1: make([]uint8, 2048), C2: make([]uint8, 2048), Valid: 2048, WinCols: 2048, SampleS: 1e-3, TdivS: 0.1, EdgeX: -1}
-	for i := range f.C1 {
-		f.C1[i], f.C2[i] = 200, 200
+	f := &sample.Frame{Seq: 1, WinPoints: 2048, SampleS: 1e-3, TriggerAt: -1, Snapshot: sample.Settings{TdivS: 0.1}, Traces: []sample.Trace{{Codes8: make([]uint8, 2048), Valid: 2048}, {Ch: 1, Codes8: make([]uint8, 2048), Valid: 2048}}}
+	for i := range f.Codes8(0) {
+		f.Codes8(0)[i], f.Codes8(1)[i] = 200, 200
 	}
 	count := func(hud HUD) int {
 		sf := NewMemSurface()

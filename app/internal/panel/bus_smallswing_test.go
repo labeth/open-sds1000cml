@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/labeth/open-sds1000cml/app/internal/engine"
+	"github.com/labeth/open-dso-core/sample"
 )
 
 // A bus that swings too little to decode at the V/div in use (a 3.3 V bus
@@ -26,8 +26,8 @@ func TestNoBusNamesASmallSwing(t *testing.T) {
 	for i := range flat {
 		flat[i] = 128
 	}
-	c.SetFrameSource(func(fn func(*engine.Frame)) {
-		fn(&engine.Frame{C1: small, C2: flat, Valid: len(small), WinCols: len(small), SampleS: 32e-9, TdivS: eng.Snapshot().TdivS})
+	c.SetFrameSource(func(fn func(*sample.Frame)) {
+		fn(&sample.Frame{WinPoints: len(small), SampleS: 32e-9, Snapshot: sample.Settings{TdivS: eng.Snapshot().TdivS}, Traces: []sample.Trace{{Codes8: small, Valid: len(small)}, {Ch: 1, Codes8: flat, Valid: len(small)}}})
 	})
 	c.setTdivNearest(500e-6)
 	c.runDetect()
@@ -40,8 +40,8 @@ func TestNoBusNamesASmallSwing(t *testing.T) {
 	}
 
 	c, eng, _ = newC(t)
-	c.SetFrameSource(func(fn func(*engine.Frame)) {
-		fn(&engine.Frame{C1: flat, C2: flat, Valid: len(flat), WinCols: len(flat), SampleS: 32e-9, TdivS: eng.Snapshot().TdivS})
+	c.SetFrameSource(func(fn func(*sample.Frame)) {
+		fn(&sample.Frame{WinPoints: len(flat), SampleS: 32e-9, Snapshot: sample.Settings{TdivS: eng.Snapshot().TdivS}, Traces: []sample.Trace{{Codes8: flat, Valid: len(flat)}, {Ch: 1, Codes8: flat, Valid: len(flat)}}})
 	})
 	c.setTdivNearest(500e-6)
 	c.runDetect()

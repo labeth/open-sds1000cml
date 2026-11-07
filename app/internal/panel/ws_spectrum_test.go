@@ -195,7 +195,7 @@ func TestSpectrumMarkerOutsideTheSpan(t *testing.T) {
 	c.mu.Unlock()
 	slow := toneFrame("")
 	slow.SampleS *= 10
-	slow.TdivS *= 10
+	slow.Snapshot.TdivS *= 10
 	r.show(slow)
 	v := c.View().Spec
 	if !v.HasMark || v.MarkHz > span/10 || !strings.Contains(v.Marker, "(largest peak)") {

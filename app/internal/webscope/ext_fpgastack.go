@@ -9,6 +9,7 @@ import (
 	"io"
 	"net/http"
 
+	"github.com/labeth/open-dso-core/sample"
 	"github.com/labeth/open-dso-core/superres"
 	"github.com/labeth/open-dso-core/webserver"
 	"github.com/labeth/open-sds1000cml/app/internal/engine"
@@ -30,16 +31,16 @@ type fpgaStackBody struct {
 func (s *Scope) frameTemplate(cfg engine.FPGAStackRequest, points int, tolerance float64) (superres.FPGATemplate, error) {
 	var sig []float64
 	var sampleS, edgeX float64
-	s.sc.WithFrame(func(f *engine.Frame) {
-		if f == nil || f.IsEnv || f.Valid < 8 {
+	s.sc.WithFrame(func(f *sample.Frame) {
+		if f == nil || f.Flags.Has(sample.Envelope) || f.Len() < 8 {
 			return
 		}
-		codes, fine := f.C1, f.Q1
+		codes, fine := f.Codes8(0), f.Precision(0)
 		if cfg.Stack.Channel == 1 {
-			codes, fine = f.C2, f.Q2
+			codes, fine = f.Codes8(1), f.Precision(1)
 		}
-		sig = make([]float64, f.Valid)
-		if len(fine) >= f.Valid { // the record's kind once, not a sample
+		sig = make([]float64, f.Len())
+		if len(fine) >= f.Len() { // the record's kind once, not a sample
 			for i, v := range fine[:len(sig)] {
 				sig[i] = float64(v) * (1.0 / 256) // exact: a power of two
 			}
@@ -48,7 +49,7 @@ func (s *Scope) frameTemplate(cfg engine.FPGAStackRequest, points int, tolerance
 				sig[i] = float64(v)
 			}
 		}
-		sampleS, edgeX = f.SampleS, f.EdgeX
+		sampleS, edgeX = f.SampleS, f.TriggerAt
 	})
 	if sig == nil {
 		return superres.FPGATemplate{}, errors.New("no frame to take a template from")

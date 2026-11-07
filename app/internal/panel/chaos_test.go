@@ -6,7 +6,7 @@ import (
 	"math/rand"
 	"testing"
 
-	"github.com/labeth/open-sds1000cml/app/internal/engine"
+	"github.com/labeth/open-dso-core/sample"
 )
 
 // Panel chaos: random button presses and knob steps in every order, the
@@ -33,13 +33,13 @@ func TestPanelChaos(t *testing.T) {
 	for k := range knobNames {
 		knobs = append(knobs, k)
 	}
-	frames := []*engine.Frame{uartFrame([]string{"Hi\r\n"}, 460800, 60e-6, 100e-9, 8000), toneFrame(""), smallFrame()}
+	frames := []*sample.Frame{uartFrame([]string{"Hi\r\n"}, 460800, 60e-6, 100e-9, 8000), toneFrame(""), smallFrame()}
 	for _, seed := range []int64{7, 4242, 987654321} {
 		eng := &fakeEng{}
-		c := New(eng, nil, -1, []float64{100e-9, 1e-6, 50e-6, 500e-6, 5e-3, 100e-3}, 500e-6, t.Logf)
+		c := newCtl(eng, nil, -1, []float64{100e-9, 1e-6, 50e-6, 500e-6, 5e-3, 100e-3}, 500e-6, t.Logf)
 		var seq uint64
 		cur := frames[0]
-		c.SetFrameSource(func(fn func(*engine.Frame)) { fn(cur) })
+		c.SetFrameSource(func(fn func(*sample.Frame)) { fn(cur) })
 		rng := rand.New(rand.NewSource(seed))
 		// the LCD render goroutine and the remote read these while keys dispatch
 		stopRender := make(chan struct{})

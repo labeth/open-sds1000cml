@@ -170,7 +170,7 @@ func BenchmarkRenderFFT(b *testing.B) {
 			return 128 + 70*math.Sin(205*th) + 18*math.Sin(614*th) + 7*math.Sin(1024*th)
 		},
 		func(i int) float64 { return 128 + 50*math.Sin(2*math.Pi*410*float64(i)/n) })
-	f.TdivS, f.SampleS = 20e-6, 50e-9
+	f.Snapshot.TdivS, f.SampleS = 20e-6, 50e-9
 	h := defaultHUD()
 	h.TdivS, h.SampleS = 20e-6, 50e-9
 	h.ViewMode = 2

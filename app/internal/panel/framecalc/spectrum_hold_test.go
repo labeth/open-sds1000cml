@@ -7,17 +7,17 @@ import (
 	"testing"
 	"time"
 
-	"github.com/labeth/open-sds1000cml/app/internal/engine"
+	"github.com/labeth/open-dso-core/sample"
 )
 
 // holdFrame is a 4096-sample tone frame with sequence number seq.
 // TRLC-LINKS: REQ-SDS-070
-func holdFrame(seq uint64, cycles float64) *engine.Frame {
+func holdFrame(seq uint64, cycles float64) *sample.Frame {
 	c := make([]uint8, 4096)
 	for i := range c {
 		c[i] = uint8(128 + 90*math.Sin(2*math.Pi*cycles*float64(i)/4096))
 	}
-	return &engine.Frame{Seq: seq, C1: c, C2: c, Valid: len(c), WinCols: len(c), SampleS: 2e-9, TdivS: 1e-6}
+	return &sample.Frame{Seq: seq, WinPoints: len(c), SampleS: 2e-9, Snapshot: sample.Settings{TdivS: 1e-6}, Traces: []sample.Trace{{Codes8: c, Valid: len(c)}, {Ch: 1, Codes8: c, Valid: len(c)}}}
 }
 
 // Held, a later frame of the same acquisition gets the spectrum taken
@@ -27,7 +27,7 @@ func holdFrame(seq uint64, cycles float64) *engine.Frame {
 func TestSpectrumHeld(t *testing.T) {
 	defer SetSpectrumHold(0)
 	a, b := holdFrame(101, 100), holdFrame(102, 300)
-	own := func(f *engine.Frame) int { sp, _ := Spectrum(f, 0, f.SampleS); return sp.PeakK }
+	own := func(f *sample.Frame) int { sp, _ := Spectrum(f, 0, f.SampleS); return sp.PeakK }
 	ka, kb := own(a), own(b)
 	if ka == kb {
 		t.Fatalf("test frames share their peak bin %d", ka)

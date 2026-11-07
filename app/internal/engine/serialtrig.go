@@ -19,6 +19,7 @@ import (
 	"time"
 
 	"github.com/labeth/open-dso-core/decode"
+	"github.com/labeth/open-dso-core/sample"
 )
 
 // The decode.Span kinds the serial trigger and the streams read.
@@ -244,13 +245,13 @@ func (e *Engine) autoLivenessDue(held *int, fallback int) bool {
 // producer slot. It runs on EVERY publish candidate while armed — async UART in
 // AUTO never edge-locks, so (unlike the zone gate) it must NOT be gated on lock.
 // TRLC-LINKS: REQ-SDS-013
-func (e *Engine) serialQualify(f *Frame, valid int, sampleS float64) (bool, int) {
+func (e *Engine) serialQualify(f *sample.Frame, valid int, sampleS float64) (bool, int) {
 	return e.serialQualifyAt(f, valid, sampleS, anchorSpan{target: -1, lo: math.MinInt, hi: math.MaxInt})
 }
 
 // serialQualifyAt is serialQualify choosing among the record's matches by at.
 // TRLC-LINKS: REQ-SDS-013
-func (e *Engine) serialQualifyAt(f *Frame, valid int, sampleS float64, at anchorSpan) (bool, int) {
+func (e *Engine) serialQualifyAt(f *sample.Frame, valid int, sampleS float64, at anchorSpan) (bool, int) {
 	e.ser.mu.Lock()
 	p := e.ser.params
 	e.ser.mu.Unlock()
@@ -260,12 +261,12 @@ func (e *Engine) serialQualifyAt(f *Frame, valid int, sampleS float64, at anchor
 	if valid < 8 || !(sampleS > 0) { // !(>0) also rejects NaN (every NaN compare is false)
 		return false, -1
 	}
-	chA, chB := f.C1, f.C1
+	chA, chB := f.Codes8(0), f.Codes8(0)
 	if p.ChA == 1 {
-		chA = f.C2
+		chA = f.Codes8(1)
 	}
 	if p.ChB == 1 {
-		chB = f.C2
+		chB = f.Codes8(1)
 	}
 	if len(chA) < valid || len(chB) < valid {
 		return false, -1

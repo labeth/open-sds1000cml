@@ -5,6 +5,7 @@ package engine
 import (
 	"time"
 
+	"github.com/labeth/open-dso-core/sample"
 	"github.com/labeth/open-sds1000cml/app/internal/iface"
 )
 
@@ -107,9 +108,9 @@ func (e *Engine) envFrame(norm bool) {
 	e.drain(f, capCols)
 	e.armEngine() // refill during the reduction
 
-	disc := f.C1[:capCols]
+	disc := f.Codes8(0)[:capCols]
 	if int(e.trigSrc.Load()) == 1 {
-		disc = f.C2[:capCols]
+		disc = f.Codes8(1)[:capCols]
 	}
 	_, _, p := ptp(disc)
 
@@ -132,37 +133,36 @@ func (e *Engine) envFrame(norm bool) {
 	}
 	triggered := edgeX >= 0
 
-	f.Valid = capCols
-	f.WinCols = winCols
-	f.Interp = false
-	f.Degraded = false
-	f.Ptp = p
-	f.TrigPos = 0
-	f.Coherent = haltOK && fillMoved
-	f.HaltOK = haltOK
-	f.RollCodes, f.FullRate = false, false
-	f.TdivS = e.band.TdivS
-	f.DisplayedS = e.band.DisplayedSdivS()
+	f.SetLen(capCols)
+	f.WinPoints = winCols
+	f.Flags.Set(sample.Interp, false)
+	f.Status.Degraded = false
+	f.SourcePtp = p
+	f.Status.Coherent = haltOK && fillMoved
+	f.Status.Done = haltOK
+	f.Content = sample.RawDecimated
+	f.Snapshot.TdivS = e.band.TdivS
+	f.Snapshot.DisplayedS = e.band.DisplayedSdivS()
 	f.SampleS = e.band.CaptureIntervalNs() * 1e-9
-	f.Norm = norm
+	f.Snapshot.Norm = norm
 	if triggered {
-		f.EdgeX = edgeX
-		f.IsEnv = false
-		f.EnvCols = 0
-		f.Trigd = true
+		f.TriggerAt = edgeX
+		f.Flags.Set(sample.Envelope, false)
+		setEnvCols(f, 0)
+		f.Status.Triggered = true
 	} else {
 		// Scatter the CENTRAL display span (not the margin) so the untriggered
 		// envelope keeps the intended 10-division width.
 		off := (capCols - winCols) / 2
 		e.envPush(f, off, winCols)
 		e.envReduce(f)
-		f.EdgeX = -1
-		f.IsEnv = true
-		f.EnvCols = envDisplayCols
-		f.Trigd = false
+		f.TriggerAt = -1
+		f.Flags.Set(sample.Envelope, true)
+		setEnvCols(f, envDisplayCols)
+		f.Status.Triggered = false
 	}
 
-	e.commitStats(f.Coherent, haltOK, p, 0, 0, 0)
+	e.commitStats(f.Status.Coherent, haltOK, p, 0, 0, 0)
 	e.zoneMaskUncomparable() // envelope-origin frames don't participate in zone/mask
 	e.commitPublish(f)
 
@@ -178,7 +178,7 @@ func (e *Engine) envFrame(norm bool) {
 // phase-scatter ring (off skips the centring margin captured for the triggered
 // path, so the untriggered envelope keeps the intended display width).
 // TRLC-LINKS: REQ-SDS-012
-func (e *Engine) envPush(f *Frame, off, n int) {
+func (e *Engine) envPush(f *sample.Frame, off, n int) {
 	if e.envRing1 == nil {
 		e.envRing1 = make([][]uint8, envRingN)
 		e.envRing2 = make([][]uint8, envRingN)
@@ -191,8 +191,8 @@ func (e *Engine) envPush(f *Frame, off, n int) {
 		off = 0
 	}
 	i := e.envRingPos
-	e.envRing1[i] = append(e.envRing1[i][:0], f.C1[off:off+n]...)
-	e.envRing2[i] = append(e.envRing2[i][:0], f.C2[off:off+n]...)
+	e.envRing1[i] = append(e.envRing1[i][:0], f.Codes8(0)[off:off+n]...)
+	e.envRing2[i] = append(e.envRing2[i][:0], f.Codes8(1)[off:off+n]...)
 	e.envRingPos = (e.envRingPos + 1) % envRingN
 	if e.envRingCnt < envRingN {
 		e.envRingCnt++
@@ -203,7 +203,7 @@ func (e *Engine) envPush(f *Frame, off, n int) {
 // bins to col = i·800/len; never-seen columns copy the nearest SEEN
 // neighbour (real amplitude, never invented).
 // TRLC-LINKS: REQ-SDS-012
-func (e *Engine) envReduce(f *Frame) {
+func (e *Engine) envReduce(f *sample.Frame) {
 	reduce := func(ring [][]uint8, mn, mx []uint8) {
 		var seen [envDisplayCols]bool
 		for c := range envDisplayCols {
@@ -257,8 +257,9 @@ func (e *Engine) envReduce(f *Frame) {
 			}
 		}
 	}
-	reduce(e.envRing1, f.EnvMin, f.EnvMax)
-	reduce(e.envRing2, f.EnvMin2, f.EnvMax2)
+	setEnvCols(f, envDisplayCols)
+	reduce(e.envRing1, f.Min8(0), f.Max8(0))
+	reduce(e.envRing2, f.Min8(1), f.Max8(1))
 }
 
 // ---- roll (≥100 ms/div) ----
@@ -347,35 +348,35 @@ func (e *Engine) rollUpdate(norm bool) {
 	// Copy the ring in scroll order (oldest first) into the frame, snapshot
 	// it, and reduce the snapshot deque to the 800-column band.
 	f := e.arena.Write()
+	c1, c2 := f.Codes8(0), f.Codes8(1)
 	for i := range rollWin {
 		j := (e.rollPos + i) % rollWin
-		f.C1[i] = e.rollRing1[j]
-		f.C2[i] = e.rollRing2[j]
+		c1[i] = e.rollRing1[j]
+		c2[i] = e.rollRing2[j]
 	}
 	e.rollSnap(f)
 	e.rollReduce(f)
 
-	_, _, p := ptp(f.C1[:rollWin])
+	_, _, p := ptp(f.Codes8(0)[:rollWin])
 
-	f.Valid = rollWin
-	f.WinCols = rollWin
-	f.EdgeX = -1
-	f.Interp = false
-	f.IsEnv = true
-	f.Degraded = false
-	f.EnvCols = envDisplayCols
-	f.Ptp = p
-	f.Trigd = false
-	f.TrigPos = 0
-	f.Coherent = got > 0 // live words arrived; there is no halt to confirm
-	f.HaltOK = true
-	f.RollCodes, f.FullRate = false, false // stream samples are full-scale record words, not the factory half-scale FIFO
-	f.TdivS = e.band.TdivS
-	f.DisplayedS = e.band.DisplayedSdivS()
+	f.SetLen(rollWin)
+	f.WinPoints = rollWin
+	f.TriggerAt = -1
+	f.Flags.Set(sample.Interp, false)
+	f.Flags.Set(sample.Envelope, true)
+	f.Status.Degraded = false
+	setEnvCols(f, envDisplayCols)
+	f.SourcePtp = p
+	f.Status.Triggered = false
+	f.Status.Coherent = got > 0 // live words arrived; there is no halt to confirm
+	f.Status.Done = true
+	f.Content = sample.RawDecimated // stream samples are full-scale record words, not the factory half-scale FIFO
+	f.Snapshot.TdivS = e.band.TdivS
+	f.Snapshot.DisplayedS = e.band.DisplayedSdivS()
 	f.SampleS = e.band.CaptureIntervalNs() * 1e-9
-	f.Norm = norm
+	f.Snapshot.Norm = norm
 
-	e.commitStats(f.Coherent, true, p, 0, 0, 0)
+	e.commitStats(f.Status.Coherent, true, p, 0, 0, 0)
 	e.zoneMaskUncomparable() // roll frames free-run untriggered: zone/mask can't run
 	e.commitPublish(f)
 	if got > 0 {
@@ -388,7 +389,7 @@ func (e *Engine) rollUpdate(norm bool) {
 // rollSnap pushes a scroll snapshot (full ring copy) onto the deque, keeping
 // the last envRingN. Slabs are reused once the deque is full.
 // TRLC-LINKS: REQ-SDS-012
-func (e *Engine) rollSnap(f *Frame) {
+func (e *Engine) rollSnap(f *sample.Frame) {
 	push := func(deque *[][]uint8, src []uint8) {
 		var slab []uint8
 		if len(*deque) == envRingN {
@@ -399,15 +400,15 @@ func (e *Engine) rollSnap(f *Frame) {
 		}
 		*deque = append(*deque, append(slab, src...))
 	}
-	push(&e.rollSnaps1, f.C1[:rollWin])
-	push(&e.rollSnaps2, f.C2[:rollWin])
+	push(&e.rollSnaps1, f.Codes8(0)[:rollWin])
+	push(&e.rollSnaps2, f.Codes8(1)[:rollWin])
 }
 
 // rollReduce reduces the snapshot deque to per-column (min,max): sample i
 // bins to col = i·800/4096. Every snapshot is at a different scroll phase,
 // so the band is solid and stable.
 // TRLC-LINKS: REQ-SDS-012
-func (e *Engine) rollReduce(f *Frame) {
+func (e *Engine) rollReduce(f *sample.Frame) {
 	reduce := func(snaps [][]uint8, mn, mx []uint8) {
 		for c := range envDisplayCols {
 			mn[c], mx[c] = 0xff, 0
@@ -459,8 +460,9 @@ func (e *Engine) rollReduce(f *Frame) {
 			}
 		}
 	}
-	reduce(e.rollSnaps1, f.EnvMin, f.EnvMax)
-	reduce(e.rollSnaps2, f.EnvMin2, f.EnvMax2)
+	setEnvCols(f, envDisplayCols)
+	reduce(e.rollSnaps1, f.Min8(0), f.Max8(0))
+	reduce(e.rollSnaps2, f.Min8(1), f.Max8(1))
 }
 
 // ---- shared publish/stat helpers ----
@@ -488,7 +490,7 @@ func (e *Engine) commitStats(coherent, haltOK bool, p, trigPos int, armToLatch, 
 
 // commitPublish stamps the sequence number and hands the frame to the arena.
 // TRLC-LINKS: REQ-SDS-007, REQ-SDS-009
-func (e *Engine) commitPublish(f *Frame) {
+func (e *Engine) commitPublish(f *sample.Frame) {
 	e.seq++
 	f.Seq = e.seq
 	e.arena.Publish()

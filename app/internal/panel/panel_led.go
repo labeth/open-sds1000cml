@@ -92,7 +92,8 @@ func setupPrint(s *sv) string {
 	f(s.st.TdivSet())
 	n(s.st.TrigSource)
 	t(s.st.TrigRising)
-	n(int(s.st.TrigCode))
+	t(s.trigSaved.Set())
+	f(s.trigV)
 	n(s.st.TrigType)
 	t(s.st.Norm)
 	f(s.st.HoldoffS)
@@ -101,7 +102,7 @@ func setupPrint(s *sv) string {
 	n(s.st.AvgCount)
 	n(s.st.EresLen)
 	for ch := range 2 {
-		n(s.vidx[ch])
+		f(s.vert[ch].vdiv)
 		f(s.offV[ch])
 		n(s.cpl[ch])
 		f(s.probe[ch])

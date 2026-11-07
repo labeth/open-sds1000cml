@@ -6,6 +6,7 @@ import (
 	"math"
 	"time"
 
+	"github.com/labeth/open-dso-core/sample"
 	"github.com/labeth/open-sds1000cml/app/internal/iface"
 )
 
@@ -268,7 +269,7 @@ func spinFor(d time.Duration) {
 // drain reads the frozen record into the producer slot through the BURST
 // port, under the quiet gate.
 // TRLC-LINKS: REQ-SDS-001, REQ-SDS-007
-func (e *Engine) drain(f *Frame, cols int) {
+func (e *Engine) drain(f *sample.Frame, cols int) {
 	e.quiet.Lock()
 	e.drainQuiet(f, cols)
 	e.quiet.Unlock()
@@ -281,7 +282,7 @@ func (e *Engine) drain(f *Frame, cols int) {
 // shortfall is counted as telemetry. A port that reports nothing ready pops
 // nothing and the frame is marked incoherent by the caller through drainN.
 // TRLC-LINKS: REQ-SDS-001, REQ-SDS-007, REQ-SDS-009
-func (e *Engine) drainQuiet(f *Frame, cols int) {
+func (e *Engine) drainQuiet(f *sample.Frame, cols int) {
 	rem := e.r(iface.SelBurstRemain)
 	n := cols
 	avail := int(rem & iface.BurstRemainRemainMask)
@@ -291,15 +292,16 @@ func (e *Engine) drainQuiet(f *Frame, cols int) {
 		n = avail
 	}
 	if n > 0 {
-		e.b.BurstInto(f.C1[:n], f.C2[:n], n)
+		e.b.BurstInto(f.Codes8(0)[:n], f.Codes8(1)[:n], n)
 	}
 	if n < cols {
 		fillC1, fillC2 := uint8(128), uint8(128)
 		if n > 0 {
-			fillC1, fillC2 = f.C1[n-1], f.C2[n-1]
+			fillC1, fillC2 = f.Codes8(0)[n-1], f.Codes8(1)[n-1]
 		}
+		c1, c2 := f.Codes8(0), f.Codes8(1)
 		for i := n; i < cols; i++ {
-			f.C1[i], f.C2[i] = fillC1, fillC2
+			c1[i], c2[i] = fillC1, fillC2
 		}
 		e.mu.Lock()
 		e.stats.ShortDrains++
@@ -350,18 +352,23 @@ func (e *Engine) stitchFrame(norm bool) {
 	e.drain(f, cols)
 	drainTime := e.clk.Now().Sub(drainStart)
 
-	f.Valid, f.WinCols = cols, decimWin
-	f.EdgeX = -1
-	f.Interp, f.IsEnv, f.EnvCols, f.RollCodes, f.FullRate = false, false, 0, false, false
-	f.Norm = norm
-	f.TdivS = e.band.TdivS
-	f.DisplayedS = e.band.DisplayedSdivS()
+	f.SetLen(cols)
+	f.WinPoints = decimWin
+	f.TriggerAt = -1
+	f.Flags.Set(sample.Interp|sample.Envelope, false)
+	setEnvCols(f, 0)
+	f.Content = sample.RawDecimated
+	f.Snapshot.Norm = norm
+	f.Snapshot.TdivS = e.band.TdivS
+	f.Snapshot.DisplayedS = e.band.DisplayedSdivS()
 	f.SampleS = e.band.CaptureIntervalNs() * 1e-9
-	_, _, p := ptp(f.C1[:cols])
-	f.Ptp, f.Trigd, f.Coherent, f.HaltOK = p, false, haltOK && e.lastDrainN == cols, haltOK
-	f.Degraded = false
+	_, _, p := ptp(f.Codes8(0)[:cols])
+	f.SourcePtp, f.Status.Triggered, f.Status.Coherent, f.Status.Done = p, false, haltOK && e.lastDrainN == cols, haltOK
+	f.Status.Degraded = false
 	e.streamSeq++
-	f.StreamSeq, f.WindowNs, f.GapNs = e.streamSeq, fillNs, gapNs
+	f.Stream.Seq = e.streamSeq
+	f.Stream.WindowS = float64(fillNs) * 1e-9
+	f.Stream.GapS = float64(gapNs) * 1e-9
 
 	e.seq++
 	f.Seq = e.seq
@@ -371,11 +378,11 @@ func (e *Engine) stitchFrame(norm bool) {
 	e.stats.Published++
 	e.lastPublish = e.clk.Now()
 	e.stats.Seq = e.seq
-	if f.Coherent {
+	if f.Status.Coherent {
 		e.stats.Coherent++
 	}
 	e.stats.LastPtp = p
-	e.stats.ValidDepth = validDepthP(f.C1[:cols], p)
+	e.stats.ValidDepth = validDepthP(f.Codes8(0)[:cols], p)
 	e.stats.MemDepth = int(e.memDepth.Load())
 	e.stats.DrainMs = float64(drainTime) / float64(time.Millisecond)
 	e.stats.GapMs = float64(gapNs) / float64(time.Millisecond)

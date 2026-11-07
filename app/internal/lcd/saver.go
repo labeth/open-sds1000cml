@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/labeth/open-sds1000cml/app/internal/engine"
+	"github.com/labeth/open-dso-core/sample"
 )
 
 // The screen saver picture (ADR-SCREEN-SAVER): a small live scope with its run
@@ -47,7 +47,7 @@ func bounce(t, span int) int {
 // DrawSaver draws the saver picture for a step: black, the live mini scope,
 // its run state and time/div, and a running mask test's counts or the hint.
 // TRLC-LINKS: REQ-SDS-221
-func DrawSaver(sf *MemSurface, f *engine.Frame, hud HUD, step int) {
+func DrawSaver(sf *MemSurface, f *sample.Frame, hud HUD, step int) {
 	clear(sf.Pix) // black: a memclr, not the colour fill's row copies
 	x, y := SaverPos(step)
 	drawMiniScope(sf, f, hud, x, y, saverW, saverH)

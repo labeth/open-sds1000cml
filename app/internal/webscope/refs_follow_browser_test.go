@@ -6,8 +6,8 @@ import (
 	"os"
 	"testing"
 
+	"github.com/labeth/open-dso-core/sample"
 	"github.com/labeth/open-dso-core/testenv"
-	"github.com/labeth/open-sds1000cml/app/internal/engine"
 	"github.com/labeth/open-sds1000cml/app/internal/panel"
 )
 
@@ -25,7 +25,7 @@ func framedRig(t *testing.T) *remoteRig {
 			f := eng.fakeScope
 			f.mu.Lock()
 			// called under f.mu (fakeScope.WithFrame)
-			f.frameGen = func() *engine.Frame {
+			f.frameGen = func() *sample.Frame {
 				seq++
 				c1, c2 := make([]uint8, n), make([]uint8, n)
 				for i := range c1 {
@@ -38,9 +38,14 @@ func framedRig(t *testing.T) *remoteRig {
 					}
 				}
 				tdiv := f.stats.TdivS
-				return &engine.Frame{
-					C1: c1, C2: c2, Seq: seq, Valid: n, WinCols: n, EdgeX: n / 2, TdivS: tdiv, DisplayedS: tdiv,
-					SampleS: tdiv * 10 / n, Trigd: true, Coherent: true,
+				return &sample.Frame{
+					Seq:       seq,
+					WinPoints: n,
+					TriggerAt: n / 2,
+					SampleS:   tdiv * 10 / n,
+					Snapshot:  sample.Settings{TdivS: tdiv, DisplayedS: tdiv},
+					Status:    sample.Status{Triggered: true, Coherent: true},
+					Traces:    []sample.Trace{{Codes8: c1, Valid: n}, {Ch: 1, Codes8: c2, Valid: n}},
 				}
 			}
 			f.mu.Unlock()

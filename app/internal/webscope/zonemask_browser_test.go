@@ -10,6 +10,7 @@ import (
 	"sync/atomic"
 	"testing"
 
+	"github.com/labeth/open-dso-core/sample"
 	"github.com/labeth/open-dso-core/testenv"
 	"github.com/labeth/open-sds1000cml/app/internal/engine"
 )
@@ -25,7 +26,7 @@ func TestZoneMaskBrowser(t *testing.T) {
 	testenv.NeedNode(t)
 	const N = 2048
 	var n atomic.Uint64
-	gen := func() *engine.Frame {
+	gen := func() *sample.Frame {
 		seq := n.Add(1)
 		c1 := make([]uint8, N)
 		c2 := make([]uint8, N)
@@ -33,9 +34,15 @@ func TestZoneMaskBrowser(t *testing.T) {
 			c1[i] = uint8(128 + 60*math.Sin(2*math.Pi*8*float64(i)/N))
 			c2[i] = uint8(128 + 40*math.Sin(2*math.Pi*5*float64(i)/N))
 		}
-		return &engine.Frame{
-			C1: c1, C2: c2, Seq: seq, Valid: N, WinCols: N, EdgeX: N / 2,
-			TdivS: 500e-6, DisplayedS: 500e-6, SampleS: 800e-9, Trigd: true, Coherent: true, Ptp: 120,
+		return &sample.Frame{
+			Seq:       seq,
+			WinPoints: N,
+			TriggerAt: N / 2,
+			SampleS:   800e-9,
+			SourcePtp: 120,
+			Snapshot:  sample.Settings{TdivS: 500e-6, DisplayedS: 500e-6},
+			Status:    sample.Status{Triggered: true, Coherent: true},
+			Traces:    []sample.Trace{{Codes8: c1, Valid: N}, {Ch: 1, Codes8: c2, Valid: N}},
 		}
 	}
 	ringC1 := make([]uint8, N)

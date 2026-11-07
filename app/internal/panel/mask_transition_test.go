@@ -5,6 +5,7 @@ package panel
 import (
 	"testing"
 
+	"github.com/labeth/open-dso-core/sample"
 	"github.com/labeth/open-sds1000cml/app/internal/engine"
 )
 
@@ -12,7 +13,7 @@ import (
 func TestMaskBuildRestartsFromStoppedRecordToLivePreview(t *testing.T) {
 	c, e, _ := newC(t)
 	var seq uint64
-	c.SetFrameSource(func(fn func(*engine.Frame)) {
+	c.SetFrameSource(func(fn func(*sample.Frame)) {
 		seq++
 		n := 100
 		if seq == 1 {
@@ -25,7 +26,7 @@ func TestMaskBuildRestartsFromStoppedRecordToLivePreview(t *testing.T) {
 				sig[i] = 180
 			}
 		}
-		fn(&engine.Frame{Seq: seq, C1: sig, C2: sig, Valid: n, WinCols: n, EdgeX: float64(n / 2), SampleS: 2e-9, TdivS: 1e-6})
+		fn(&sample.Frame{Seq: seq, WinPoints: n, TriggerAt: float64(n / 2), SampleS: 2e-9, Snapshot: sample.Settings{TdivS: 1e-6}, Traces: []sample.Trace{{Codes8: sig, Valid: n}, {Ch: 1, Codes8: sig, Valid: n}}})
 	})
 	c.maskBuildRun(c.maskGen, 8, 1, 2, 0, .5)
 	found := false
@@ -54,11 +55,11 @@ func (e *maskRecordingEng) SetMask(m *engine.Mask) { e.mask = m }
 func TestMaskBuildAtLeftTriggerPosition(t *testing.T) {
 	_, base, fe := newC(t)
 	e := &maskRecordingEng{fakeEng: base}
-	c := New(e, fe, -1, engine.SupportedTdivs(), 500e-6, t.Logf)
+	c := newCtl(e, fe, -1, engine.SupportedTdivs(), 500e-6, t.Logf)
 	var seq uint64
-	c.SetFrameSource(func(fn func(*engine.Frame)) {
+	c.SetFrameSource(func(fn func(*sample.Frame)) {
 		seq++
-		fn(&engine.Frame{Seq: seq, C1: []uint8{40, 60, 180, 200}, Valid: 4, WinCols: 4, EdgeX: 2, SampleS: 2e-9, TdivS: 1e-6})
+		fn(&sample.Frame{Seq: seq, WinPoints: 4, TriggerAt: 2, SampleS: 2e-9, Snapshot: sample.Settings{TdivS: 1e-6}, Traces: []sample.Trace{{Codes8: []uint8{40, 60, 180, 200}, Valid: 4}, {Ch: 1, Valid: 4}}})
 	})
 	c.maskBuildRun(c.maskGen, 8, 0, 0, 0, 0)
 	if e.mask == nil || e.mask.Lo[0] != 180 || e.mask.Hi[0] != 180 || e.mask.Lo[2] != 0 || e.mask.Hi[2] != 255 {

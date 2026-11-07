@@ -5,7 +5,7 @@ package lcd
 import (
 	"math"
 
-	"github.com/labeth/open-sds1000cml/app/internal/engine"
+	"github.com/labeth/open-dso-core/sample"
 	"github.com/labeth/open-sds1000cml/app/internal/panel/framecalc"
 	"github.com/labeth/open-sds1000cml/app/internal/panel/wsview"
 )
@@ -37,7 +37,7 @@ func fftBand(half, zoom int, zoomOff float64) (kLo, kHi int) {
 // SPECTRUM peak table and this plot transform a frame once. n is capped so
 // the per-frame cost stays well under the render budget.
 // TRLC-LINKS: REQ-SDS-021, REQ-SDS-070, REQ-SDS-216
-func drawFFT(sf Surface, p plotArea, f *engine.Frame, hud HUD) {
+func drawFFT(sf Surface, p plotArea, f *sample.Frame, hud HUD) {
 	sc1, sc2 := hud.shownChans()
 	shown := [2]bool{sc1, sc2 && hud.TwoChan}
 	src := hud.FFTSrc & 1

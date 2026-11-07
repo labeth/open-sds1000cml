@@ -470,7 +470,7 @@ func TestBandChangeAppliedAtBoundary(t *testing.T) {
 	}
 	waitFor(t, func() bool {
 		f, _ := e.Consume()
-		return f != nil && f.TdivS == 1e-6 && f.Valid == maxRecordCols
+		return f != nil && f.Snapshot.TdivS == 1e-6 && f.Len() == maxRecordCols
 	})
 	if st := e.Snapshot(); st.TdivS != 1e-6 || st.TdivSetS != 1e-6 {
 		t.Fatalf("stats tdiv = %v, asked %v, want 1µs both", st.TdivS, st.TdivSetS)

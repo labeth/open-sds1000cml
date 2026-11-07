@@ -7,6 +7,7 @@ import (
 	"math"
 	"time"
 
+	"github.com/labeth/open-dso-core/sample"
 	"github.com/labeth/open-sds1000cml/app/internal/analog"
 	"github.com/labeth/open-sds1000cml/app/internal/engine"
 )
@@ -76,29 +77,29 @@ func (c *Controller) maskBuildRun(gen uint64, n, tolT, tolV, ch int, posFrac flo
 		}
 		time.Sleep(60 * time.Millisecond)
 		ok := false
-		c.frameFn(func(f *engine.Frame) {
-			if f == nil || f.Seq == lastSeq || f.EdgeX < 0 || f.SampleS <= 0 || f.IsEnv || blockAvgRE.MatchString(f.Filter) ||
-				(f.PeakDetect && !f.Ordered && c.eng.Snapshot().AcqMode != engine.AcqPeak) {
+		c.frameFn(func(f *sample.Frame) {
+			if f == nil || f.Seq == lastSeq || f.TriggerAt < 0 || f.SampleS <= 0 || f.Flags.Has(sample.Envelope) || blockAvgRE.MatchString(f.Cond.Filter) ||
+				(f.Content == sample.PeakPairs && !f.Flags.Has(sample.Ordered) && c.eng.Snapshot().AcqMode != engine.AcqPeak) {
 				return
 			}
 			lastSeq = f.Seq
-			sig := f.C1
+			sig := f.Codes8(0)
 			if ch == 1 {
-				sig = f.C2
+				sig = f.Codes8(1)
 			}
-			valid := min(f.Valid, len(sig))
+			valid := min(f.Len(), len(sig))
 			if valid == 0 {
 				return
 			}
-			w := f.WinCols
+			w := f.WinPoints
 			if w <= 0 || w > valid {
 				w = valid
 			}
-			if win != w || sampleS != f.SampleS || tdivS != f.TdivS || peak != f.PeakDetect {
+			if win != w || sampleS != f.SampleS || tdivS != f.Snapshot.TdivS || peak != (f.Content == sample.PeakPairs) {
 				// A stopped full record can precede the first live preview.
 				// Start a new envelope when acquisition geometry changes.
 				got = 0
-				sampleS, tdivS, peak = f.SampleS, f.TdivS, f.PeakDetect
+				sampleS, tdivS, peak = f.SampleS, f.Snapshot.TdivS, f.Content == sample.PeakPairs
 				win = w
 				lo = make([]uint8, win)
 				hi = make([]uint8, win)
@@ -106,7 +107,7 @@ func (c *Controller) maskBuildRun(gen uint64, n, tolT, tolV, ch int, posFrac flo
 					lo[j] = 255
 				}
 			}
-			foldEnvelope(lo, hi, sig[:valid], int(math.Round(f.EdgeX-float64(win)*posFrac)))
+			foldEnvelope(lo, hi, sig[:valid], int(math.Round(f.TriggerAt-float64(win)*posFrac)))
 			ok = true
 		})
 		if ok {

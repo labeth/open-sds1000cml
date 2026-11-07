@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/labeth/open-dso-core/sample"
 	"github.com/labeth/open-dso-core/testenv"
 	"github.com/labeth/open-dso-core/webserver/wire"
 	"github.com/labeth/open-sds1000cml/app/internal/analog"
@@ -59,20 +60,29 @@ func TestFramePollLeasesTheViewWindow(t *testing.T) {
 // TRLC-LINKS: REQ-SDS-163, REQ-SDS-202
 func TestBinFrameCarriesTheViewWindow(t *testing.T) {
 	const n, vn = 4096, 100
-	f := &engine.Frame{
-		C1: make([]uint8, n), C2: make([]uint8, n), Seq: 3, Valid: n, WinCols: 4065, CaptureDepth: 1 << 20,
-		EdgeX: 2048, PeakDetect: true, Ordered: true, Trigd: true, TdivS: 200e-6, DisplayedS: 200e-6, SampleS: 488e-9,
+	f := &sample.Frame{
+		Seq:       3,
+		WinPoints: 4065,
+		Depth:     1 << 20,
+		TriggerAt: 2048,
+		SampleS:   488e-9,
+		Content:   sample.PeakPairs,
+		Flags:     sample.Ordered,
+		Snapshot:  sample.Settings{TdivS: 200e-6, DisplayedS: 200e-6},
+		Status:    sample.Status{Triggered: true},
+		Traces:    []sample.Trace{{Codes8: make([]uint8, n), Valid: n}, {Ch: 1, Codes8: make([]uint8, n), Valid: n}},
 	}
 	for i := range n {
-		f.C1[i], f.C2[i] = 150, 100
+		f.Codes8(0)[i], f.Codes8(1)[i] = 150, 100
 	}
-	v := &engine.ViewWindow{C1: make([]uint8, vn), C2: make([]uint8, vn), Valid: vn, From: 1998, To: 2098, PeakDetect: true}
+	vf := &sample.Frame{Content: sample.PeakPairs, Traces: []sample.Trace{{Codes8: make([]uint8, vn), Valid: vn}, {Ch: 1, Codes8: make([]uint8, vn), Valid: vn}}}
 	for i := range vn {
-		v.C1[i], v.C2[i] = uint8(60+i), uint8(200-i)
+		vf.Codes8(0)[i], vf.Codes8(1)[i] = uint8(60+i), uint8(200-i)
 	}
-	f.Views[engine.ViewWeb] = v
+	v := sample.Detail{Role: sample.RoleView(int(engine.ViewWeb)), From: 1998, To: 2098, Frame: vf}
+	f.Details = []sample.Detail{v}
 	fe := &fakeAnalog{}
-	s := newServer(&fakeScope{frameGen: func() *engine.Frame { return f }}, fe, nil, nil)
+	s := newServer(&fakeScope{frameGen: func() *sample.Frame { return f }}, fe, nil, nil)
 	rep, flags, pay := getBin(t, s, "/api/frame.bin?cols=2048&full=1")
 	if flags&wire.FlagDeep == 0 || rep.ViewN != vn || math.Abs(rep.ViewA-1998.0/4095) > 1e-12 || math.Abs(rep.ViewB-2097.0/4095) > 1e-12 {
 		t.Fatalf("flags %#x view_n %d a %v b %v", flags, rep.ViewN, rep.ViewA, rep.ViewB)
@@ -81,8 +91,8 @@ func TestBinFrameCarriesTheViewWindow(t *testing.T) {
 		t.Fatalf("payload %d bytes, want %d + the view's %d", len(pay), 2*n, 2*vn)
 	}
 	for i := range vn {
-		if pay[2*n+i] != v.C1[i] || pay[2*n+vn+i] != v.C2[i] {
-			t.Fatalf("view value %d: %d %d, want %d %d", i, pay[2*n+i], pay[2*n+vn+i], v.C1[i], v.C2[i])
+		if pay[2*n+i] != vf.Codes8(0)[i] || pay[2*n+vn+i] != vf.Codes8(1)[i] {
+			t.Fatalf("view value %d: %d %d, want %d %d", i, pay[2*n+i], pay[2*n+vn+i], vf.Codes8(0)[i], vf.Codes8(1)[i])
 		}
 	}
 	// AC on C1: the detail moves by the trace's DC (150 -> 128), C2 stays.
@@ -93,7 +103,8 @@ func TestBinFrameCarriesTheViewWindow(t *testing.T) {
 		t.Fatalf("AC: first values %d %d, want 38 200 (and no arrays in the header)", pay[2*n], pay[2*n+vn])
 	}
 	// The page's view is the web's: the scope's zoom view is not served.
-	f.Views[engine.ViewWeb], f.Views[engine.ViewScope] = nil, v
+	v.Role = sample.RoleView(int(engine.ViewScope))
+	f.Details = []sample.Detail{v}
 	f.Seq++
 	if rep, _, pay = getBin(t, s, "/api/frame.bin?cols=2048&full=1"); rep.ViewN != 0 || len(pay) != 2*n {
 		t.Fatalf("the scope's view served: view_n %d, %d bytes", rep.ViewN, len(pay))

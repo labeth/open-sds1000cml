@@ -5,7 +5,7 @@ package lcd
 import (
 	"testing"
 
-	"github.com/labeth/open-sds1000cml/app/internal/engine"
+	"github.com/labeth/open-dso-core/sample"
 	"github.com/labeth/open-sds1000cml/app/internal/panel/wsview"
 )
 
@@ -16,7 +16,7 @@ import (
 
 // benchRender renders f with h b.N times.
 // TRLC-LINKS: REQ-SDS-021
-func benchRender(b *testing.B, f *engine.Frame, h HUD) {
+func benchRender(b *testing.B, f *sample.Frame, h HUD) {
 	b.Helper()
 	sf := NewMemSurface()
 	b.ReportAllocs()

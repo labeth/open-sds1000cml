@@ -12,6 +12,8 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/labeth/open-dso-core/hal"
+	"github.com/labeth/open-dso-core/sample"
 	"github.com/labeth/open-dso-core/testenv"
 	"github.com/labeth/open-sds1000cml/app/internal/analog"
 	"github.com/labeth/open-sds1000cml/app/internal/engine"
@@ -82,7 +84,7 @@ func newFuzzScope() *fuzzScope {
 // frameLocked renders the synthetic two-tone frame for the CURRENT seq/tdiv.
 // Pure function of (seq, tdiv) so a given SEED replays identically.
 // TRLC-LINKS: REQ-SDS-180
-func (z *fuzzScope) frameLocked() *engine.Frame {
+func (z *fuzzScope) frameLocked() *sample.Frame {
 	c1 := make([]uint8, fuzzN)
 	c2 := make([]uint8, fuzzN)
 	ph := float64(z.seq) * 0.05
@@ -90,19 +92,28 @@ func (z *fuzzScope) frameLocked() *engine.Frame {
 		c1[i] = uint8(128 + 60*math.Sin(2*math.Pi*8*float64(i)/fuzzN+ph))
 		c2[i] = uint8(128 + 40*math.Sin(2*math.Pi*3*float64(i)/fuzzN))
 	}
-	return &engine.Frame{
-		C1: c1, C2: c2, Seq: z.seq, Valid: fuzzN, WinCols: fuzzN, EdgeX: fuzzN / 2,
-		TdivS: z.tdiv, DisplayedS: z.tdiv, SampleS: z.tdiv * 10 / fuzzN,
-		Trigd: true, Coherent: true, Norm: z.norm, Ptp: 120,
-		FullRate: z.acqMode != 1 && z.acqMode != 2 && z.acqMode != 4, // average, ERES, precision filter
+	f := &sample.Frame{
+		Seq:       z.seq,
+		WinPoints: fuzzN,
+		TriggerAt: fuzzN / 2,
+		SampleS:   z.tdiv * 10 / fuzzN,
+		SourcePtp: 120,
+		Content:   sample.RawDecimated,
+		Snapshot:  sample.Settings{TdivS: z.tdiv, DisplayedS: z.tdiv, Norm: z.norm},
+		Status:    sample.Status{Triggered: true, Coherent: true},
+		Traces:    []sample.Trace{{Codes8: c1, Valid: fuzzN}, {Ch: 1, Codes8: c2, Valid: fuzzN}},
 	}
+	if z.acqMode != 1 && z.acqMode != 2 && z.acqMode != 4 { // average, ERES, precision filter
+		f.Content = sample.RawFullRate
+	}
+	return f
 }
 
 // WithFrame advances the stream only while RUNNING (a stopped scope's display
 // holds); an armed SINGLE takes exactly one more capture and self-stops, which
 // the UI's fast post-single status poll then observes (run-after-single fix).
 // TRLC-LINKS: REQ-SDS-180
-func (z *fuzzScope) WithFrame(fn func(*engine.Frame)) {
+func (z *fuzzScope) WithFrame(fn func(*sample.Frame)) {
 	z.mu.Lock()
 	if z.running {
 		z.seq++
@@ -412,7 +423,7 @@ func (a *fuzzAnalog) Coupling(ch int) int {
 // TRLC-LINKS: REQ-SDS-180
 type fuzzPanel struct {
 	z      *fuzzScope
-	frames func(func(*engine.Frame))
+	frames func(func(*sample.Frame))
 	refs   fakeRefStore
 }
 
@@ -493,3 +504,39 @@ func (a *fuzzAnalog) TrigVolts(code uint16, _ int) float64 { return (31437 - flo
 
 // TRLC-LINKS: REQ-SDS-180
 func (a *fuzzAnalog) TrigCalActive(_ int) (float64, float64) { return 31437, 911 }
+
+// TRLC-LINKS: REQ-SDS-180
+func (a *fuzzAnalog) SetVdivV(ch int, v float64) error {
+	idx, ok := analog.PlanVdiv(v)
+	if !ok {
+		return hal.Refuse("V/div", "not a ladder step")
+	}
+	return a.SetVdiv(ch, idx)
+}
+
+// TRLC-LINKS: REQ-SDS-180
+func (a *fuzzAnalog) VdivV(ch int) float64 {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	return analog.Detents[a.idx[ch&1]].VdivV
+}
+
+// TRLC-LINKS: REQ-SDS-180
+func (a *fuzzAnalog) RangeV(ch int) float64 {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	return analog.Vdiv(a.idx[ch&1])
+}
+
+// TRLC-LINKS: REQ-SDS-180
+func (a *fuzzAnalog) Zoom(ch int) int {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	return analog.Detents[a.idx[ch&1]].Zoom
+}
+
+// TRLC-LINKS: REQ-SDS-180
+func (a *fuzzAnalog) Emitted() bool { return true }
+
+// TRLC-LINKS: REQ-SDS-180
+func (a *fuzzAnalog) TrigCode(v float64, _ int) float64 { return 31437 - 911*v }

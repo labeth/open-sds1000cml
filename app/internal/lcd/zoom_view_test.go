@@ -5,6 +5,7 @@ package lcd
 import (
 	"testing"
 
+	"github.com/labeth/open-dso-core/sample"
 	"github.com/labeth/open-sds1000cml/app/internal/analog"
 	"github.com/labeth/open-sds1000cml/app/internal/engine"
 )
@@ -13,24 +14,41 @@ import (
 // over the 100 values about its trigger: a square between codes 60 and 200,
 // 10 cycles across.
 // TRLC-LINKS: REQ-SDS-021
-func zoomFrame(level uint8) (*engine.Frame, *engine.ViewWindow) {
+func zoomFrame(level uint8) (*sample.Frame, *sample.Detail) {
 	const n, vn, period = 4096, 1540, 154
-	f := &engine.Frame{
-		C1: make([]uint8, n), C2: make([]uint8, n), Valid: n, WinCols: n, EdgeX: n / 2, Seq: 1,
-		PeakDetect: true, Ordered: true, Trigd: true, TdivS: 200e-6, DisplayedS: 200e-6, SampleS: 488e-9,
+	f := &sample.Frame{
+		WinPoints: n,
+		TriggerAt: n / 2,
+		Seq:       1,
+		SampleS:   488e-9,
+		Content:   sample.PeakPairs,
+		Flags:     sample.Ordered,
+		Snapshot:  sample.Settings{TdivS: 200e-6, DisplayedS: 200e-6},
+		Status:    sample.Status{Triggered: true},
+		Traces:    []sample.Trace{{Codes8: make([]uint8, n), Valid: n}, {Ch: 1, Codes8: make([]uint8, n), Valid: n}},
 	}
 	for i := range n {
-		f.C1[i], f.C2[i] = level, level
+		f.Codes8(0)[i], f.Codes8(1)[i] = level, level
 	}
-	v := &engine.ViewWindow{C1: make([]uint8, vn), C2: make([]uint8, vn), Valid: vn, From: n/2 - 50, To: n/2 + 50, PeakDetect: true}
+	vf := &sample.Frame{Content: sample.PeakPairs, Traces: []sample.Trace{{Codes8: make([]uint8, vn), Valid: vn}, {Ch: 1, Codes8: make([]uint8, vn), Valid: vn}}}
+	v := &sample.Detail{Role: sample.RoleView(int(engine.ViewScope)), From: n/2 - 50, To: n/2 + 50, Frame: vf}
 	for i := range vn {
 		c := uint8(60)
 		if i%period < period/2 {
 			c = 200
 		}
-		v.C1[i], v.C2[i] = c, level
+		vf.Codes8(0)[i], vf.Codes8(1)[i] = c, level
 	}
 	return f, v
+}
+
+// setView gives frame f the scope's view window v, or none.
+// TRLC-LINKS: REQ-SDS-021
+func setView(f *sample.Frame, v *sample.Detail) {
+	f.Details = nil
+	if v != nil {
+		f.Details = []sample.Detail{*v}
+	}
 }
 
 // highRuns counts the stretches of the plot where C1 is drawn on row y.
@@ -55,12 +73,12 @@ func highRuns(sf *MemSurface, y int) int {
 func TestZoomDrawsTheViewWindow(t *testing.T) {
 	hud := HUD{C1VdivV: 1, C2VdivV: 1, TdivS: 200e-6, TrigPosFrac: 0.5, ShowC1: true, ChanExplicit: true, Running: true, Zoom: 50}
 	f, v := zoomFrame(128)
-	f.Views[engine.ViewScope] = v
-	got, vwin, vxc, ok := zoomView(f, hud, f.Valid)
-	if !ok || got != v || vwin != 1247 || vxc < 769 || vxc > 771 {
+	setView(f, v)
+	got, vwin, vxc, ok := zoomView(f, hud, f.Len())
+	if !ok || got != v.Frame || vwin != 1247 || vxc < 769 || vxc > 771 {
 		t.Fatalf("zoomView: ok %v, %d values from centre %.1f; want 1247 (81 values x 15.4) about 770", ok, vwin, vxc)
 	}
-	render := func(f *engine.Frame, h HUD) *MemSurface {
+	render := func(f *sample.Frame, h HUD) *MemSurface {
 		sf := NewMemSurface()
 		Render(sf, f, h, true)
 		return sf
@@ -68,19 +86,19 @@ func TestZoomDrawsTheViewWindow(t *testing.T) {
 	if r := highRuns(render(f, hud), sampleToY(200)); r < 8 || r > 9 {
 		t.Fatalf("zoomed: %d high stretches of the square, want 8-9", r)
 	}
-	f.Views[engine.ViewScope] = nil
+	setView(f, nil)
 	if r := highRuns(render(f, hud), sampleToY(200)); r != 0 {
 		t.Fatalf("no view: %d high stretches, want the flat envelope", r)
 	}
 	moved := *v
 	moved.From, moved.To = v.From+30, v.To+30 // the zoom moved since it was read
-	f.Views[engine.ViewScope] = &moved
-	if _, _, _, ok := zoomView(f, hud, f.Valid); ok {
+	setView(f, &moved)
+	if _, _, _, ok := zoomView(f, hud, f.Len()); ok {
 		t.Fatal("a view of another stretch was used")
 	}
 	hud.Zoom = 1
-	f.Views[engine.ViewScope] = v
-	if _, _, _, ok := zoomView(f, hud, f.Valid); ok {
+	setView(f, v)
+	if _, _, _, ok := zoomView(f, hud, f.Len()); ok {
 		t.Fatal("the view was used unzoomed")
 	}
 }
@@ -90,7 +108,7 @@ func TestZoomDrawsTheViewWindow(t *testing.T) {
 // TRLC-LINKS: REQ-SDS-021, REQ-SDS-096
 func TestZoomViewCoupledAsTheTrace(t *testing.T) {
 	f, v := zoomFrame(150) // the trace's mean 150: AC moves it down by 22
-	f.Views[engine.ViewScope] = v
+	setView(f, v)
 	hud := HUD{C1VdivV: 1, C2VdivV: 1, TdivS: 200e-6, TrigPosFrac: 0.5, ShowC1: true, ChanExplicit: true, Running: true, Zoom: 50, Cpl1: analog.CplAC}
 	sf := NewMemSurface()
 	Render(sf, f, hud, true)
@@ -108,7 +126,7 @@ func TestZoomViewCoupledAsTheTrace(t *testing.T) {
 // TRLC-LINKS: REQ-SDS-021
 func TestTriggerPointerFollowsZoom(t *testing.T) {
 	const n = 40000
-	f := &engine.Frame{C1: make([]uint8, n), Valid: n, WinCols: n / 4, EdgeX: 12000, TdivS: 1e-3}
+	f := &sample.Frame{WinPoints: n / 4, TriggerAt: 12000, Snapshot: sample.Settings{TdivS: 1e-3}, Traces: []sample.Trace{{Codes8: make([]uint8, n), Valid: n}, {Ch: 1, Valid: n}}}
 	p := plotArea{w: 560}
 	for _, tc := range []struct {
 		zoom     int

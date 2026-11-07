@@ -23,6 +23,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/labeth/open-dso-core/sample"
 	"github.com/labeth/open-dso-core/webserver/wire"
 	"github.com/labeth/open-sds1000cml/app/internal/engine"
 	"github.com/labeth/open-sds1000cml/app/internal/panel"
@@ -227,51 +228,73 @@ func goldenSquare(n, period int, lo, hi uint8) []uint8 {
 
 // goldenNative is a native-fast frame: interpolated, triggered mid-record.
 // TRLC-LINKS: REQ-SDS-163
-func goldenNative(seq uint64) *engine.Frame {
+func goldenNative(seq uint64) *sample.Frame {
 	n := 4096
-	return &engine.Frame{
-		Seq: seq, Valid: n, WinCols: 1000, EdgeX: 2048.25, Interp: true, SampleS: 2e-9, TdivS: 1e-7, DisplayedS: 1e-7,
-		Trigd: true, Coherent: true, Ptp: 120, TriggerKind: "hardware-edge", Decimation: 1, FullRate: true,
-		C1: goldenSine(n, 200, 60, 128), C2: goldenSquare(n, 250, 70, 190),
-		StreamSeq: 3, WindowNs: 8192, GapNs: 400,
+	return &sample.Frame{
+		Seq:       seq,
+		WinPoints: 1000,
+		TriggerAt: 2048.25,
+		SampleS:   2e-9,
+		SourcePtp: 120,
+		TrigKind:  sample.HardwareNode,
+		TrigNode:  "edge",
+		AcqDecim:  int(1),
+		Content:   sample.RawFullRate,
+		Flags:     sample.Interp,
+		Snapshot:  sample.Settings{TdivS: 1e-7, DisplayedS: 1e-7},
+		Status:    sample.Status{Triggered: true, Coherent: true},
+		Stream:    sample.StreamPos{Seq: 3, WindowS: float64(8192) * 1e-9, GapS: float64(400) * 1e-9},
+		Traces:    []sample.Trace{{Valid: n, Codes8: goldenSine(n, 200, 60, 128)}, {Ch: 1, Valid: n, Codes8: goldenSquare(n, 250, 70, 190)}},
 	}
 }
 
 // goldenDeep is a stopped decimated record: peak-detect pairs with precision
 // words, held stretches, a web view window and a UART match end.
 // TRLC-LINKS: REQ-SDS-163
-func goldenDeep(seq uint64) *engine.Frame {
+func goldenDeep(seq uint64) *sample.Frame {
 	n := 2048
-	f := &engine.Frame{
-		Seq: seq, Valid: n, WinCols: 1024, EdgeX: 1000.5, SampleS: 1e-6, CaptureSampleS: 2e-9, TdivS: 1e-4, DisplayedS: 1e-4,
-		CaptureDepth: n, PeakDetect: true, Ordered: true, Norm: true, Trigd: true, Decimation: 500,
-		BandwidthHz: 2e5, FilterGuard: 4, Filter: "fir", NoiseGainIdeal: 0.5, PassbandHz: 1.5e5, TriggerKind: "hardware-edge",
-		C1: goldenSine(n, 300, 50, 120), C2: goldenSine(n, 97, 30, 140),
-		HasMatchEnd: true, MatchEndS: 1.25e-5,
+	f := &sample.Frame{
+		Seq:       seq,
+		WinPoints: 1024,
+		TriggerAt: 1000.5,
+		SampleS:   1e-6,
+		CaptureS:  2e-9,
+		Depth:     n,
+		AcqDecim:  int(500),
+		TrigKind:  sample.HardwareNode,
+		TrigNode:  "edge",
+		Match:     &sample.Match{EndS: 1.25e-5},
+		Content:   sample.PeakPairs,
+		Flags:     sample.Ordered,
+		Cond:      sample.Conditioning{BandwidthHz: 2e5, Guard: 4, Filter: "fir", NoiseGain: 0.5, PassbandHz: 1.5e5},
+		Snapshot:  sample.Settings{TdivS: 1e-4, DisplayedS: 1e-4, Norm: true},
+		Status:    sample.Status{Triggered: true},
+		Traces:    []sample.Trace{{Valid: n, Codes8: goldenSine(n, 300, 50, 120)}, {Ch: 1, Valid: n, Codes8: goldenSine(n, 97, 30, 140)}},
 	}
-	f.Q1, f.Q2 = make([]uint16, n), make([]uint16, n)
+	f.Traces[0].Precision, f.Traces[1].Precision = make([]uint16, n), make([]uint16, n)
 	for i := range n {
-		f.Q1[i] = uint16(f.C1[i])<<8 | uint16(i%256)
-		f.Q2[i] = uint16(f.C2[i])<<8 | uint16(255-i%256)
+		f.Precision(0)[i] = uint16(f.Codes8(0)[i])<<8 | uint16(i%256)
+		f.Precision(1)[i] = uint16(f.Codes8(1)[i])<<8 | uint16(255-i%256)
 	}
-	f.Held = make([]bool, n)
+	f.Traces[0].Held = make([]bool, n)
+	f.Traces[1].Held = f.Traces[0].Held
 	for i := 100; i < 140; i++ {
-		f.Held[i] = true
+		f.Held(0)[i] = true
 	}
-	v := &engine.ViewWindow{Valid: 64, From: 900, To: 964, SampleS: 5e-7, PeakDetect: true,
-		C1: goldenSine(64, 16, 40, 128), C2: goldenSquare(64, 8, 100, 160)}
-	f.Views[engine.ViewWeb] = v
+	v := &sample.Frame{SampleS: 5e-7, Content: sample.PeakPairs, Traces: []sample.Trace{
+		{Valid: 64, Codes8: goldenSine(64, 16, 40, 128)}, {Ch: 1, Valid: 64, Codes8: goldenSquare(64, 8, 100, 160)}}}
+	f.Details = append(f.Details, sample.Detail{Role: sample.RoleView(int(engine.ViewWeb)), From: 900, To: 964, Frame: v})
 	return f
 }
 
 // goldenEnvelope is a roll-band envelope frame.
 // TRLC-LINKS: REQ-SDS-163
-func goldenEnvelope(seq uint64) *engine.Frame {
+func goldenEnvelope(seq uint64) *sample.Frame {
 	cols := 800
-	f := &engine.Frame{Seq: seq, IsEnv: true, EnvCols: cols, Valid: cols, WinCols: cols, EdgeX: -1, TdivS: 0.1, DisplayedS: 0.1, SampleS: 1e-3}
-	f.C1, f.C2 = make([]uint8, cols), make([]uint8, cols)
-	f.EnvMin, f.EnvMax = goldenSine(cols, 160, 30, 100), goldenSine(cols, 160, 30, 150)
-	f.EnvMin2, f.EnvMax2 = goldenSquare(cols, 80, 40, 90), goldenSquare(cols, 80, 160, 210)
+	f := &sample.Frame{Seq: seq, WinPoints: cols, TriggerAt: -1, SampleS: 1e-3, Flags: sample.Envelope, Snapshot: sample.Settings{TdivS: 0.1, DisplayedS: 0.1}, Traces: []sample.Trace{{Valid: cols}, {Ch: 1, Valid: cols}}}
+	f.Traces[0].Codes8, f.Traces[1].Codes8 = make([]uint8, cols), make([]uint8, cols)
+	f.Traces[0].Min8, f.Traces[0].Max8 = goldenSine(cols, 160, 30, 100), goldenSine(cols, 160, 30, 150)
+	f.Traces[1].Min8, f.Traces[1].Max8 = goldenSquare(cols, 80, 40, 90), goldenSquare(cols, 80, 160, 210)
 	return f
 }
 
@@ -407,7 +430,7 @@ func (g *goldenEngine) FPGAStack(_ context.Context, req engine.FPGAStackRequest)
 
 // newGoldenEngine is the full fake scope, running, with frame f.
 // TRLC-LINKS: REQ-SDS-162
-func newGoldenEngine(f *engine.Frame) *goldenEngine {
+func newGoldenEngine(f *sample.Frame) *goldenEngine {
 	fs := &fakeScope{
 		frame: f,
 		stats: engine.Stats{
@@ -586,7 +609,7 @@ func (g *goldenSetups) SetupSlots() []wire.SetupSlot {
 // goldenFull is a server on the full fakes: front end (CH2 AC, probes 10x
 // and 1x), panel, screen, invert source and setups.
 // TRLC-LINKS: REQ-SDS-162
-func goldenFull(f *engine.Frame) (*Server, *goldenEngine, *goldenPanel) {
+func goldenFull(f *sample.Frame) (*Server, *goldenEngine, *goldenPanel) {
 	g := newGoldenEngine(f)
 	p := newGoldenPanel()
 	fe := &fakeAnalog{idx: 8, set: true, probe: [2]float64{10, 1}, cpl: [2]int{0, 1}}
@@ -608,7 +631,7 @@ func rpost(path, body string) routeReq {
 // routeCases are the recorded scope states and requests.
 // TRLC-LINKS: REQ-SDS-161, REQ-SDS-162, REQ-SDS-163, REQ-SDS-164
 func routeCases() []routeCase { //nolint:funlen // one table of every route
-	full := func(f func(uint64) *engine.Frame) func() *Server {
+	full := func(f func(uint64) *sample.Frame) func() *Server {
 		return func() *Server { s, _, _ := goldenFull(f(31)); return s }
 	}
 	bare := func() *Server { return newServer(&fakeScope{frame: goldenNative(31)}, nil, nil, nil) }

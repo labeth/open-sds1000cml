@@ -9,10 +9,11 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/labeth/open-dso-core/engine/fanout"
+	"github.com/labeth/open-dso-core/sample"
 	"github.com/labeth/open-dso-core/webserver"
 	"github.com/labeth/open-sds1000cml/app/internal/analog"
 	"github.com/labeth/open-sds1000cml/app/internal/engine"
-	"github.com/labeth/open-sds1000cml/app/internal/frames"
 	"github.com/labeth/open-sds1000cml/app/internal/lcd"
 	"github.com/labeth/open-sds1000cml/app/internal/panel"
 	"github.com/labeth/open-sds1000cml/app/internal/panel/framecalc"
@@ -115,7 +116,7 @@ func waitSecond(hud lcd.HUD) int {
 }
 
 // TRLC-LINKS: REQ-SDS-168
-func renderSigOf(f *engine.Frame, hud lcd.HUD, live bool) renderSig {
+func renderSigOf(f *sample.Frame, hud lcd.HUD, live bool) renderSig {
 	var seq uint64
 	if f != nil {
 		seq = f.Seq
@@ -200,7 +201,7 @@ func hudExtraSig(hud *lcd.HUD) uint64 {
 // a hard minimum; faster starves the acquisition owner). Fully optional: on
 // any bring-up failure the scope keeps running headless.
 // TRLC-LINKS: REQ-SDS-168
-func runLCD(e *engine.Engine, fe *analog.FrontEnd, fo *frames.Fanout) { //nolint:gocyclo // the LCD loop: one tick's render decisions, read top to bottom in the order they apply
+func runLCD(e *engine.Engine, fe *analog.FrontEnd, fo *fanout.Fanout[sample.Frame]) { //nolint:gocyclo // the LCD loop: one tick's render decisions, read top to bottom in the order they apply
 	if err := lcd.Bringup(logf); err != nil {
 		logf("lcd: disabled: %v", err)
 		return
@@ -281,7 +282,7 @@ func runLCD(e *engine.Engine, fe *analog.FrontEnd, fo *frames.Fanout) { //nolint
 					fb.PresentRows(back, 0, lcd.StatusSlotRows)
 				} else {
 					hud := buildHUD(e, fe)
-					fo.WithFrame(func(f *engine.Frame) {
+					fo.WithFrame(func(f *sample.Frame) {
 						lcd.Render(back, f, hud, true, persistLayer)
 						if f != nil && f.Seq != lastPresented {
 							lastSeq, lastFresh, lastPresented = f.Seq, now, f.Seq
@@ -311,7 +312,7 @@ func runLCD(e *engine.Engine, fe *analog.FrontEnd, fo *frames.Fanout) { //nolint
 		}
 		hud := buildHUD(e, fe)
 		present := false
-		fo.WithFrame(func(f *engine.Frame) {
+		fo.WithFrame(func(f *sample.Frame) {
 			// The publish rate is slower than the render tick, so "fresh"
 			// is a short window, not a per-tick flag — otherwise the
 			// liveness strip flickers red on every held tick.
@@ -320,7 +321,7 @@ func runLCD(e *engine.Engine, fe *analog.FrontEnd, fo *frames.Fanout) { //nolint
 				lastFresh = time.Now()
 			}
 			if f != nil { //nolint:nestif // the frame's fields copied into the HUD only with a frame
-				hud.Trigd = f.Trigd // on-screen TRIG'd indicator (there is no TRIG'd lamp)
+				hud.Trigd = f.Status.Triggered // on-screen TRIG'd indicator (there is no TRIG'd lamp)
 				hud.SampleS = f.SampleS
 				// Zoomed into the live envelope: ask for the zoomed part at
 				// full detail (the frame's view window).
@@ -330,7 +331,7 @@ func runLCD(e *engine.Engine, fe *analog.FrontEnd, fo *frames.Fanout) { //nolint
 				// Spectrogram: push each fresh per-sample frame's spectrum of the
 				// FFT source as a new waterfall row while the SPECTROGRAM view is
 				// active; a new source starts a new waterfall.
-				if hud.ViewMode == 4 && !f.IsEnv && len(f.C1) > 0 && (f.Seq != sgSeq || hud.FFTSrc&1 != sgSrc) {
+				if hud.ViewMode == 4 && !f.Flags.Has(sample.Envelope) && len(f.Codes8(0)) > 0 && (f.Seq != sgSeq || hud.FFTSrc&1 != sgSrc) {
 					if hud.FFTSrc&1 != sgSrc {
 						lcdSpect.Clear()
 						sgSrc = hud.FFTSrc & 1
@@ -638,16 +639,16 @@ func lcdBusyDraw(mode int, st engine.Stats, back *lcd.MemSurface) bool {
 // the SCDP hardcopy, PRINT): the workspace analysis of the frame first, so
 // the pane describes the frame drawn.
 // TRLC-LINKS: REQ-SDS-168, REQ-SDS-211
-func renderScreen(e *engine.Engine, fe *analog.FrontEnd, fo *frames.Fanout) *lcd.MemSurface {
+func renderScreen(e *engine.Engine, fe *analog.FrontEnd, fo *fanout.Fanout[sample.Frame]) *lcd.MemSurface {
 	if pc := uiCtrl.Load(); pc != nil {
 		fo.WithFrame(pc.OnFrame)
 	}
 	back := lcd.NewMemSurface()
 	hud := buildHUD(e, fe)
-	fo.WithFrame(func(f *engine.Frame) {
+	fo.WithFrame(func(f *sample.Frame) {
 		if f != nil {
 			hud.SampleS = f.SampleS
-			hud.Trigd = f.Trigd
+			hud.Trigd = f.Status.Triggered
 		}
 		lcd.Render(back, f, hud, true)
 	})
@@ -660,11 +661,11 @@ func renderScreen(e *engine.Engine, fe *analog.FrontEnd, fo *frames.Fanout) *lcd
 // shows, in screen widths from the trigger, while zoomed in Y-T (X-Y draws no
 // zoomed stretch, and its reads cost frames).
 // TRLC-LINKS: REQ-SDS-021
-func scopeViewLease(hud lcd.HUD, f *engine.Frame) (a, b float64, ok bool) {
-	if hud.Zoom <= 1 || hud.ViewMode != 0 || f == nil || !f.PeakDetect || f.WinCols <= 0 || f.Valid <= 0 {
+func scopeViewLease(hud lcd.HUD, f *sample.Frame) (a, b float64, ok bool) {
+	if hud.Zoom <= 1 || hud.ViewMode != 0 || f == nil || f.Content != sample.PeakPairs || f.WinPoints <= 0 || f.Len() <= 0 {
 		return 0, 0, false
 	}
-	c := hud.ZoomOff * float64(f.Valid) / float64(min(f.WinCols, f.Valid))
+	c := hud.ZoomOff * float64(f.Len()) / float64(min(f.WinPoints, f.Len()))
 	h := 0.5 / float64(hud.Zoom)
 	return c - h, c + h, true
 }

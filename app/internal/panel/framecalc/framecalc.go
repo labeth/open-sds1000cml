@@ -16,7 +16,7 @@ import (
 	"time"
 
 	"github.com/labeth/open-dso-core/decode"
-	"github.com/labeth/open-sds1000cml/app/internal/engine"
+	"github.com/labeth/open-dso-core/sample"
 )
 
 // Protocol numbers, shared by the panel's decode setting and the LCD.
@@ -193,20 +193,34 @@ type decodeEntry struct {
 	ok  bool
 }
 
-// Channel returns a frame channel's valid samples; C2 falls back to C1 when
-// the frame has no second channel.
+// codes8 is trace ch's codes on the 8-bit view the decoders and the
+// spectrum read: 8-bit codes as they are, a wider converter's words mapped
+// onto it (decode.Codes8); nil without the trace.
 // TRLC-LINKS: REQ-SDS-018
-func Channel(f *engine.Frame, ch, valid int) []uint8 {
-	if ch == 1 && len(f.C2) >= valid {
-		return f.C2[:valid]
+func codes8(f *sample.Frame, ch int) []uint8 {
+	if ch < 0 || ch >= len(f.Traces) {
+		return nil
 	}
-	return f.C1[:valid]
+	if t := &f.Traces[ch]; t.Format.Storage == sample.U16 {
+		return decode.Codes8(t)
+	}
+	return f.Traces[ch].Codes8
 }
 
-// Valid clamps a frame's valid-sample count into its C1 slice.
+// Channel is trace ch's first valid codes on the 8-bit view; the first
+// trace's when ch's is short of them.
 // TRLC-LINKS: REQ-SDS-018
-func Valid(f *engine.Frame) int {
-	return min(max(f.Valid, 1), len(f.C1))
+func Channel(f *sample.Frame, ch, valid int) []uint8 {
+	if c := codes8(f, ch); ch > 0 && len(c) >= valid {
+		return c[:valid]
+	}
+	return codes8(f, 0)[:valid]
+}
+
+// Valid clamps a frame's valid-sample count into its first trace's codes.
+// TRLC-LINKS: REQ-SDS-018
+func Valid(f *sample.Frame) int {
+	return min(max(f.Len(), 1), len(codes8(f, 0)))
 }
 
 // Decode decodes f's valid samples with p, reusing the last result for the
@@ -214,15 +228,15 @@ func Valid(f *engine.Frame) int {
 // second on the ARM, and the strip, the packet list and the eye all need it.
 // A zero Seq and Content (a hand-built frame) is never cached.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-214
-func Decode(f *engine.Frame, p DecodeParams) decode.Result {
-	if f == nil || len(f.C1) == 0 || p.Proto == ProtoOff || p.Proto == ProtoAuto {
+func Decode(f *sample.Frame, p DecodeParams) decode.Result {
+	if f == nil || len(codes8(f, 0)) == 0 || p.Proto == ProtoOff || p.Proto == ProtoAuto {
 		return decode.Result{}
 	}
 	valid := Valid(f)
 	key := decodeKey{valid: valid, sampleS: f.SampleS, p: p}
 	switch {
-	case f.Content != 0:
-		key.id, key.ident = true, f.Content
+	case f.ContentID != 0:
+		key.id, key.ident = true, f.ContentID
 	case f.Seq != 0:
 		key.seq, key.ident = true, f.Seq
 	}
@@ -241,8 +255,8 @@ func Decode(f *engine.Frame, p DecodeParams) decode.Result {
 	switch p.Proto {
 	case ProtoUART:
 		cfg := decode.UARTCfg{Baud: p.Baud, Format: p.Format, Parity: p.Parity, Inverted: p.Inverted}
-		if f.HasMatchEnd && f.EdgeX >= 0 && f.SampleS > 0 { // the hardware matcher's character fixes the framing
-			cfg.Anchor, cfg.HasAnchor = f.EdgeX+f.MatchEndS/f.SampleS, true
+		if f.Match != nil && f.TriggerAt >= 0 && f.SampleS > 0 { // the hardware matcher's character fixes the framing
+			cfg.Anchor, cfg.HasAnchor = f.TriggerAt+f.Match.EndS/f.SampleS, true
 		}
 		res = decode.UART(ch(p.ChA), f.SampleS, cfg)
 	case ProtoI2C:
@@ -272,7 +286,7 @@ func Decode(f *engine.Frame, p DecodeParams) decode.Result {
 	default:
 		res = decodeMore(p, ch, f.SampleS)
 	}
-	if f.PeakDetect && f.Ordered && !EnvelopeResolves(res) {
+	if f.Content == sample.PeakPairs && f.Flags.Has(sample.Ordered) && !EnvelopeResolves(res) {
 		res = decode.Result{Proto: res.Proto, Error: decode.Names[res.Proto] + unresolvedNote}
 	}
 	if cacheable {
@@ -376,8 +390,8 @@ func decodePhys(p DecodeParams, a, b []uint8, sampleS float64) decode.Result {
 // frame's sample indices. It is Auto's search on one frame, run when a
 // detection is asked for, never per frame.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-214, REQ-SDS-222
-func Detect(f *engine.Frame, format string) decode.Result {
-	if f == nil || len(f.C1) == 0 {
+func Detect(f *sample.Frame, format string) decode.Result {
+	if f == nil || len(codes8(f, 0)) == 0 {
 		return decode.Result{}
 	}
 	valid := Valid(f)
@@ -391,7 +405,7 @@ func Detect(f *engine.Frame, format string) decode.Result {
 		}
 		res.SPB *= float64(k)
 	}
-	if f.PeakDetect && f.Ordered && res.Proto == "off" && res.Error == "no protocol matched" {
+	if f.Content == sample.PeakPairs && f.Flags.Has(sample.Ordered) && res.Proto == "off" && res.Error == "no protocol matched" {
 		// a bus the envelope cannot resolve is not found either (a 115200 Bd
 		// UART at 500us/div matches no protocol there)
 		res.Error = "no protocol resolved at this timebase - S/DIV faster, or SINGLE"
@@ -455,8 +469,8 @@ type Spec struct {
 // EnvPair is 2 for a peak-detect envelope, whose values come in (min, max)
 // pairs per bucket, else 1.
 // TRLC-LINKS: REQ-SDS-070
-func EnvPair(f *engine.Frame) int {
-	if f.PeakDetect {
+func EnvPair(f *sample.Frame) int {
+	if f.Content == sample.PeakPairs {
 		return 2
 	}
 	return 1
@@ -468,7 +482,7 @@ func EnvPair(f *engine.Frame) int {
 // alternation at the top of the axis as a rising false spectrum (a UART at
 // 10 us/div).
 // TRLC-LINKS: REQ-SDS-070
-func PairStride(f *engine.Frame, stride int) int {
+func PairStride(f *sample.Frame, stride int) int {
 	stride = max(stride, 1)
 	if p := EnvPair(f); stride%p != 0 {
 		stride += p - stride%p
@@ -626,19 +640,22 @@ type specKey struct {
 
 var specCache struct {
 	sync.Mutex
-	slot [2]struct {
-		key  specKey
-		spec Spec
-		ok   bool
-		at   time.Time // when it was taken (a held spectrum's age; zero unheld)
-	}
+	slot []specSlot // by channel
+}
+
+// specSlot is one channel's cached spectrum.
+type specSlot struct {
+	key  specKey
+	spec Spec
+	ok   bool
+	at   time.Time // when it was taken (a held spectrum's age; zero unheld)
 }
 
 // Spectrum returns channel ch's spectrum of frame f at sampleS seconds per
 // sample, cached per channel by frame content. ok is false for a frame
 // without per-sample data (an envelope) or too few samples.
 // TRLC-LINKS: REQ-SDS-070, REQ-SDS-216
-func Spectrum(f *engine.Frame, ch int, sampleS float64) (Spec, bool) {
+func Spectrum(f *sample.Frame, ch int, sampleS float64) (Spec, bool) {
 	return spectrum(f, ch, sampleS, 0)
 }
 
@@ -656,20 +673,19 @@ func SetSpectrumHold(d time.Duration) { specHold.Store(int64(max(d, 0))) }
 // picture cost the one core more than the capture loop's whole frame; the
 // display holds them when it is what keeps the loop under its rate.
 // TRLC-LINKS: REQ-SDS-070, REQ-SDS-216
-func SpectrumHeld(f *engine.Frame, ch int, sampleS float64) (Spec, bool) {
+func SpectrumHeld(f *sample.Frame, ch int, sampleS float64) (Spec, bool) {
 	return spectrum(f, ch, sampleS, time.Duration(specHold.Load()))
 }
 
 // spectrum is Spectrum, a cached one of the same acquisition answering for
 // hold after it was taken.
 // TRLC-LINKS: REQ-SDS-070, REQ-SDS-216
-func spectrum(f *engine.Frame, ch int, sampleS float64, hold time.Duration) (Spec, bool) {
-	if f == nil || f.IsEnv || len(f.C1) == 0 {
+func spectrum(f *sample.Frame, ch int, sampleS float64, hold time.Duration) (Spec, bool) {
+	if f == nil || f.Flags.Has(sample.Envelope) || len(codes8(f, 0)) == 0 || ch < 0 || ch >= len(f.Traces) {
 		return Spec{}, false
 	}
-	ch &= 1
 	valid := Valid(f)
-	if ch == 1 && len(f.C2) < valid {
+	if ch > 0 && len(codes8(f, ch)) < valid {
 		return Spec{}, false
 	}
 	n := 1
@@ -679,16 +695,19 @@ func spectrum(f *engine.Frame, ch int, sampleS float64, hold time.Duration) (Spe
 	if n < 16 {
 		return Spec{}, false
 	}
-	key := specKey{valid: valid, ch: ch, sampleS: sampleS, pd: f.PeakDetect}
+	key := specKey{valid: valid, ch: ch, sampleS: sampleS, pd: f.Content == sample.PeakPairs}
 	switch {
-	case f.Content != 0:
-		key.id, key.ident = true, f.Content
+	case f.ContentID != 0:
+		key.id, key.ident = true, f.ContentID
 	case f.Seq != 0:
 		key.seq, key.ident = true, f.Seq
 	}
 	cacheable := key.id || key.seq
 	specCache.Lock()
 	defer specCache.Unlock()
+	if ch >= len(specCache.slot) {
+		specCache.slot = append(specCache.slot, make([]specSlot, ch+1-len(specCache.slot))...)
+	}
 	s := &specCache.slot[ch]
 	if cacheable && s.ok && s.key == key {
 		return s.spec, true
@@ -703,7 +722,7 @@ func spectrum(f *engine.Frame, ch int, sampleS float64, hold time.Duration) (Spe
 		}
 	}
 	stride := PairStride(f, valid/n)
-	sp := specOf(BlockMeans(Channel(f, ch, valid), n, stride), stride, sampleS, f.BandwidthHz)
+	sp := specOf(BlockMeans(Channel(f, ch, valid), n, stride), stride, sampleS, f.Cond.BandwidthHz)
 	s.key, s.spec, s.ok, s.at = key, sp, cacheable, now
 	return sp, true
 }
@@ -745,7 +764,7 @@ const RowFFT = 2048
 // so one capture paints several rows of the time it spans. A record whose
 // spectrum is shorter than two rows' gives that spectrum alone.
 // TRLC-LINKS: REQ-SDS-068, REQ-SDS-070
-func SpectrumRows(f *engine.Frame, ch int, sampleS float64) []Spec {
+func SpectrumRows(f *sample.Frame, ch int, sampleS float64) []Spec {
 	full, ok := Spectrum(f, ch, sampleS)
 	if !ok {
 		return nil
@@ -754,11 +773,11 @@ func SpectrumRows(f *engine.Frame, ch int, sampleS float64) []Spec {
 	if k < 2 {
 		return []Spec{full}
 	}
-	src := Channel(f, ch&1, Valid(f))
+	src := Channel(f, ch, Valid(f))
 	seg := RowFFT * full.Stride
 	out := make([]Spec, 0, k)
 	for i := range k {
-		out = append(out, specOf(BlockMeans(src[i*seg:(i+1)*seg], RowFFT, full.Stride), full.Stride, sampleS, f.BandwidthHz))
+		out = append(out, specOf(BlockMeans(src[i*seg:(i+1)*seg], RowFFT, full.Stride), full.Stride, sampleS, f.Cond.BandwidthHz))
 	}
 	return out
 }

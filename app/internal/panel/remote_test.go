@@ -768,15 +768,12 @@ func TestTypedValueUnderTheLowestIsRefused(t *testing.T) {
 // TRLC-LINKS: REQ-SDS-162, REQ-SDS-220
 func TestRemoteKnobHugeStepsKeepTheirDirection(t *testing.T) {
 	c, _, _ := newC(t)
-	step := c.trigStepCodes()
+	step := c.trigSteps()
 	steps := 2 * (math.MaxInt / step) // step*steps wraps to a small negative
 	if res := c.RemoteKnob("triglevel", 1, steps, true); !res.OK {
 		t.Fatalf("knob: %+v", res)
 	}
-	c.mu.Lock()
-	code := c.trigCode
-	c.mu.Unlock()
-	if code != engine.TrigCodeMin { // clockwise raises the level: the lowest code
-		t.Fatalf("trigger code %d after a huge clockwise turn, want %d", code, engine.TrigCodeMin)
+	if code := c.eng.Snapshot().TrigCode; code != engine.TrigCodeMin { // clockwise raises the level: the lowest code
+		t.Fatalf("trigger code %d after a huge clockwise turn, want %d", c.eng.Snapshot().TrigCode, engine.TrigCodeMin)
 	}
 }

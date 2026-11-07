@@ -10,7 +10,6 @@ import (
 
 	"github.com/labeth/open-dso-core/analysis"
 	"github.com/labeth/open-dso-core/uimodel"
-	"github.com/labeth/open-sds1000cml/app/internal/analog"
 	"github.com/labeth/open-sds1000cml/app/internal/buildinfo"
 	"github.com/labeth/open-sds1000cml/app/internal/engine"
 	"github.com/labeth/open-sds1000cml/app/internal/panel/framecalc"
@@ -902,7 +901,7 @@ func (c *Controller) eyePane(s *sv) *wsview.EyePane {
 	if !math.IsNaN(cur.Width()) {
 		oh = fmt.Sprintf("%s%.2f UI", mark(r.WidthBound, ">"), cur.Width())
 	}
-	z := float64(max(analog.Detents[s.vidx[ch]].Zoom, 1))
+	z := float64(max(s.vert[ch].zoom, 1))
 	thV := ((th-128)/z)*voltsPerCode(s, ch) - s.offV[ch]*s.probe[ch]
 	p.Cursor = fmt.Sprintf("SAMPLE PT %+.2f UI: opening %s     THRESHOLD %s: opening %s", u.eyeX, ov, si(thV, "V"), oh)
 	switch {

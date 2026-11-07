@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/labeth/open-dso-core/sample"
 	"github.com/labeth/open-sds1000cml/app/internal/sramcapture"
 )
 
@@ -118,29 +119,29 @@ func TestBusLeaseFinerThanTheDecimationTakesTheFullRate(t *testing.T) {
 // TRLC-LINKS: REQ-SDS-033
 func TestHeldRecallRoundTrip(t *testing.T) {
 	var h heldRecall
-	mk := func(n int, fill byte) *Frame {
-		f := &Frame{C1: make([]uint8, n), C2: make([]uint8, n), Q1: make([]uint16, n), Q2: make([]uint16, n), Valid: n}
+	mk := func(n int, fill byte) *sample.Frame {
+		f := &sample.Frame{Traces: []sample.Trace{{Codes8: make([]uint8, n), Precision: make([]uint16, n), Valid: n}, {Ch: 1, Codes8: make([]uint8, n), Precision: make([]uint16, n), Valid: n}}}
 		for i := range n {
-			f.C1[i], f.C2[i], f.Q1[i], f.Q2[i] = fill+byte(i), fill-byte(i), uint16(i)<<4, uint16(i)<<5
+			f.Codes8(0)[i], f.Codes8(1)[i], f.Precision(0)[i], f.Precision(1)[i] = fill+byte(i), fill-byte(i), uint16(i)<<4, uint16(i)<<5
 		}
 		return f
 	}
 	src := mk(100, 7)
 	key := heldKey{offset: 0, words: 50}
 	h.store(key, src)
-	src.Filter, src.FilterGuard, src.BandwidthHz = "cal", 3, 1e6
+	src.Cond.Filter, src.Cond.Guard, src.Cond.BandwidthHz = "cal", 3, 1e6
 	h.storeCond(heldCondKey{held: key}, src)
 	dst := mk(100, 0)
 	if n := h.restore(dst); n != 100 {
 		t.Fatalf("restored %d samples", n)
 	}
-	h.restoreCond(dst, dst.Q1, dst.Q2)
-	for i := range src.C1 {
-		if dst.C1[i] != src.C1[i] || dst.C2[i] != src.C2[i] || dst.Q1[i] != src.Q1[i] || dst.Q2[i] != src.Q2[i] {
+	h.restoreCond(dst, dst.Precision(0), dst.Precision(1))
+	for i := range src.Codes8(0) {
+		if dst.Codes8(0)[i] != src.Codes8(0)[i] || dst.Codes8(1)[i] != src.Codes8(1)[i] || dst.Precision(0)[i] != src.Precision(0)[i] || dst.Precision(1)[i] != src.Precision(1)[i] {
 			t.Fatalf("sample %d differs", i)
 		}
 	}
-	if dst.Filter != "cal" || dst.FilterGuard != 3 || dst.BandwidthHz != 1e6 {
+	if dst.Cond.Filter != "cal" || dst.Cond.Guard != 3 || dst.Cond.BandwidthHz != 1e6 {
 		t.Fatalf("conditioning fields lost: %+v", dst)
 	}
 }
@@ -297,11 +298,11 @@ func TestRollHeldMarksGaps(t *testing.T) {
 	if got != "....HHH....." {
 		t.Fatalf("held mask %s", got)
 	}
-	f := &Frame{Valid: 12, Held: r.held}
-	if a, b := f.MeasureRange(); a != 7 || b != 12 {
+	f := &sample.Frame{Traces: []sample.Trace{{Valid: 12, Held: r.held}, {Ch: 1, Valid: 12, Held: r.held}}}
+	if a, b := MeasureRange(f); a != 7 || b != 12 {
 		t.Fatalf("measure range %d..%d, want the second chunk 7..12", a, b)
 	}
-	if a, b := (&Frame{Valid: 12}).MeasureRange(); a != 0 || b != 12 {
+	if a, b := MeasureRange(&sample.Frame{Traces: []sample.Trace{{Valid: 12}, {Ch: 1, Valid: 12}}}); a != 0 || b != 12 {
 		t.Fatalf("a frame without held samples: %d..%d", a, b)
 	}
 }

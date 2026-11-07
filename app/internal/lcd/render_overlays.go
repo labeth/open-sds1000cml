@@ -7,7 +7,7 @@ import (
 	"math"
 
 	"github.com/labeth/open-dso-core/decode"
-	"github.com/labeth/open-sds1000cml/app/internal/engine"
+	"github.com/labeth/open-dso-core/sample"
 	"github.com/labeth/open-sds1000cml/app/internal/panel/framecalc"
 	"github.com/labeth/open-sds1000cml/app/internal/panel/wsview"
 )
@@ -16,17 +16,17 @@ import (
 // X-Y mode). Codes 0..255 map across the graticule (x) and up it (y); a stride
 // keeps dense records cheap.
 // TRLC-LINKS: REQ-SDS-021
-func drawXY(sf Surface, p plotArea, f *engine.Frame, hud HUD) {
+func drawXY(sf Surface, p plotArea, f *sample.Frame, hud HUD) {
 	valid := frameValid(f)
 	captions := !hud.UI.Layout.HideViewCaptions
-	if len(f.C2) < valid {
+	if len(f.Codes8(1)) < valid {
 		if captions {
 			DrawText(sf, 10, p.y0+10, "X-Y needs CH2", colDim, 1)
 		}
 		return
 	}
-	c1 := coupledDisplay(f.C1[:valid], hud.Cpl1)
-	c2 := coupledDisplay(f.C2[:valid], hud.Cpl2)
+	c1 := coupledDisplay(f.Codes8(0)[:valid], hud.Cpl1)
+	c2 := coupledDisplay(f.Codes8(1)[:valid], hud.Cpl2)
 	step := 1
 	if valid > 4000 {
 		step = valid / 4000
@@ -125,15 +125,15 @@ func mathCodes(c1, c2 []uint8, hud HUD) []uint8 {
 }
 
 // TRLC-LINKS: REQ-SDS-021
-func drawMath(sf Surface, p plotArea, f *engine.Frame, hud HUD, win int, xc, posFrac float64) {
+func drawMath(sf Surface, p plotArea, f *sample.Frame, hud HUD, win int, xc, posFrac float64) {
 	valid := frameValid(f)
-	if len(f.C2) < valid {
+	if len(f.Codes8(1)) < valid {
 		return
 	}
-	c1 := coupledDisplay(f.C1[:valid], hud.Cpl1)
-	c2 := coupledDisplay(f.C2[:valid], hud.Cpl2)
+	c1 := coupledDisplay(f.Codes8(0)[:valid], hud.Cpl1)
+	c2 := coupledDisplay(f.Codes8(1)[:valid], hud.Cpl2)
 	m := mathCodes(c1, c2, hud)
-	drawTraceID(sf, p, traceID{}, m, win, xc, f.Interp, colMath, posFrac)
+	drawTraceID(sf, p, traceID{}, m, win, xc, f.Flags.Has(sample.Interp), colMath, posFrac)
 	unit := "V/div"
 	if hud.MathMode == 4 {
 		unit = "V^2/div"
@@ -220,7 +220,7 @@ var protoNames = []string{
 // same trace window. In BUS the selected packet is boxed with its list
 // number and the packets holding the match bytes are ticked.
 // TRLC-LINKS: REQ-SDS-021, REQ-SDS-214
-func drawDecode(sf Surface, p plotArea, f *engine.Frame, hud HUD, win int, xc, posFrac float64) {
+func drawDecode(sf Surface, p plotArea, f *sample.Frame, hud HUD, win int, xc, posFrac float64) {
 	if hud.DecProto == 0 || f == nil {
 		return
 	}
@@ -390,17 +390,17 @@ var colMask = rgb(90, 120, 160)
 // timebase reads the mask through trigger-relative time, as the engine tests
 // it and the web draws it.
 // TRLC-LINKS: REQ-SDS-021
-func drawZoneMask(sf Surface, p plotArea, f *engine.Frame, hud HUD, win int, xc, posFrac float64) {
+func drawZoneMask(sf Surface, p plotArea, f *sample.Frame, hud HUD, win int, xc, posFrac float64) {
 	if !(posFrac >= 0 && posFrac <= 1) {
 		posFrac = 0.5
 	}
 	left := xc - float64(win)*posFrac
 	drawMaskBounds(sf, p, f, hud, win, left)
 	// zone rectangles: dt (seconds from the edge) -> raw sample -> screen x
-	if len(hud.Zones) > 0 && f.SampleS > 0 && f.EdgeX >= 0 {
+	if len(hud.Zones) > 0 && f.SampleS > 0 && f.TriggerAt >= 0 {
 		for _, z := range hud.Zones {
-			x0 := int((f.EdgeX + z.DtLoS/f.SampleS - left) * float64(p.w) / float64(win))
-			x1 := int((f.EdgeX + z.DtHiS/f.SampleS - left) * float64(p.w) / float64(win))
+			x0 := int((f.TriggerAt + z.DtLoS/f.SampleS - left) * float64(p.w) / float64(win))
+			x1 := int((f.TriggerAt + z.DtHiS/f.SampleS - left) * float64(p.w) / float64(win))
 			if x1 < x0 {
 				x0, x1 = x1, x0
 			}
@@ -426,7 +426,7 @@ func drawZoneMask(sf Surface, p plotArea, f *engine.Frame, hud HUD, win int, xc,
 // window (win samples from left): column by column when the mask is the
 // window, else through trigger-relative time.
 // TRLC-LINKS: REQ-SDS-021
-func drawMaskBounds(sf Surface, p plotArea, f *engine.Frame, hud HUD, win int, left float64) {
+func drawMaskBounds(sf Surface, p plotArea, f *sample.Frame, hud HUD, win int, left float64) {
 	mw := hud.MaskWin
 	if hud.MaskMode <= 0 || mw <= 0 || len(hud.MaskLo) != mw || len(hud.MaskHi) != mw {
 		return
@@ -440,14 +440,14 @@ func drawMaskBounds(sf Surface, p plotArea, f *engine.Frame, hud HUD, win int, l
 		for x := range p.w {
 			mark(x, x*win/p.w)
 		}
-	case hud.MaskSampleS > 0 && f.SampleS > 0 && f.EdgeX >= 0 && hud.MaskTdivS == f.TdivS:
+	case hud.MaskSampleS > 0 && f.SampleS > 0 && f.TriggerAt >= 0 && hud.MaskTdivS == f.Snapshot.TdivS:
 		maskPos := hud.TrigPosFrac
 		if !(maskPos >= 0 && maskPos <= 1) {
 			maskPos = 0.5
 		}
 		for x := range p.w {
 			s := left + float64(x)*float64(win)/float64(p.w)
-			j := int(math.Round((s-f.EdgeX)*f.SampleS/hud.MaskSampleS + float64(mw)*maskPos))
+			j := int(math.Round((s-f.TriggerAt)*f.SampleS/hud.MaskSampleS + float64(mw)*maskPos))
 			if j >= 0 && j < mw {
 				mark(x, j)
 			}
@@ -528,7 +528,7 @@ func enclosingSpans(sp []decode.Span) []bool {
 // frame once, all of its record: the strip's spans are the list's, in record
 // sample indices, and the screen shows those it reaches.
 // TRLC-LINKS: REQ-SDS-018
-func decodeFrame(f *engine.Frame, hud HUD) decode.Result {
+func decodeFrame(f *sample.Frame, hud HUD) decode.Result {
 	return framecalc.Decode(f, decodeParams(hud))
 }
 

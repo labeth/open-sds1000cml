@@ -9,7 +9,7 @@ import (
 	"strings"
 
 	"github.com/labeth/open-dso-core/decode"
-	"github.com/labeth/open-sds1000cml/app/internal/engine"
+	"github.com/labeth/open-dso-core/sample"
 )
 
 // kindData is the kind of a decoded span that carries a unit.
@@ -35,7 +35,7 @@ var visChColours = [16]uint16{
 
 // drawVisualPane draws the frame's bus as what it carries in the plot.
 // TRLC-LINKS: REQ-SDS-281
-func drawVisualPane(sf Surface, p plotArea, f *engine.Frame, hud HUD) {
+func drawVisualPane(sf Surface, p plotArea, f *sample.Frame, hud HUD) {
 	// under the status line (channels, timebase, trigger): it stays
 	if top := visTop - p.y0; top > 0 {
 		p.y0, p.h = visTop, p.h-top
@@ -50,10 +50,10 @@ func drawVisualPane(sf Surface, p plotArea, f *engine.Frame, hud HUD) {
 		DrawText(sf, 8, p.y0+8, "VISUAL  "+protoNames[hud.DecProto%len(protoNames)]+": "+res.Error, colStale, 1)
 		return
 	}
-	n := len(f.C1)
+	n := len(f.Codes8(0))
 	dt := f.SampleS
 	if !(dt > 0) && n > 0 {
-		dt = f.TdivS * 14 / float64(n)
+		dt = f.Snapshot.TdivS * 14 / float64(n)
 	}
 	a := visArea{x0: 0, y0: p.y0 + 16, w: p.w, h: p.h - 18, n: n, dt: dt}
 	title, sub := visDrawBus(sf, a, res)

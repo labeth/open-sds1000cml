@@ -6,8 +6,8 @@ import (
 	"os/exec"
 	"testing"
 
+	"github.com/labeth/open-dso-core/sample"
 	"github.com/labeth/open-dso-core/testenv"
-	"github.com/labeth/open-sds1000cml/app/internal/engine"
 )
 
 // A reply names the frame its measurements were taken on and that frame's
@@ -15,13 +15,15 @@ import (
 // 100 ms, and MEASURE's statistics count it once.
 // TRLC-LINKS: REQ-SDS-217
 func TestReplyNamesTheMeasuredFrame(t *testing.T) {
-	mk := func(seq, read uint64) *engine.Frame {
-		f := &engine.Frame{
-			C1: make([]uint8, 2048), C2: make([]uint8, 2048), Seq: seq, Valid: 2048, WinCols: 2048, EdgeX: 1024,
-			SampleS: 2e-9, TdivS: 1e-6, DisplayedS: 1e-6, EdgeRead: read,
+	mk := func(seq, read uint64) *sample.Frame {
+		f := &sample.Frame{
+			Traces: []sample.Trace{{Codes8: make([]uint8, 2048), Valid: 2048}, {Ch: 1, Codes8: make([]uint8, 2048), Valid: 2048}},
+			Seq:    seq, WinPoints: 2048, TriggerAt: 1024,
+			SampleS: 2e-9, Snapshot: sample.Settings{TdivS: 1e-6, DisplayedS: 1e-6},
+			Details: []sample.Detail{{Role: sample.Edge, Read: read, Frame: &sample.Frame{}}},
 		}
-		for i := range f.C1 {
-			f.C1[i] = uint8(60 + 120*(i/100%2))
+		for i := range f.Codes8(0) {
+			f.Codes8(0)[i] = uint8(60 + 120*(i/100%2))
 		}
 		return f
 	}
