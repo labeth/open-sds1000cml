@@ -1,0 +1,10 @@
+Service x1; Acquirer.Arm -> <nil>
+Service x1; Acquirer.Stop -> <nil>
+Service x1; Acquirer.Arm -> <nil>
+Service x1; Acquirer.Wait(0s) -> triggered true done false record {0 0} hal: wait timed out
+Service x1; Acquirer.Wait(0s) -> triggered true done true record {1 1} <nil>
+Readout.Read {0 -78848+157696 points 1024 peak-pairs} -> <nil>
+Readout.Read {2 -512+1024 points 0 raw-decimated} -> <nil>
+Service x1; Acquirer.Arm -> <nil>
+Service x1; Acquirer.Wait(0s) -> triggered false done false record {0 0} hal: wait timed out x155
+Acquirer.Stop -> <nil>

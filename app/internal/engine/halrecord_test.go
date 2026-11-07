@@ -25,6 +25,7 @@ import (
 	"github.com/labeth/open-sds1000cml/app/internal/board/acq"
 
 	core "github.com/labeth/open-dso-core/engine"
+	"github.com/labeth/open-dso-core/hal"
 	"github.com/labeth/open-dso-core/sample"
 	"github.com/labeth/open-dso-core/superres"
 	"github.com/labeth/open-sds1000cml/app/internal/bus"
@@ -537,9 +538,10 @@ type halScenario struct {
 
 func always(int) bool { return true }
 
-func runHALScenario(t *testing.T, sc halScenario) string {
+func runHALScenario(t *testing.T, sc halScenario) (string, string) {
 	t.Helper()
 	log := &callLog{}
+	hl := &halLog{log: &callLog{}}
 	start := time.Unix(1000, 0)
 	now := start
 	var e *Engine
@@ -571,7 +573,11 @@ func runHALScenario(t *testing.T, sc halScenario) string {
 		rec.caps[c] = true
 	}
 	rec.onSpan = sc.onSpan
-	e.sram = rec
+	e.useMemory(rec)
+	e.acqr = recAcquirer{e.acqr, hl}
+	e.plat = recPlatform{e.plat, hl}
+	e.readYield = e.plat.Service
+	e.rdx = recReader{e.rdx, hl}
 	// Each arm also reports the newest frame published before it.
 	hooks := map[int]func(*Engine){}
 	for k := 1; k <= max(sc.stopAt, 1000); k++ {
@@ -599,7 +605,7 @@ func runHALScenario(t *testing.T, sc halScenario) string {
 	if f, ok := e.Consume(); ok {
 		log.add("%s", frameText(f))
 	}
-	return log.text()
+	return log.text(), hl.log.text()
 }
 
 func halScenarios() []halScenario {
@@ -680,36 +686,122 @@ func TestHALRecordReplay(t *testing.T) {
 	dir := filepath.Join("testdata", "halrecord")
 	for _, sc := range halScenarios() {
 		t.Run(sc.name, func(t *testing.T) {
-			got := runHALScenario(t, sc)
-			again := runHALScenario(t, sc)
-			if got != again {
+			got, gotHAL := runHALScenario(t, sc)
+			again, againHAL := runHALScenario(t, sc)
+			if got != again || gotHAL != againHAL {
 				t.Fatalf("the trace is not deterministic")
 			}
-			path := filepath.Join(dir, sc.name+".txt")
-			if *updateHALRecord {
-				if err := os.MkdirAll(dir, 0o755); err != nil {
-					t.Fatal(err)
-				}
-				if err := os.WriteFile(path, []byte(got), 0o600); err != nil {
-					t.Fatal(err)
-				}
-				return
-			}
-			want, err := os.ReadFile(path)
-			if err != nil {
-				t.Fatalf("%v (record with -update-halrecord)", err)
-			}
-			if got != string(want) {
-				gl, wl := strings.Split(got, "\n"), strings.Split(string(want), "\n")
-				for i := range min(len(gl), len(wl)) {
-					if gl[i] != wl[i] {
-						t.Fatalf("line %d differs:\n got  %s\n want %s", i+1, gl[i], wl[i])
-					}
-				}
-				t.Fatalf("length differs: %d lines, want %d", len(gl), len(wl))
+			for _, tr := range []struct{ path, got string }{
+				{filepath.Join(dir, sc.name+".txt"), got},
+				{filepath.Join(dir, sc.name+".hal.txt"), gotHAL},
+			} {
+				compareTrace(t, tr.path, tr.got)
 			}
 		})
 	}
 }
 
+// compareTrace compares a trace with its recording, or records it.
+func compareTrace(t *testing.T, path, got string) {
+	t.Helper()
+	if *updateHALRecord {
+		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(path, []byte(got), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		return
+	}
+	want, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("%v (record with -update-halrecord)", err)
+	}
+	if got != string(want) {
+		gl, wl := strings.Split(got, "\n"), strings.Split(string(want), "\n")
+		for i := range min(len(gl), len(wl)) {
+			if gl[i] != wl[i] {
+				t.Fatalf("%s line %d differs:\n got  %s\n want %s", path, i+1, gl[i], wl[i])
+			}
+		}
+		t.Fatalf("%s: length differs: %d lines, want %d", path, len(gl), len(wl))
+	}
+}
+
 var _ bus.Bus = (*recordedCS3)(nil)
+
+// halLog is the owner loop's trace of HAL calls: what a core owner loop
+// driving the same board must call, in order. Service calls are counted
+// onto the next call, so a wait's poll-and-service rounds collapse.
+type halLog struct {
+	log     *callLog
+	service int
+}
+
+func (h *halLog) add(format string, args ...any) {
+	if h.service > 0 {
+		format = fmt.Sprintf("Service x%d; ", h.service) + format
+		h.service = 0
+	}
+	h.log.add(format, args...)
+}
+
+type recAcquirer struct {
+	hal.Acquirer
+	h *halLog
+}
+
+func (a recAcquirer) Configure(p hal.Plan) error {
+	err := a.Acquirer.Configure(p)
+	a.h.add("Acquirer.Configure decim %d depth %d -> %v", p.AcqDecim, p.Depth, err)
+	return err
+}
+
+func (a recAcquirer) Arm() error {
+	err := a.Acquirer.Arm()
+	a.h.add("Acquirer.Arm -> %v", err)
+	return err
+}
+
+func (a recAcquirer) Wait(ctx context.Context, d time.Duration) (hal.Status, error) {
+	st, err := a.Acquirer.Wait(ctx, d)
+	a.h.add("Acquirer.Wait(%v) -> triggered %v done %v record %v %v", d, st.Triggered, st.Done, st.Record, err)
+	return st, err
+}
+
+func (a recAcquirer) Force() error {
+	err := a.Acquirer.Force()
+	a.h.add("Acquirer.Force -> %v", err)
+	return err
+}
+
+func (a recAcquirer) Stop() error {
+	err := a.Acquirer.Stop()
+	a.h.add("Acquirer.Stop -> %v", err)
+	return err
+}
+
+type recPlatform struct {
+	hal.Platform
+	h *halLog
+}
+
+func (p recPlatform) Service() {
+	p.h.service++
+	p.Platform.Service()
+}
+
+type recReader struct {
+	recordReader
+	h *halLog
+}
+
+func (r recReader) ReadContext(ctx context.Context, req hal.ReadRequest, dst []*sample.Frame, yield func()) error {
+	var b strings.Builder
+	for _, w := range req.Windows {
+		fmt.Fprintf(&b, " {%v %d+%d points %d %v}", w.Role, w.StartSample, w.Span, w.Points, w.Want)
+	}
+	err := r.recordReader.ReadContext(ctx, req, dst, yield)
+	r.h.add("Readout.Read%s -> %v", b.String(), err)
+	return err
+}

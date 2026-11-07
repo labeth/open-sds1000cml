@@ -1,0 +1,18 @@
+Service x1; Acquirer.Arm -> <nil>
+Service x1; Acquirer.Wait(0s) -> triggered true done false record {0 0} hal: wait timed out
+Service x1; Acquirer.Wait(0s) -> triggered true done true record {1 1} <nil>
+Service x2; Readout.Read {0 -78189+156378 points 0 raw-decimated} -> <nil>
+Service x1; Acquirer.Arm -> <nil>
+Service x1; Acquirer.Wait(0s) -> triggered true done false record {0 0} hal: wait timed out
+Service x1; Acquirer.Wait(0s) -> triggered true done true record {1 2} <nil>
+Service x2; Readout.Read {0 -78189+156378 points 0 raw-decimated} -> <nil>
+Service x1; Acquirer.Arm -> <nil>
+Service x1; Acquirer.Wait(0s) -> triggered true done false record {0 0} hal: wait timed out
+Service x1; Acquirer.Wait(0s) -> triggered true done true record {1 3} <nil>
+Service x2; Readout.Read {0 -78189+156378 points 0 raw-decimated} -> <nil>
+Service x1; Acquirer.Arm -> <nil>
+Service x1; Acquirer.Wait(0s) -> triggered true done false record {0 0} hal: wait timed out
+Service x1; Acquirer.Wait(0s) -> triggered true done true record {1 4} <nil>
+Service x2; Readout.Read {0 -78189+156378 points 0 raw-decimated} -> <nil>
+Service x1; Acquirer.Arm -> <nil>
+Acquirer.Stop -> <nil>

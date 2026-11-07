@@ -6,6 +6,8 @@ import (
 	"math"
 	"time"
 
+	"github.com/labeth/open-dso-core/hal"
+
 	core "github.com/labeth/open-dso-core/engine"
 	"github.com/labeth/open-dso-core/sample"
 	"github.com/labeth/open-sds1000cml/app/internal/board/acq"
@@ -90,7 +92,7 @@ func viewSpan(m sramcapture.Metadata, screen int, offset, words uint32, edgeX, a
 type viewRead struct {
 	p   core.ViewPlan
 	f   *sample.Frame
-	w   sramFrameWriter
+	got int // samples a channel the read gave
 	win *sample.Detail
 }
 
@@ -102,16 +104,13 @@ func newViewRead(m sramcapture.Metadata, p core.ViewPlan) *viewRead {
 	if m.FractionBits == 8 {
 		f.Traces[0].Precision, f.Traces[1].Precision = make([]uint16, n), make([]uint16, n)
 	}
-	return &viewRead{p: p, f: f, w: sramFrameWriter{f: f, m: m}}
+	return &viewRead{p: p, f: f}
 }
 
-// record is the read as the capture makes it.
+// window is the read as a window of the record m.
 // TRLC-LINKS: REQ-SDS-021
-func (r *viewRead) record() sramcapture.RecordRead {
-	if r.p.Bucket != 0 {
-		return sramcapture.RecordRead{Offset: r.p.Start, Bucket: r.p.Bucket, Count: r.p.Buckets, Dst: &r.w}
-	}
-	return sramcapture.RecordRead{Offset: r.p.Start, Count: r.p.Length, Dst: &r.w}
+func (r *viewRead) window(m sramcapture.Metadata, role sample.Role) hal.Window {
+	return acq.Window(m, role, r.p.Start, r.p.Length, r.p.Bucket)
 }
 
 // window is the view window the read gave, with the live readout's
@@ -120,7 +119,7 @@ func (r *viewRead) record() sramcapture.RecordRead {
 // TRLC-LINKS: REQ-SDS-010, REQ-SDS-021
 func (e *Engine) window(m sramcapture.Metadata, r *viewRead, scale [2]core.ChScale, at func(w uint32) float64) *sample.Detail {
 	p, f, n := r.p, r.f, r.p.N
-	if r.w.n != n {
+	if r.got != n {
 		return nil
 	}
 	sampleS := 1 / m.SampleRateHz
@@ -200,15 +199,29 @@ func (e *Engine) planViews(f *sample.Frame, m sramcapture.Metadata, screen int, 
 	return v
 }
 
-// reads appends the views' distinct reads to dst.
+// windows appends the views' distinct reads to ws as windows of record m,
+// and their frames to fs.
 // TRLC-LINKS: REQ-SDS-021
-func (v *viewReads) reads(dst []sramcapture.RecordRead) []sramcapture.RecordRead {
+func (v *viewReads) windows(m sramcapture.Metadata, ws []hal.Window, fs []*sample.Frame) ([]hal.Window, []*sample.Frame) {
 	for s, r := range v {
 		if r != nil && (s == 0 || v[0] != r) {
-			dst = append(dst, r.record())
+			ws, fs = append(ws, r.window(m, sample.RoleView(s))), append(fs, r.f)
 		}
 	}
-	return dst
+	return ws, fs
+}
+
+// got notes what each distinct view's read gave: the board's windows after
+// the screen's, in the order windows put them.
+// TRLC-LINKS: REQ-SDS-021
+func (v *viewReads) got(b recordReader) {
+	k := 1
+	for s, r := range v {
+		if r != nil && (s == 0 || v[0] != r) {
+			r.got = b.Written(k)
+			k++
+		}
+	}
 }
 
 // windows gives frame f the view windows the reads filled (the frame read

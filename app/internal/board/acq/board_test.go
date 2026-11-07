@@ -298,8 +298,8 @@ func TestImagesByFeature(t *testing.T) {
 	if im.Current().Features[0] != "qualify" {
 		t.Fatal(im.Current())
 	}
-	if _, ok := hal.AsRefusal(im.Load(context.Background(), []string{"stack"})); !ok {
-		t.Fatal("an image not built in loaded")
+	if _, ok := hal.AsRefusal(im.Load(context.Background(), []string{"no-such-feature"})); !ok {
+		t.Fatal("an unknown feature loaded")
 	}
 	if err := im.Load(context.Background(), nil); err != nil || sw.loaded != "general" {
 		t.Fatal(err, sw.loaded)

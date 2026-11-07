@@ -14,18 +14,11 @@ import (
 // change with an init flag; the owner flushes the 4-write strobe at the boundary.
 // TRLC-LINKS: REQ-SDS-001, REQ-SDS-022
 func (e *Engine) SetLEDs(word uint16) {
-	e.mu.Lock()
-	if !e.ledInit || word != e.ledWord {
-		if !e.ledDirty {
-			e.ledAt = time.Now()
-		}
-		e.ledWord, e.ledDirty, e.ledInit = word, true, true
-	}
-	e.mu.Unlock()
+	e.hw().StageLamps(word)
 	// The engine is conditioning a frame (no bus access of its own): latch now,
 	// serialized with the panel scan by the capture's lock.
 	if e.sram != nil && e.cpuStage.TryLock() {
-		e.sram.Locked(e.flushLEDs)
+		e.hw().FlushLampsLocked()
 		e.cpuStage.Unlock()
 	}
 }

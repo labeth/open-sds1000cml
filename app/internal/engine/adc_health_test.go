@@ -147,6 +147,7 @@ func newConvEngine(t *testing.T, conv *fakeConverters) (*Engine, *convImages, *[
 	conv.calls = calls
 	images := &convImages{packetImages: packetImages{b: b}, conv: conv, calls: calls, breakOn: map[string]bool{"fast": true}}
 	e.images = images
+	e.hw().SetImages(images)
 	e.adc.snapshot, e.adc.restart = conv.snapshot, conv.restart
 	return e, images, calls
 }

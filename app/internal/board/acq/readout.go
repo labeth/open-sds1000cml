@@ -178,9 +178,12 @@ func wordsOf(m sramcapture.Metadata, w hal.Window) (window, error) {
 // record m, in buckets of bucket words (0: every sample).
 func Window(m sramcapture.Metadata, role sample.Role, offset, words, bucket uint32) hal.Window {
 	per := int64(m.SamplesPerWord)
-	w := hal.Window{Role: role, StartSample: (int64(offset) - int64(m.TriggerIndex)) * per, Span: int64(words) * per}
-	if bucket != 0 {
+	w := hal.Window{Role: role, StartSample: (int64(offset) - int64(m.TriggerIndex)) * per, Span: int64(words) * per, Want: sample.RawDecimated}
+	switch {
+	case bucket != 0:
 		w.Points, w.Want = int(words/bucket), sample.PeakPairs
+	case m.SamplesPerWord == 2 && m.FractionBits == 0:
+		w.Want = sample.RawFullRate
 	}
 	return w
 }

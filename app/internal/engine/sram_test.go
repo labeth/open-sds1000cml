@@ -34,7 +34,7 @@ func TestSRAMPlannerCoversEveryTimebase(t *testing.T) {
 // TRLC-LINKS: REQ-SDS-040
 func TestSRAMFrameWriterPreservesChannelsAndFractions(t *testing.T) {
 	f := &sample.Frame{Traces: []sample.Trace{{Valid: 2, Codes8: make([]uint8, 2), Precision: make([]uint16, 2)}, {Ch: 1, Valid: 2, Codes8: make([]uint8, 2), Precision: make([]uint16, 2)}}}
-	w := sramFrameWriter{f: f, m: sramcapture.Metadata{SamplesPerWord: 1, FractionBits: 8}}
+	w := acq.FrameWriter{F: f, M: sramcapture.Metadata{SamplesPerWord: 1, FractionBits: 8}}
 	b := make([]byte, 8)
 	for i, v := range []uint16{25601, 32768, 65535, 1} {
 		binary.LittleEndian.PutUint16(b[2*i:], v)
@@ -56,7 +56,7 @@ func TestSRAMFrameWriterPreservesChannelsAndFractions(t *testing.T) {
 // TRLC-LINKS: REQ-SDS-040
 func TestSRAMFrameWriterRawOrder(t *testing.T) {
 	f := &sample.Frame{Traces: []sample.Trace{{Valid: 2, Codes8: make([]uint8, 2)}, {Ch: 1, Valid: 2, Codes8: make([]uint8, 2)}}}
-	w := sramFrameWriter{f: f, m: sramcapture.Metadata{SamplesPerWord: 2}}
+	w := acq.FrameWriter{F: f, M: sramcapture.Metadata{SamplesPerWord: 2}}
 	if _, err := w.Write([]byte{1, 2, 3, 4}); err != nil {
 		t.Fatal(err)
 	}

@@ -10,40 +10,16 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/labeth/open-sds1000cml/app/internal/board/acq"
+
 	core "github.com/labeth/open-dso-core/engine"
 	"github.com/labeth/open-dso-core/superres"
 	"github.com/labeth/open-sds1000cml/app/internal/sramcapture"
 )
 
-// ImageSwitcher reconfigures the acquisition FPGA between the general image
-// and the stacking image (ADR-STACKING-IMAGE-SPLIT). Both share the SRAM
-// capture ABI; only the stacking image has the stack port.
-// TRLC-LINKS: REQ-SDS-141, REQ-SDS-005
-type ImageSwitcher interface {
-	LoadStack() error
-	LoadGeneral() error
-	// LoadPacket and LoadLine load the protocol images of
-	// ADR-IMAGE-REGROUP-DECIMATION.
-	LoadPacket() error
-	LoadLine() error
-	HasStack() bool
-	HasPacket() bool
-	HasLine() bool
-	// LoadFrame loads the MIL-1553 and SENT image (ADR-TRIGGER-ANY-TIMEBASE).
-	LoadFrame() error
-	HasFrame() bool
-	// LoadStream loads the continuous-capture image roll mode runs on
-	// (ADR-STREAM-IMAGE).
-	LoadStream() error
-	HasStream() bool
-	// LoadQualify loads the image with the pulse, slope and video triggers
-	// (ADR-HARDWARE-QUALIFIERS).
-	LoadQualify() error
-	HasQualify() bool
-	// LoadFast loads the image with SPI on the samples (ADR-SAMPLE-DOMAIN-SPI).
-	LoadFast() error
-	HasFast() bool
-}
+// ImageSwitcher reconfigures the acquisition FPGA between its images (the
+// acquisition board's loader).
+type ImageSwitcher = acq.ImageSwitcher
 
 // FPGAStackRequest stacks Records fresh captures at the current timebase, raw
 // samples only. RecordWords, when nonzero, bounds each record's depth (the
@@ -88,17 +64,14 @@ type FPGAStackResult struct {
 // TRLC-LINKS: REQ-SDS-141
 func (e *Engine) SetImageSwitcher(s ImageSwitcher) {
 	e.images = s
+	e.hw().SetImages(s)
 	b, ok := s.(BitsImages)
 	bitsImage.Store(ok && b.HasBits())
 }
 
 // BitsImages is an ImageSwitcher with the digital stream image
 // (ADR-STREAM-BITS), which the decoded stream runs on when it has it.
-// TRLC-LINKS: REQ-SDS-018, REQ-SDS-035
-type BitsImages interface {
-	LoadBits() error
-	HasBits() bool
-}
+type BitsImages = acq.BitsImages
 
 // bitsImage reports the build's digital stream image to SoftStreamMode,
 // which plans without an engine (the panel's decode menu asks it).
@@ -177,15 +150,15 @@ func (e *Engine) runFPGAStack(ctx context.Context, cfg sramcapture.Config, req F
 	defer e.probeSerialHardware()
 	// Loads reset the panel scan; restore it after the general image returns.
 	defer func() { _ = e.applyPanelScan() }()
-	if err = e.images.LoadStack(); err != nil {
+	if err = e.loadFeature("stack"); err != nil {
 		// A failed load may leave any image; restore the general one.
-		if restore := e.images.LoadGeneral(); restore != nil {
+		if restore := e.loadFeature("general"); restore != nil {
 			e.logf("FPGA stack: general image restore failed: %v", restore)
 		}
 		return res, fmt.Errorf("stacking image: %w", err)
 	}
 	defer func() {
-		if restore := e.images.LoadGeneral(); restore != nil {
+		if restore := e.loadFeature("general"); restore != nil {
 			e.logf("FPGA stack: general image restore failed: %v", restore)
 			if err == nil {
 				err = fmt.Errorf("general image restore: %w", restore)

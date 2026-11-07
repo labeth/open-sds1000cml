@@ -179,6 +179,10 @@ func Run() {
 	// The trigger level and the offsets in volts over the DACs the engine
 	// stages: the controllers' side of the board's levels.
 	levels := board.New(e, bfe)
+	if fe != nil {
+		e.Board().SetFrontEnd(fe)
+	}
+	e.Board().SetLevelGrid(levels.TrigLevelGrid)
 	pc := panel.New(e, pfe, levels, keyFD, engine.SupportedTdivs(), 500e-6, logf)
 	pc.SetFrameSource(fo.WithFrame) // let the AUTO button measure the live signal
 	// Decoded stream (ADR-PANEL-DECODED-STREAM): the panel starts it from the

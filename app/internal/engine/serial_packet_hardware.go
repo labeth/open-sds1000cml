@@ -3,6 +3,7 @@
 package engine
 
 import (
+	"context"
 	"errors"
 	"time"
 
@@ -15,49 +16,13 @@ import (
 // at start and after every image switch.
 // TRLC-LINKS: REQ-SDS-013
 func (e *Engine) probeSerialHardware() {
-	for _, probe := range []struct {
-		name string
-		dst  *bool
-		fn   func() (bool, error)
-	}{
-		{"UART", &e.hardwareUART, e.sram.SupportsUART},
-		{"I2C", &e.hardwareI2C, e.sram.SupportsI2C},
-		{"SPI", &e.hardwareSPI, e.sram.SupportsSPI},
-		{"SPI on the samples", &e.hardwareSampleSPI, e.sram.SupportsSampleSPI},
-		{"UART on the samples", &e.hardwareSampleUART, e.sram.SupportsSampleUART},
-		{"I2C on the samples", &e.hardwareSampleI2C, e.sram.SupportsSampleI2C},
-		{"SENT", &e.hardwareSENT, e.sram.SupportsSENT},
-		{"USB", &e.hardwareUSBLS, e.sram.SupportsUSBLS},
-		{"MIL-STD-1553", &e.hardwareMIL1553, e.sram.SupportsMIL1553},
-		{"Manchester", &e.hardwareManchester, e.sram.SupportsManchester},
-		{"sequence", &e.hardwareSequence, e.sram.SupportsSequence},
-		{"envelope", &e.hardwareEnvelope, e.sram.SupportsEnvelope},
-		{"qualifier", &e.hardwareQualifier, e.sram.SupportsQualifier},
-		{"symbol", &e.hardwareSymbol, e.sram.SupportsSymbol},
-		{"sequence-only", &e.sequenceOnly, e.sram.SequenceOnly},
-	} {
-		var err error
-		if *probe.dst, err = probe.fn(); err != nil {
-			e.logf("hardware %s capability: %v; using software", probe.name, err)
-		}
-	}
-	var err error
-	if e.hardwarePacket, err = e.sram.PacketProtocols(); err != nil {
-		e.logf("hardware packet capability: %v; using software", err)
-	}
-	if e.rawOnly, err = e.sram.RawOnly(); err != nil {
-		e.logf("decimation capability: %v", err)
-	}
-	if e.boxDecim, err = e.sram.BoxDecimation(); err != nil {
-		e.logf("box decimation capability: %v", err)
-	}
-	if e.pickDecim, err = e.sram.PickDecimation(); err != nil {
-		e.logf("pick decimation capability: %v", err)
-	}
-	e.boxDecim = e.boxDecim || e.pickDecim
-	if e.pickAlt, err = e.sram.PickOnAsking(); err != nil {
-		e.logf("pick-on-asking capability: %v", err)
-	}
+	c := e.hw().ProbeImage(e.logf)
+	e.hardwareUART, e.hardwareI2C, e.hardwareSPI = c.UART, c.I2C, c.SPI
+	e.hardwareSampleSPI, e.hardwareSampleUART, e.hardwareSampleI2C = c.SampleSPI, c.SampleUART, c.SampleI2C
+	e.hardwareSENT, e.hardwareUSBLS, e.hardwareMIL1553, e.hardwareManchester = c.SENT, c.USBLS, c.MIL1553, c.Manchester
+	e.hardwareSequence, e.hardwareEnvelope, e.hardwareQualifier, e.hardwareSymbol = c.Sequence, c.Envelope, c.Qualifier, c.Symbol
+	e.sequenceOnly, e.hardwarePacket, e.rawOnly = c.SequenceOnly, c.Packet, c.RawOnly
+	e.boxDecim, e.pickDecim, e.pickAlt = c.BoxDecim, c.PickDecim, c.PickAlt
 }
 
 // hasImage reports an embedded protocol image.
@@ -161,25 +126,17 @@ func (e *Engine) serviceImage() bool {
 // image for "".
 // TRLC-LINKS: REQ-SDS-013, REQ-SDS-005
 func (e *Engine) imageLoader(name string) func() error {
-	switch name {
-	case acq.ImagePacket:
-		return e.images.LoadPacket
-	case acq.ImageLine:
-		return e.images.LoadLine
-	case acq.ImageFrame:
-		return e.images.LoadFrame
-	case acq.ImageStream:
-		return e.images.LoadStream
-	case acq.ImageBits:
-		if b, ok := e.images.(BitsImages); ok {
-			return b.LoadBits
-		}
-	case acq.ImageQualify:
-		return e.images.LoadQualify
-	case acq.ImageFast:
-		return e.images.LoadFast
+	return func() error { return e.loadFeature(acq.FeatureOf(name)) }
+}
+
+// loadFeature loads the image with feature f through the board's images.
+// TRLC-LINKS: REQ-SDS-005
+func (e *Engine) loadFeature(f string) error {
+	im, ok := e.hw().Images()
+	if !ok {
+		return errors.New("no image switcher")
 	}
-	return e.images.LoadGeneral
+	return im.Load(context.Background(), []string{f})
 }
 
 // beatWhile keeps the health beat going for the seconds an image load takes
@@ -223,7 +180,7 @@ func (e *Engine) loadImage(name string) bool {
 		e.logf("engine: %s image: %v", shown, err)
 		if name != "" {
 			e.failedImage = name
-			if restore := e.images.LoadGeneral(); restore != nil {
+			if restore := e.loadFeature("general"); restore != nil {
 				e.busErr(restore)
 			}
 		} else {
@@ -265,7 +222,7 @@ func (e *Engine) reloadImage() error {
 		}
 		// as a failed switch: back to the general image
 		e.failedImage, e.protocolImage = e.protocolImage, ""
-		if restore := e.images.LoadGeneral(); restore != nil {
+		if restore := e.loadFeature("general"); restore != nil {
 			return restore
 		}
 		e.mu.Lock()

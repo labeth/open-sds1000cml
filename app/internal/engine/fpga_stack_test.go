@@ -317,6 +317,7 @@ func TestFPGAStackSessionAlwaysRestoresGeneral(t *testing.T) {
 		}
 	}
 	e.images = nil
+	e.hw().SetImages(nil)
 	if _, err := e.FPGAStack(context.Background(), req); err == nil {
 		t.Fatal("stacking without an embedded image")
 	}

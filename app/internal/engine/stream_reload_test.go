@@ -31,6 +31,7 @@ func TestStreamFaultAtStartReloadsTheImage(t *testing.T) {
 	e, _, images := newPacketTestEngine(t)
 	si := streamImages{images}
 	e.images = si
+	e.hw().SetImages(si)
 	e.noteStreamLoss(123456)
 	if err := e.freshStreamImage(acq.ImageStream); err != nil || slices.Contains(images.loads, "stream") {
 		t.Fatalf("a loss mid-stream reloaded: %v %v", err, images.loads)
@@ -65,6 +66,7 @@ func (f bitsImages) LoadBits() error {
 func TestStreamFaultReloadsTheStreamsOwnImage(t *testing.T) {
 	e, _, images := newPacketTestEngine(t)
 	e.images = bitsImages{streamImages{images}}
+	e.hw().SetImages(e.images)
 	e.noteStreamLoss(0)
 	if err := e.freshStreamImage(acq.ImageBits); err != nil || !slices.Equal(images.loads, []string{"bits"}) || e.protocolImage != acq.ImageBits {
 		t.Fatalf("digital stream fault: %v loads %v image %q", err, images.loads, e.protocolImage)

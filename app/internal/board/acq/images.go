@@ -182,7 +182,8 @@ func (i *imagesFacet) Current() hal.ImageSet {
 }
 
 // Load loads the image that has every feature asked: each image has one, so
-// one feature (or none: the general image).
+// one feature (or none: the general image). The loader refuses an image the
+// build lacks.
 func (i *imagesFacet) Load(_ context.Context, features []string) error {
 	b := (*Board)(i)
 	want := ImageGeneral
@@ -191,8 +192,8 @@ func (i *imagesFacet) Load(_ context.Context, features []string) error {
 		return hal.Refuse("FPGA image", "no image has "+features[0]+" and "+features[1]+" together")
 	case len(features) == 1:
 		k := slices.IndexFunc(imageFeatures, func(f struct{ image, feature string }) bool { return f.feature == features[0] })
-		if k < 0 || !b.HasImage(imageFeatures[k].image) {
-			return hal.Refuse("FPGA image", "no built-in image has "+features[0])
+		if k < 0 {
+			return hal.Refuse("FPGA image", "no image has "+features[0])
 		}
 		want = imageFeatures[k].image
 	}

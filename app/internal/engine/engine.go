@@ -7,10 +7,13 @@
 package engine
 
 import (
+	"context"
 	"math"
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/labeth/open-dso-core/hal"
 
 	"github.com/labeth/open-sds1000cml/app/internal/board/acq"
 
@@ -327,8 +330,15 @@ type Engine struct {
 	lastPublish           time.Time // when the newest frame was published (guarded by mu)
 	logf                  func(string, ...any)
 	arena                 *core.Arena
-	sram                  acq.Memory
-	adc                   adcHealth // the converters' health checks (adc_health.go)
+	sram                  acq.Memory // the board's record memory, for the paths the HAL does not cover yet
+	board                 *acq.Board // the acquisition board: the owner loop drives it through the HAL facets below
+	acqr                  hal.Acquirer
+	plat                  hal.Platform
+	readYield             func()          // the readout's yield: the board's Service
+	rdx                   recordReader    // the board's readout under a context
+	readWins              []hal.Window    // a read's windows, kept between reads (owner)
+	readFrames            []*sample.Frame // and their frames
+	adc                   adcHealth       // the converters' health checks (adc_health.go)
 	panelScan             sramcapture.PanelConfig
 	panelScanSet          bool
 	panelMu               sync.Mutex
@@ -480,19 +490,13 @@ type Engine struct {
 	// goroutines for those ~19ms — a minority of the ~110ms loop — is enough; they
 	// run freely during the ~90ms wait+pace. Cheaper than a busy-wait (no CPU
 	// burned) and it kills the root cause instead of re-capturing after the fact.
-	quiet     sync.RWMutex
-	norm      bool
-	pendBand  Band
-	pendSet   bool
-	trigCode  uint16
-	trigDirty bool
-	trigInit  bool
-	offCode   [2]uint16 // vertical-offset DAC shadows (spec 09 §1.3:
-	offDirty  [2]bool   // no compare-on-change, no init flag)
-	ledWord   uint16    // panel LED latch shadow (compare-on-change + init)
-	ledDirty  bool
-	ledInit   bool
-	ledAt     time.Time // when the pending lamp word was staged (lamp-lag stat)
+	quiet    sync.RWMutex
+	norm     bool
+	pendBand Band
+	pendSet  bool
+	trigCode uint16
+	trigInit bool
+	offCode  [2]uint16 // vertical-offset DAC codes asked (the board stages their writes)
 	// cpuStage is held by the engine except across a CPU-only stage (SRAM frame
 	// conditioning) in which it touches no bus, so a lamp staged then can be
 	// latched at once by the staging goroutine instead of waiting it out.
@@ -602,6 +606,56 @@ type Engine struct {
 	eresScratch []uint16
 }
 
+// useMemory builds the acquisition board over the record memory m (nil:
+// none, the register path) and the panel plane, and takes its facets.
+// TRLC-LINKS: REQ-SDS-001
+func (e *Engine) useMemory(m acq.Memory) {
+	e.sram = m
+	e.board = acq.New(acq.Config{
+		Memory: m, Panel: e.b,
+		LampLag: func(d time.Duration) {
+			e.mu.Lock()
+			e.stats.LEDLagMs = float64(d) / float64(time.Millisecond)
+			e.mu.Unlock()
+		},
+		WriteErr: e.busErr,
+	})
+	e.board.SetImages(e.images)
+	e.acqr, e.plat = e.board.Acquirer(), e.board.Platform()
+	e.readYield = e.plat.Service
+	e.rdx = e.board
+}
+
+// hw is the acquisition board, built over the record memory on first use
+// by an engine made without New (a test's).
+// TRLC-LINKS: REQ-SDS-001
+func (e *Engine) hw() *acq.Board {
+	if e.board == nil {
+		e.useMemory(e.sram)
+	}
+	return e.board
+}
+
+// Board is the acquisition board the owner loop drives: the composition
+// attaches the parts it builds (the front end, the levels' grid).
+// TRLC-LINKS: REQ-SDS-001
+func (e *Engine) Board() *acq.Board { return e.hw() }
+
+// acquirer, platform and yield are the board's acquirer, its platform and
+// the readout's yield (the platform's Service).
+func (e *Engine) acquirer() hal.Acquirer { e.hw(); return e.acqr }
+func (e *Engine) platform() hal.Platform { e.hw(); return e.plat }
+func (e *Engine) yield() func()          { e.hw(); return e.readYield }
+func (e *Engine) reader() recordReader   { e.hw(); return e.rdx }
+
+// recordReader is the board's Readout.Read under a context that abandons
+// a long read, with what each window got: the owner loop cancels a read
+// nobody wants any more, and tells a short window from a full one.
+type recordReader interface {
+	ReadContext(ctx context.Context, req hal.ReadRequest, dst []*sample.Frame, yield func()) error
+	Written(i int) int
+}
+
 // New builds an engine over cfg's bus, filling in the defaults for the zero
 // fields; Run starts its owner loop.
 // TRLC-LINKS: REQ-SDS-001, REQ-SDS-007, REQ-SDS-008
@@ -646,9 +700,11 @@ func New(cfg Config) *Engine {
 		sramJobs:              make(chan core.OwnerJob, 1),
 		decodedRequests:       make(chan core.OwnerJob, 8),
 	}
+	var mem acq.Memory
 	if cfg.SRAM != nil { // a nil *Capture must leave the interface nil
-		e.sram = cfg.SRAM
+		mem = cfg.SRAM
 	}
+	e.useMemory(mem)
 	// Tuning defaults. ROOT-CAUSE FIX for the native-fast half-record: the free-run
 	// wait returned the instant done+fill asserted and halted immediately, catching
 	// the deep record half-filled (one memory bank). Holding ~2 ms more before halt

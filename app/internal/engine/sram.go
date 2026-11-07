@@ -4,11 +4,12 @@ package engine
 
 import (
 	"context"
-	"encoding/binary"
 	"errors"
 	"fmt"
 	"math"
 	"time"
+
+	"github.com/labeth/open-dso-core/hal"
 
 	"github.com/labeth/open-dso-core/dsp"
 	core "github.com/labeth/open-dso-core/engine"
@@ -49,64 +50,6 @@ const liveScreenSamples = 8192
 // TRLC-LINKS: REQ-SDS-010, REQ-SDS-215
 func fullRateFrame(bucket, decimation uint32, acq int32) bool {
 	return bucket == 0 && decimation <= 1 && acq != AcqAverage && acq != AcqEres && acq != AcqPrecision
-}
-
-// TRLC-LINKS: REQ-SDS-010, REQ-SDS-040
-type sramFrameWriter struct {
-	f *sample.Frame
-	m sramcapture.Metadata
-	n int
-}
-
-// Write splits a recalled payload of whole words into the frame's samples.
-// TRLC-LINKS: REQ-SDS-040
-func (w *sramFrameWriter) Write(b []byte) (int, error) {
-	if len(b)%4 != 0 {
-		return 0, errors.New("unaligned SRAM payload")
-	}
-	samples := len(b) / 4 * int(w.m.SamplesPerWord)
-	if w.n+samples > w.f.Len() {
-		return 0, errors.New("SRAM payload exceeds frame")
-	}
-	q88 := w.m.FractionBits == 8 && w.m.SamplesPerWord == 1
-	packed := w.m.FractionBits != 8 && w.m.SamplesPerWord == 2
-	if !q88 && !packed {
-		return w.writeWords(b) // a layout other than the capture's two
-	}
-	// the word format chosen once; the destinations sliced to the samples
-	n, f := w.n, w.f
-	c1, c2 := f.Codes8(0)[n:n+samples], f.Codes8(1)[n:n+samples]
-	if w.m.FractionBits == 8 {
-		dsp.SplitQ8(f.Precision(0)[n:n+samples], f.Precision(1)[n:n+samples], c1, c2, b)
-	} else {
-		for k := 0; k+1 < len(c1); k += 2 {
-			i := 2 * k
-			c1[k], c2[k] = b[i], b[i+1]
-			c1[k+1], c2[k+1] = b[i+2], b[i+3]
-		}
-	}
-	w.n += samples
-	return len(b), nil
-}
-
-// writeWords is Write word by word, for any samples-a-word count.
-// TRLC-LINKS: REQ-SDS-040
-func (w *sramFrameWriter) writeWords(b []byte) (int, error) {
-	c1, c2, q1, q2 := w.f.Codes8(0), w.f.Codes8(1), w.f.Precision(0), w.f.Precision(1)
-	for i := 0; i < len(b); i += 4 {
-		if w.m.FractionBits == 8 {
-			a, c := binary.LittleEndian.Uint16(b[i:]), binary.LittleEndian.Uint16(b[i+2:])
-			q1[w.n], q2[w.n] = a, c
-			c1[w.n], c2[w.n] = core.RoundQ8(a), core.RoundQ8(c)
-			w.n++
-		} else {
-			c1[w.n], c2[w.n] = b[i], b[i+1]
-			w.n++
-			c1[w.n], c2[w.n] = b[i+2], b[i+3]
-			w.n++
-		}
-	}
-	return len(b), nil
 }
 
 // heldKey identifies a recall: the frozen record and the window read.
@@ -608,11 +551,10 @@ type sramArm struct {
 // TRLC-LINKS: REQ-SDS-008, REQ-SDS-009, REQ-SDS-040
 func (e *Engine) armAndWait(cfg sramcapture.Config, plan SRAMPlan, tdiv float64, norm bool, tp core.TrigParams, armAt time.Time, prev sramcapture.Metadata, singleGen *uint64) (a sramArm, ok bool) {
 	a.m = prev
-	aborted := false
+	aborted, dataFault, triggered := false, false, false
 	a.symbols = e.symbolCount(cfg)
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
-	err := e.sram.Arm(ctx, cfg)
-	cancel()
+	e.hw().StageCapture(cfg)
+	err := e.acquirer().Arm()
 	a.armedAt = e.clk.Now()
 	if err != nil {
 		e.busErr(err)
@@ -648,28 +590,32 @@ func (e *Engine) armAndWait(cfg sramcapture.Config, plan SRAMPlan, tdiv float64,
 			}
 		}
 		gen := e.singleGen.Load() // before the poll: a press seen here precedes the freeze
-		a.m, err = e.sram.Poll()
-		if err != nil || a.m.DataFault {
+		st, werr := e.acquirer().Wait(context.Background(), 0)
+		if errors.Is(werr, acq.ErrDataFault) {
+			dataFault = true
 			break
 		}
-		if a.m.Frozen && a.m.Ready {
-			a.m, err = e.sram.Status() // the record's length and positions
+		if werr == nil {
+			a.m = e.hw().Record() // the record's length and positions
 			break
 		}
+		if !errors.Is(werr, hal.ErrTimeout) {
+			err = werr
+			break
+		}
+		triggered = st.Triggered
 		*singleGen = gen
 		// AUTO forces after its wait, unless the hardware triggered: the
 		// record then only fills its post-trigger part (at 10ms/div 135 ms,
 		// past the wait, and a frame-start trigger's records read forced);
 		// FORCE (ForceTrigger) forces once now, and that frame is shown
 		// even in NORMAL.
-		autoDue := core.AutoForceDue(norm, e.running.Load(), a.m.Triggered, e.clk.Now().Sub(armAt), autoWait)
+		autoDue := core.AutoForceDue(norm, e.running.Load(), triggered, e.clk.Now().Sub(armAt), autoWait)
 		if cfg.Normal && !a.forced && !autoDue && e.forceReq.Swap(false) {
 			a.userForced, autoDue = true, true
 		}
 		if cfg.Normal && !a.forced && autoDue {
-			forceCtx, cancelForce := context.WithTimeout(context.Background(), time.Second)
-			err = e.sram.Force(forceCtx)
-			cancelForce()
+			err = e.acquirer().Force()
 			a.forced = true
 			if err != nil {
 				break
@@ -677,18 +623,16 @@ func (e *Engine) armAndWait(cfg sramcapture.Config, plan SRAMPlan, tdiv float64,
 		}
 		e.clk.Sleep(core.StatusPollWait(e.clk.Now().Sub(a.armedAt)))
 	}
-	if aborted || e.stopReq.Load() || err != nil || a.m.DataFault {
-		ctx, cancel = context.WithTimeout(context.Background(), time.Second)
-		haltErr := e.sram.Halt(ctx)
-		cancel()
+	if aborted || e.stopReq.Load() || err != nil || dataFault {
+		haltErr := e.acquirer().Stop()
 		if err != nil {
 			e.busErr(err)
 		}
 		if haltErr != nil {
 			e.busErr(haltErr)
 		}
-		if a.m.DataFault {
-			e.busErr(errors.New("SRAM acquisition FIFO overflow"))
+		if dataFault {
+			e.busErr(acq.ErrDataFault)
 		}
 		return a, false
 	}
@@ -985,19 +929,25 @@ func liveReadoutName(why string, bucket uint32, single bool) string {
 // envelope spreads its buckets over all of it). A view's failed read must
 // not cost the frame: the screen is then read alone.
 // TRLC-LINKS: REQ-SDS-010, REQ-SDS-021
-func (e *Engine) recallEnvelope(ctx context.Context, f *sample.Frame, m sramcapture.Metadata, screen int, offset, words, bucket, count uint32, w *sramFrameWriter) (viewReads, error) {
+func (e *Engine) recallEnvelope(ctx context.Context, f *sample.Frame, m sramcapture.Metadata, screen int, offset, words, bucket, count uint32) (viewReads, int, error) {
 	views := e.planViews(f, m, screen, offset, words, bucket, count)
-	screenRead := sramcapture.RecordRead{Offset: offset, Bucket: bucket, Count: count, Dst: w}
-	err := e.sram.RecallReadsOf(ctx, m, views.reads([]sramcapture.RecordRead{screenRead})...)
+	e.hw().SetRecord(m)
+	screenWin := acq.Window(m, sample.Main, offset, bucket*count, bucket)
+	ws, fs := views.windows(m, append(e.readWins[:0], screenWin), append(e.readFrames[:0], f))
+	e.readWins, e.readFrames = ws, fs
+	err := e.reader().ReadContext(ctx, hal.ReadRequest{Windows: ws}, fs, e.yield())
 	if err != nil && views != (viewReads{}) {
-		views, w.n = viewReads{}, 0
-		err = e.sram.RecallReadsOf(ctx, m, screenRead)
+		views = viewReads{}
+		err = e.reader().ReadContext(ctx, hal.ReadRequest{Windows: ws[:1]}, fs[:1], e.yield())
+	} else {
+		views.got(e.reader())
 	}
-	rejects, last := e.sram.EnvelopeDiagnostics()
+	n := e.reader().Written(0)
+	rejects, last := e.hw().EnvelopeDiagnostics()
 	e.mu.Lock()
 	e.stats.EnvelopeRejects, e.stats.EnvelopeLast = rejects, last
 	e.mu.Unlock()
-	return views, err
+	return views, n, err
 }
 
 // runSRAM exclusively owns the revisioned SRAM backend. It never writes a
@@ -1007,9 +957,7 @@ func (e *Engine) recallEnvelope(ctx context.Context, f *sample.Frame, m sramcapt
 func (e *Engine) runSRAM() { //nolint:gocyclo,funlen // the owner loop: one capture arm-wait-recall-condition-publish pass, its steps sharing the retained record's state across passes
 	defer func() {
 		if e.decodedSession != nil {
-			ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-			defer cancel()
-			if err := e.sram.Halt(ctx); err != nil {
+			if err := e.acquirer().Stop(); err != nil {
 				e.logf("decoded shutdown halt: %v", err)
 			}
 			if _, err := e.sram.EnableDecodedEvents(false); err != nil {
@@ -1024,10 +972,9 @@ func (e *Engine) runSRAM() { //nolint:gocyclo,funlen // the owner loop: one capt
 		}
 	}()
 	// A press lights its lamp mid-recall, not after a multi-second deep recall.
-	e.sram.SetSpanHook(func(done, total int) {
+	e.hw().SetReadProgress(func(done, total int) {
 		e.busyAll.Store(int64(total))
 		e.busyDone.Store(int64(done))
-		e.flushLEDs()
 	})
 	e.probeSerialHardware()
 	e.mu.Lock()
@@ -1263,7 +1210,7 @@ func (e *Engine) runSRAM() { //nolint:gocyclo,funlen // the owner loop: one capt
 			f.Traces[0].Precision = core.QBuffer(q1, f.Len())
 			f.Traces[1].Precision = core.QBuffer(q2, f.Len())
 		}
-		writer := sramFrameWriter{f: f, m: m}
+		got := 0                // samples a channel the read gave
 		e.setBusy("reading", 0) // the recall's burst loop reports progress
 		ctx, cancel = context.WithTimeout(context.Background(), 10*time.Second)
 		if rawForLease {
@@ -1275,21 +1222,21 @@ func (e *Engine) runSRAM() { //nolint:gocyclo,funlen // the owner loop: one capt
 		e.rawMu.Lock()
 		e.recallCancel = cancel // a SOUND lease starting abandons it (LeaseSound)
 		e.rawMu.Unlock()
-		recall := e.sram.Recall
-		if m.Revision == 10 {
-			recall = e.sram.RecallForward
-		}
 		recallAt := e.clk.Now()
 		var views viewReads
 		if bucket != 0 {
-			views, err = e.recallEnvelope(ctx, f, m, plan.Screen, recallOffset, recallWords, bucket, envBuckets, &writer)
+			views, got, err = e.recallEnvelope(ctx, f, m, plan.Screen, recallOffset, recallWords, bucket, envBuckets)
 		} else if key := (heldKey{m, recallOffset, recallWords}); replay && held.key == key {
 			// A stopped record re-shown at a new V/div, offset or timebase:
 			// the recall is already in memory, skip seconds of SRAM readout.
-			writer.n = held.restore(f)
+			got = held.restore(f)
 		} else {
-			_, err = recall(ctx, recallOffset, recallWords, &writer)
-			if err == nil && recallOffset == 0 && recallWords == m.Length && writer.n == f.Len() {
+			e.hw().SetRecord(m)
+			e.readWins = append(e.readWins[:0], acq.Window(m, sample.Main, recallOffset, recallWords, 0))
+			e.readFrames = append(e.readFrames[:0], f)
+			err = e.reader().ReadContext(ctx, hal.ReadRequest{Windows: e.readWins}, e.readFrames, e.yield())
+			got = e.reader().Written(0)
+			if err == nil && recallOffset == 0 && recallWords == m.Length && got == f.Len() {
 				held.store(key, f)
 			} else if !replay {
 				held.key = heldKey{} // a new capture: the held record is gone
@@ -1317,7 +1264,7 @@ func (e *Engine) runSRAM() { //nolint:gocyclo,funlen // the owner loop: one capt
 			e.logf("engine: raw read abandoned after %v: the raw leases ended", recalledAt.Sub(recallAt).Round(time.Millisecond))
 			continue
 		}
-		if err != nil || writer.n != f.Len() {
+		if err != nil || got != f.Len() {
 			if err == nil {
 				err = errors.New("short SRAM frame")
 			}
@@ -1593,11 +1540,11 @@ func (e *Engine) symbolCount(cfg sramcapture.Config) int {
 	if !cfg.Symbol.Enabled {
 		return -1
 	}
-	v, err := e.sram.SymbolMatches()
-	if err != nil {
+	st, ok := e.hw().Trigger().Matches()
+	if !ok {
 		return -1
 	}
-	return int(v)
+	return int(st.Matches)
 }
 
 // noteSymbolMatches publishes the symbol trigger's matches during the record

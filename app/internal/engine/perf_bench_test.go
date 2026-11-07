@@ -300,7 +300,7 @@ func BenchmarkViewWindow(b *testing.B) {
 	src := discernSig(n)
 	f := &sample.Frame{Traces: []sample.Trace{{Codes8: make([]uint8, n), Valid: n}, {Ch: 1, Codes8: make([]uint8, n), Valid: n}}}
 	r := &viewRead{p: core.ViewPlan{Bucket: 4, Buckets: n / 2, Length: 2 * n, N: n}, f: f}
-	r.w.n = n
+	r.got = n
 	for b.Loop() {
 		copy(f.Codes8(0), src)
 		copy(f.Codes8(1), src)
@@ -472,7 +472,7 @@ func BenchmarkSRAMFrameWrite(b *testing.B) {
 		f := &sample.Frame{Traces: []sample.Trace{{Codes8: make([]uint8, n), Precision: make([]uint16, n), Valid: n}, {Ch: 1, Codes8: make([]uint8, n), Precision: make([]uint16, n), Valid: n}}}
 		b.Run(map[uint8]string{0: "codes", 8: "q8"}[fb], func(b *testing.B) {
 			for b.Loop() {
-				w := sramFrameWriter{f: f, m: sramcapture.Metadata{SamplesPerWord: spw, FractionBits: fb}}
+				w := acq.FrameWriter{F: f, M: sramcapture.Metadata{SamplesPerWord: spw, FractionBits: fb}}
 				if _, err := w.Write(payload); err != nil {
 					b.Fatal(err)
 				}

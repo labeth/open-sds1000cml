@@ -512,7 +512,8 @@ func (e *Engine) SetTrigLevelCode(code uint16) uint16 {
 	e.mu.Lock()
 	changed := !e.trigInit || code != e.trigCode
 	if changed {
-		e.trigCode, e.trigDirty, e.trigInit = code, true, true
+		e.trigCode, e.trigInit = code, true
+		e.hw().StageLevelDAC(code)
 		e.stats.TrigCode = code
 	}
 	e.mu.Unlock()
@@ -539,7 +540,8 @@ func (e *Engine) SetOffsetDAC(ch int, code uint16) {
 	}
 	e.feGen.Add(1)
 	e.mu.Lock()
-	e.offCode[ch], e.offDirty[ch] = code, true
+	e.offCode[ch] = code
+	e.hw().StageOffsetDAC(ch, code)
 	if ch == 0 {
 		e.stats.OffC1 = code
 	} else {

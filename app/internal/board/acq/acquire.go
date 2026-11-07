@@ -88,6 +88,9 @@ func (a *acquirerFacet) Wait(ctx context.Context, timeout time.Duration) (hal.St
 			if err != nil {
 				return hal.Status{}, err
 			}
+			if m.DataFault {
+				return hal.Status{Triggered: m.Triggered}, ErrDataFault
+			}
 			b.state = hal.Ready
 			return hal.Status{Triggered: m.Triggered, Done: true, Coherent: true, Record: recordID(m)}, nil
 		}

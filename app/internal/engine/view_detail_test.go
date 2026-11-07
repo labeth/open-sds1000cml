@@ -7,6 +7,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/labeth/open-dso-core/hal"
+
 	core "github.com/labeth/open-dso-core/engine"
 	"github.com/labeth/open-dso-core/sample"
 	"github.com/labeth/open-sds1000cml/app/internal/board/acq"
@@ -138,10 +140,22 @@ func TestViewsReadWithTheScreen(t *testing.T) {
 	const screen = 1000000
 	bucket, offset, words := acq.EnvelopeWindow(262144-screen/4, screen/2, sramcapture.EnvelopeBuckets, m.Length, 0)
 	f := &sample.Frame{TriggerAt: float64(m.TriggerIndex-offset) * 2 / float64(bucket), Traces: []sample.Trace{{}, {Ch: 1}}}
-	plan := func() (viewReads, []sramcapture.RecordRead) {
+	// reads are the planned reads as the fabric takes them (record words).
+	type read struct{ Offset, Bucket, Count uint32 }
+	plan := func() (viewReads, []read) {
 		v := e.planViews(f, m, screen, offset, words, bucket, sramcapture.EnvelopeBuckets)
-		screenRead := sramcapture.RecordRead{Offset: offset, Bucket: bucket, Count: sramcapture.EnvelopeBuckets}
-		return v, v.reads([]sramcapture.RecordRead{screenRead})
+		screenWin := acq.Window(m, sample.Main, offset, bucket*sramcapture.EnvelopeBuckets, bucket)
+		ws, _ := v.windows(m, []hal.Window{screenWin}, []*sample.Frame{f})
+		var reads []read
+		for _, w := range ws {
+			off, n := uint32(int64(m.TriggerIndex)+w.StartSample/2), uint32(w.Span/2)
+			r := read{Offset: off, Count: n}
+			if w.Points > 0 {
+				r.Bucket, r.Count = n/uint32(w.Points), uint32(w.Points)
+			}
+			reads = append(reads, r)
+		}
+		return v, reads
 	}
 	if _, reads := plan(); len(reads) != 1 {
 		t.Fatalf("no view asked: %d reads, want the screen's alone", len(reads))
@@ -163,9 +177,11 @@ func TestViewsReadWithTheScreen(t *testing.T) {
 	// Filled, each surface's window lands on the frame; one the read did not
 	// fill is none.
 	r := v[ViewScope]
-	if _, err := r.w.Write(make([]byte, 4*int(r.p.Buckets))); err != nil {
+	w := acq.FrameWriter{F: r.f, M: m}
+	if _, err := w.Write(make([]byte, 4*int(r.p.Buckets))); err != nil {
 		t.Fatal(err)
 	}
+	r.got = w.N
 	e.windows(f, &v, m, offset, bucket, [2]core.ChScale{})
 	if w := ViewDetail(f, ViewScope); w == nil || w.Frame.Content != sample.PeakPairs || w.Frame.Len() != r.p.N || !(w.To > w.From) {
 		t.Fatalf("scope window %+v", w)

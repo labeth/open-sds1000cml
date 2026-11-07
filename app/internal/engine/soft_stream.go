@@ -1514,11 +1514,11 @@ func (e *Engine) softCapture(s *softStream) {
 	if m.FractionBits == 8 {
 		f.Traces[0].Precision, f.Traces[1].Precision = make([]uint16, n), make([]uint16, n)
 	}
-	writer := sramFrameWriter{f: f, m: m}
+	writer := acq.FrameWriter{F: f, M: m}
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	err = e.sram.RecallReadsOf(ctx, m, sramcapture.RecordRead{Offset: 0, Count: m.Length, Dst: &writer})
 	cancel()
-	if err != nil || writer.n != n {
+	if err != nil || writer.N != n {
 		if err != nil {
 			e.busErr(err)
 		}

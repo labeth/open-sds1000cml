@@ -6,6 +6,8 @@ import (
 	"context"
 	"time"
 
+	"github.com/labeth/open-dso-core/hal"
+
 	core "github.com/labeth/open-dso-core/engine"
 	"github.com/labeth/open-dso-core/sample"
 	acq "github.com/labeth/open-sds1000cml/app/internal/board/acq"
@@ -42,8 +44,10 @@ func (e *Engine) recallEdgeWindow(ctx context.Context, m sramcapture.Metadata, w
 	if m.FractionBits == 8 {
 		f.Traces[0].Precision, f.Traces[1].Precision = make([]uint16, n), make([]uint16, n)
 	}
-	writer := sramFrameWriter{f: f, m: m}
-	if err := e.sram.RecallReadsOf(ctx, m, sramcapture.RecordRead{Offset: start, Count: edgeWindowWords, Dst: &writer}); err != nil || writer.n != n {
+	e.hw().SetRecord(m)
+	e.readWins = append(e.readWins[:0], acq.Window(m, sample.Edge, start, edgeWindowWords, 0))
+	e.readFrames = append(e.readFrames[:0], f)
+	if err := e.reader().ReadContext(ctx, hal.ReadRequest{Windows: e.readWins}, e.readFrames, e.yield()); err != nil || e.reader().Written(0) != n {
 		return nil
 	}
 	f.SampleS, f.Content = 1/m.SampleRateHz, sample.RawDecimated
