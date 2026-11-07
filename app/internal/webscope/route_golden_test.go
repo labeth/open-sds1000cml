@@ -282,7 +282,8 @@ func goldenDeep(seq uint64) *sample.Frame {
 		f.Held(0)[i] = true
 	}
 	v := &sample.Frame{SampleS: 5e-7, Content: sample.PeakPairs, Traces: []sample.Trace{
-		{Valid: 64, Codes8: goldenSine(64, 16, 40, 128)}, {Ch: 1, Valid: 64, Codes8: goldenSquare(64, 8, 100, 160)}}}
+		{Valid: 64, Codes8: goldenSine(64, 16, 40, 128)}, {Ch: 1, Valid: 64, Codes8: goldenSquare(64, 8, 100, 160)},
+	}}
 	f.Details = append(f.Details, sample.Detail{Role: sample.RoleView(int(engine.ViewWeb)), From: 900, To: 964, Frame: v})
 	return f
 }
@@ -487,8 +488,10 @@ func (p *goldenPanel) PageLeave() panel.SetResult { return panel.SetResult{OK: t
 // TRLC-LINKS: REQ-SDS-138
 func (p *goldenPanel) RefsExport() [2]panel.RefExport {
 	return [2]panel.RefExport{
-		{Has: true, Show: true, Gen: 2, At: 1700000000000, Cols: 4, C1: []int{1, 2, 3, 4}, Vdiv: [2]float64{1, 0.5}, Probe: [2]float64{10, 1}, TdivS: 1e-3, PosFrac: 0.5,
-			Setup: &panel.RefSetup{TdivS: 1e-3, PosFrac: 0.5, Vdiv: [2]float64{1, 0.5}, Rising: true}},
+		{
+			Has: true, Show: true, Gen: 2, At: 1700000000000, Cols: 4, C1: []int{1, 2, 3, 4}, Vdiv: [2]float64{1, 0.5}, Probe: [2]float64{10, 1}, TdivS: 1e-3, PosFrac: 0.5,
+			Setup: &panel.RefSetup{TdivS: 1e-3, PosFrac: 0.5, Vdiv: [2]float64{1, 0.5}, Rising: true},
+		},
 		{},
 	}
 }
@@ -645,7 +648,8 @@ func routeCases() []routeCase { //nolint:funlen // one table of every route
 			rget("/debug/pprof/"),
 		}},
 		{name: "claim", srv: full(goldenNative), reqs: []routeReq{
-			rget("/api/frame.bin?epoch=5&cols=64"), rget("/api/claim"), {method: http.MethodPost, path: "/api/claim"},
+			rget("/api/frame.bin?epoch=5&cols=64"), rget("/api/claim"),
+			{method: http.MethodPost, path: "/api/claim"},
 			rget("/api/frame.bin?epoch=5&cols=64"), rget("/api/frame.bin?epoch=CLAIMED&cols=64"), rget("/api/frame.bin?epoch=0&cols=64"),
 		}, after: func(replies [][]byte, rq *routeReq) {
 			if !strings.Contains(rq.path, "CLAIMED") {
@@ -732,7 +736,8 @@ func routeCases() []routeCase { //nolint:funlen // one table of every route
 		}},
 		{name: "remote", srv: full(goldenNative), reqs: []routeReq{
 			rget("/api/panel/wait?seq=40&timeout_ms=20000"), rget("/api/panel/wait?timeout_ms=-3"), rget("/api/sheets"),
-			{method: http.MethodPost, path: "/api/sheets"}, rpost("/api/sheets/set", `{"row":"trig.level","value":1.25}`),
+			{method: http.MethodPost, path: "/api/sheets"},
+			rpost("/api/sheets/set", `{"row":"trig.level","value":1.25}`),
 			rpost("/api/sheets/set", `{"row":"trig.level","text":"50V"}`), rpost("/api/sheets/set", `{"value":1}`),
 			rpost("/api/sheets/action", `{"row":"file.setup3","action":"save"}`), rpost("/api/sheets/action", `{"row":""}`),
 			rpost("/api/stream/page", `{"on":true}`), rpost("/api/stream/page", `{"leave":true}`), rpost("/api/stream/page", `[`),
@@ -743,7 +748,8 @@ func routeCases() []routeCase { //nolint:funlen // one table of every route
 		}, reqs: []routeReq{rpost("/api/stream/page", `{"on":true}`), rpost("/api/stream/page", `{"leave":true}`), rpost("/api/panel", `{"again":true}`)}},
 		{name: "refs", srv: full(goldenNative), reqs: []routeReq{
 			rget("/api/refs"), rpost("/api/refs", `{"slot":"B","op":"store"}`), rpost("/api/refs", `{"slot":"A","op":"hide"}`),
-			rpost("/api/refs", `{"slot":"C","op":"store"}`), {method: http.MethodPut, path: "/api/refs"},
+			rpost("/api/refs", `{"slot":"C","op":"store"}`),
+			{method: http.MethodPut, path: "/api/refs"},
 		}},
 		{name: "stream", srv: full(goldenNative), reqs: []routeReq{
 			rget("/api/stream/lines?from=5&max=99999"), rget("/api/stream/lines?from=x&max=1"), rget("/api/stream/lines.bin?from=12"),
@@ -780,7 +786,9 @@ func routeCases() []routeCase { //nolint:funlen // one table of every route
 			rpost("/api/zones", "{"), rget("/api/serial"),
 			rpost("/api/serial", `{"proto":99,"chA":2,"chB":3,"rw":5,"addr":200,"baud":-1,"bits":99,"bytes":[1,99999,-4],"spiClockHz":5}`),
 			rpost("/api/serial", `{"proto":30,"bits":99,"bytes":[70000]}`), rpost("/api/serial", `{"proto":8,"bytes":[999999]}`),
-			rpost("/api/serial", "x"), {method: http.MethodPut, path: "/api/serial"}, rget("/api/serial/protocols"),
+			rpost("/api/serial", "x"),
+			{method: http.MethodPut, path: "/api/serial"},
+			rget("/api/serial/protocols"),
 			rget("/api/serial"),
 		}},
 		{name: "serial_bare", srv: func() *Server {
@@ -813,7 +821,8 @@ func routeCases() []routeCase { //nolint:funlen // one table of every route
 		{name: "screen_setup_tune", srv: full(goldenNative), reqs: []routeReq{
 			rget("/api/screen.png"), rget("/api/setup"), rpost("/api/setup", `{"op":"save","slot":4}`), rpost("/api/setup", `{"op":"recall","slot":3}`),
 			rpost("/api/setup", `{"op":"load","slot":4}`), rpost("/api/setup", `{"op":"save","slot":21}`), rpost("/api/setup", "{"),
-			{method: http.MethodDelete, path: "/api/setup"}, rget("/api/debug/tune"), rpost("/api/debug/tune", `{"max_retry":3,"gc_ctl":true}`),
+			{method: http.MethodDelete, path: "/api/setup"},
+			rget("/api/debug/tune"), rpost("/api/debug/tune", `{"max_retry":3,"gc_ctl":true}`),
 			rpost("/api/debug/tune", "x"), rget("/api/panel/scan"), rpost("/api/panel/scan", `{"enable":true,"half":20}`),
 			rpost("/api/panel/scan", `{"enable":true}`), rpost("/api/panel/scan", "x"),
 		}},

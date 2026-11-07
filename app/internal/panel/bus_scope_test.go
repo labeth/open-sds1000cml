@@ -5,10 +5,11 @@ package panel
 import (
 	"compress/gzip"
 	"encoding/json"
-	"github.com/labeth/open-dso-core/testenv"
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/labeth/open-dso-core/testenv"
 
 	"github.com/labeth/open-dso-core/decode"
 )

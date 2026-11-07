@@ -72,7 +72,7 @@ func AppendClientChunkHeads(dst []byte, chunks []core.ClientChunk) []byte {
 
 // BuildMaskFromEnvelope is core.BuildMaskFromEnvelope.
 // TRLC-LINKS: REQ-SDS-021
-func BuildMaskFromEnvelope(lo []uint8, hi []uint8, winCols int, tolCols int, tolCodes int, ch int) *core.Mask {
+func BuildMaskFromEnvelope(lo, hi []uint8, winCols, tolCols, tolCodes, ch int) *core.Mask {
 	return core.BuildMaskFromEnvelope(lo, hi, winCols, tolCols, tolCodes, ch)
 }
 
@@ -103,7 +103,7 @@ func SerialDecoderList() []core.SerialDecoder { return core.SerialDecoderList() 
 
 // SoundTakeTimes is core.SoundTakeTimes.
 // TRLC-LINKS: REQ-SDS-021
-func SoundTakeTimes(pre float64, post float64) (float64, float64) {
+func SoundTakeTimes(pre, post float64) (float64, float64) {
 	return core.SoundTakeTimes(pre, post)
 }
 

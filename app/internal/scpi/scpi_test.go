@@ -886,7 +886,8 @@ func TestPAVAReadsTwelveBitTraces(t *testing.T) {
 	want := do(t, h, "C1:PAVA? ALL")
 	f12 := sample.CodeFormat{Bits: 12, Storage: sample.U16, Shift: 4, Max: 0xFFF0, Mid: 0x8000}
 	fs.frame = &sample.Frame{Seq: 2, SampleS: 2e-9, Traces: []sample.Trace{
-		{Valid: n, Codes16: w, Format: f12, CodesPerDiv: 25 * 256}, {Ch: 1, Valid: n, Codes16: w, Format: f12, CodesPerDiv: 25 * 256}}}
+		{Valid: n, Codes16: w, Format: f12, CodesPerDiv: 25 * 256}, {Ch: 1, Valid: n, Codes16: w, Format: f12, CodesPerDiv: 25 * 256},
+	}}
 	if got := do(t, h, "C1:PAVA? ALL"); got != want || !strings.Contains(want, "AMPL,4.00") {
 		t.Fatalf("12-bit PAVA? ALL\n%q\nwant the 8-bit\n%q", got, want)
 	}

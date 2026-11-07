@@ -37,6 +37,7 @@ func (d *goldenDisplay) SetMeasOn(on bool)          { d.meas = on }
 func (d *goldenDisplay) CursorState() (bool, int, [2]float64, [2]float64) {
 	return d.cursors, 0, d.x, d.y
 }
+
 func (d *goldenDisplay) InjectButtonWait(b string, _ time.Duration) bool {
 	d.buttons = append(d.buttons, b)
 	return true

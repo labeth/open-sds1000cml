@@ -166,7 +166,8 @@ func (r *viewRig) hud() render.HUD {
 		Persist: d.Persist, DecProto: d.DecProto, DecBaud: d.DecBaud, DecChA: d.DecChA, DecChB: d.DecChB,
 		DecCPOL: d.DecCPOL, DecCPHA: d.DecCPHA, DecFormat: d.DecFormat, CurOn: d.CurOn, CurType: d.CurType,
 		CurSel: d.CurSel, CurX: d.CurX, CurY: d.CurY, MaskMode: st.MaskMode, MaskPass: st.MaskPass, MaskFail: st.MaskFail,
-		MaskMsg: c.MaskStatus(), Spect: r.spect}
+		MaskMsg: c.MaskStatus(), Spect: r.spect,
+	}
 	h.TrigLvlV = (31437 - float64(st.TrigCode)) / 911
 	h.TrigLvlDiv = h.TrigLvlV / h.Ch[0].VdivV
 	for i, rw := range c.RefView() {

@@ -93,8 +93,14 @@ func (b *Board) trigCaps() hal.TrigCaps {
 		on   bool
 		name string
 	}{
-		{c.UART || c.SampleUART, "uart"}, {c.I2C || c.SampleI2C, "i2c"}, {c.SPI || c.SampleSPI, "spi"},
-		{c.SENT, "sent"}, {c.USBLS, "usb"}, {c.MIL1553, "mil1553"}, {c.Manchester, "manchester"}, {c.Packet != 0, "packet"},
+		{c.UART || c.SampleUART, "uart"},
+		{c.I2C || c.SampleI2C, "i2c"},
+		{c.SPI || c.SampleSPI, "spi"},
+		{c.SENT, "sent"},
+		{c.USBLS, "usb"},
+		{c.MIL1553, "mil1553"},
+		{c.Manchester, "manchester"},
+		{c.Packet != 0, "packet"},
 	} {
 		if p.on {
 			tc.Protocols = append(tc.Protocols, p.name)

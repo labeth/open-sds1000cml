@@ -218,8 +218,10 @@ func TestProgramRefuses(t *testing.T) {
 func TestProgramQualifierAndUART(t *testing.T) {
 	b, m, _ := newTestBoard("qualifier", "uart")
 	src := hal.Source{Kind: hal.Analog}
-	pulse := hal.TriggerSpec{Stages: []hal.TrigStage{{Node: hal.NodePulse, Source: src, Levels: hal.Levels{Slope: hal.Rising},
-		Qual: &hal.Qualifier{Op: hal.Inside, MinS: 1e-6, MaxS: 5e-6}}}}
+	pulse := hal.TriggerSpec{Stages: []hal.TrigStage{{
+		Node: hal.NodePulse, Source: src, Levels: hal.Levels{Slope: hal.Rising},
+		Qual: &hal.Qualifier{Op: hal.Inside, MinS: 1e-6, MaxS: 5e-6},
+	}}}
 	if err := b.Trigger().Program(pulse); err != nil {
 		t.Fatal(err)
 	}
@@ -229,8 +231,10 @@ func TestProgramQualifierAndUART(t *testing.T) {
 	if !q.Enabled || q.Kind != sramcapture.QualPulse || q.Prescale != pre || q.MinTicks != lo || q.MaxTicks != hi {
 		t.Fatalf("pulse %+v", q)
 	}
-	uart := hal.TriggerSpec{Stages: []hal.TrigStage{{Node: hal.NodeProtocol, Source: src,
-		Proto: prototrig.UART{Baud: 115200, Bits: 8, IdleHigh: true, Condition: prototrig.UARTData, Value: 0x55}}}}
+	uart := hal.TriggerSpec{Stages: []hal.TrigStage{{
+		Node: hal.NodeProtocol, Source: src,
+		Proto: prototrig.UART{Baud: 115200, Bits: 8, IdleHigh: true, Condition: prototrig.UARTData, Value: 0x55},
+	}}}
 	if err := b.Trigger().Program(uart); err != nil {
 		t.Fatal(err)
 	}

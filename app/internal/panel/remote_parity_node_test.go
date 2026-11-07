@@ -5,13 +5,14 @@ package panel
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/labeth/open-dso-core/webclient"
 	"math"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/labeth/open-dso-core/webclient"
 
 	"github.com/labeth/open-dso-core/testenv"
 	"github.com/labeth/open-dso-core/uimodel/wsview"

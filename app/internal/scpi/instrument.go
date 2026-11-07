@@ -51,8 +51,10 @@ func (in instrument) State() core.State {
 	}
 	for ch := range 2 {
 		p := h.probe(ch)
-		c := hal.Channel{On: h.tra[ch], Invert: h.inverted(ch), VoltsDiv: p, Probe: p, Impedance: 1e6,
-			Coupling: halCoupling[h.coupling(ch)], SkewS: h.skew[ch]}
+		c := hal.Channel{
+			On: h.tra[ch], Invert: h.inverted(ch), VoltsDiv: p, Probe: p, Impedance: 1e6,
+			Coupling: halCoupling[h.coupling(ch)], SkewS: h.skew[ch],
+		}
 		if d, ok := h.disp.(traceDisplay); ok {
 			c.On = d.TraceOn(ch)
 		}

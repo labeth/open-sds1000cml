@@ -641,54 +641,83 @@ func halScenarios() []halScenario {
 	return []halScenario{
 		{name: "auto-live", caps: general, stopAt: 8, triggers: always, fill: 3},
 		{name: "auto-untriggered", caps: general, stopAt: 4, fill: 2},
-		{name: "normal-waits", caps: general, stopAfter: 300 * time.Millisecond, fill: 2, triggers: func(k int) bool { return k%2 == 0 },
-			hooks: map[int]func(*Engine){1: func(e *Engine) { e.SetNorm(true) }}},
-		{name: "fast-timebase", caps: general, stopAt: 5, triggers: always, fill: 2,
-			hooks: map[int]func(*Engine){1: func(e *Engine) { e.SetTdiv(1e-6) }}},
-		{name: "slow-decimated", caps: general, stopAt: 5, triggers: always, fill: 2,
-			hooks: map[int]func(*Engine){1: func(e *Engine) { e.SetTdiv(5e-3) }}},
-		{name: "stop-replay", caps: general, triggers: always, fill: 2, stopAfter: 400 * time.Millisecond,
+		{
+			name: "normal-waits", caps: general, stopAfter: 300 * time.Millisecond, fill: 2, triggers: func(k int) bool { return k%2 == 0 },
+			hooks: map[int]func(*Engine){1: func(e *Engine) { e.SetNorm(true) }},
+		},
+		{
+			name: "fast-timebase", caps: general, stopAt: 5, triggers: always, fill: 2,
+			hooks: map[int]func(*Engine){1: func(e *Engine) { e.SetTdiv(1e-6) }},
+		},
+		{
+			name: "slow-decimated", caps: general, stopAt: 5, triggers: always, fill: 2,
+			hooks: map[int]func(*Engine){1: func(e *Engine) { e.SetTdiv(5e-3) }},
+		},
+		{
+			name: "stop-replay", caps: general, triggers: always, fill: 2, stopAfter: 400 * time.Millisecond,
 			hooks: map[int]func(*Engine){2: func(e *Engine) { e.SetRunning(false) }},
 			at: map[time.Duration]func(*Engine){
 				200 * time.Millisecond: func(e *Engine) { e.SetChannelVdiv(0, 0.5, 0, 0) },
 				300 * time.Millisecond: func(e *Engine) { e.SetRunning(true) },
-			}},
-		{name: "single", caps: general, triggers: always, fill: 2, stopAfter: 400 * time.Millisecond,
+			},
+		},
+		{
+			name: "single", caps: general, triggers: always, fill: 2, stopAfter: 400 * time.Millisecond,
 			hooks: map[int]func(*Engine){1: func(e *Engine) { e.SetSingle() }},
-			at:    map[time.Duration]func(*Engine){300 * time.Millisecond: func(e *Engine) { e.SetRunning(true) }}},
-		{name: "average", caps: general, stopAt: 6, triggers: always, fill: 2,
-			hooks: map[int]func(*Engine){1: func(e *Engine) { e.SetAvgCount(4); e.SetAcqMode(AcqAverage) }}},
-		{name: "eres", caps: general, stopAt: 4, triggers: always, fill: 2,
-			hooks: map[int]func(*Engine){1: func(e *Engine) { e.SetEresLen(4); e.SetAcqMode(AcqEres) }}},
-		{name: "precision", caps: general, stopAt: 4, triggers: always, fill: 2,
-			hooks: map[int]func(*Engine){1: func(e *Engine) { e.SetTdiv(1e-3); e.SetAcqMode(AcqPrecision) }}},
-		{name: "force-key", caps: general, stopAfter: 300 * time.Millisecond, fill: 2,
-			hooks: map[int]func(*Engine){1: func(e *Engine) { e.SetNorm(true); e.ForceTrigger() }}},
-		{name: "lamps-and-dacs", caps: general, triggers: always, fill: 2, stopAfter: 300 * time.Millisecond,
+			at:    map[time.Duration]func(*Engine){300 * time.Millisecond: func(e *Engine) { e.SetRunning(true) }},
+		},
+		{
+			name: "average", caps: general, stopAt: 6, triggers: always, fill: 2,
+			hooks: map[int]func(*Engine){1: func(e *Engine) { e.SetAvgCount(4); e.SetAcqMode(AcqAverage) }},
+		},
+		{
+			name: "eres", caps: general, stopAt: 4, triggers: always, fill: 2,
+			hooks: map[int]func(*Engine){1: func(e *Engine) { e.SetEresLen(4); e.SetAcqMode(AcqEres) }},
+		},
+		{
+			name: "precision", caps: general, stopAt: 4, triggers: always, fill: 2,
+			hooks: map[int]func(*Engine){1: func(e *Engine) { e.SetTdiv(1e-3); e.SetAcqMode(AcqPrecision) }},
+		},
+		{
+			name: "force-key", caps: general, stopAfter: 300 * time.Millisecond, fill: 2,
+			hooks: map[int]func(*Engine){1: func(e *Engine) { e.SetNorm(true); e.ForceTrigger() }},
+		},
+		{
+			name: "lamps-and-dacs", caps: general, triggers: always, fill: 2, stopAfter: 300 * time.Millisecond,
 			hooks: map[int]func(*Engine){
 				1: func(e *Engine) { e.SetLEDs(0x1234); e.SetOffsetDAC(0, 3000); e.SetTrigLevelCode(2100) },
 				2: func(e *Engine) { e.SetRunning(false); e.SetLEDs(0x0042) },
 			},
 			at:     map[time.Duration]func(*Engine){200 * time.Millisecond: func(e *Engine) { e.SetRunning(true) }},
-			onSpan: func(e *Engine) { e.SetLEDs(0x0777) }},
-		{name: "view-window", caps: general, stopAt: 5, triggers: always, fill: 2,
+			onSpan: func(e *Engine) { e.SetLEDs(0x0777) },
+		},
+		{
+			name: "view-window", caps: general, stopAt: 5, triggers: always, fill: 2,
 			hooks: map[int]func(*Engine){1: func(e *Engine) {
 				e.SetTdiv(1e-3)
 				e.LeaseViewWindow(ViewScope, -0.05, 0.05, 400, time.Hour)
-			}}},
-		{name: "raw-lease", caps: general, stopAt: 4, triggers: always, fill: 2,
-			hooks: map[int]func(*Engine){1: func(e *Engine) { e.LeaseRawFor("test", time.Hour) }}},
-		{name: "pulse-qualifier", caps: qualify, stopAt: 6, triggers: always, fill: 2,
+			}},
+		},
+		{
+			name: "raw-lease", caps: general, stopAt: 4, triggers: always, fill: 2,
+			hooks: map[int]func(*Engine){1: func(e *Engine) { e.LeaseRawFor("test", time.Hour) }},
+		},
+		{
+			name: "pulse-qualifier", caps: qualify, stopAt: 6, triggers: always, fill: 2,
 			hooks: map[int]func(*Engine){1: func(e *Engine) {
 				e.SetPulseParams(0.5, 1000, 5000, CondInside)
 				e.SetTrigType(int(TrigPulse))
-			}}},
-		{name: "zones", caps: qualify, stopAt: 6, triggers: always, fill: 2,
+			}},
+		},
+		{
+			name: "zones", caps: qualify, stopAt: 6, triggers: always, fill: 2,
 			hooks: map[int]func(*Engine){1: func(e *Engine) {
 				e.SetZones([]Zone{{Ch: 0, DtLoS: -1e-6, DtHiS: 1e-6, CodeLo: 100, CodeHi: 150}})
 				e.SetZoneMode(ZoneTrigger)
-			}}},
-		{name: "mask", caps: general, stopAt: 6, triggers: always, fill: 2,
+			}},
+		},
+		{
+			name: "mask", caps: general, stopAt: 6, triggers: always, fill: 2,
 			hooks: map[int]func(*Engine){1: func(e *Engine) {
 				var m Mask
 				for i := range m.Hi {
@@ -696,14 +725,19 @@ func halScenarios() []halScenario {
 				}
 				e.SetMask(&m)
 				e.SetMaskMode(MaskTest)
-			}}},
-		{name: "uart-trigger", caps: uart, stopAt: 6, triggers: always, fill: 2,
+			}},
+		},
+		{
+			name: "uart-trigger", caps: uart, stopAt: 6, triggers: always, fill: 2,
 			hooks: map[int]func(*Engine){1: func(e *Engine) {
 				e.SetSerialParams(SerialParams{Proto: core.SerUART, Baud: 115200, Bits: 8, Threshold: 128, HaveThr: true, Addr: -1, RW: 2, Bytes: []int{0x55}})
 				e.SetSerialMode(SerialTrigger)
-			}}},
-		{name: "bode", caps: general, stopAt: 5, triggers: always, fill: 2,
-			hooks: map[int]func(*Engine){1: func(e *Engine) { e.SetBodeMode(true, 0, 1) }}},
+			}},
+		},
+		{
+			name: "bode", caps: general, stopAt: 5, triggers: always, fill: 2,
+			hooks: map[int]func(*Engine){1: func(e *Engine) { e.SetBodeMode(true, 0, 1) }},
+		},
 	}
 }
 
