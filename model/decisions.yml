@@ -2865,3 +2865,23 @@ decisions:
     names the diagnostic and the plan; it stays reported until the item is completed.
   - The security bundle commits the model to its control, risk and trust-boundary records (assurance.yml) and
     their verification; the safety bundle (DO-178C) is not taken.
+- id: ADR-MODEL-COMPOSES-CORE
+  title: The model composes open-dso-core's model and keeps only the scope's part
+  status: accepted
+  date: '2026-11-07'
+  context: The engine, UI model, rendering, web server and client, SCPI core, VXI-11, decode, analysis,
+    measurement, sound, super-resolution, design system and supervisor moved to open-dso-core with their trace tags.
+    The modelling engine validates one code root per model and resolves a TRLC-LINKS only against the nearest
+    model, so requirements of code that left this repository cannot stay here.
+  decision: The model depends on github.com/labeth/open-dso-core/model@v0 (alias core, publication public) as
+    subsystem SUB-CORE. A requirement only the core implements left this model and is core::REQ-DSO-NNN with the
+    same number (the core's ADR-CORE-MODEL-IDS); one implemented on both sides stays here for the scope's part.
+    Functional units whose code all moved left; flows, interfaces and requirements that named them name the core
+    package's unit (core::FU-DSO-*). Until the core's model is published to a registry it resolves from a checkout
+    next to this repository through engmod.work.yml above both.
+  consequences:
+  - CI checks the core out next to the repository and names the workspace file in ENGMOD_WORK; the committed lock
+    is not compared while the replacement is active.
+  - Code that moves to the core changes its tags there; this model then drops the requirement or keeps the scope's
+    part, and drops the unit once no file here names it.
+  - Publishing the core's model and pinning it here (with engmod.lock.yml) replaces the workspace in CI.
