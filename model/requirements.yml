@@ -41,12 +41,11 @@ requirements:
   sourceRefs:
   - CODE-APP-CMD-APP-MAIN-GO
   - CODE-APP-INTERNAL-APP-RUN-GO
-  - CODE-OTA-INTERNAL-FDINHERIT-FDINHERIT-GO
   - CODE-APP-INTERNAL-BUS-BUS-GO
   - CODE-APP-INTERNAL-BUS-BUS-TEST-GO
   appliesTo:
   - FU-APP-APP
-  - FU-OTA-FDINHERIT
+  - core::FU-DSO-SUPERVISOR-FDINHERIT
   - FU-APP-BUS
   notes: Source-derived contract; source presence is not evidence of a passing hardware qualification.
   verificationMethods:
@@ -372,10 +371,9 @@ requirements:
   - CODE-APP-INTERNAL-ENGINE-ZONEMASK-BREAKER-TEST-GO
   - CODE-APP-INTERNAL-ENGINE-ZONEMASK-BREAKER2-TEST-GO
   - CODE-APP-INTERNAL-ENGINE-ENGINE-LOOP-GO
-  - CODE-APP-INTERNAL-WEB-APP-ZONEMASK-JS
   appliesTo:
   - FU-APP-ENGINE
-  - FU-WEB-APP-ZONEMASK
+  - core::FU-DSO-WEBCLIENT
   notes: Source-derived contract; source presence is not evidence of a passing hardware qualification. Browser configuration
     draws edge-relative zones, builds dilated masks from distinct raw frames and reanchors code bounds to stored
     voltage context. Zone coordinates and overlay transforms use C1 even for selected C2. Upload errors are not
@@ -435,29 +433,6 @@ requirements:
   - test
   verificationCriteria: Check the 2752-byte length, word-zero checksum, descrambling, record offsets and compiled
     defaults. Parsing tests do not establish coefficient finiteness or physical calibration accuracy.
-- id: REQ-SDS-017
-  title: Measurements
-  text: The instrument shall compute voltage and timing measurements from the shared measurement core.
-  status: implemented
-  realizes:
-  - CAP-SDS-MEASUREMENT
-  category: functional
-  sourceRefs:
-  - CODE-APP-INTERNAL-MEASURE-MEASURE-GO
-  appliesTo:
-  - FU-APP-MEASURE
-  notes: 'Source-derived contract. Vrms is the AC standard deviation, not total RMS including DC. Timing requires at
-    least eight ADC codes of settled amplitude and positive sample period; HasTiming needs two rising crossings,
-    while isolated edge widths may still be nonzero. Q8 histogram mode lookup currently caps its upper index at
-    255, causing typical Q8 settled levels to fall back to extrema and suppressing overshoot. No instrument
-    behavior is repaired by this model.'
-  verificationMethods:
-  - inspection
-  - test
-  verificationCriteria: Run the existing waveform, clipping, width-merge parity, finite-result, fractional precision,
-    small-ripple and stored-triangle tests. The recorded triangle is fixture replay, not a new hardware run. Preserve
-    the separate raw/Q8 overshoot characterization as a known discrepancy; existing test success does not establish
-    Q8 settled-level equivalence or arbitrary nonfinite input handling.
 - id: REQ-SDS-018
   title: Protocol decoding
   text: The instrument shall provide the ten protocol decoder families present in the source.
@@ -466,66 +441,18 @@ requirements:
   - CAP-SDS-PROTOCOL-DECODE
   category: functional
   sourceRefs:
-  - CODE-APP-INTERNAL-DECODE-DECODE-GO
   - CODE-APP-README-MD
-  - CODE-APP-INTERNAL-LCD-GOLDEN-VIEWS-TEST-GO
-  - CODE-APP-INTERNAL-DECODE-DECODE-ARINC429-GO
-  - CODE-APP-INTERNAL-DECODE-DECODE-AUTODETECT-GO
-  - CODE-APP-INTERNAL-DECODE-DECODE-CANFD-GO
-  - CODE-APP-INTERNAL-DECODE-DECODE-FLEXRAY-GO
-  - CODE-APP-INTERNAL-DECODE-DECODE-I2C-SPI-GO
-  - CODE-APP-INTERNAL-DECODE-DECODE-MANCHESTER-GO
-  - CODE-APP-INTERNAL-DECODE-DECODE-MIL1553-GO
-  - CODE-APP-INTERNAL-DECODE-DECODE-SENT-GO
-  - CODE-APP-INTERNAL-DECODE-DECODE-UART-GO
-  - CODE-APP-INTERNAL-DECODE-DECODE-USBLS-GO
-  - CODE-APP-INTERNAL-DECODE-DECODE-TEST-GO
-  - CODE-APP-INTERNAL-DECODE-DECODE-SENT-TEST-GO
-  - CODE-APP-INTERNAL-DECODE-DECODE-MIL1553-TEST-GO
-  - CODE-APP-INTERNAL-DECODE-DECODE-ARINC429-TEST-GO
-  - CODE-APP-INTERNAL-DECODE-DECODE-MANCHESTER-TEST-GO
-  - CODE-APP-INTERNAL-DECODE-DECODE-CANFD-TEST-GO
-  - CODE-APP-INTERNAL-DECODE-DECODE-USBLS-TEST-GO
-  - CODE-APP-INTERNAL-DECODE-DECODE-FLEXRAY-TEST-GO
-  - CODE-APP-INTERNAL-WEB-DECODE-JS
-  - CODE-APP-INTERNAL-WEB-DECODE-ARINC429-JS
-  - CODE-APP-INTERNAL-WEB-DECODE-CANFD-JS
-  - CODE-APP-INTERNAL-WEB-DECODE-FLEXRAY-JS
-  - CODE-APP-INTERNAL-WEB-DECODE-MANCHESTER-JS
-  - CODE-APP-INTERNAL-WEB-DECODE-MIL1553-JS
-  - CODE-APP-INTERNAL-WEB-DECODE-SENT-JS
-  - CODE-APP-INTERNAL-WEB-DECODE-USBLS-JS
-  - CODE-APP-INTERNAL-DECODE-DECODEFUZZ-TEST-GO
-  - CODE-APP-INTERNAL-DECODE-TRUTH-VECTORS-TEST-GO
-  - CODE-APP-INTERNAL-DECODE-DECODE-JSPARITY-TEST-GO
-  - CODE-APP-INTERNAL-DECODE-DECODE-BREAK-ARINC429-TEST-GO
-  - CODE-APP-INTERNAL-DECODE-DECODE-BREAK-CANFD-TEST-GO
-  - CODE-APP-INTERNAL-DECODE-DECODE-BREAK-FLEXRAY-TEST-GO
-  - CODE-APP-INTERNAL-DECODE-DECODE-BREAK-I2C-TEST-GO
-  - CODE-APP-INTERNAL-DECODE-DECODE-BREAK-MANCHESTER-TEST-GO
-  - CODE-APP-INTERNAL-DECODE-DECODE-BREAK-MIL1553-TEST-GO
-  - CODE-APP-INTERNAL-DECODE-DECODE-BREAK-SENT-TEST-GO
-  - CODE-APP-INTERNAL-DECODE-DECODE-BREAK-SPI-TEST-GO
-  - CODE-APP-INTERNAL-DECODE-DECODE-BREAK-UART-TEST-GO
-  - CODE-APP-INTERNAL-DECODE-DECODE-BREAK-USBLS-TEST-GO
-  - CODE-APP-INTERNAL-DECODE-ORACLE-CAN-TEST-GO
-  - CODE-APP-INTERNAL-DECODE-ORACLE-FLEXRAY-TEST-GO
-  - CODE-APP-INTERNAL-DECODE-ORACLE-I2C-TEST-GO
-  - CODE-APP-INTERNAL-DECODE-ORACLE-SPI-TEST-GO
-  - CODE-APP-INTERNAL-DECODE-ORACLE-TEST-GO
-  - CODE-APP-INTERNAL-DECODE-ORACLE-UART-TEST-GO
-  - CODE-APP-INTERNAL-DECODE-ORACLE-USBLS-TEST-GO
   appliesTo:
-  - FU-APP-DECODE
+  - core::FU-DSO-DECODE
   - FU-APP-LCD
-  - FU-WEB-DECODE
-  - FU-WEB-DECODE-ARINC429
-  - FU-WEB-DECODE-CANFD
-  - FU-WEB-DECODE-FLEXRAY
-  - FU-WEB-DECODE-MANCHESTER
-  - FU-WEB-DECODE-MIL1553
-  - FU-WEB-DECODE-SENT
-  - FU-WEB-DECODE-USBLS
+  - core::FU-DSO-WEBCLIENT
+  - core::FU-DSO-WEBCLIENT
+  - core::FU-DSO-WEBCLIENT
+  - core::FU-DSO-WEBCLIENT
+  - core::FU-DSO-WEBCLIENT
+  - core::FU-DSO-WEBCLIENT
+  - core::FU-DSO-WEBCLIENT
+  - core::FU-DSO-WEBCLIENT
   notes: 'Source-derived contract for ten decoder families: UART, I2C, SPI, Manchester, SENT, CAN/CAN-FD, MIL1553,
     ARINC429, USB LS/FS and FlexRay. All eleven Go implementation files are reviewed. OK is protocol-specific and
     can coexist with error spans; callers must inspect those spans. SPI has no chip-select input and I2C has
@@ -571,25 +498,16 @@ requirements:
   - CODE-APP-INTERNAL-ENGINE-ETS-GO
   - CODE-APP-INTERNAL-ENGINE-ENVROLL-TEST-GO
   - CODE-APP-INTERNAL-ENGINE-ENVROLL-GO
-  - CODE-APP-INTERNAL-SUPERRES-COMP-REF-TEST-GO
   - CODE-APP-INTERNAL-ENGINE-ENGINE-CONTROL-GO
-  - CODE-APP-INTERNAL-WEB-SUPERRES-ETS-JS
-  - CODE-APP-INTERNAL-WEB-SUPERRES-JS
-  - CODE-APP-INTERNAL-WEB-SUPERRES-MATH-JS
-  - CODE-APP-INTERNAL-WEB-SUPERRES-TEMPLATE-JS
-  - CODE-APP-INTERNAL-WEB-SUPERRES-GATE-JS
-  - CODE-APP-INTERNAL-WEB-SUPERRES-MEASURE-JS
-  - CODE-APP-INTERNAL-WEB-APP-SUPERRES-JS
-  - CODE-APP-INTERNAL-SUPERRES-PARITY-DRIVER-CJS
   appliesTo:
-  - FU-APP-SUPERRES
-  - FU-WEB-SUPERRES-ETS
-  - FU-WEB-SUPERRES
-  - FU-WEB-SUPERRES-MATH
-  - FU-WEB-SUPERRES-TEMPLATE
-  - FU-WEB-SUPERRES-GATE
-  - FU-WEB-SUPERRES-MEASURE
-  - FU-WEB-APP-SUPERRES
+  - core::FU-DSO-SUPERRES
+  - core::FU-DSO-WEBCLIENT
+  - core::FU-DSO-WEBCLIENT
+  - core::FU-DSO-WEBCLIENT
+  - core::FU-DSO-WEBCLIENT
+  - core::FU-DSO-WEBCLIENT
+  - core::FU-DSO-WEBCLIENT
+  - core::FU-DSO-WEBCLIENT
   notes: 'Source-derived contract; source presence is not evidence of a passing hardware qualification. Browser
     ETS folds samples against a single-bin fundamental phase and derives noise reduction from odd/even half-stack
     differences. It assumes valid raw samples; negative companion codes are accumulated rather than masked. Short
@@ -624,10 +542,8 @@ requirements:
   realizes:
   - CAP-SDS-ACQUISITION
   category: functional
-  sourceRefs:
-  - CODE-APP-INTERNAL-FRAMES-FANOUT-GO
   appliesTo:
-  - FU-APP-FRAMES
+  - core::FU-DSO-ENGINE
   notes: Source-derived contract; source presence is not evidence of a passing hardware qualification.
   verificationMethods:
   - inspection
@@ -644,33 +560,10 @@ requirements:
   - CAP-SDS-FRONT-PANEL
   category: functional
   sourceRefs:
-  - CODE-APP-INTERNAL-LCD-RENDER-GO
-  - CODE-APP-INTERNAL-LCD-SURFACE-GO
-  - CODE-APP-INTERNAL-LCD-FONT-GO
-  - CODE-APP-INTERNAL-LCD-RENDER-FMT-GO
   - CODE-APP-INTERNAL-LCD-LCD-GO
-  - CODE-APP-INTERNAL-LCD-ENGFMT-TEST-GO
-  - CODE-APP-INTERNAL-LCD-RENDER-TEST-GO
-  - CODE-APP-INTERNAL-LCD-RENDER-PANELS-GO
-  - CODE-APP-INTERNAL-LCD-RENDER-OVERLAYS-GO
-  - CODE-APP-INTERNAL-LCD-RENDER-FFT-GO
-  - CODE-APP-INTERNAL-LCD-SPECTROGRAM-GO
-  - CODE-APP-INTERNAL-LCD-SPECTROGRAM-TEST-GO
-  - CODE-APP-INTERNAL-LCD-SPECTROGRAM-BREAKER-TEST-GO
   - CODE-APP-INTERNAL-LCD-NETADDR-GO
   - CODE-APP-INTERNAL-LCD-NETADDR-TEST-GO
-  - CODE-APP-INTERNAL-LCD-RENDER-SUPERRES-GO
-  - CODE-APP-INTERNAL-LCD-SUPERRES-VIEW-TEST-GO
-  - CODE-APP-INTERNAL-LCD-RENDER-BODE-GO
-  - CODE-APP-INTERNAL-LCD-RENDER-INVS-TEST-GO
-  - CODE-APP-INTERNAL-LCD-RENDERFUZZ-TEST-GO
-  - CODE-APP-INTERNAL-LCD-GOLDEN-VIEWS-TEST-GO
   - CODE-APP-INTERNAL-LCD-GOLDEN-TEST-GO
-  - CODE-APP-INTERNAL-WEB-GEN-TOKENS-GO
-  - CODE-APP-INTERNAL-WEB-PALETTE-PARITY-TEST-GO
-  - CODE-APP-INTERNAL-WEB-TOKENS-JSON
-  - CODE-APP-INTERNAL-WEB-TOKENS-CSS
-  - CODE-APP-INTERNAL-LCD-PALETTE-GEN-GO
   - CODE-APP-INTERNAL-ENGINE-ENGINE-GO
   appliesTo:
   - FU-APP-LCD
@@ -744,14 +637,9 @@ requirements:
   realizes:
   - CAP-SDS-WEB-UI
   category: functional
-  sourceRefs:
-  - CODE-APP-INTERNAL-WEB-WEB-GO
-  - CODE-APP-INTERNAL-WEB-WEB-BINFRAME-GO
-  - CODE-APP-INTERNAL-WEB-BINFRAME-JS
-  - CODE-APP-INTERNAL-WEB-TRANSPORT-BROWSER-TEST-GO
   appliesTo:
   - FU-APP-WEB
-  - FU-WEB-BINFRAME
+  - core::FU-DSO-WEBCLIENT
   notes: Source-derived contract. The JavaScript decoder checks magic, header/payload lengths and frame shape; it
     allocates fresh channel arrays and restores native/Q8 margins as -1. Header dimensions are coerced to signed
     integers for decoding while original metadata survives. Unknown flag bits are accepted; unchanged frames bypass
@@ -774,12 +662,11 @@ requirements:
   category: functional
   sourceRefs:
   - CODE-APP-INTERNAL-SCPI-SCPI-GO
-  - CODE-APP-INTERNAL-VXI11SRV-SERVER-GO
   - CODE-APP-INTERNAL-SCPI-SCPI-EXEC-GO
   - CODE-APP-INTERNAL-SCPI-WAVEFORM-GO
   appliesTo:
   - FU-APP-SCPI
-  - FU-APP-VXI11SRV
+  - core::FU-DSO-VXI11SRV
   notes: The handler serializes command lines, dispatches a supported short-form subset, stages setters and formats
     snapshot queries. Status/setup-memory and selected measure/cursor commands are accepted stubs; constant self-test/calibration
     replies are not executed checks. Waveform ALL aliases DAT2; exports use 8-bit frame channels, not Q8 fractions.
@@ -811,7 +698,6 @@ requirements:
   sourceRefs:
   - CODE-APP-CMD-APP-MAIN-GO
   - CODE-APP-INTERNAL-APP-RUN-GO
-  - CODE-OTA-INTERNAL-AGENT-HEALTH-GO
   - CODE-APP-INTERNAL-ENGINE-ENGINE-BUS-GO
   - CODE-APP-INTERNAL-ENGINE-ENGINE-LOOP-GO
   - CODE-APP-INTERNAL-ENGINE-ENGINE-TEST-GO
@@ -855,7 +741,6 @@ requirements:
   - CAP-SDS-SUPERVISED-OPERATION
   category: functional
   sourceRefs:
-  - CODE-OTA-INTERNAL-AGENT-TAKEOVER-GO
   - CODE-OTA-INTERNAL-GPMC-GPMC-GO
   appliesTo:
   - FU-OTA-AGENT
@@ -887,12 +772,9 @@ requirements:
   realizes:
   - CAP-SDS-SUPERVISED-OPERATION
   category: functional
-  sourceRefs:
-  - CODE-OTA-INTERNAL-AGENT-SUPERVISE-GO
-  - CODE-OTA-INTERNAL-SLOTS-SLOTS-GO
   appliesTo:
   - FU-OTA-AGENT
-  - FU-OTA-SLOTS
+  - core::FU-DSO-SUPERVISOR-SLOTS
   notes: 'The supervisor launches or adopts only while TakenOver and unpaused. Slot selection prefers the active slot,
     then the confirmed one. Adoption trusts a live PID without checking executable,
     start time or ownership; adopted failures and executable-start failures do not directly invoke rollback. A launched
@@ -909,32 +791,6 @@ requirements:
     Separate characterization fixtures reproduce stale/nonzero confirmation, executable-start rollback bypass and
     late control execution. Preserve their limited scope; no device launch, factory interaction or physical recovery
     is qualified.
-- id: REQ-SDS-029
-  title: Conditional slot-update integrity
-  text: The instrument shall compare a supplied SHA-256 digest before application or agent slot updates.
-  status: implemented
-  realizes:
-  - CAP-SDS-FIRMWARE-UPDATE
-  category: functional
-  sourceRefs:
-  - CODE-OTA-INTERNAL-AGENT-UPLOAD-GO
-  - CODE-OTA-INTERNAL-AGENT-HANDLERS-GO
-  appliesTo:
-  - FU-OTA-AGENT
-  notes: Application and agent updates accept an omitted digest. With a digest supplied, they hash the source and
-    reject a mismatch before copying, but hash and copy use separate opens without a stable source snapshot. Upload
-    commits have their separate required-digest contract in REQ-SDS-106; updates can instead use an existing source
-    path. Slot installation accepts arbitrary file contents, and application activation checks only that a slot
-    contains a nonempty regular file, not execute permission or image validity. Temporary-file probes reproduce
-    these limits. Restart request errors after application update/activation are ignored. Successful update responses
-    do not establish successful launch, health confirmation, authenticity or power-loss durability.
-  verificationMethods:
-  - inspection
-  - test
-  verificationCriteria: Review digest mismatch refusal tests and temporary-file slot installation/activation tests.
-    The isolated activation probe confirms omitted-digest acceptance, arbitrary contents and activation without
-    execute bits; the agent exit is captured by a test hook. These results characterize current behavior and do
-    not qualify boot rollback, actual agent respawn, image validity, concurrent source mutation or physical operation.
 - id: REQ-SDS-030
   title: Boot anchor
   text: The instrument shall launch the agent through the USB startup chain.
@@ -1069,13 +925,8 @@ requirements:
   category: functional
   sourceRefs:
   - CODE-APP-INTERNAL-ENGINE-SRAM-GO
-  - CODE-APP-INTERNAL-DSP-PRECISION-GO
-  - CODE-APP-INTERNAL-DSP-PRECISION-GENERIC-GO
-  - CODE-APP-INTERNAL-DSP-PRECISION-ARM-GO
-  - CODE-APP-INTERNAL-DSP-PRECISION-ARM-S
-  - CODE-APP-INTERNAL-DSP-PRECISION-TAPS-GO
   appliesTo:
-  - FU-APP-DSP
+  - core::FU-DSO-DSP
   notes: The 63-tap symmetric Q22 FIR retains the first and last 31 samples unchanged, rounds and saturates the
     interior to uint16, and leaves short records unchanged. Scratch must have sufficient length and must not alias
     input; these are caller preconditions, not validated guards. The generic Go and ARM assembly paths are distinct
@@ -1340,12 +1191,9 @@ requirements:
   realizes:
   - CAP-SDS-SIGNAL-ANALYSIS
   category: functional
-  sourceRefs:
-  - CODE-APP-INTERNAL-WEB-APP-EYE-JS
-  - CODE-APP-INTERNAL-WEB-EYEJITTER-ANALYSIS-JS
   appliesTo:
-  - FU-WEB-APP-EYE
-  - FU-WEB-EYEJITTER-ANALYSIS
+  - core::FU-DSO-WEBCLIENT
+  - core::FU-DSO-WEBCLIENT
   verificationMethods:
   - inspection
   - test
@@ -1359,17 +1207,10 @@ requirements:
   realizes:
   - CAP-SDS-SIGNAL-ANALYSIS
   category: functional
-  sourceRefs:
-  - CODE-APP-INTERNAL-WEB-SPECTROGRAM-JS
-  - CODE-APP-INTERNAL-LCD-SPECTROGRAM-GO
-  - CODE-APP-INTERNAL-WEB-APP-VIEWS-JS
-  - CODE-APP-INTERNAL-LCD-SPECTROGRAM-TEST-GO
-  - CODE-APP-INTERNAL-LCD-SPECTROGRAM-BREAKER-TEST-GO
-  - CODE-APP-INTERNAL-LCD-GOLDEN-VIEWS-TEST-GO
   appliesTo:
   - FU-APP-LCD
-  - FU-WEB-SPECTROGRAM
-  - FU-WEB-APP-VIEWS
+  - core::FU-DSO-WEBCLIENT
+  - core::FU-DSO-WEBCLIENT
   verificationMethods:
   - inspection
   - test
@@ -1408,12 +1249,8 @@ requirements:
   realizes:
   - CAP-SDS-WEB-UI
   category: functional
-  sourceRefs:
-  - CODE-APP-INTERNAL-WEB-SIGROK-EXPORT-JS
-  - CODE-APP-INTERNAL-WEB-SIGROK-EXPORT-E2E-TEST-GO
-  - CODE-APP-INTERNAL-WEB-SIGROK-EXPORT-TEST-CJS
   appliesTo:
-  - FU-WEB-SIGROK-EXPORT
+  - core::FU-DSO-WEBCLIENT
   - FU-APP-WEB
   verificationMethods:
   - inspection
@@ -1440,18 +1277,10 @@ requirements:
   - CAP-SDS-SIGNAL-ANALYSIS
   category: functional
   sourceRefs:
-  - CODE-APP-INTERNAL-WEB-APP-FFT-JS
-  - CODE-APP-INTERNAL-WEB-PEAKS-JS
-  - CODE-APP-INTERNAL-LCD-RENDER-FFT-GO
-  - CODE-APP-INTERNAL-LCD-RENDER-TEST-GO
-  - CODE-APP-INTERNAL-LCD-RENDER-SUPERRES-GO
-  - CODE-APP-INTERNAL-LCD-SUPERRES-VIEW-TEST-GO
-  - CODE-APP-INTERNAL-LCD-GOLDEN-VIEWS-TEST-GO
   - CODE-APP-INTERNAL-LCD-GOLDEN-TEST-GO
-  - CODE-APP-INTERNAL-WEB-PEAKS-TEST-CJS
   appliesTo:
-  - FU-WEB-APP-FFT
-  - FU-WEB-PEAKS
+  - core::FU-DSO-WEBCLIENT
+  - core::FU-DSO-WEBCLIENT
   - FU-APP-LCD
   - FU-APP-WEB
   verificationMethods:
@@ -1486,29 +1315,6 @@ requirements:
     requires raw C1, uses display-frame length for stride, and can combine display C2 fallback with raw sample timing.
     Subsampling has no anti-alias filter. See browser-traces-source-review.json; isolated checks characterize these
     limitations rather than prove correct physical spectra.
-- id: REQ-SDS-071
-  title: WebGL rendering
-  text: The instrument shall render browser trace surfaces through the graphics pipeline.
-  status: implemented
-  realizes:
-  - CAP-SDS-WEB-UI
-  category: functional
-  sourceRefs:
-  - CODE-APP-INTERNAL-WEB-APP-GL-JS
-  - CODE-APP-INTERNAL-WEB-APP-DRAW-JS
-  appliesTo:
-  - FU-WEB-APP-DRAW
-  - FU-WEB-APP-GL
-  verificationMethods:
-  - inspection
-  - test
-  verificationCriteria: Run browser rendering tests when a browser is available; verify data transport separately.
-  notes: Source-derived contract. Behavior depends on the selected acquisition mode; not a claim of complete device
-    qualification. Source-reviewed graphics and trace behavior is recorded in browser-graphics-source-review.json
-    and browser-traces-source-review.json. Isolated command tests do not execute shaders or validate rendered pixels.
-    Dense traces summarize each pixel by min/max and can bridge missing samples within a pixel; sparse paths break
-    on negative samples. Inversion is display-only for YT/envelopes. The facade supports ASCII glyphs and only a
-    subset of the canvas API.
 - id: REQ-SDS-072
   title: Settings validation
   text: The instrument shall normalize persisted instrument settings before applying hardware-facing values.
@@ -1525,23 +1331,6 @@ requirements:
   - inspection
   - test
   verificationCriteria: Run settings round-trip and invalid-value tests.
-  notes: Source-derived contract. Behavior depends on the selected acquisition mode; not a claim of complete device
-    qualification.
-- id: REQ-SDS-073
-  title: Go and browser parity
-  text: The instrument shall preserve shared decoder semantics between Go and JavaScript implementations.
-  status: implemented
-  realizes:
-  - CAP-SDS-PROTOCOL-DECODE
-  category: functional
-  sourceRefs:
-  - CODE-APP-INTERNAL-DECODE-DECODE-JSPARITY-TEST-GO
-  appliesTo:
-  - FU-APP-DECODE
-  verificationMethods:
-  - inspection
-  - test
-  verificationCriteria: Run the Go-to-JavaScript parity vector tests; inspect skips for missing Node.
   notes: Source-derived contract. Behavior depends on the selected acquisition mode; not a claim of complete device
     qualification.
 - id: REQ-SDS-074
@@ -1644,24 +1433,6 @@ requirements:
   - inspection
   verificationCriteria: Inspect command 6, completion polling and selectors 20 through 24 in Capture.Snapshot; no
     dedicated offline snapshot test is present in the pinned package.
-- id: REQ-SDS-085
-  title: Process descriptor inspection
-  text: The instrument shall expose device-holder identities, process ancestry and process liveness through read-only
-    process inspection.
-  status: implemented
-  realizes:
-  - CAP-SDS-SUPERVISED-OPERATION
-  category: functional
-  sourceRefs:
-  - CODE-OTA-INTERNAL-FDINHERIT-FDINHERIT-GO
-  appliesTo:
-  - FU-OTA-FDINHERIT
-  notes: Source-derived contract; source presence is not evidence of a passing hardware qualification.
-  verificationMethods:
-  - inspection
-  - test
-  verificationCriteria: Inspect the linked implementation and run the corresponding offline tests; hardware claims
-    require independently identified device evidence.
 - id: REQ-SDS-086
   title: Watchdog lifecycle
   text: The instrument shall support retrying watchdog acquisition, reporting keepalive status and disarming the
@@ -1680,23 +1451,6 @@ requirements:
   - test
   verificationCriteria: Inspect the linked implementation and run the corresponding offline tests; hardware claims
     require independently identified device evidence.
-- id: REQ-SDS-087
-  title: Application slot store
-  text: The instrument shall maintain A/B application binaries and active and confirmed slot pointers.
-  status: implemented
-  realizes:
-  - CAP-SDS-FIRMWARE-UPDATE
-  category: functional
-  sourceRefs:
-  - CODE-OTA-INTERNAL-SLOTS-SLOTS-GO
-  appliesTo:
-  - FU-OTA-SLOTS
-  notes: Source-derived contract; source presence is not evidence of a passing hardware qualification.
-  verificationMethods:
-  - inspection
-  - test
-  verificationCriteria: Inspect the linked implementation and run the corresponding offline tests; hardware claims
-    require independently identified device evidence.
 - id: REQ-SDS-088
   title: Agent runtime configuration
   text: The instrument shall resolve agent identity, transport, storage paths and supervision settings using device
@@ -1705,10 +1459,8 @@ requirements:
   realizes:
   - CAP-SDS-SUPERVISED-OPERATION
   category: functional
-  sourceRefs:
-  - CODE-OTA-INTERNAL-CONFIG-CONFIG-GO
   appliesTo:
-  - FU-OTA-CONFIG
+  - core::FU-DSO-SUPERVISOR-CONFIG
   notes: Source-derived contract; source presence is not evidence of a passing hardware qualification.
   verificationMethods:
   - inspection
@@ -1876,96 +1628,6 @@ requirements:
   verificationCriteria: Inspect override precedence, conversion inverses, channel/probe handling, table snapshots
     and hook propagation. No dedicated trigger-calibration tests are present in the reviewed analog package; physical
     accuracy remains unqualified.
-- id: REQ-SDS-099
-  title: Ideal precision response limits
-  text: The instrument shall report ideal white-noise gain and normalized bandwidth for supported positive precision
-    reductions.
-  status: implemented
-  realizes:
-  - CAP-SDS-ENHANCED-RESOLUTION
-  category: functional
-  sourceRefs:
-  - CODE-APP-INTERNAL-DSP-PRECISION-LIMITS-GO
-  - CODE-APP-INTERNAL-WEB-APP-PRECISION-JS
-  appliesTo:
-  - FU-APP-DSP
-  - FU-WEB-APP-PRECISION
-  notes: PrecisionLimits models CIC3 followed by the committed FIR. It excludes ADC nonlinearity, correlated noise,
-    clock error and Q8 rounding. Reduction is not input-validated. The bandwidth search uses 45 bisection steps
-    between 0.075 and 0.5 output sample rate. Browser precision limits display uses supplied frame metadata and
-    labels ideal gain as independent-noise-only, not measured ENOB; it does not independently qualify bandwidth.
-  verificationMethods:
-  - inspection
-  - test
-  verificationCriteria: Compare ideal gain to explicit CIC/FIR impulse-response power at reductions 16, 32, 64 and
-    256; check the reported bandwidth lies within the search bracket. This does not establish analog bandwidth or
-    noise performance.
-- id: REQ-SDS-100
-  title: Factory instrument command transport
-  text: The instrument shall provide a VXI-11 client for factory command writes and query replies used during takeover.
-  status: implemented
-  realizes:
-  - CAP-SDS-SUPERVISED-OPERATION
-  category: functional
-  sourceRefs:
-  - CODE-OTA-INTERNAL-VXI11-VXI11-GO
-  appliesTo:
-  - FU-OTA-VXI11
-  notes: The client resolves DEVICE_CORE through portmapper GETPORT, retries create_link three times and appends
-    a newline to writes. RPC calls use AUTH_NULL and per-call deadlines. Query reassembles up to 64 read replies;
-    any nonzero low-three-bit reason ends reassembly. Exhausting all 64 reads returns accumulated data without an
-    explicit incomplete-response error. Send accepts a result shorter than four bytes and does not validate the
-    reported write count. RPC fragments have no cumulative size bound. Verifier-length and read-payload arithmetic
-    lack the server parser's overflow-safe checks. Close ignores destroy-link errors. The implementation has no
-    concurrency lock; callers must serialize a client. Existing tests use a loopback fake, not factory firmware.
-  verificationMethods:
-  - inspection
-  - test
-  verificationCriteria: Exercise fake portmapper/core discovery, newline-terminated STOP writes and SAST query replies.
-    Inspect retries, deadlines, framing and close behavior. The existing happy-path test does not qualify malformed
-    replies, retry exhaustion, 64-read truncation, factory compatibility or physical idle takeover.
-- id: REQ-SDS-101
-  title: OTA JSON command envelope
-  text: The instrument shall define JSON request and response envelopes for OTA command transport.
-  status: implemented
-  realizes:
-  - CAP-SDS-FIRMWARE-UPDATE
-  category: functional
-  sourceRefs:
-  - CODE-OTA-INTERNAL-RPCPROTO-RPCPROTO-GO
-  appliesTo:
-  - FU-OTA-RPCPROTO
-  notes: Requests encode cmd and optional args; responses encode ok and optional err/data. The canonical client
-    request stores args as any, so default JSON decoding converts numbers to float64. Response data is RawMessage.
-    Contrary to the package comment, the agent declares separate types with RawMessage args and any response data.
-    Golden and fixed-point tests exercise the canonical package and literal examples, not actual agent dispatch
-    or exhaustive command registration. These envelopes provide no authentication or transport framing.
-  verificationMethods:
-  - inspection
-  - test
-  verificationCriteria: Check exact golden request/response encodings, error responses retaining data, 23 sample
-    command round trips and literal agent response shapes. Run the 15 request and 11 response fuzz seeds as bounded
-    corpus checks. Stable re-encoding does not prove preservation of arbitrary numeric precision or handler behavior.
-- id: REQ-SDS-102
-  title: Platform status collection
-  text: The instrument shall collect kernel, IPv4, memory, uptime, load and OTA-filesystem space facts for status
-    reporting.
-  status: implemented
-  realizes:
-  - CAP-SDS-SUPERVISED-OPERATION
-  category: functional
-  sourceRefs:
-  - CODE-OTA-INTERNAL-SYSINFO-SYSINFO-GO
-  appliesTo:
-  - FU-OTA-SYSINFO
-  notes: Uname joins the five kernel identity strings. IPv4s excludes loopback interfaces but does not require an
-    interface to be up. Memory reports MemFree and MemTotal, not MemAvailable. Uptime and load are trimmed first
-    lines from procfs. Filesystem space uses available blocks times block size. Proc read failures yield empty strings;
-    Statfs failure yields -1; Uname embeds its error in a string. Collection is not an atomic snapshot.
-  verificationMethods:
-  - inspection
-  verificationCriteria: Inspect all seven functions, JSON field tags and error defaults against pinned source. No
-    dedicated sysinfo tests exist; source inspection does not establish device values, refresh timing or accuracy.
 - id: REQ-SDS-103
   title: Read-only inherited GPMC access
   text: The instrument shall expose read-only factory-register access through the inherited GPMC descriptor.
@@ -1997,8 +1659,6 @@ requirements:
   realizes:
   - CAP-SDS-SUPERVISED-OPERATION
   category: functional
-  sourceRefs:
-  - CODE-OTA-INTERNAL-AGENT-STATE-GO
   appliesTo:
   - FU-OTA-AGENT
   notes: A mutex serializes each stateFile instance. Update mutates the live state first, writes a fixed .tmp path,
@@ -2012,104 +1672,6 @@ requirements:
   verificationCriteria: The untakeover fixture checks clearing both flags and reloading them in a new agent. A test-only
     state probe characterizes memory/disk divergence after a failed write and partial application of malformed JSON.
     Those boundary observations document limitations, not passing durability requirements.
-- id: REQ-SDS-105
-  title: Agent health-file liveness
-  text: The instrument shall observe health-file changes and apply first-report grace and subsequent staleness deadlines.
-  status: implemented
-  realizes:
-  - CAP-SDS-SUPERVISED-OPERATION
-  category: functional
-  sourceRefs:
-  - CODE-OTA-INTERNAL-AGENT-HEALTH-GO
-  appliesTo:
-  - FU-OTA-AGENT
-  notes: The watcher attempts to remove the old token at construction, ignoring removal errors. Poll compares mtime,
-    size and up to 256 content bytes; stat errors return without updating, and read errors are ignored. An observed
-    change sets HealthyOnce and a local monotonic observation time. This does not validate coherent frames or token
-    semantics. Changes outside the prefix can be missed if size and mtime are unchanged. Verdict treats waiting
-    within grace as healthy and uses strict greater-than comparisons for expiry. Status rounds elapsed duration
-    to millisecond precision, but since_change_ms serializes the duration as nanoseconds.
-  verificationMethods:
-  - inspection
-  - test
-  verificationCriteria: Temporary-file tests cover first-report grace, refreshed versus stale tokens and removal
-    of a preexisting token. A serialization overlay reproduces the mislabeled timing unit as a limitation, not requirement
-    satisfaction. Device acquisition health, removal/read failures and unsampled content changes remain unqualified.
-- id: REQ-SDS-106
-  title: Chunked file upload sessions
-  text: The instrument shall receive file chunks into upload sessions and validate declared size and digest before
-    destination replacement.
-  status: implemented
-  realizes:
-  - CAP-SDS-FIRMWARE-UPDATE
-  category: functional
-  sourceRefs:
-  - CODE-OTA-INTERNAL-AGENT-UPLOAD-GO
-  appliesTo:
-  - FU-OTA-AGENT
-  notes: Cleaned destinations must be absolute. Temporary files reside in the destination directory. The eight-session
-    limit is checked after directory creation. Sessions older than ten minutes are evicted only when another upload
-    starts. Writes track a high-water offset, not byte coverage; positive sizes bound writes and require a SHA-256
-    digest at commit. Nonpositive sizes do neither. Commit syncs and closes before validation, then hashes, chmods
-    and renames. Failed commits can retain closed sessions and exhaust capacity until later eviction. fileSHA treats
-    all read errors as EOF and can return a partial digest without an error. Directory sync is absent. Eviction
-    does not acquire the session mutex, so the sequential tests do not establish concurrent eviction safety or durability.
-  verificationMethods:
-  - inspection
-  - test
-  verificationCriteria: Test complete out-of-order transfer with a declared digest and rejection of a missing-hash
-    sparse upload. Temporary-file probes characterize failed-commit capacity exhaustion, pre-rejection directory
-    creation, lazy eviction and ignored hash read failures. These observations document limitations; they do not
-    qualify concurrent sessions, transport framing, arbitrary failure recovery or device filesystem durability.
-- id: REQ-SDS-107
-  title: TCP agent command transport
-  text: The instrument shall dispatch JSON command requests received over TCP and return JSON response lines.
-  status: implemented
-  realizes:
-  - CAP-SDS-FIRMWARE-UPDATE
-  category: functional
-  sourceRefs:
-  - CODE-OTA-INTERNAL-AGENT-TCP-GO
-  appliesTo:
-  - FU-OTA-AGENT
-  notes: The configured plain TCP listener has no authentication or TLS in this implementation. Each accepted connection
-    receives a goroutine; no connection-count limit is enforced here. ReadBytes uses newline framing and a one-MiB
-    buffer, which does not limit request size. A nonempty final fragment is dispatched even when the read also reports
-    an error. Read and write deadlines are 120 and 30 seconds; they do not bound handler execution. Stop is checked
-    between accepts and does not directly unblock an idle listener. Existing connection handlers do not check the
-    stopped channel. TCPAddr exposes the recorded bound address, not ongoing readiness.
-  verificationMethods:
-  - inspection
-  - test
-  verificationCriteria: Run the in-memory client-envelope test and loopback socket tests for repeated requests,
-    malformed-request recovery, interleaved connections and listener closure after Stop plus another accept. An
-    in-memory overlay confirms acceptance beyond one MiB. These tests do not establish prompt idle shutdown, closure
-    of existing connections, authentication, resource bounds or behavior on the device network.
-- id: REQ-SDS-108
-  title: NATS agent command and event transport
-  text: The instrument shall dispatch NATS command requests and publish lifecycle events and periodic status heartbeats.
-  status: implemented
-  realizes:
-  - CAP-SDS-FIRMWARE-UPDATE
-  category: functional
-  sourceRefs:
-  - CODE-OTA-INTERNAL-AGENT-NATS-GO
-  appliesTo:
-  - FU-OTA-AGENT
-  notes: Subjects use ota.<device>.rpc, ota.all.rpc, ota.discover, ota.<device>.event and ota.<device>.heartbeat.
-    Device text is concatenated without validation here. RPC messages execute even without a reply subject. Initial
-    connect failures retry after five seconds; client reconnect attempts are unlimited with two-second wait. Reconnect
-    buffering is disabled. Optional CA, credentials and NKey settings delegate authentication to the client and
-    broker; invalid NKey seed is logged and its option omitted. Publish errors are ignored, so delivery is not guaranteed.
-    The online event occurs when serveNATS starts; the reconnect callback only logs. Heartbeat increments a sequence
-    and collects status fields without an atomic cross-component snapshot.
-  verificationMethods:
-  - inspection
-  - test
-  verificationCriteria: Run the isolated localhost broker test through real agent and host client transports. Verify
-    device RPC subject, initial online event, heartbeat identity/sequence, and selected ping, status, deterministic
-    exec and error parity with TCP. This does not verify reconnect announcements, broker policies, TLS, credential
-    failures, fleet broadcast, discovery, delivery under disconnection or device networking.
 - id: REQ-SDS-109
   title: Host command transport
   text: The instrument shall provide host-side TCP and NATS command transports with structured device responses.
@@ -2118,7 +1680,6 @@ requirements:
   - CAP-SDS-FIRMWARE-UPDATE
   category: functional
   sourceRefs:
-  - CODE-OTA-INTERNAL-OTACTL-TRANSPORT-GO
   - CODE-OTA-CMD-OTACTL-MAIN-GO
   appliesTo:
   - FU-OTA-OTACTL
@@ -2141,7 +1702,6 @@ requirements:
   - CAP-SDS-FIRMWARE-UPDATE
   category: functional
   sourceRefs:
-  - CODE-OTA-INTERNAL-OTACTL-CLIENT-GO
   - CODE-OTA-CMD-OTACTL-MAIN-GO
   appliesTo:
   - FU-OTA-OTACTL
@@ -2166,7 +1726,6 @@ requirements:
   - CAP-SDS-FIRMWARE-UPDATE
   category: functional
   sourceRefs:
-  - CODE-OTA-INTERNAL-OTACTL-SERVER-GO
   - CODE-OTA-CMD-OTACTL-MAIN-GO
   appliesTo:
   - FU-OTA-OTACTL
@@ -2186,7 +1745,6 @@ requirements:
   - CAP-SDS-FIRMWARE-UPDATE
   category: functional
   sourceRefs:
-  - CODE-OTA-INTERNAL-OTACTL-SHELLY-GO
   - CODE-OTA-CMD-OTACTL-MAIN-GO
   appliesTo:
   - FU-OTA-OTACTL
@@ -2206,8 +1764,6 @@ requirements:
   realizes:
   - CAP-SDS-FIRMWARE-UPDATE
   category: functional
-  sourceRefs:
-  - CODE-OTA-INTERNAL-AGENT-RPC-GO
   appliesTo:
   - FU-OTA-AGENT
   notes: Dispatch rejects malformed requests and unknown commands, preserves handler data alongside returned errors,
@@ -2232,10 +1788,6 @@ requirements:
   realizes:
   - CAP-SDS-FIRMWARE-UPDATE
   category: functional
-  sourceRefs:
-  - CODE-OTA-INTERNAL-AGENT-HANDLERS-GO
-  - CODE-OTA-INTERNAL-AGENT-AGENT-GO
-  - CODE-OTA-INTERNAL-AGENT-PROBE-GO
   appliesTo:
   - FU-OTA-AGENT
   notes: Ping returns device identity, current Unix time and agent slot. Status combines separately collected state,
@@ -2250,139 +1802,6 @@ requirements:
   - test
   verificationCriteria: Run the status response-shape test and inspect ping/probe delegation. This does not execute
     device probing, qualify register reads or establish every diagnostic field.
-- id: REQ-SDS-115
-  title: Agent command execution and log reads
-  text: The instrument shall provide command execution and log-tail operations through the agent.
-  status: implemented
-  realizes:
-  - CAP-SDS-FIRMWARE-UPDATE
-  category: functional
-  sourceRefs:
-  - CODE-OTA-INTERNAL-AGENT-HANDLERS-GO
-  - CODE-OTA-INTERNAL-AGENT-EXEC-GO
-  appliesTo:
-  - FU-OTA-AGENT
-  notes: Exec and shell handlers reject malformed arguments and empty commands; nonpositive converted timeouts default
-    to thirty seconds. Commands inherit the agent environment and privileges. Combined output has no size bound,
-    and command-start failure can return exit zero alongside an error. CommandContext kills the direct command,
-    but a descendant retaining the output pipe can delay return beyond the timeout; a 500 ms fixture returned after
-    about two seconds. Logs ignores argument decode errors, permits a supplied path and defaults nonpositive tails
-    to 8192 bytes. Tail reads to EOF after stat/seek, so file growth can exceed the requested amount.
-  verificationMethods:
-  - inspection
-  - test
-  verificationCriteria: Run reviewed log-tail, argv/exit-data and shell tests plus the isolated missing-executable
-    and descendant-pipe characterization. No arbitrary production command, factory process, device access or complete
-    timeout guarantee is tested.
-- id: REQ-SDS-116
-  title: Agent file-read chunks
-  text: The instrument shall return file-read chunks through the agent.
-  status: implemented
-  realizes:
-  - CAP-SDS-FIRMWARE-UPDATE
-  category: functional
-  sourceRefs:
-  - CODE-OTA-INTERNAL-AGENT-HANDLERS-GO
-  appliesTo:
-  - FU-OTA-AGENT
-  notes: Get decodes path, offset and length, replacing lengths outside 1..524288 with 262144, then returns base64
-    bytes, offset, EOF and file size. Stat errors are ignored; every ReadAt error becomes EOF while the handler
-    returns no error. A negative-offset fixture returns success with empty data and EOF. This does not establish
-    snapshot consistency, an integrity digest or complete transfer.
-  verificationMethods:
-  - inspection
-  - test
-  verificationCriteria: Run middle-chunk, short-tail and missing-file assertions plus the negative-offset characterization.
-    Concurrent file changes and complete transfer integrity remain unqualified.
-- id: REQ-SDS-117
-  title: Agent application control requests
-  text: The instrument shall provide guarded application start, stop and restart requests.
-  status: implemented
-  realizes:
-  - CAP-SDS-SUPERVISED-OPERATION
-  category: functional
-  sourceRefs:
-  - CODE-OTA-INTERNAL-AGENT-HANDLERS-GO
-  - CODE-OTA-INTERNAL-AGENT-SUPERVISE-GO
-  appliesTo:
-  - FU-OTA-AGENT
-  notes: Start and restart require TakenOver; stop does not. Start resets the failure count before requesting control.
-    Start uses five seconds and stop/restart eight seconds for each control-channel phase. A timed-out queued request
-    is not cancelled. Returned handler data may contain ok=true alongside an outer RPC error. These requests do
-    not guarantee application health or immediate completion of every process transition. Control requests have
-    separate send and reply timeouts, no stopped-channel case and no cancellation after timeout. Idle control rejects
-    unknown operations; active/adopted control tears down on any operation.
-  verificationMethods:
-  - inspection
-  - test
-  verificationCriteria: Run pre-takeover start refusal and idle-supervisor start/stop/restart tests. The control-timeout
-    overlay shows a queued request can take effect after the caller times out. Actual device takeover and running-application
-    restart are not qualified.
-- id: REQ-SDS-118
-  title: Agent application slot installation
-  text: The instrument shall install application payloads and select installed application slots.
-  status: implemented
-  realizes:
-  - CAP-SDS-FIRMWARE-UPDATE
-  category: functional
-  sourceRefs:
-  - CODE-OTA-INTERNAL-AGENT-HANDLERS-GO
-  - CODE-OTA-INTERNAL-SLOTS-SLOTS-GO
-  appliesTo:
-  - FU-OTA-AGENT
-  notes: Application update installs to the other active slot, sets the active pointer and resets the failure count.
-    Supplied-digest checks are specified by REQ-SDS-029. Activation normalizes the slot name and requires a nonempty
-    regular file, without checking image validity or execute permission. When TakenOver, update/activation request restart but ignore
-    its errors. Successful responses do not prove launch, health confirmation or rollback behavior.
-  verificationMethods:
-  - inspection
-  - test
-  verificationCriteria: Run temporary-file inactive-slot installation, activation normalization/empty-slot refusal
-    tests. The isolated activation fixture proves acceptance of non-image contents and missing
-    executable bits without launching a payload.
-- id: REQ-SDS-119
-  title: Agent self-update and restart handoff
-  text: The instrument shall stage an agent slot update and request a clean exit for boot-loop handoff.
-  status: implemented
-  realizes:
-  - CAP-SDS-FIRMWARE-UPDATE
-  category: functional
-  sourceRefs:
-  - CODE-OTA-INTERNAL-AGENT-HANDLERS-GO
-  - CODE-OTA-INTERNAL-AGENT-EXEC-GO
-  appliesTo:
-  - FU-OTA-AGENT
-  notes: Agent update selects A only when currently running B; otherwise it targets B. It copies the source, writes
-    the active pointer and schedules Stop/exit zero after 750 ms. Restart schedules exit after 500 ms. The supplied
-    digest is optional under REQ-SDS-029. Copy uses a fixed temporary path, file sync and rename, but no directory
-    sync or chmod of an existing temporary file; a fixture retains mode 0600. Active-pointer write uses temporary
-    write/rename without sync. Intent-marker write errors are ignored. Handler success does not prove boot-loop
-    respawn, adoption, rollback, executable image validity or durable markers.
-  verificationMethods:
-  - inspection
-  - test
-  verificationCriteria: Run captured-exit update/restart tests and digest refusal tests. Check exact installed bytes,
-    active/intent markers and Stop notification. Copy-mode and omitted-digest fixtures record limits. The test hook
-    captures process exit; no real agent replacement or payload launch occurs.
-- id: REQ-SDS-120
-  title: Agent untakeover control
-  text: The instrument shall provide an untakeover control that hands the scope back to the factory app at the next power-on.
-  status: implemented
-  realizes:
-  - CAP-SDS-SUPERVISED-OPERATION
-  category: functional
-  sourceRefs:
-  - CODE-OTA-INTERNAL-AGENT-HANDLERS-GO
-  appliesTo:
-  - FU-OTA-AGENT
-  notes: Untakeover ignores stop-request failure, clears persisted takeover flags, resets the failure count and disarms
-    the watchdog; it does not relaunch the factory program. The factory program is not relaunched in place by any
-    control - a relaunch does not drive the scope - so it comes back only from a power-on.
-  verificationMethods:
-  - inspection
-  - test
-  verificationCriteria: Run only the taken-over and missing-path refusal tests. Inspect launch/options and descriptor
-    release; do not execute a factory program, read PID-1 environment or claim successful physical recovery.
 - id: REQ-SDS-121
   title: Agent reboot confirmation gate
   text: The instrument shall require a decoded confirmation flag before requesting reboot through the agent.
@@ -2390,8 +1809,6 @@ requirements:
   realizes:
   - CAP-SDS-FIRMWARE-UPDATE
   category: functional
-  sourceRefs:
-  - CODE-OTA-INTERNAL-AGENT-HANDLERS-GO
   appliesTo:
   - FU-OTA-AGENT
   notes: The handler ignores argument decoding errors but rejects a false decoded confirm flag. A true flag invokes
@@ -2409,8 +1826,6 @@ requirements:
   realizes:
   - CAP-SDS-SUPERVISED-OPERATION
   category: functional
-  sourceRefs:
-  - CODE-OTA-INTERNAL-AGENT-AGENT-GO
   appliesTo:
   - FU-OTA-AGENT
   notes: New loads persisted state, creates the four-entry control channel and store/watchdog objects, and discovers
@@ -2433,8 +1848,6 @@ requirements:
   realizes:
   - CAP-SDS-FIRMWARE-UPDATE
   category: functional
-  sourceRefs:
-  - CODE-OTA-INTERNAL-AGENT-AGENT-GO
   appliesTo:
   - FU-OTA-AGENT
   notes: Event delivery logs first, copies the callback while holding eventMu and invokes it after unlocking. Registration
@@ -2473,12 +1886,9 @@ requirements:
   realizes:
   - CAP-SDS-SIGNAL-ANALYSIS
   category: functional
-  sourceRefs:
-  - CODE-APP-INTERNAL-WEB-APP-VIEWS-JS
-  - CODE-APP-INTERNAL-WEB-BODE-JS
   appliesTo:
-  - FU-WEB-APP-VIEWS
-  - FU-WEB-BODE
+  - core::FU-DSO-WEBCLIENT
+  - core::FU-DSO-WEBCLIENT
   verificationMethods:
   - inspection
   - test
@@ -2775,16 +2185,8 @@ requirements:
   realizes:
   - CAP-SDS-ENHANCED-RESOLUTION
   category: functional
-  sourceRefs:
-  - CODE-APP-INTERNAL-SUPERRES-SRFUZZ-TEST-GO
-  - CODE-APP-INTERNAL-SUPERRES-SUPERRES-GO
-  - CODE-APP-INTERNAL-SUPERRES-SUPERRES-GATE-GO
-  - CODE-APP-INTERNAL-SUPERRES-SUPERRES-PARITY-TEST-GO
-  - CODE-APP-INTERNAL-SUPERRES-SUPERRES-RESULT-GO
-  - CODE-APP-INTERNAL-SUPERRES-SUPERRES-STACK-GO
-  - CODE-APP-INTERNAL-SUPERRES-SUPERRES-TEMPLATE-GO
   appliesTo:
-  - FU-APP-SUPERRES
+  - core::FU-DSO-SUPERRES
   verificationMethods:
   - inspection
   - test
@@ -2792,38 +2194,6 @@ requirements:
     qualification.'
   notes: Dimensions and ownership are caller preconditions. Synthetic checksum parity does not prove full array
     identity, universal matching, independent samples or physical ENOB. Failed seeding is not transactional.
-- id: REQ-SDS-142
-  title: Super-resolution magnitude compensation
-  text: The instrument shall offer regularized magnitude compensation using the stored response curve, configurable
-    gain limits and budget-derived target selection while restoring gap locations in the result.
-  status: implemented
-  realizes:
-  - CAP-SDS-ENHANCED-RESOLUTION
-  category: functional
-  sourceRefs:
-  - CODE-APP-INTERNAL-SUPERRES-COMP-REF-TEST-GO
-  - CODE-APP-INTERNAL-SUPERRES-COMP-JSPARITY-TEST-GO
-  - CODE-APP-INTERNAL-SUPERRES-COMP-TEST-GO
-  - CODE-APP-INTERNAL-WEB-SUPERRES-COMP-JS
-  - CODE-APP-INTERNAL-SUPERRES-COMP-PARITY-DRIVER-CJS
-  appliesTo:
-  - FU-APP-SUPERRES
-  - FU-WEB-SUPERRES-COMP
-  verificationMethods:
-  - inspection
-  - test
-  verificationCriteria: 'Synthetic parity and sanity tests do not establish complete clause coverage or physical
-    qualification. See superres-numerical-source-review.json and superres-numerical-test-run.json
-    for two original Node suites and seven bounded boundary characterizations. The parity driver
-    limitations are recorded in remaining-harness-source-review.json; agreement is not independent
-    physical truth.'
-  notes: Stored calibration provenance and applicability remain unqualified. Grid-rate and recovered-bandwidth figures
-    are model outputs. The target formula yields half amplitude at its parameter frequency despite the -3dB comment;
-    the40MHz auto floor may exceed the raw-Nyquist ceiling. Browser compensation uses a stored response table through
-    92 MHz followed by a matched two-pole extrapolation. The target magnitude at fbw is 0.5 (-6.02 dB), despite
-    a -3 dB comment. Auto selection has a minimum 4 dB budget and 40 MHz floor; with zero gained bits and 10 MHz
-    raw Nyquist it selects 40 MHz, exceeding the stated ceiling. Original restoration fixtures use the same response
-    function for attenuation and compensation, so they are not independent calibration evidence.
 - id: REQ-SDS-161
   title: Web hosting routing and client epoch
   text: The instrument shall expose its default web assets and API routes and provide a client epoch claim checked
@@ -2832,11 +2202,6 @@ requirements:
   realizes:
   - CAP-SDS-WEB-UI
   category: functional
-  sourceRefs:
-  - CODE-APP-INTERNAL-WEB-APIFUZZ-TEST-GO
-  - CODE-APP-INTERNAL-WEB-ASSETS-GO
-  - CODE-APP-INTERNAL-WEB-WEB-GO
-  - CODE-APP-INTERNAL-WEB-WEB-TEST-GO
   appliesTo:
   - FU-APP-WEB
   verificationMethods:
@@ -2855,14 +2220,6 @@ requirements:
   realizes:
   - CAP-SDS-WEB-UI
   category: functional
-  sourceRefs:
-  - CODE-APP-INTERNAL-WEB-APIFUZZ-TEST-GO
-  - CODE-APP-INTERNAL-WEB-WEB-GO
-  - CODE-APP-INTERNAL-WEB-WEB-CONTROL-GO
-  - CODE-APP-INTERNAL-WEB-WEB-CONTROL-TEST-GO
-  - CODE-APP-INTERNAL-WEB-WEB-SERIALTRIG-TEST-GO
-  - CODE-APP-INTERNAL-WEB-WEB-TEST-GO
-  - CODE-APP-INTERNAL-WEB-ZONEMASK-API-TEST-GO
   appliesTo:
   - FU-APP-WEB
   verificationMethods:
@@ -2881,19 +2238,6 @@ requirements:
   realizes:
   - CAP-SDS-ACQUISITION
   category: functional
-  sourceRefs:
-  - CODE-APP-INTERNAL-WEB-APIFUZZ-TEST-GO
-  - CODE-APP-INTERNAL-WEB-BIN-TEST-GO
-  - CODE-APP-INTERNAL-WEB-FRAMEFUZZ-TEST-GO
-  - CODE-APP-INTERNAL-WEB-MEASURE-TEST-GO
-  - CODE-APP-INTERNAL-WEB-PRECISION-FRAME-TEST-GO
-  - CODE-APP-INTERNAL-WEB-WEB-GO
-  - CODE-APP-INTERNAL-WEB-WEB-BINFRAME-GO
-  - CODE-APP-INTERNAL-WEB-WEB-CONTROL-TEST-GO
-  - CODE-APP-INTERNAL-WEB-WEB-FRAME-GO
-  - CODE-APP-INTERNAL-WEB-WEB-FRAME-TEST-GO
-  - CODE-APP-INTERNAL-WEB-WEB-TEST-GO
-  - CODE-APP-INTERNAL-WEB-BINFRAME-TEST-CJS
   appliesTo:
   - FU-APP-WEB
   verificationMethods:
@@ -2914,14 +2258,6 @@ requirements:
   realizes:
   - CAP-SDS-MEASUREMENT
   category: functional
-  sourceRefs:
-  - CODE-APP-INTERNAL-WEB-APIFUZZ-TEST-GO
-  - CODE-APP-INTERNAL-WEB-BIN-TEST-GO
-  - CODE-APP-INTERNAL-WEB-WEB-GO
-  - CODE-APP-INTERNAL-WEB-WEB-FRAME-GO
-  - CODE-APP-INTERNAL-WEB-WEB-INVS-TEST-GO
-  - CODE-APP-INTERNAL-WEB-WEB-STATUS-GO
-  - CODE-APP-INTERNAL-WEB-WEB-TEST-GO
   appliesTo:
   - FU-APP-WEB
   verificationMethods:
@@ -3065,26 +2401,6 @@ requirements:
     mains and the actual fingerprint script remain inspection-only. No current hardware
     qualification is established.'
   notes: Labels default to dev and unknown and do not establish validated build provenance.
-- id: REQ-SDS-179
-  title: Required browser test dependencies
-  text: The instrument shall provide test helpers that require Node and turn unavailable browser dependencies into
-    failures when CI_REQUIRE_BROWSER is enabled.
-  status: implemented
-  realizes:
-  - CAP-SDS-OFFLINE-VERIFICATION
-  category: functional
-  sourceRefs:
-  - CODE-APP-INTERNAL-TESTENV-TESTENV-GO
-  appliesTo:
-  - FU-APP-TESTENV
-  verificationMethods:
-  - inspection
-  - test
-  verificationCriteria: 'Preserve all 22 original test outcomes and executable provenance; a Go race failure remains a
-    failure even when browser assertions pass. Optional skipped tests provide no positive
-    verification. Verify source comment integration preserves exact baseline and Go tokens.'
-  notes: Availability helpers do not launch Chromium themselves. Browser launch evidence is retained separately;
-    absent optional sigrok is not a browser dependency failure.
 - id: REQ-SDS-180
   title: Synthetic browser regression harnesses
   text: The instrument shall provide localhost browser regression harnesses with synthetic scope fixtures for control,
@@ -3093,35 +2409,6 @@ requirements:
   realizes:
   - CAP-SDS-OFFLINE-VERIFICATION
   category: functional
-  sourceRefs:
-  - CODE-APP-INTERNAL-WEB-ACCEPTANCE-BROWSER-TEST-GO
-  - CODE-APP-INTERNAL-WEB-CHAOS-BROWSER-TEST-GO
-  - CODE-APP-INTERNAL-WEB-DECODE-BROWSER-TEST-GO
-  - CODE-APP-INTERNAL-WEB-DEEPMEM-BROWSER-TEST-GO
-  - CODE-APP-INTERNAL-WEB-FFT-BROWSER-TEST-GO
-  - CODE-APP-INTERNAL-WEB-FUZZ-BROWSER-TEST-GO
-  - CODE-APP-INTERNAL-WEB-INVS-BROWSER-TEST-GO
-  - CODE-APP-INTERNAL-WEB-PERF-BROWSER-TEST-GO
-  - CODE-APP-INTERNAL-WEB-PERFSERVE-TEST-GO
-  - CODE-APP-INTERNAL-WEB-SERIALTRIG-BROWSER-TEST-GO
-  - CODE-APP-INTERNAL-WEB-SIGROK-EXPORT-E2E-TEST-GO
-  - CODE-APP-INTERNAL-WEB-SUPERRES-BROWSER-TEST-GO
-  - CODE-APP-INTERNAL-WEB-TRANSPORT-BROWSER-TEST-GO
-  - CODE-APP-INTERNAL-WEB-ZONEMASK-BROWSER-TEST-GO
-  - CODE-APP-INTERNAL-WEB-ACCEPTANCE-BROWSER-MJS
-  - CODE-APP-INTERNAL-WEB-CHAOS-BROWSER-MJS
-  - CODE-APP-INTERNAL-WEB-DECODE-BROWSER-MJS
-  - CODE-APP-INTERNAL-WEB-DEEPMEM-BROWSER-MJS
-  - CODE-APP-INTERNAL-WEB-FFT-BROWSER-MJS
-  - CODE-APP-INTERNAL-WEB-INVS-BROWSER-MJS
-  - CODE-APP-INTERNAL-WEB-STACKPERF-BROWSER-MJS
-  - CODE-APP-INTERNAL-WEB-SERIALTRIG-BROWSER-MJS
-  - CODE-APP-INTERNAL-WEB-SUPERRES-BROWSER-MJS
-  - CODE-APP-INTERNAL-WEB-TRANSPORT-BROWSER-MJS
-  - CODE-APP-INTERNAL-WEB-ZONEMASK-BROWSER-MJS
-  - CODE-APP-INTERNAL-WEB-SCOPE-PO-MJS
-  - CODE-APP-INTERNAL-WEB-E2E-FUZZ-MJS
-  - CODE-APP-INTERNAL-WEB-E2E-OPERATOR-MJS
   appliesTo:
   - FU-APP-WEB
   verificationMethods:
@@ -3142,18 +2429,6 @@ requirements:
   realizes:
   - CAP-SDS-OFFLINE-VERIFICATION
   category: functional
-  sourceRefs:
-  - CODE-APP-INTERNAL-WEB-DECODE-NODE-TEST-GO
-  - CODE-APP-INTERNAL-WEB-EYEJITTER-NODE-TEST-GO
-  - CODE-APP-INTERNAL-WEB-SUPERRES-COMP-NODE-TEST-GO
-  - CODE-APP-INTERNAL-WEB-SUPERRES-ETS-NODE-TEST-GO
-  - CODE-APP-INTERNAL-WEB-SUPERRES-NODE-TEST-GO
-  - CODE-APP-INTERNAL-WEB-DECODE-TEST-CJS
-  - CODE-APP-INTERNAL-WEB-EYEJITTER-TEST-CJS
-  - CODE-APP-INTERNAL-WEB-SUPERRES-TEST-CJS
-  - CODE-APP-INTERNAL-WEB-SUPERRES-COMP-TEST-CJS
-  - CODE-APP-INTERNAL-WEB-SUPERRES-ETS-TEST-CJS
-  - CODE-APP-INTERNAL-WEB-DECPARITY-CHECK-MJS
   appliesTo:
   - FU-APP-WEB
   verificationMethods:
@@ -3175,8 +2450,6 @@ requirements:
   realizes:
   - CAP-SDS-OFFLINE-VERIFICATION
   category: functional
-  sourceRefs:
-  - CODE-APP-INTERNAL-WEB-UI-LINT-TEST-GO
   appliesTo:
   - FU-APP-WEB
   verificationMethods:
@@ -3281,51 +2554,6 @@ requirements:
     and PLL timeout branches. Verify exact source comment overlays; simulation does not establish physical qualification.
   notes: Original simulation checks reduced monitoring widths, latency, activity flags, saturation and idle windows.
     Sampling cannot observe transitions between sampling edges.
-- id: REQ-SDS-199
-  title: Eye and jitter numerical accumulation
-  text: The instrument shall estimate a per-record serial clock grid, accumulate TIE and folded eye density, and
-    report bounded synthetic jitter statistics.
-  status: implemented
-  realizes:
-  - CAP-SDS-SIGNAL-ANALYSIS
-  category: functional
-  sourceRefs:
-  - CODE-APP-INTERNAL-WEB-EYEJITTER-JS
-  - CODE-APP-INTERNAL-WEB-EYEJITTER-ANALYSIS-JS
-  appliesTo:
-  - FU-WEB-EYEJITTER
-  - FU-WEB-EYEJITTER-ANALYSIS
-  verificationMethods:
-  - inspection
-  - test
-  verificationCriteria: 'Preserve the original suite, all 50 breaker outcomes and 11 isolated guard cases with exact
-    source provenance. Credit only the executed scopes; rendering and physical operation remain
-    unverified.'
-  notes: The source uses inconsistent vertical coordinate scales for density deposits and eye-height conversion.
-    Period/cycle-to-cycle samples retain the first capped window; TIE aggregates remain live. Spectrum bins are
-    accumulated without frequency-axis rebinning. These limitations remain unresolved; passing synthetic vectors
-    does not establish calibrated accuracy.
-- id: REQ-SDS-200
-  title: Eye and jitter display
-  text: The instrument shall display accumulated eye density, TIE histogram, spectrum and available summary metrics
-    in compact and enlarged browser views.
-  status: implemented
-  realizes:
-  - CAP-SDS-SIGNAL-ANALYSIS
-  category: functional
-  sourceRefs:
-  - CODE-APP-INTERNAL-WEB-APP-EYE-JS
-  appliesTo:
-  - FU-WEB-APP-EYE
-  verificationMethods:
-  - inspection
-  - test
-  verificationCriteria: 'Preserve the original suite, all 50 breaker outcomes and 11 isolated guard cases with exact
-    source provenance. Credit only the executed scopes; rendering and physical operation remain
-    unverified.'
-  notes: Source inspection only for rendering. Enlarged eye information uses mV even with fallback calibration,
-    unlike the main table. Height-only resize is not handled by the width-triggered canvas resize. No pixel or physical
-    metrology verification is claimed.
 - id: REQ-SDS-201
   title: Eye acquisition and optimization control
   text: The instrument shall acquire raw eye records with generation and sequence guards and search supported timebase
@@ -3334,10 +2562,8 @@ requirements:
   realizes:
   - CAP-SDS-SIGNAL-ANALYSIS
   category: functional
-  sourceRefs:
-  - CODE-APP-INTERNAL-WEB-APP-EYE-JS
   appliesTo:
-  - FU-WEB-APP-EYE
+  - core::FU-DSO-WEBCLIENT
   verificationMethods:
   - inspection
   - test
@@ -3356,14 +2582,10 @@ requirements:
   realizes:
   - CAP-SDS-WEB-UI
   category: functional
-  sourceRefs:
-  - CODE-APP-INTERNAL-WEB-APP-GEOM-JS
-  - CODE-APP-INTERNAL-WEB-APP-CANVAS-JS
-  - CODE-APP-INTERNAL-WEB-APP-NAV-JS
   appliesTo:
-  - FU-WEB-APP-GEOM
-  - FU-WEB-APP-CANVAS
-  - FU-WEB-APP-NAV
+  - core::FU-DSO-WEBCLIENT
+  - core::FU-DSO-WEBCLIENT
+  - core::FU-DSO-WEBCLIENT
   verificationMethods:
   - inspection
   - test
@@ -3381,10 +2603,8 @@ requirements:
   realizes:
   - CAP-SDS-COMPARE
   category: functional
-  sourceRefs:
-  - CODE-APP-INTERNAL-WEB-APP-DRAW-JS
   appliesTo:
-  - FU-WEB-APP-DRAW
+  - core::FU-DSO-WEBCLIENT
   verificationMethods:
   - inspection
   - test
@@ -3404,13 +2624,9 @@ requirements:
   realizes:
   - CAP-SDS-WEB-UI
   category: functional
-  sourceRefs:
-  - CODE-APP-INTERNAL-WEB-APP-JS
-  - CODE-APP-INTERNAL-WEB-APP-CORE-JS
-  - CODE-APP-INTERNAL-WEB-APP-CONTROLS-JS
   appliesTo:
-  - FU-WEB-APP
-  - FU-WEB-APP-CORE
+  - core::FU-DSO-WEBCLIENT
+  - core::FU-DSO-WEBCLIENT
   - FU-WEB-APP-CONTROLS
   verificationMethods:
   - inspection
@@ -3434,10 +2650,8 @@ requirements:
   realizes:
   - CAP-SDS-ENHANCED-RESOLUTION
   category: functional
-  sourceRefs:
-  - CODE-APP-INTERNAL-WEB-APP-PRECISION-JS
   appliesTo:
-  - FU-WEB-APP-PRECISION
+  - core::FU-DSO-WEBCLIENT
   verificationMethods:
   - inspection
   - test
@@ -3458,8 +2672,6 @@ requirements:
   realizes:
   - CAP-SDS-TRIGGER
   category: functional
-  sourceRefs:
-  - CODE-APP-INTERNAL-WEB-APP-SERIALTRIG-JS
   appliesTo:
   - FU-WEB-APP-SERIALTRIG
   verificationMethods:
@@ -3479,10 +2691,8 @@ requirements:
   realizes:
   - CAP-SDS-PROTOCOL-DECODE
   category: functional
-  sourceRefs:
-  - CODE-APP-INTERNAL-WEB-APP-DECODE-JS
   appliesTo:
-  - FU-WEB-APP-DECODE
+  - core::FU-DSO-WEBCLIENT
   verificationMethods:
   - inspection
   - test
@@ -3494,32 +2704,6 @@ requirements:
     innerHTML includes unescaped watch reason and transcript snippets. Clipboard UI reports copied regardless of
     asynchronous success. No browser DOM security or physical protocol truth is established by isolated control
     tests.
-- id: REQ-SDS-208
-  title: Device-facing operator workflow harnesses
-  text: The instrument shall provide operator workflow fixtures for tone, PRBS, UART, SPI, burst and mask sources,
-    shared assertion helpers and a missing-channel regression driver.
-  status: implemented
-  realizes:
-  - CAP-SDS-OFFLINE-VERIFICATION
-  category: functional
-  sourceRefs:
-  - CODE-APP-INTERNAL-WEB-E2E-WORKFLOW-ASSERT-MJS
-  - CODE-APP-INTERNAL-WEB-E2E-WORKFLOW-MASK-MJS
-  - CODE-APP-INTERNAL-WEB-E2E-REGRESS-MISSING-CHANNEL-MJS
-  - CODE-APP-INTERNAL-WEB-E2E-WORKFLOW-ANALOG-MJS
-  - CODE-APP-INTERNAL-WEB-E2E-WORKFLOW-SERIAL-MJS
-  appliesTo:
-  - FU-APP-WEB
-  verificationMethods:
-  - inspection
-  - test
-  verificationCriteria: Inspect the complete reviewed source and retain the oracle limits in remaining-harness-source-review.json.
-    Device-facing workflows are not executed or credited as passing by this review. Runtime claims require the correct
-    source fixture, confirmed actions and preserved per-case outcomes.
-  notes: 'Several names exceed their actual predicates: status strings, selected control state or PNG byte size
-    do not prove physical capture, reconstruction improvement, browser pixels or correct qualifier behavior. Fixed
-    waits, optional controls, swallowed errors and state-dependent cases limit coverage. No hardware qualification
-    is inferred from source presence.'
 - id: REQ-SDS-210
   title: Reproducible FPGA image build
   text: The instrument shall provide an FPGA image build that publishes a bitstream only from a fresh project at
@@ -3758,7 +2942,7 @@ requirements:
   appliesTo:
   - FU-APP-PANEL
   - FU-APP-WEB
-  - FU-WEB-APP-DECODE
+  - core::FU-DSO-WEBCLIENT
   - FU-APP-SETTINGS
   verificationMethods:
   - test
@@ -3873,7 +3057,7 @@ requirements:
   appliesTo:
   - FU-APP-PANEL
   - FU-APP-WEB
-  - FU-WEB-APP-COMPARE
+  - core::FU-DSO-WEBCLIENT
   verificationMethods:
   - test
   verificationCriteria: Panel tests store, hide, store again and clear a slot as a page does and check the status
@@ -3898,7 +3082,7 @@ requirements:
   - FU-APP-PANEL
   - FU-APP-LCD
   - FU-APP-WEB
-  - FU-WEB-APP-BUS
+  - core::FU-DSO-WEBCLIENT
   verificationMethods:
   - test
   verificationCriteria: Panel tests cycle Packets, Eye diagram and Stream with F2 and check that the Stream view starts
@@ -3921,7 +3105,7 @@ requirements:
   category: functional
   appliesTo:
   - FU-RTL-ACQ-SRAM-TOP
-  - FU-APP-DECODE
+  - core::FU-DSO-DECODE
   - FU-APP-ENGINE
   - FU-APP-SRAMCAPTURE
   - FU-APP-PANEL
@@ -3953,7 +3137,7 @@ requirements:
   - CAP-SDS-PROTOCOL-DECODE
   category: functional
   appliesTo:
-  - FU-APP-DECODE
+  - core::FU-DSO-DECODE
   - FU-APP-ENGINE
   - FU-APP-PANEL
   verificationMethods:
@@ -3996,124 +3180,6 @@ requirements:
     as another configuration did. A held core is told from a live one only while the input moves (a snapshot of the
     ten cores at 64 instants, three codes off a core's median in an eighth of them); 64 snapshots take about 80 to
     130 ms of bus reads, so between checks the full-rate records' own samples are looked at once a second.
-- id: REQ-SDS-232
-  title: UART-framed protocol decoding
-  text: The instrument shall decode LIN (break, sync, protected identifier and checksum), DMX512 (break, mark after
-    break, start code and slots), MIDI (status and data bytes with running status) and Modbus RTU (address, function,
-    data and CRC-16) from one line, on the LCD and the web page alike.
-  status: implemented
-  realizes:
-  - CAP-SDS-PROTOCOL-DECODE
-  category: functional
-  appliesTo:
-  - FU-APP-DECODE
-  - FU-WEB-DECODE
-  - FU-APP-PANEL
-  verificationMethods:
-  - test
-  verificationCriteria: Synthetic buses (LIN at 9600, 10417 and 19200 bit/s with classic and enhanced checksums and
-    a header no node answers; DMX512 packets of 1 to 512 slots; MIDI channel, system and real-time messages with
-    running status; Modbus RTU in 8E1, 8O1 and 8N2) decode to the frames sent, a wrong checksum, CRC or parity is
-    flagged, the decoders agree with sigrok's lin, dmx512, midi and modbus decoders on the same records, and the
-    JavaScript twins return the Go decoders' bytes and text.
-  notes: The four read characters off the UART line with one reader (a start bit at each falling edge from idle, the
-    bits sampled mid-bit); a zero character whose low lasts 11 bits or more is a LIN break, 22 bits (88 us) a DMX512
-    break. LIN's rate is read off its sync fields; Modbus's framing is the one whose frames' CRCs check.
-- id: REQ-SDS-233
-  title: Pulse-coded single-wire protocol decoding
-  text: The instrument shall decode 1-Wire (resets, presence, time slots in standard and overdrive speed, ROM commands
-    and the ROM CRC-8), WS281x LED data (800 and 400 kbit/s), DHT11, DHT22 and AM230x readings with their checksum,
-    HDMI-CEC messages with their end-of-message and acknowledge bits, and SAE J1850 VPW frames with their CRC-8.
-  status: implemented
-  realizes:
-  - CAP-SDS-PROTOCOL-DECODE
-  category: functional
-  appliesTo:
-  - FU-APP-DECODE
-  - FU-WEB-DECODE
-  - FU-APP-PANEL
-  verificationMethods:
-  - test
-  verificationCriteria: Synthetic lines (1-Wire Match, Read, Search and Skip ROM transactions and an overdrive
-    transaction; WS2812 and WS2811 frames; DHT readings from a 1 ms and an 18 ms start; CEC directed and broadcast
-    messages and a poll nobody answers; J1850 frames and an in-frame response) decode to what was sent, broken checks
-    are flagged, the decoders agree with sigrok's onewire_link and onewire_network, rgb_led_ws281x, am230x, cec and
-    sae_j1850_vpw decoders, and the JavaScript twins return the Go decoders' bytes and text.
-  notes: Each reads the line as runs of one level between its crossings and classifies them by their length in
-    microseconds.
-- id: REQ-SDS-234
-  title: Infrared remote protocol decoding
-  text: The instrument shall decode NEC (frames and repeats), Sony SIRC (12, 15 and 20 bits), RC-5 (and RC-5X) and
-    RC-6 remote-control frames from a demodulating receiver's output, an emitter's drive or a still-modulated carrier.
-  status: implemented
-  realizes:
-  - CAP-SDS-PROTOCOL-DECODE
-  category: functional
-  appliesTo:
-  - FU-APP-DECODE
-  - FU-WEB-DECODE
-  - FU-APP-PANEL
-  verificationMethods:
-  - test
-  verificationCriteria: Each protocol's synthetic frames on an active-low line, an active-high line and a 38 kHz
-    modulated line decode to the address and command sent; an NEC command whose inverse does not match is flagged;
-    the decoders agree with sigrok's ir_nec, ir_sirc, ir_rc5 and ir_rc6 decoders, and the JavaScript twins return the
-    Go decoders' bytes and text.
-  notes: The idle level is the level of the line's longest run; marks closer than 150 us (a carrier's gaps) are one
-    mark.
-- id: REQ-SDS-235
-  title: Biphase protocol decoding
-  text: The instrument shall decode DALI forward, backward and 24-bit frames, USB Power Delivery messages (ordered
-    sets, 4b5b symbols, header and CRC-32) on a CC line, and S/PDIF subframes (B, M and W preambles, 24-bit samples
-    and parity) at sample rates from 32 to 192 kHz.
-  status: implemented
-  realizes:
-  - CAP-SDS-PROTOCOL-DECODE
-  category: functional
-  appliesTo:
-  - FU-APP-DECODE
-  - FU-WEB-DECODE
-  - FU-APP-PANEL
-  verificationMethods:
-  - test
-  verificationCriteria: Synthetic DALI frames, USB PD messages (control and data, SOP and SOP', a hard reset, a
-    broken CRC-32) and S/PDIF streams at 48 and 96 kHz decode to what was sent, the decoders agree with sigrok's dali,
-    usb_power_delivery and spdif decoders, and the JavaScript twins return the Go decoders' bytes and text.
-- id: REQ-SDS-236
-  title: Clocked two-line protocol decoding
-  text: The instrument shall decode PS/2 device frames and host requests, SWD requests, acknowledges and data words
-    with their parities, MDIO clause 22 and clause 45 frames, and Wiegand 26 and 34-bit card frames with their
-    parities, from a clock (or D0) line and a data (or D1) line on either channel.
-  status: implemented
-  realizes:
-  - CAP-SDS-PROTOCOL-DECODE
-  category: functional
-  appliesTo:
-  - FU-APP-DECODE
-  - FU-WEB-DECODE
-  - FU-APP-PANEL
-  verificationMethods:
-  - test
-  verificationCriteria: Synthetic PS/2 keyboard traffic and a host command, SWD line resets and reads and writes (OK,
-    WAIT, a parity error), MDIO reads and writes in both clauses and a frame no PHY answers, and Wiegand frames decode
-    to what was sent; the decoders agree with sigrok's ps2, swd, mdio and wiegand decoders, and the JavaScript twins
-    return the Go decoders' bytes and text.
-- id: REQ-SDS-237
-  title: USB low and full speed
-  text: The instrument shall decode USB packets at low speed (1.5 Mbit/s) and full speed (12 Mbit/s) on one data
-    line, checking each token's CRC5 and each data packet's CRC16.
-  status: implemented
-  realizes:
-  - CAP-SDS-PROTOCOL-DECODE
-  category: functional
-  appliesTo:
-  - FU-APP-DECODE
-  - FU-WEB-DECODE
-  verificationMethods:
-  - test
-  verificationCriteria: Full-speed packets (SETUP, DATA0, ACK, a token and a data packet with a broken CRC16) decode
-    to the PIDs and bytes sigrok's usb_signalling and usb_packet decoders read from the same pair; the CRC5 agrees
-    with sigrok's for every 11-bit value.
 - id: REQ-SDS-238
   title: Detection and frame start of the protocols beyond the first ten
   text: The instrument shall, on Auto and AUTO in BUS, detect each protocol of REQ-SDS-232 to REQ-SDS-236 from an
@@ -4124,7 +3190,7 @@ requirements:
   - CAP-SDS-PROTOCOL-DECODE
   category: functional
   appliesTo:
-  - FU-APP-DECODE
+  - core::FU-DSO-DECODE
   - FU-APP-PANEL
   - FU-APP-ENGINE
   verificationMethods:
@@ -4151,11 +3217,11 @@ requirements:
   - CAP-SDS-BUS-ANALYSIS
   category: functional
   appliesTo:
-  - FU-APP-ANALYSIS
-  - FU-WEB-PACKETS
+  - core::FU-DSO-ANALYSIS
+  - core::FU-DSO-WEBCLIENT
   - FU-APP-PANEL
   - FU-APP-LCD
-  - FU-WEB-APP-BUS
+  - core::FU-DSO-WEBCLIENT
   verificationMethods:
   - test
   verificationCriteria: Each layer's curated records read to the notes held in the golden file; the web page's twin
@@ -4177,8 +3243,8 @@ requirements:
   - CAP-SDS-BUS-ANALYSIS
   category: functional
   appliesTo:
-  - FU-APP-ANALYSIS
-  - FU-WEB-PACKETS
+  - core::FU-DSO-ANALYSIS
+  - core::FU-DSO-WEBCLIENT
   verificationMethods:
   - test
   verificationCriteria: Each chip's synthetic SPI bus, decoded from its clock and one data line, names the commands,
@@ -4196,8 +3262,8 @@ requirements:
   - CAP-SDS-BUS-ANALYSIS
   category: functional
   appliesTo:
-  - FU-APP-ANALYSIS
-  - FU-WEB-PACKETS
+  - core::FU-DSO-ANALYSIS
+  - core::FU-DSO-WEBCLIENT
   verificationMethods:
   - test
   verificationCriteria: Each device's synthetic I2C bus names what libsigrokdecode's edid, xfp, eeprom24xx, ds1307,
@@ -4217,8 +3283,8 @@ requirements:
   - CAP-SDS-BUS-ANALYSIS
   category: functional
   appliesTo:
-  - FU-APP-ANALYSIS
-  - FU-WEB-PACKETS
+  - core::FU-DSO-ANALYSIS
+  - core::FU-DSO-WEBCLIENT
   - FU-APP-PANEL
   verificationMethods:
   - test
@@ -4226,38 +3292,6 @@ requirements:
     synchronization, stimulus, overflow and timestamp packets of arm_itm (also behind arm_tpiu's stream 1), the
     synchronization, I-sync, branch, atom and exception packets of arm_etmv3, the commands of amulet_ascii and
     pan1321; choosing S.BUS sets the decode's and the hardware trigger's framing.
-- id: REQ-SDS-245
-  title: 1-Wire network and device layers
-  text: The instrument shall name a 1-Wire transaction's ROM command and ROM code and the function commands of the
-    DS28EA00 and DS18B20 thermometers, the DS2408 switch and the DS2431/32/33 EEPROMs, with their CRCs checked.
-  status: implemented
-  realizes:
-  - CAP-SDS-BUS-ANALYSIS
-  category: functional
-  appliesTo:
-  - FU-APP-ANALYSIS
-  - FU-WEB-PACKETS
-  verificationMethods:
-  - test
-  verificationCriteria: Synthetic 1-Wire lines read to the ROM commands, ROM codes and data of libsigrokdecode's
-    onewire_network, and the function commands, addresses, data and CRC verdicts of its ds28ea00, ds2408 and ds243x
-    decoders; a scratchpad's temperature is the one its first two bytes hold.
-- id: REQ-SDS-246
-  title: CFP and USB request layers
-  text: The instrument shall name the CFP module register accesses on an MDIO bus's clause 45 frames and the
-    control requests, descriptors and handshakes of a USB bus's transactions.
-  status: implemented
-  realizes:
-  - CAP-SDS-BUS-ANALYSIS
-  category: functional
-  appliesTo:
-  - FU-APP-ANALYSIS
-  - FU-WEB-PACKETS
-  verificationMethods:
-  - test
-  verificationCriteria: Synthetic MDIO frames read to the CFP register regions and module identifier that
-    libsigrokdecode's cfp decoder names; a synthetic full-speed enumeration reads to the requests and the device's
-    IDs of the control transfers its usb_request decoder writes.
 - id: REQ-SDS-247
   title: Bus layers chosen on their evidence
   text: The instrument shall, on Auto and AUTO in BUS, choose a bus layer only when the bus's packets prove it.
@@ -4266,7 +3300,7 @@ requirements:
   - CAP-SDS-BUS-ANALYSIS
   category: functional
   appliesTo:
-  - FU-APP-ANALYSIS
+  - core::FU-DSO-ANALYSIS
   - FU-APP-PANEL
   verificationMethods:
   - test
@@ -4293,28 +3327,12 @@ requirements:
   - CAP-SDS-TRIGGER
   category: functional
   appliesTo:
-  - FU-APP-ANALYSIS
+  - core::FU-DSO-ANALYSIS
   - FU-APP-PANEL
   verificationMethods:
   - test
   verificationCriteria: From layer on a selected SPI flash READ arms the match "SOF 03 00 10 00"; on a selected
     EEPROM word address write it arms address 0x50 and the word address; without a layer it is refused.
-- id: REQ-SDS-249
-  title: I2C address split and filter
-  text: The instrument shall number an I2C bus's devices and each device's transfers, and list only the transfers to
-    one address in one direction when the address filter layer is chosen.
-  status: approved
-  realizes:
-  - CAP-SDS-BUS-ANALYSIS
-  category: functional
-  appliesTo:
-  - FU-APP-ANALYSIS
-  - FU-WEB-PACKETS
-  - FU-APP-PANEL
-  verificationMethods:
-  - test
-  verificationCriteria: The filter keeps the transfers libsigrokdecode's i2cfilter forwards to the decoder stacked on
-    it; the split numbers devices in the order they first appear; the filter's address and direction rows set it.
 - id: REQ-SDS-240
   title: Decoded stream of the protocols beyond the first ten
   text: The instrument shall stream each protocol of REQ-SDS-232 to REQ-SDS-236 into the decoded-stream transcript,
@@ -4325,7 +3343,7 @@ requirements:
   - CAP-SDS-PROTOCOL-DECODE
   category: functional
   appliesTo:
-  - FU-APP-DECODE
+  - core::FU-DSO-DECODE
   - FU-APP-ENGINE
   - FU-APP-PANEL
   - FU-APP-LCD
@@ -4345,120 +3363,6 @@ requirements:
     error token); a stop on a value ends a gap-free transcript at the frame software read it in, and the record
     shown is the symbol trigger's on that value. MIDI and USB full speed stream through their receivers' decoded
     events.
-- id: REQ-SDS-250
-  title: Motion and pulse-width decoding
-  text: The instrument shall decode a quadrature encoder's A and B lines (steps and direction), a stepper driver's STEP
-    and DIR lines (steps and direction) and a PWM line (each period's duty cycle), on either channel.
-  status: implemented
-  realizes:
-  - CAP-SDS-PROTOCOL-DECODE
-  category: functional
-  appliesTo:
-  - FU-APP-DECODE
-  - FU-WEB-DECODE
-  - FU-APP-PANEL
-  verificationMethods:
-  - test
-  verificationCriteria: Synthetic encoder motions forward and back, stepper bursts in both directions and PWM lines of
-    varying duty decode to the steps, directions and duty cycles sent; the decoders agree with sigrok's graycode,
-    stepper_motor and pwm decoders on the same records, and the JavaScript twins return the Go decoders' bytes and
-    text.
-  notes: A motion opens after its first line rested two step periods; an encoder's direction is B's level at A's rising
-    edges.
-- id: REQ-SDS-251
-  title: Radio, time and keyed codes
-  text: The instrument shall decode PT2262 and EV1527 remote codes (trits or bytes after their sync), Oregon Scientific
-    OOK sensor messages (protocols 2.1 and 3 with their checksums), ISO 14443 modified Miller (106 kbit/s, pauses or
-    edges), Morse (letters at the timing found on the line) and DCF77 time code (minute, hour and date fields with
-    their parities).
-  status: implemented
-  realizes:
-  - CAP-SDS-PROTOCOL-DECODE
-  category: functional
-  appliesTo:
-  - FU-APP-DECODE
-  - FU-WEB-DECODE
-  - FU-APP-PANEL
-  verificationMethods:
-  - test
-  verificationCriteria: Synthetic code trains of each decode to what was sent, a broken checksum or parity is flagged,
-    the decoders agree with sigrok's rc_encode, ook and ook_oregon, miller, morse and dcf77 decoders, and the
-    JavaScript twins return the Go decoders' bytes and text.
-  notes: ook_vis is a display aid of sigrok's, not a protocol, and is not offered.
-- id: REQ-SDS-252
-  title: RFID tag and reader decoding
-  text: The instrument shall decode EM4100 tag frames (header, rows with their parities, column parity) and the
-    EM4305 and T55xx reader commands (login, write, read, the block and lock bits) from the field's envelope or its
-    125 kHz carrier.
-  status: implemented
-  realizes:
-  - CAP-SDS-PROTOCOL-DECODE
-  category: functional
-  appliesTo:
-  - FU-APP-DECODE
-  - FU-WEB-DECODE
-  - FU-APP-PANEL
-  verificationMethods:
-  - test
-  verificationCriteria: Synthetic tags at RF/32 and RF/64 and reader commands on an envelope and on a carrier decode to
-    the IDs, commands, addresses and words sent, a parity error is flagged, the decoders agree with sigrok's em4100,
-    em4305 and t55xx decoders, and the JavaScript twins return the Go decoders' bytes and text.
-- id: REQ-SDS-253
-  title: Single-wire debug and accessory protocols
-  text: The instrument shall decode STM8 SWIM transactions (commands, count, address and bytes with parity and
-    acknowledge), Apple SDQ bytes, PJON over PJDL frames (modes 1 to 4, header, CRC-8 and CRC-32), DSI frames, Qi
-    wireless-power packets (preamble, header, payload and checksum) and their errors.
-  status: implemented
-  realizes:
-  - CAP-SDS-PROTOCOL-DECODE
-  category: functional
-  appliesTo:
-  - FU-APP-DECODE
-  - FU-WEB-DECODE
-  - FU-APP-PANEL
-  verificationMethods:
-  - test
-  verificationCriteria: Synthetic lines of each decode to what was sent, a broken parity, CRC or checksum is flagged,
-    the decoders agree with sigrok's swim, sdq, pjdl and pjon, dsi and qi decoders, and the JavaScript twins return
-    the Go decoders' bytes and text.
-  notes: sigrok's pjon_link is not among its decoders; the PJON frame is decoded on top of PJDL.
-- id: REQ-SDS-254
-  title: Clocked debug, card and peripheral buses
-  text: The instrument shall decode SD card commands and responses in SD mode (CMD at CLK, CRC-7, application
-    commands), AVR PDI instructions, cJTAG escapes, the online activation code and OScan1 scans, Sega Maple bus frames
-    and digital caliper readings, from a clock line and a data line on either channel.
-  status: implemented
-  realizes:
-  - CAP-SDS-PROTOCOL-DECODE
-  category: functional
-  appliesTo:
-  - FU-APP-DECODE
-  - FU-WEB-DECODE
-  - FU-APP-PANEL
-  verificationMethods:
-  - test
-  verificationCriteria: Synthetic buses of each decode to what was sent, a broken CRC or parity is flagged, the
-    decoders agree with sigrok's sdcard_sd, avr_pdi, cjtag, maple_bus and caliper decoders, and the JavaScript twins
-    return the Go decoders' bytes and text.
-- id: REQ-SDS-255
-  title: IR remotes of many protocols
-  text: The instrument shall decode the common IR remote protocols beyond NEC, SIRC, RC-5 and RC-6 (Samsung, Samsung32,
-    JVC, NEC16, NEC42, Kaseikyo, Matsushita and Denon/Sharp) from a receiver's output or an emitter's drive, naming
-    the protocol and its address and command.
-  status: implemented
-  realizes:
-  - CAP-SDS-PROTOCOL-DECODE
-  category: functional
-  appliesTo:
-  - FU-APP-DECODE
-  - FU-WEB-DECODE
-  - FU-APP-PANEL
-  verificationMethods:
-  - test
-  verificationCriteria: Synthetic frames of each protocol decode to the protocol, address and command sent; the decoder
-    agrees with sigrok's ir_irmp decoder (the IRMP library) on the same records, and the JavaScript twin returns the Go
-    decoder's bytes and text.
-  notes: NEC's 32-bit frames stay IR NEC's (REQ-SDS-234).
 - id: REQ-SDS-256
   title: Detection of the protocols beyond the first thirty
   text: The instrument shall, on Auto and AUTO in BUS, name each protocol of REQ-SDS-250 to REQ-SDS-255 from a capture
@@ -4469,7 +3373,7 @@ requirements:
   - CAP-SDS-PROTOCOL-DECODE
   category: functional
   appliesTo:
-  - FU-APP-DECODE
+  - core::FU-DSO-DECODE
   - FU-APP-PANEL
   verificationMethods:
   - test
@@ -4497,24 +3401,6 @@ requirements:
   notes: The FPGA decides every trigger. A SWIM command is its frame's first six bits, so a byte frame whose top bits
     read as a command, its parity and an ack fires a command match too; an RFID reader's carrier fires on its gaps
     only (unit values need its envelope); cJTAG, Maple and an RFID carrier trigger on the frame start alone.
-- id: REQ-SDS-258
-  title: The protocols beyond the first thirty in BUS, on the LCD, the web page and the phone
-  text: The instrument shall offer each protocol of REQ-SDS-250 to REQ-SDS-255 in BUS, on the LCD strip, on the web
-    page and on the phone remote with its line or clock and data roles, keep it in a setup, list its frames as
-    packets and send its detected variant and polarity to the serial trigger.
-  status: implemented
-  realizes:
-  - CAP-SDS-PROTOCOL-DECODE
-  category: functional
-  appliesTo:
-  - FU-APP-PANEL
-  - FU-APP-LCD
-  - FU-APP-WEB
-  - FU-APP-SETTINGS
-  verificationMethods:
-  - test
-  verificationCriteria: Each protocol is chosen in BUS and on the web page, its decode runs there, its frames group into
-    packets, and the serial trigger receives its protocol number, roles, variant and polarity.
 - id: REQ-SDS-260
   title: Decoded stream of the protocols past the thirtieth
   text: The instrument shall stream each protocol of REQ-SDS-250 to REQ-SDS-255 into the decoded-stream transcript
@@ -4525,7 +3411,7 @@ requirements:
   - CAP-SDS-PROTOCOL-DECODE
   category: functional
   appliesTo:
-  - FU-APP-DECODE
+  - core::FU-DSO-DECODE
   - FU-APP-ENGINE
   - FU-APP-PANEL
   verificationMethods:
@@ -4557,8 +3443,8 @@ requirements:
   - FU-APP-ENGINE
   - FU-APP-SRAMCAPTURE
   - FU-APP-WEB
-  - FU-WEB-SOUND
-  - FU-WEB-APP-SOUND
+  - core::FU-DSO-WEBCLIENT
+  - core::FU-DSO-WEBCLIENT
   - FU-WEB-REMOTE
   verificationMethods:
   - test
@@ -4577,11 +3463,11 @@ requirements:
   - CAP-SDS-SOUND
   category: functional
   appliesTo:
-  - FU-APP-SOUND
+  - core::FU-DSO-SOUND
   - FU-APP-PANEL
   - FU-APP-LCD
-  - FU-WEB-SOUND
-  - FU-WEB-APP-SOUND
+  - core::FU-DSO-WEBCLIENT
+  - core::FU-DSO-WEBCLIENT
   verificationMethods:
   - test
   verificationCriteria: A 1 V sine on 0.5 V DC reads 707 mV RMS, 0.5 V DC, 2 Vpp and a 3.01 dB crest; the dBu, dBV and
@@ -4596,11 +3482,11 @@ requirements:
   - CAP-SDS-SOUND
   category: functional
   appliesTo:
-  - FU-APP-SOUND
+  - core::FU-DSO-SOUND
   - FU-APP-PANEL
   - FU-APP-LCD
-  - FU-WEB-SOUND
-  - FU-WEB-APP-SOUND
+  - core::FU-DSO-WEBCLIENT
+  - core::FU-DSO-WEBCLIENT
   - FU-WEB-REMOTE
   verificationMethods:
   - test
@@ -4617,10 +3503,10 @@ requirements:
   - CAP-SDS-SOUND
   category: functional
   appliesTo:
-  - FU-APP-SOUND
+  - core::FU-DSO-SOUND
   - FU-APP-PANEL
   - FU-APP-ENGINE
-  - FU-WEB-APP-SOUND
+  - core::FU-DSO-WEBCLIENT
   verificationMethods:
   - test
   verificationCriteria: Synthetic envelopes (gated and found, tone and CV, percussive) read their attack within 5 ms,
@@ -4637,10 +3523,10 @@ requirements:
   - CAP-SDS-SOUND
   category: functional
   appliesTo:
-  - FU-APP-SOUND
+  - core::FU-DSO-SOUND
   - FU-APP-PANEL
-  - FU-WEB-SOUND
-  - FU-WEB-APP-SOUND
+  - core::FU-DSO-WEBCLIENT
+  - core::FU-DSO-WEBCLIENT
   verificationMethods:
   - test
   verificationCriteria: A 30 % 5 Hz tremolo reads within 1 % and 0.05 Hz; a +-20 cent 6 Hz vibrato on a square within
@@ -4655,11 +3541,11 @@ requirements:
   - CAP-SDS-SOUND
   category: functional
   appliesTo:
-  - FU-APP-SOUND
+  - core::FU-DSO-SOUND
   - FU-APP-PANEL
   - FU-APP-LCD
-  - FU-WEB-SOUND
-  - FU-WEB-APP-SOUND
+  - core::FU-DSO-WEBCLIENT
+  - core::FU-DSO-WEBCLIENT
   verificationMethods:
   - test
   verificationCriteria: A 1 V RMS tone with H2 at -40 dB and H3 at -30 dB reads 0 dBV, -40 and -30 dB, THD 3.32 % and
@@ -4675,10 +3561,10 @@ requirements:
   - CAP-SDS-SOUND
   category: functional
   appliesTo:
-  - FU-APP-SOUND
+  - core::FU-DSO-SOUND
   - FU-APP-PANEL
-  - FU-WEB-SOUND
-  - FU-WEB-APP-SOUND
+  - core::FU-DSO-WEBCLIENT
+  - core::FU-DSO-WEBCLIENT
   verificationMethods:
   - test
   verificationCriteria: Half the input 0.25 ms late at 1 kHz reads -6.02 dB and -90 degrees; a 37-sample delay of
@@ -4693,12 +3579,12 @@ requirements:
   - CAP-SDS-SOUND
   category: functional
   appliesTo:
-  - FU-APP-SOUND
+  - core::FU-DSO-SOUND
   - FU-APP-SRAMCAPTURE
   - FU-APP-ENGINE
   - FU-APP-PANEL
   - FU-APP-LCD
-  - FU-WEB-APP-SOUND
+  - core::FU-DSO-WEBCLIENT
   - FU-RTL-ACQ-SRAM-TOP
   verificationMethods:
   - test
@@ -4734,8 +3620,8 @@ requirements:
   category: functional
   appliesTo:
   - FU-APP-WEB
-  - FU-WEB-APP-SOUND
-  - FU-WEB-APP-WS
+  - core::FU-DSO-WEBCLIENT
+  - core::FU-DSO-WEBCLIENT
   - FU-WEB-REMOTE
   - FU-APP-PANEL
   verificationMethods:
@@ -4762,9 +3648,9 @@ requirements:
   - FU-APP-PANEL
   - FU-APP-LCD
   - FU-APP-WEB
-  - FU-APP-SOUND
-  - FU-WEB-SOUND
-  - FU-WEB-APP-SOUND
+  - core::FU-DSO-SOUND
+  - core::FU-DSO-WEBCLIENT
+  - core::FU-DSO-WEBCLIENT
   - FU-WEB-REMOTE
   verificationMethods:
   - test
@@ -4802,8 +3688,8 @@ requirements:
   appliesTo:
   - FU-APP-PANEL
   - FU-APP-WEB
-  - FU-WEB-SOUND
-  - FU-WEB-APP-SOUND
+  - core::FU-DSO-WEBCLIENT
+  - core::FU-DSO-WEBCLIENT
   - FU-WEB-REMOTE
   verificationMethods:
   - test
@@ -4825,9 +3711,9 @@ requirements:
   - CAP-SDS-BUS-ANALYSIS
   category: functional
   appliesTo:
-  - FU-WEB-VISUAL
-  - FU-WEB-APP-VISUAL
-  - FU-WEB-APP-BUS
+  - core::FU-DSO-WEBCLIENT
+  - core::FU-DSO-WEBCLIENT
+  - core::FU-DSO-WEBCLIENT
   verificationMethods:
   - test
   verificationCriteria: visual.test.cjs reads MIDI and DMX512 waveforms, the scope's PS/2, IR NEC, Wiegand, caliper
@@ -4844,8 +3730,8 @@ requirements:
   - CAP-SDS-BUS-ANALYSIS
   category: functional
   appliesTo:
-  - FU-WEB-VISUAL
-  - FU-WEB-APP-VISUAL
+  - core::FU-DSO-WEBCLIENT
+  - core::FU-DSO-WEBCLIENT
   verificationMethods:
   - test
   verificationCriteria: visual.test.cjs's MIDI stream yields the synth's events in order (two notes on, one off,
@@ -4863,8 +3749,8 @@ requirements:
   category: functional
   appliesTo:
   - FU-APP-WEB
-  - FU-WEB-VISUAL
-  - FU-WEB-APP-VISUAL
+  - core::FU-DSO-WEBCLIENT
+  - core::FU-DSO-WEBCLIENT
   verificationMethods:
   - test
   verificationCriteria: /api/record.bin serves a record sampled as finely as asked after the envelope frames, and a
@@ -4888,37 +3774,6 @@ requirements:
   - test
   verificationCriteria: F2 in BUS goes Packets, Eye diagram, Stream, Visual and back; each bus's picture draws from its
     decode's spans and says what it shows (render_visual_test.go); on the scope a bench bus is drawn.
-- id: REQ-SDS-282
-  title: A MIDI bus recorded to a file
-  text: The instrument shall record a MIDI bus's channel messages with their times in the web page and save them as
-    a Standard MIDI File.
-  status: implemented
-  realizes:
-  - CAP-SDS-BUS-ANALYSIS
-  category: functional
-  appliesTo:
-  - FU-WEB-VISUAL
-  - FU-WEB-APP-VISUAL
-  verificationMethods:
-  - test
-  verificationCriteria: a recording read back from the file has each message at its time; the page's Save .mid
-    downloads a MIDI file; on the scope a streamed song records every note.
-- id: REQ-SDS-283
-  title: Digital audio's spectrum and distortion
-  text: The instrument shall draw a digital audio capture's spectrum in the web page and state each channel's tone,
-    total harmonic distortion, SINAD and effective bits where the record parts the tone from its harmonics.
-  status: implemented
-  realizes:
-  - CAP-SDS-BUS-ANALYSIS
-  category: functional
-  appliesTo:
-  - FU-WEB-VISUAL
-  - FU-WEB-APP-VISUAL
-  verificationMethods:
-  - test
-  verificationCriteria: a 16-bit 1 kHz sine reads 1 kHz at its level with distortion under -80 dB and about 15 bits,
-    one with a harmonic 40 dB under it a THD of -40 dB, a record too short says so; on the scope a bench I2S sine
-    reads its frequency and level.
 - id: REQ-SDS-284
   title: Diagnostics stick, passive stage
   text: The instrument shall, booted under the factory firmware from the diagnostics stick, record the board's kernel,
@@ -4930,12 +3785,10 @@ requirements:
   category: functional
   sourceRefs:
   - CODE-OTA-INTERNAL-DIAG-DIAG-GO
-  - CODE-OTA-INTERNAL-DIAG-SYSTEM-GO
   - CODE-OTA-INTERNAL-DIAG-FIRMWARE-GO
   - CODE-OTA-INTERNAL-DIAG-PROCS-GO
   - CODE-OTA-INTERNAL-DIAG-FPGA-GO
   - CODE-OTA-INTERNAL-DIAG-SCPI-GO
-  - CODE-OTA-INTERNAL-DIAG-SCREEN-GO
   - CODE-OTA-CMD-SDSDIAG-MAIN-GO
   appliesTo:
   - FU-OTA-DIAG
@@ -4961,7 +3814,6 @@ requirements:
   - CODE-OTA-INTERNAL-DIAG-SCPI-GO
   - CODE-OTA-INTERNAL-DIAG-TRACE-LINUX-ARM-GO
   - CODE-OTA-INTERNAL-DIAG-MEM-GO
-  - CODE-OTA-INTERNAL-DIAG-CLOCK-GO
   appliesTo:
   - FU-OTA-DIAG
   verificationMethods:
@@ -5030,7 +3882,6 @@ requirements:
   - CAP-SDS-DIAGNOSTICS
   category: functional
   sourceRefs:
-  - CODE-OTA-INTERNAL-DIAG-APPRUN-GO
   - CODE-OTA-INTERNAL-DIAG-TAKEOVER-GO
   appliesTo:
   - FU-OTA-DIAG
@@ -5098,7 +3949,6 @@ requirements:
   - CAP-SDS-DIAGNOSTICS
   category: functional
   sourceRefs:
-  - CODE-OTA-INTERNAL-DIAG-DONESCREEN-GO
   - CODE-OTA-INTERNAL-DIAG-DIAG-GO
   appliesTo:
   - FU-OTA-DIAG
@@ -5106,20 +3956,3 @@ requirements:
   - test
   verificationCriteria: the DONE screen draws its word white on green over the whole framebuffer page; on an SDS1102CML+
     the screen shows DONE after the run.
-- id: REQ-SDS-286
-  title: Diagnostics archive
-  text: The instrument shall, from the diagnostics stick, leave one archive on the stick with a manifest of every
-    member, the collectors' errors and a summary, and a status file saying when it is done.
-  status: implemented
-  realizes:
-  - CAP-SDS-DIAGNOSTICS
-  category: functional
-  sourceRefs:
-  - CODE-OTA-INTERNAL-DIAG-ARCHIVE-GO
-  - CODE-OTA-INTERNAL-DIAG-DIAG-GO
-  appliesTo:
-  - FU-OTA-DIAG
-  verificationMethods:
-  - test
-  verificationCriteria: the archive lists every member with its size and SHA-256, a member past the size cap is listed
-    as not stored while the manifest and the error list are always stored, and the status file ends with DONE.

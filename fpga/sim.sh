@@ -16,10 +16,17 @@ for f in "$FPGA"/common/*.v "$FPGA"/trigger/*.v "$FPGA"/images/*/*.v "$FPGA"/com
     [ -e "$LIB/$m.v" ] || ln -s "$f" "$LIB/$m.v"
   done
 done
+# Fixture-driven testbenches run inside Go tests, the app's and open-dso-core's
+# (its decoders' RTL tests); the core is checked out next to this repository.
+CORE="${DSO_CORE_DIR:-$FPGA/../../open-dso-core}"
+if [ ! -d "$CORE/decode" ]; then
+  echo "sim.sh: open-dso-core not found at $CORE (set DSO_CORE_DIR): its Go tests drive some testbenches" >&2
+  exit 2
+fi
 fail=0 ran=0 skipped=0
 for tb in "$FPGA"/common/sim/tb_*.v "$FPGA"/trigger/sim/tb_*.v "$FPGA"/images/*/sim/tb_*.v; do
   n="$(basename "$tb" .v)"
-  if grep -rqs --include='*_test.go' "\b$n\b" "$APP/internal"; then skipped=$((skipped+1)); continue; fi
+  if grep -rqs --include='*_test.go' "\b$n\b" "$APP/internal" "$CORE"; then skipped=$((skipped+1)); continue; fi
   ran=$((ran+1))
   if ! iverilog -g2012 -DSIM -I "$FPGA/common" -I "$FPGA/trigger" -y "$LIB" -o "$OUT/$n.vvp" "$tb" >"$OUT/$n.log" 2>&1; then
     echo "[FAIL] $n (compile)"; sed -n 1,10p "$OUT/$n.log"; fail=1; continue
@@ -53,5 +60,5 @@ if node --experimental-strip-types -e 0 2>/dev/null; then
 else
   echo "[SKIP] the images' top levels: node with --experimental-strip-types is needed for build.ts"
 fi
-echo "$ran run, $skipped left to app Go tests"
+echo "$ran run, $skipped left to the app's and the core's Go tests"
 exit $fail

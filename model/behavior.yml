@@ -816,7 +816,7 @@ behavior:
         to it) and its push opens the byte picker (no bus: detects again); HORIZ POSITION goes to the next or previous
         packet holding the match and its push back to the trigger; the TIME/DIV push zooms onto the selected packet.'
       sourceRef: FU-APP-PANEL
-      destinationRef: FU-APP-DECODE
+      destinationRef: core::FU-DSO-DECODE
       next:
       - STEP-PANEL-DONE
     - id: STEP-PANEL-WS-BUS-EYE
@@ -825,7 +825,7 @@ behavior:
       action: 'BUS eye diagram (again: packets): ADJUST moves the threshold cursor and its push clears the eye; HORIZ
         POSITION moves the sample-point cursor and its push puts both cursors on the crossing and the eye centre.'
       sourceRef: FU-APP-PANEL
-      destinationRef: FU-APP-ANALYSIS
+      destinationRef: core::FU-DSO-ANALYSIS
       next:
       - STEP-PANEL-DONE
     - id: STEP-PANEL-WS-SPECTRUM
@@ -836,7 +836,7 @@ behavior:
         reference at the marker (again: off); HORIZ POSITION moves the marker bin by bin and its push goes to the largest
         peak (Bode: follows the sweep).'
       sourceRef: FU-APP-PANEL
-      destinationRef: FU-APP-ANALYSIS
+      destinationRef: core::FU-DSO-ANALYSIS
       next:
       - STEP-PANEL-DONE
     - id: STEP-PANEL-WS-MEASURE
@@ -847,7 +847,7 @@ behavior:
         and its push turns the cursors off, to time or to volts; HORIZ POSITION moves cursor B and its push zeroes the
         statistics.'
       sourceRef: FU-APP-PANEL
-      destinationRef: FU-APP-ANALYSIS
+      destinationRef: core::FU-DSO-ANALYSIS
       next:
       - STEP-PANEL-DONE
     - id: STEP-PANEL-WS-COMPARE
@@ -964,7 +964,7 @@ behavior:
       next:
       - STEP-DEFAULT-S4
     - id: STEP-DEFAULT-S4
-      ref: FU-APP-FRAMES
+      ref: core::FU-DSO-ENGINE
       action: Fan out stable frame ownership
       next:
       - STEP-DEFAULT-S5
@@ -996,7 +996,7 @@ behavior:
       next:
       - STEP-LEGACY-SRAM-S3
     - id: STEP-LEGACY-SRAM-S3
-      ref: FU-APP-DSP
+      ref: core::FU-DSO-DSP
       action: Condition precision samples and expose guards
       next:
       - STEP-LEGACY-SRAM-S4
@@ -1006,7 +1006,7 @@ behavior:
       next:
       - STEP-LEGACY-SRAM-S5
     - id: STEP-LEGACY-SRAM-S5
-      ref: FU-APP-FRAMES
+      ref: core::FU-DSO-ENGINE
       action: Publish full record to consumers
   - id: FLOW-UPDATE
     title: Application update and rollback
@@ -1027,7 +1027,7 @@ behavior:
       next:
       - STEP-UPDATE-S3
     - id: STEP-UPDATE-S3
-      ref: FU-OTA-SLOTS
+      ref: core::FU-DSO-SUPERVISOR-SLOTS
       action: Activate inactive slot
       next:
       - STEP-UPDATE-S4
@@ -1042,7 +1042,7 @@ behavior:
       next:
       - STEP-UPDATE-S6
     - id: STEP-UPDATE-S6
-      ref: FU-OTA-SLOTS
+      ref: core::FU-DSO-SUPERVISOR-SLOTS
       action: Confirm stable slot or revert unhealthy candidate
   relationships:
   - type: contains
@@ -1089,20 +1089,6 @@ behavior:
     description: Primary implementation or support artifact; does not imply hardware qualification.
   - type: contains
     from: FG-APP
-    to: FU-APP-DECODE
-  - type: depends_on
-    from: FU-APP-DECODE
-    to: CODE-APP-INTERNAL-DECODE-DECODE-GO
-    description: Primary implementation or support artifact; does not imply hardware qualification.
-  - type: contains
-    from: FG-APP
-    to: FU-APP-DSP
-  - type: depends_on
-    from: FU-APP-DSP
-    to: CODE-APP-INTERNAL-DSP-PRECISION-GO
-    description: Primary implementation or support artifact; does not imply hardware qualification.
-  - type: contains
-    from: FG-APP
     to: FU-APP-ENGINE
   - type: depends_on
     from: FU-APP-ENGINE
@@ -1113,13 +1099,6 @@ behavior:
     to: FU-APP-FPGALOAD
   - type: contains
     from: FG-APP
-    to: FU-APP-FRAMES
-  - type: depends_on
-    from: FU-APP-FRAMES
-    to: CODE-APP-INTERNAL-FRAMES-FANOUT-GO
-    description: Primary implementation or support artifact; does not imply hardware qualification.
-  - type: contains
-    from: FG-APP
     to: FU-APP-IFACE
   - type: depends_on
     from: FU-APP-IFACE
@@ -1128,17 +1107,6 @@ behavior:
   - type: contains
     from: FG-APP
     to: FU-APP-LCD
-  - type: depends_on
-    from: FU-APP-LCD
-    to: CODE-APP-INTERNAL-LCD-FONT-GO
-    description: Primary implementation or support artifact; does not imply hardware qualification.
-  - type: contains
-    from: FG-APP
-    to: FU-APP-MEASURE
-  - type: depends_on
-    from: FU-APP-MEASURE
-    to: CODE-APP-INTERNAL-MEASURE-MEASURE-GO
-    description: Primary implementation or support artifact; does not imply hardware qualification.
   - type: contains
     from: FG-APP
     to: FU-APP-PANEL
@@ -1169,32 +1137,7 @@ behavior:
     description: Primary implementation or support artifact; does not imply hardware qualification.
   - type: contains
     from: FG-APP
-    to: FU-APP-SUPERRES
-  - type: depends_on
-    from: FU-APP-SUPERRES
-    to: CODE-APP-INTERNAL-SUPERRES-COMP-REF-TEST-GO
-    description: Primary implementation or support artifact; does not imply hardware qualification.
-  - type: contains
-    from: FG-APP
-    to: FU-APP-TESTENV
-  - type: depends_on
-    from: FU-APP-TESTENV
-    to: CODE-APP-INTERNAL-TESTENV-TESTENV-GO
-    description: Primary implementation or support artifact; does not imply hardware qualification.
-  - type: contains
-    from: FG-APP
-    to: FU-APP-VXI11SRV
-  - type: depends_on
-    from: FU-APP-VXI11SRV
-    to: CODE-APP-INTERNAL-VXI11SRV-SERVER-GO
-    description: Primary implementation or support artifact; does not imply hardware qualification.
-  - type: contains
-    from: FG-APP
     to: FU-APP-WEB
-  - type: depends_on
-    from: FU-APP-WEB
-    to: CODE-APP-INTERNAL-WEB-ASSETS-GO
-    description: Primary implementation or support artifact; does not imply hardware qualification.
   - type: contains
     from: FG-BUILD
     to: FU-FPGA-BUILD
@@ -1228,20 +1171,6 @@ behavior:
     description: Primary implementation or support artifact; does not imply hardware qualification.
   - type: contains
     from: FG-OTA
-    to: FU-OTA-CONFIG
-  - type: depends_on
-    from: FU-OTA-CONFIG
-    to: CODE-OTA-INTERNAL-CONFIG-CONFIG-GO
-    description: Primary implementation or support artifact; does not imply hardware qualification.
-  - type: contains
-    from: FG-OTA
-    to: FU-OTA-FDINHERIT
-  - type: depends_on
-    from: FU-OTA-FDINHERIT
-    to: CODE-OTA-INTERNAL-FDINHERIT-FDINHERIT-GO
-    description: Primary implementation or support artifact; does not imply hardware qualification.
-  - type: contains
-    from: FG-OTA
     to: FU-OTA-GPMC
   - type: depends_on
     from: FU-OTA-GPMC
@@ -1253,34 +1182,6 @@ behavior:
   - type: depends_on
     from: FU-OTA-OTACTL
     to: CODE-OTA-CMD-OTACTL-MAIN-GO
-    description: Primary implementation or support artifact; does not imply hardware qualification.
-  - type: contains
-    from: FG-OTA
-    to: FU-OTA-RPCPROTO
-  - type: depends_on
-    from: FU-OTA-RPCPROTO
-    to: CODE-OTA-INTERNAL-RPCPROTO-RPCPROTO-GO
-    description: Primary implementation or support artifact; does not imply hardware qualification.
-  - type: contains
-    from: FG-OTA
-    to: FU-OTA-SLOTS
-  - type: depends_on
-    from: FU-OTA-SLOTS
-    to: CODE-OTA-INTERNAL-SLOTS-SLOTS-GO
-    description: Primary implementation or support artifact; does not imply hardware qualification.
-  - type: contains
-    from: FG-OTA
-    to: FU-OTA-SYSINFO
-  - type: depends_on
-    from: FU-OTA-SYSINFO
-    to: CODE-OTA-INTERNAL-SYSINFO-SYSINFO-GO
-    description: Primary implementation or support artifact; does not imply hardware qualification.
-  - type: contains
-    from: FG-OTA
-    to: FU-OTA-VXI11
-  - type: depends_on
-    from: FU-OTA-VXI11
-    to: CODE-OTA-INTERNAL-VXI11-VXI11-GO
     description: Primary implementation or support artifact; does not imply hardware qualification.
   - type: contains
     from: FG-OTA
@@ -1392,277 +1293,10 @@ behavior:
     to: FU-TOOLS
   - type: contains
     from: FG-WEB
-    to: FU-WEB-APP
-  - type: depends_on
-    from: FU-WEB-APP
-    to: CODE-APP-INTERNAL-WEB-APP-JS
-    description: Primary implementation or support artifact; does not imply hardware qualification.
-  - type: contains
-    from: FG-WEB
-    to: FU-WEB-APP-CANVAS
-  - type: depends_on
-    from: FU-WEB-APP-CANVAS
-    to: CODE-APP-INTERNAL-WEB-APP-CANVAS-JS
-    description: Primary implementation or support artifact; does not imply hardware qualification.
-  - type: contains
-    from: FG-WEB
     to: FU-WEB-APP-CONTROLS
-  - type: depends_on
-    from: FU-WEB-APP-CONTROLS
-    to: CODE-APP-INTERNAL-WEB-APP-CONTROLS-JS
-    description: Primary implementation or support artifact; does not imply hardware qualification.
-  - type: contains
-    from: FG-WEB
-    to: FU-WEB-APP-CORE
-  - type: depends_on
-    from: FU-WEB-APP-CORE
-    to: CODE-APP-INTERNAL-WEB-APP-CORE-JS
-    description: Primary implementation or support artifact; does not imply hardware qualification.
-  - type: contains
-    from: FG-WEB
-    to: FU-WEB-APP-DECODE
-  - type: depends_on
-    from: FU-WEB-APP-DECODE
-    to: CODE-APP-INTERNAL-WEB-APP-DECODE-JS
-    description: Primary implementation or support artifact; does not imply hardware qualification.
-  - type: contains
-    from: FG-WEB
-    to: FU-WEB-APP-DRAW
-  - type: depends_on
-    from: FU-WEB-APP-DRAW
-    to: CODE-APP-INTERNAL-WEB-APP-DRAW-JS
-    description: Primary implementation or support artifact; does not imply hardware qualification.
-  - type: contains
-    from: FG-WEB
-    to: FU-WEB-APP-EYE
-  - type: depends_on
-    from: FU-WEB-APP-EYE
-    to: CODE-APP-INTERNAL-WEB-APP-EYE-JS
-    description: Primary implementation or support artifact; does not imply hardware qualification.
-  - type: contains
-    from: FG-WEB
-    to: FU-WEB-APP-FFT
-  - type: depends_on
-    from: FU-WEB-APP-FFT
-    to: CODE-APP-INTERNAL-WEB-APP-FFT-JS
-    description: Primary implementation or support artifact; does not imply hardware qualification.
-  - type: contains
-    from: FG-WEB
-    to: FU-WEB-APP-GEOM
-  - type: depends_on
-    from: FU-WEB-APP-GEOM
-    to: CODE-APP-INTERNAL-WEB-APP-GEOM-JS
-    description: Primary implementation or support artifact; does not imply hardware qualification.
-  - type: contains
-    from: FG-WEB
-    to: FU-WEB-APP-GL
-  - type: depends_on
-    from: FU-WEB-APP-GL
-    to: CODE-APP-INTERNAL-WEB-APP-GL-JS
-    description: Primary implementation or support artifact; does not imply hardware qualification.
-  - type: contains
-    from: FG-WEB
-    to: FU-WEB-APP-INIT
-  - type: depends_on
-    from: FU-WEB-APP-INIT
-    to: CODE-APP-INTERNAL-WEB-APP-INIT-JS
-    description: Primary implementation or support artifact; does not imply hardware qualification.
-  - type: contains
-    from: FG-WEB
-    to: FU-WEB-APP-NAV
-  - type: depends_on
-    from: FU-WEB-APP-NAV
-    to: CODE-APP-INTERNAL-WEB-APP-NAV-JS
-    description: Primary implementation or support artifact; does not imply hardware qualification.
-  - type: contains
-    from: FG-WEB
-    to: FU-WEB-APP-PRECISION
-  - type: depends_on
-    from: FU-WEB-APP-PRECISION
-    to: CODE-APP-INTERNAL-WEB-APP-PRECISION-JS
-    description: Primary implementation or support artifact; does not imply hardware qualification.
   - type: contains
     from: FG-WEB
     to: FU-WEB-APP-SERIALTRIG
-  - type: depends_on
-    from: FU-WEB-APP-SERIALTRIG
-    to: CODE-APP-INTERNAL-WEB-APP-SERIALTRIG-JS
-    description: Primary implementation or support artifact; does not imply hardware qualification.
-  - type: contains
-    from: FG-WEB
-    to: FU-WEB-APP-SUPERRES
-  - type: depends_on
-    from: FU-WEB-APP-SUPERRES
-    to: CODE-APP-INTERNAL-WEB-APP-SUPERRES-JS
-    description: Primary implementation or support artifact; does not imply hardware qualification.
-  - type: contains
-    from: FG-WEB
-    to: FU-WEB-APP-VIEWS
-  - type: depends_on
-    from: FU-WEB-APP-VIEWS
-    to: CODE-APP-INTERNAL-WEB-APP-VIEWS-JS
-    description: Primary implementation or support artifact; does not imply hardware qualification.
-  - type: contains
-    from: FG-WEB
-    to: FU-WEB-APP-ZONEMASK
-  - type: depends_on
-    from: FU-WEB-APP-ZONEMASK
-    to: CODE-APP-INTERNAL-WEB-APP-ZONEMASK-JS
-    description: Primary implementation or support artifact; does not imply hardware qualification.
-  - type: contains
-    from: FG-WEB
-    to: FU-WEB-BINFRAME
-  - type: depends_on
-    from: FU-WEB-BINFRAME
-    to: CODE-APP-INTERNAL-WEB-BINFRAME-JS
-    description: Primary implementation or support artifact; does not imply hardware qualification.
-  - type: contains
-    from: FG-WEB
-    to: FU-WEB-BODE
-  - type: depends_on
-    from: FU-WEB-BODE
-    to: CODE-APP-INTERNAL-WEB-BODE-JS
-    description: Primary implementation or support artifact; does not imply hardware qualification.
-  - type: contains
-    from: FG-WEB
-    to: FU-WEB-DECODE
-  - type: depends_on
-    from: FU-WEB-DECODE
-    to: CODE-APP-INTERNAL-WEB-DECODE-JS
-    description: Primary implementation or support artifact; does not imply hardware qualification.
-  - type: contains
-    from: FG-WEB
-    to: FU-WEB-DECODE-ARINC429
-  - type: depends_on
-    from: FU-WEB-DECODE-ARINC429
-    to: CODE-APP-INTERNAL-WEB-DECODE-ARINC429-JS
-    description: Primary implementation or support artifact; does not imply hardware qualification.
-  - type: contains
-    from: FG-WEB
-    to: FU-WEB-DECODE-CANFD
-  - type: depends_on
-    from: FU-WEB-DECODE-CANFD
-    to: CODE-APP-INTERNAL-WEB-DECODE-CANFD-JS
-    description: Primary implementation or support artifact; does not imply hardware qualification.
-  - type: contains
-    from: FG-WEB
-    to: FU-WEB-DECODE-FLEXRAY
-  - type: depends_on
-    from: FU-WEB-DECODE-FLEXRAY
-    to: CODE-APP-INTERNAL-WEB-DECODE-FLEXRAY-JS
-    description: Primary implementation or support artifact; does not imply hardware qualification.
-  - type: contains
-    from: FG-WEB
-    to: FU-WEB-DECODE-MANCHESTER
-  - type: depends_on
-    from: FU-WEB-DECODE-MANCHESTER
-    to: CODE-APP-INTERNAL-WEB-DECODE-MANCHESTER-JS
-    description: Primary implementation or support artifact; does not imply hardware qualification.
-  - type: contains
-    from: FG-WEB
-    to: FU-WEB-DECODE-MIL1553
-  - type: depends_on
-    from: FU-WEB-DECODE-MIL1553
-    to: CODE-APP-INTERNAL-WEB-DECODE-MIL1553-JS
-    description: Primary implementation or support artifact; does not imply hardware qualification.
-  - type: contains
-    from: FG-WEB
-    to: FU-WEB-DECODE-SENT
-  - type: depends_on
-    from: FU-WEB-DECODE-SENT
-    to: CODE-APP-INTERNAL-WEB-DECODE-SENT-JS
-    description: Primary implementation or support artifact; does not imply hardware qualification.
-  - type: contains
-    from: FG-WEB
-    to: FU-WEB-DECODE-USBLS
-  - type: depends_on
-    from: FU-WEB-DECODE-USBLS
-    to: CODE-APP-INTERNAL-WEB-DECODE-USBLS-JS
-    description: Primary implementation or support artifact; does not imply hardware qualification.
-  - type: contains
-    from: FG-WEB
-    to: FU-WEB-EYEJITTER
-  - type: depends_on
-    from: FU-WEB-EYEJITTER
-    to: CODE-APP-INTERNAL-WEB-EYEJITTER-JS
-    description: Primary implementation or support artifact; does not imply hardware qualification.
-  - type: contains
-    from: FG-WEB
-    to: FU-WEB-EYEJITTER-ANALYSIS
-  - type: depends_on
-    from: FU-WEB-EYEJITTER-ANALYSIS
-    to: CODE-APP-INTERNAL-WEB-EYEJITTER-ANALYSIS-JS
-    description: Primary implementation or support artifact; does not imply hardware qualification.
-  - type: contains
-    from: FG-WEB
-    to: FU-WEB-PEAKS
-  - type: depends_on
-    from: FU-WEB-PEAKS
-    to: CODE-APP-INTERNAL-WEB-PEAKS-JS
-    description: Primary implementation or support artifact; does not imply hardware qualification.
-  - type: contains
-    from: FG-WEB
-    to: FU-WEB-SIGROK-EXPORT
-  - type: depends_on
-    from: FU-WEB-SIGROK-EXPORT
-    to: CODE-APP-INTERNAL-WEB-SIGROK-EXPORT-JS
-    description: Primary implementation or support artifact; does not imply hardware qualification.
-  - type: contains
-    from: FG-WEB
-    to: FU-WEB-SPECTROGRAM
-  - type: depends_on
-    from: FU-WEB-SPECTROGRAM
-    to: CODE-APP-INTERNAL-WEB-SPECTROGRAM-JS
-    description: Primary implementation or support artifact; does not imply hardware qualification.
-  - type: contains
-    from: FG-WEB
-    to: FU-WEB-SUPERRES
-  - type: depends_on
-    from: FU-WEB-SUPERRES
-    to: CODE-APP-INTERNAL-WEB-SUPERRES-JS
-    description: Primary implementation or support artifact; does not imply hardware qualification.
-  - type: contains
-    from: FG-WEB
-    to: FU-WEB-SUPERRES-COMP
-  - type: depends_on
-    from: FU-WEB-SUPERRES-COMP
-    to: CODE-APP-INTERNAL-WEB-SUPERRES-COMP-JS
-    description: Primary implementation or support artifact; does not imply hardware qualification.
-  - type: contains
-    from: FG-WEB
-    to: FU-WEB-SUPERRES-ETS
-  - type: depends_on
-    from: FU-WEB-SUPERRES-ETS
-    to: CODE-APP-INTERNAL-WEB-SUPERRES-ETS-JS
-    description: Primary implementation or support artifact; does not imply hardware qualification.
-  - type: contains
-    from: FG-WEB
-    to: FU-WEB-SUPERRES-GATE
-  - type: depends_on
-    from: FU-WEB-SUPERRES-GATE
-    to: CODE-APP-INTERNAL-WEB-SUPERRES-GATE-JS
-    description: Primary implementation or support artifact; does not imply hardware qualification.
-  - type: contains
-    from: FG-WEB
-    to: FU-WEB-SUPERRES-MATH
-  - type: depends_on
-    from: FU-WEB-SUPERRES-MATH
-    to: CODE-APP-INTERNAL-WEB-SUPERRES-MATH-JS
-    description: Primary implementation or support artifact; does not imply hardware qualification.
-  - type: contains
-    from: FG-WEB
-    to: FU-WEB-SUPERRES-MEASURE
-  - type: depends_on
-    from: FU-WEB-SUPERRES-MEASURE
-    to: CODE-APP-INTERNAL-WEB-SUPERRES-MEASURE-JS
-    description: Primary implementation or support artifact; does not imply hardware qualification.
-  - type: contains
-    from: FG-WEB
-    to: FU-WEB-SUPERRES-TEMPLATE
-  - type: depends_on
-    from: FU-WEB-SUPERRES-TEMPLATE
-    to: CODE-APP-INTERNAL-WEB-SUPERRES-TEMPLATE-JS
-    description: Primary implementation or support artifact; does not imply hardware qualification.
   - type: deployed_to
     from: FU-APP-ANALOG
     to: DEP-DEVICE
@@ -1679,28 +1313,16 @@ behavior:
     from: FU-APP-CAL
     to: DEP-DEVICE
   - type: deployed_to
-    from: FU-APP-DECODE
-    to: DEP-DEVICE
-  - type: deployed_to
-    from: FU-APP-DSP
-    to: DEP-DEVICE
-  - type: deployed_to
     from: FU-APP-ENGINE
     to: DEP-DEVICE
   - type: deployed_to
     from: FU-APP-FPGALOAD
     to: DEP-DEVICE
   - type: deployed_to
-    from: FU-APP-FRAMES
-    to: DEP-DEVICE
-  - type: deployed_to
     from: FU-APP-IFACE
     to: DEP-DEVICE
   - type: deployed_to
     from: FU-APP-LCD
-    to: DEP-DEVICE
-  - type: deployed_to
-    from: FU-APP-MEASURE
     to: DEP-DEVICE
   - type: deployed_to
     from: FU-APP-PANEL
@@ -1715,15 +1337,6 @@ behavior:
     from: FU-APP-SRAMCAPTURE
     to: DEP-DEVICE
   - type: deployed_to
-    from: FU-APP-SUPERRES
-    to: DEP-DEVICE
-  - type: deployed_to
-    from: FU-APP-TESTENV
-    to: DEP-DEVICE
-  - type: deployed_to
-    from: FU-APP-VXI11SRV
-    to: DEP-DEVICE
-  - type: deployed_to
     from: FU-APP-WEB
     to: DEP-DEVICE
   - type: deployed_to
@@ -1736,29 +1349,11 @@ behavior:
     from: FU-OTA-BUILDINFO
     to: DEP-DEVICE
   - type: deployed_to
-    from: FU-OTA-CONFIG
-    to: DEP-DEVICE
-  - type: deployed_to
-    from: FU-OTA-FDINHERIT
-    to: DEP-DEVICE
-  - type: deployed_to
     from: FU-OTA-GPMC
     to: DEP-DEVICE
   - type: deployed_to
     from: FU-OTA-OTACTL
     to: DEP-HOST
-  - type: deployed_to
-    from: FU-OTA-RPCPROTO
-    to: DEP-DEVICE
-  - type: deployed_to
-    from: FU-OTA-SLOTS
-    to: DEP-DEVICE
-  - type: deployed_to
-    from: FU-OTA-SYSINFO
-    to: DEP-DEVICE
-  - type: deployed_to
-    from: FU-OTA-VXI11
-    to: DEP-DEVICE
   - type: deployed_to
     from: FU-OTA-WATCHDOG
     to: DEP-DEVICE
@@ -1793,121 +1388,10 @@ behavior:
     from: FU-RTL-COMMON-LANE-IN
     to: DEP-FPGA
   - type: deployed_to
-    from: FU-WEB-APP
-    to: DEP-BROWSER
-  - type: deployed_to
-    from: FU-WEB-APP-CANVAS
-    to: DEP-BROWSER
-  - type: deployed_to
     from: FU-WEB-APP-CONTROLS
     to: DEP-BROWSER
   - type: deployed_to
-    from: FU-WEB-APP-CORE
-    to: DEP-BROWSER
-  - type: deployed_to
-    from: FU-WEB-APP-DECODE
-    to: DEP-BROWSER
-  - type: deployed_to
-    from: FU-WEB-APP-DRAW
-    to: DEP-BROWSER
-  - type: deployed_to
-    from: FU-WEB-APP-EYE
-    to: DEP-BROWSER
-  - type: deployed_to
-    from: FU-WEB-APP-FFT
-    to: DEP-BROWSER
-  - type: deployed_to
-    from: FU-WEB-APP-GEOM
-    to: DEP-BROWSER
-  - type: deployed_to
-    from: FU-WEB-APP-GL
-    to: DEP-BROWSER
-  - type: deployed_to
-    from: FU-WEB-APP-INIT
-    to: DEP-BROWSER
-  - type: deployed_to
-    from: FU-WEB-APP-NAV
-    to: DEP-BROWSER
-  - type: deployed_to
-    from: FU-WEB-APP-PRECISION
-    to: DEP-BROWSER
-  - type: deployed_to
     from: FU-WEB-APP-SERIALTRIG
-    to: DEP-BROWSER
-  - type: deployed_to
-    from: FU-WEB-APP-SUPERRES
-    to: DEP-BROWSER
-  - type: deployed_to
-    from: FU-WEB-APP-VIEWS
-    to: DEP-BROWSER
-  - type: deployed_to
-    from: FU-WEB-APP-ZONEMASK
-    to: DEP-BROWSER
-  - type: deployed_to
-    from: FU-WEB-BINFRAME
-    to: DEP-BROWSER
-  - type: deployed_to
-    from: FU-WEB-BODE
-    to: DEP-BROWSER
-  - type: deployed_to
-    from: FU-WEB-DECODE
-    to: DEP-BROWSER
-  - type: deployed_to
-    from: FU-WEB-DECODE-ARINC429
-    to: DEP-BROWSER
-  - type: deployed_to
-    from: FU-WEB-DECODE-CANFD
-    to: DEP-BROWSER
-  - type: deployed_to
-    from: FU-WEB-DECODE-FLEXRAY
-    to: DEP-BROWSER
-  - type: deployed_to
-    from: FU-WEB-DECODE-MANCHESTER
-    to: DEP-BROWSER
-  - type: deployed_to
-    from: FU-WEB-DECODE-MIL1553
-    to: DEP-BROWSER
-  - type: deployed_to
-    from: FU-WEB-DECODE-SENT
-    to: DEP-BROWSER
-  - type: deployed_to
-    from: FU-WEB-DECODE-USBLS
-    to: DEP-BROWSER
-  - type: deployed_to
-    from: FU-WEB-EYEJITTER
-    to: DEP-BROWSER
-  - type: deployed_to
-    from: FU-WEB-EYEJITTER-ANALYSIS
-    to: DEP-BROWSER
-  - type: deployed_to
-    from: FU-WEB-PEAKS
-    to: DEP-BROWSER
-  - type: deployed_to
-    from: FU-WEB-SIGROK-EXPORT
-    to: DEP-BROWSER
-  - type: deployed_to
-    from: FU-WEB-SPECTROGRAM
-    to: DEP-BROWSER
-  - type: deployed_to
-    from: FU-WEB-SUPERRES
-    to: DEP-BROWSER
-  - type: deployed_to
-    from: FU-WEB-SUPERRES-COMP
-    to: DEP-BROWSER
-  - type: deployed_to
-    from: FU-WEB-SUPERRES-ETS
-    to: DEP-BROWSER
-  - type: deployed_to
-    from: FU-WEB-SUPERRES-GATE
-    to: DEP-BROWSER
-  - type: deployed_to
-    from: FU-WEB-SUPERRES-MATH
-    to: DEP-BROWSER
-  - type: deployed_to
-    from: FU-WEB-SUPERRES-MEASURE
-    to: DEP-BROWSER
-  - type: deployed_to
-    from: FU-WEB-SUPERRES-TEMPLATE
     to: DEP-BROWSER
   - type: contains
     from: HW-INSTRUMENT
@@ -1985,9 +1469,6 @@ behavior:
     from: FU-APP-WEB
     to: IF-HTTP
   - type: contains
-    from: FU-APP-VXI11SRV
-    to: IF-SCPI
-  - type: contains
     from: FU-OTA-AGENT
     to: IF-OTA
   - type: contains
@@ -2057,9 +1538,6 @@ behavior:
     from: ACT-OPERATOR
     to: FU-APP-WEB
   - type: interacts_with
-    from: ACT-HOST
-    to: FU-APP-VXI11SRV
-  - type: interacts_with
     from: ACT-MAINTAINER
     to: FU-OTA-AGENT
   - type: calls
@@ -2070,9 +1548,6 @@ behavior:
     to: IF-SRAM
   - type: writes
     from: FU-APP-ENGINE
-    to: DO-FRAME
-  - type: reads
-    from: FU-APP-FRAMES
     to: DO-FRAME
   - type: reads
     from: FU-APP-LCD
@@ -2098,9 +1573,6 @@ behavior:
   - type: reads
     from: FU-APP-CAL
     to: DO-CAL
-  - type: reads
-    from: FU-APP-DSP
-    to: DO-PRECISION
   - type: transitions_to
     from: STATE-IDLE
     to: STATE-CAPTURING
@@ -2218,10 +1690,6 @@ behavior:
     description: Resolved non-test Go import.
   - type: depends_on
     from: FU-APP-APP
-    to: FU-APP-FRAMES
-    description: Resolved non-test Go import.
-  - type: depends_on
-    from: FU-APP-APP
     to: FU-APP-IFACE
     description: Resolved non-test Go import.
   - type: depends_on
@@ -2243,10 +1711,6 @@ behavior:
   - type: depends_on
     from: FU-APP-APP
     to: FU-APP-SRAMCAPTURE
-    description: Resolved non-test Go import.
-  - type: depends_on
-    from: FU-APP-APP
-    to: FU-APP-VXI11SRV
     description: Resolved non-test Go import.
   - type: depends_on
     from: FU-APP-APP
@@ -2273,14 +1737,6 @@ behavior:
     to: FU-APP-SRAMCAPTURE
     description: Resolved non-test Go import.
   - type: depends_on
-    from: FU-APP-ENGINE
-    to: FU-APP-DECODE
-    description: Resolved non-test Go import.
-  - type: depends_on
-    from: FU-APP-ENGINE
-    to: FU-APP-DSP
-    description: Resolved non-test Go import.
-  - type: depends_on
     from: FU-APP-FPGALOAD
     to: FU-APP-BUS
     description: Resolved non-test Go import.
@@ -2289,10 +1745,6 @@ behavior:
     to: FU-APP-IFACE
     description: Resolved non-test Go import.
   - type: depends_on
-    from: FU-APP-FRAMES
-    to: FU-APP-ENGINE
-    description: Resolved non-test Go import.
-  - type: depends_on
     from: FU-APP-LCD
     to: FU-APP-ANALOG
     description: Resolved non-test Go import.
@@ -2301,28 +1753,12 @@ behavior:
     to: FU-APP-ENGINE
     description: Resolved non-test Go import.
   - type: depends_on
-    from: FU-APP-LCD
-    to: FU-APP-DECODE
-    description: Resolved non-test Go import.
-  - type: depends_on
-    from: FU-APP-LCD
-    to: FU-APP-MEASURE
-    description: Resolved non-test Go import.
-  - type: depends_on
     from: FU-APP-PANEL
     to: FU-APP-ANALOG
     description: Resolved non-test Go import.
   - type: depends_on
     from: FU-APP-PANEL
     to: FU-APP-ENGINE
-    description: Resolved non-test Go import.
-  - type: depends_on
-    from: FU-APP-PANEL
-    to: FU-APP-MEASURE
-    description: Resolved non-test Go import.
-  - type: depends_on
-    from: FU-APP-PANEL
-    to: FU-APP-SUPERRES
     description: Resolved non-test Go import.
   - type: depends_on
     from: FU-APP-PANEL
@@ -2366,10 +1802,6 @@ behavior:
     description: Resolved non-test Go import.
   - type: depends_on
     from: FU-APP-WEB
-    to: FU-APP-MEASURE
-    description: Resolved non-test Go import.
-  - type: depends_on
-    from: FU-APP-WEB
     to: FU-APP-ANALOG
     description: Resolved non-test Go import.
   - type: depends_on
@@ -2377,20 +1809,8 @@ behavior:
     to: FU-OTA-BUILDINFO
     description: Resolved non-test Go import.
   - type: depends_on
-    from: FU-OTA-AGENT
-    to: FU-OTA-CONFIG
-    description: Resolved non-test Go import.
-  - type: depends_on
     from: FU-OTA-OTACTL
     to: FU-OTA-BUILDINFO
-    description: Resolved non-test Go import.
-  - type: depends_on
-    from: FU-OTA-OTACTL
-    to: FU-OTA-VXI11
-    description: Resolved non-test Go import.
-  - type: depends_on
-    from: FU-OTA-AGENT
-    to: FU-OTA-FDINHERIT
     description: Resolved non-test Go import.
   - type: depends_on
     from: FU-OTA-AGENT
@@ -2398,23 +1818,7 @@ behavior:
     description: Resolved non-test Go import.
   - type: depends_on
     from: FU-OTA-AGENT
-    to: FU-OTA-SLOTS
-    description: Resolved non-test Go import.
-  - type: depends_on
-    from: FU-OTA-AGENT
-    to: FU-OTA-SYSINFO
-    description: Resolved non-test Go import.
-  - type: depends_on
-    from: FU-OTA-AGENT
     to: FU-OTA-WATCHDOG
-    description: Resolved non-test Go import.
-  - type: depends_on
-    from: FU-OTA-AGENT
-    to: FU-OTA-VXI11
-    description: Resolved non-test Go import.
-  - type: depends_on
-    from: FU-OTA-OTACTL
-    to: FU-OTA-RPCPROTO
     description: Resolved non-test Go import.
   - type: depends_on
     from: FU-RTL-ACQ-SRAM-INTERLEAVE
@@ -2508,28 +1912,3 @@ behavior:
     from: DO-DESCRIPTOR
     to: TB-FABRIC
     description: Authored boundary membership; does not imply authentication or enforcement.
-  - type: calls
-    from: FU-WEB-APP-INIT
-    to: FU-WEB-APP-GL
-    description: app_init.js calls glInit through classic-script shared globals after HTML load ordering; source
-      inspection only.
-  - type: calls
-    from: FU-WEB-APP-INIT
-    to: FU-WEB-APP
-    description: app_init.js calls resize through classic-script shared globals after HTML load ordering; source
-      inspection only.
-  - type: calls
-    from: FU-WEB-APP-INIT
-    to: FU-WEB-APP-CORE
-    description: app_init.js calls pollFrameBin and pollStatus through classic-script shared globals after HTML
-      load ordering; source inspection only.
-  - type: calls
-    from: FU-WEB-APP-INIT
-    to: IF-HTTP
-    description: app_init.js fetches /api/claim and starts polling in finally, including after claim failure. Source
-      inspection, not browser execution.
-  - type: calls
-    from: FU-WEB-APP-CORE
-    to: IF-HTTP
-    description: app_core.js frame/status polling and control posts use the browser HTTP API. Primary frames include
-      an epoch; raw FFT requests omit it in this source. Server enforcement is not established by these client calls.

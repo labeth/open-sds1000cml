@@ -23,6 +23,24 @@ engdoc --model engmod.yml --requirements requirements.yml \
   --design views.yml --code-root .. --lock check --out /tmp/ARCHITECTURE.adoc
 ```
 
+The model composes open-dso-core's model (`engmod.yml` dependency `core`, subsystem `SUB-CORE`,
+decision `ADR-MODEL-COMPOSES-CORE`): requirements and units of the code that lives in the core are
+`core::REQ-DSO-*` and `core::FU-DSO-*` there. Until that model is published to a registry it resolves
+from a checkout of open-dso-core next to this repository, through a workspace file above both, as CI
+does:
+
+```sh
+cat > ../engmod.work.yml <<'EOF'
+schemaVersion: 2
+replacements:
+- module: github.com/labeth/open-dso-core/model@v0
+  path: ./open-dso-core/model
+EOF
+```
+
+(written from the repository root, so it lands beside `open-sds1000cml` and `open-dso-core`; engdoc
+finds it by searching upward, or name it with `ENGMOD_WORK=<path>`).
+
 Run it from `model/`: the code scan resolves `--code-root` from the manifest's directory and the test
 scan from the working directory, so only there do both reach the repository and the requirements
 trace to their tests as well as their code.

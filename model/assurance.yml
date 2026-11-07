@@ -57,7 +57,6 @@ assurance:
     verificationRefs:
     - REQ-SDS-025
     - REQ-SDS-028
-    - REQ-SDS-105
     - REQ-SDS-128
   - id: CV-TIMING
     controlRef: CTRL-TIMING
@@ -149,6 +148,8 @@ assurance:
     defers:
     - code: requirement.orphan
       path: requirements[REQ-SDS-074]
+    - code: requirement.unsatisfied
+      path: requirements[51]
   trustBoundaries:
   - id: TB-DEVICE
     name: Privileged instrument execution
