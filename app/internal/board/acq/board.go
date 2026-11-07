@@ -46,6 +46,7 @@ type Board struct {
 	composed   sramcapture.Config
 	composedOK bool // composed is the staged plan and trigger
 	state      hal.AcqState
+	forced     bool                 // Force since the last Arm: the record is a forced one
 	rec        sramcapture.Metadata // the halted record Readout reads
 	reading    bool                 // inside a read: Service flushes the lamps only
 	yield      func()               // the current read's yield
