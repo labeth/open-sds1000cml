@@ -1045,7 +1045,7 @@ func (e *Engine) planBitsLevels(s *softStream, cfg *sramcapture.Config) {
 	for ch := range uint8(2) {
 		c := *cfg
 		c.TriggerChannel = ch
-		e.planHysteresis(&c, false)
+		e.planHysteresis(&c)
 		band = max(band, c.TriggerHysteresis)
 	}
 	cfg.TriggerHysteresis = band
@@ -1369,7 +1369,7 @@ func (e *Engine) softRecordConfig(s *softStream, words uint32, log uint8, patter
 	p := s.p
 	p.Bytes, p.Pattern = nil, pattern
 	e.planSerial(&c, p, false)
-	e.planHysteresis(&c, log != 0)
+	e.planHysteresis(&c)
 	return c
 }
 

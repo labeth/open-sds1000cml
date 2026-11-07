@@ -20,7 +20,8 @@ import (
 // threshold armed.
 // TRLC-LINKS: REQ-SDS-013
 func levelsEngine(p SerialParams) *Engine {
-	e := &Engine{hardwareUART: true, hardwareSPI: true, hardwareSequence: true, band: Band{TdivS: 100e-6}}
+	e := &Engine{band: Band{TdivS: 100e-6}}
+	setCaps(e, func(c *acq.Caps) { c.UART = true; c.SPI = true; c.Sequence = true })
 	for ch := range 2 {
 		e.chVdivBits[ch].Store(math.Float64bits(1))
 	}
@@ -287,7 +288,7 @@ func TestRecordHoldsTheMatchBeforeTheTrigger(t *testing.T) {
 func TestRecordKeepsTheScreenAfterTheTrigger(t *testing.T) {
 	e := levelsEngine(SerialParams{Proto: core.SerUART, ChA: 0, ChB: 1, Baud: 115200, Bits: 8, Parity: "none", Bytes: []int{0x48}})
 	e.band = Band{TdivS: 2e-3}
-	e.hardwareEnvelope = true // the deep record, read as an envelope
+	setCaps(e, func(c *acq.Caps) { c.Envelope = true }) // the deep record, read as an envelope
 	e.trigPosFrac.Store(math.Float64bits(0.1))
 	e.serLv.ShiftS.Store(math.Float64bits(20e-3)) // a lead longer than the record holds beside the screen
 	c, plan, _, _, _ := e.sramConfig()
@@ -349,7 +350,7 @@ func TestSPIClockMeasuredAgainWhenQuiet(t *testing.T) {
 	now := time.Unix(1000, 0)
 	e := levelsEngine(SerialParams{Proto: core.SerSPI, ChA: 1, ChB: 0, MSB: true, Bytes: []int{0x4f}})
 	e.clk = Clock{Now: func() time.Time { return now }, Sleep: func(time.Duration) {}}
-	e.hardwareSampleSPI = true
+	setCaps(e, func(c *acq.Caps) { c.SampleSPI = true })
 	sc := [2]core.ChScale{{Vdiv: 1, Off: 0}, {Vdiv: 1, Off: 0}}
 	fast := square(4000, 4.8)
 	e.learnSerialLevels(&sample.Frame{SampleS: 2e-9, Traces: []sample.Trace{{Codes8: fast, Valid: len(fast)}, {Ch: 1, Codes8: fast, Valid: len(fast)}}}, sc)
@@ -379,7 +380,7 @@ func TestSPIClockMeasuredAgainWhenQuiet(t *testing.T) {
 func TestTwoLineBusPlansEachLineLevel(t *testing.T) {
 	for _, proto := range []int{core.SerSPI, core.SerI2C} {
 		e := levelsEngine(SerialParams{Proto: proto, ChA: 1, ChB: 0, MSB: true, SPIClockHz: 5000000, Addr: -1, RW: 2, Bytes: []int{0x55}})
-		e.hardwareI2C = true
+		setCaps(e, func(c *acq.Caps) { c.I2C = true })
 		clk, data := spiWave([]int{0x55, 0xaa, 0x0f}, 10) // rails 40 and 210: threshold 125 on each
 		f := &sample.Frame{SampleS: 1e-8, Traces: []sample.Trace{{Codes8: data, Valid: len(clk)}, {Ch: 1, Codes8: clk, Valid: len(clk)}}}
 		e.learnSerialLevels(f, [2]core.ChScale{{Vdiv: 1, Off: 0}, {Vdiv: 1, Off: 0}})

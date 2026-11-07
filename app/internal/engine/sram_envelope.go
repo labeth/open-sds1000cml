@@ -37,7 +37,7 @@ func (e *Engine) envelopeBlock() string {
 		return blockBus
 	case e.leased(&e.sampleLease):
 		return blockSamples
-	case !e.hardwareEnvelope:
+	case !e.caps().Envelope:
 		return "fabric lacks envelope"
 	}
 	return ""

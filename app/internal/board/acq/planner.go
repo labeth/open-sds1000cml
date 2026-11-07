@@ -55,28 +55,32 @@ func (pl *plannerFacet) Plan(r hal.Request) (hal.Plan, error) {
 }
 
 // planConfig is plan p as the capture configuration's plan fields: the
-// decimation, the words before and after the trigger, picking.
+// decimation, picking, the record's words and those before the trigger.
 // TRLC-LINKS: REQ-SDS-010
-func planConfig(p hal.Plan) (sramcapture.Config, error) {
-	var c sramcapture.Config
+func planConfig(p hal.Plan) (planPart, error) {
+	var pp planPart
 	if p.AcqDecim < 1 || bits.OnesCount(uint(p.AcqDecim)) != 1 {
-		return c, hal.Refuse("decimation", "the fabric decimates by powers of two")
+		return pp, hal.Refuse("decimation", "the fabric decimates by powers of two")
 	}
 	log := bits.TrailingZeros(uint(p.AcqDecim))
 	if log != 0 && (log < 4 || log > 20) {
-		return c, hal.Refuse("decimation", "the fabric decimates by 16 to 2^20")
+		return pp, hal.Refuse("decimation", "the fabric decimates by 16 to 2^20")
 	}
-	c.Source, c.DecimationLog2, c.Pick = sramcapture.ADC, uint8(log), p.Pick && log != 0 //nolint:gosec // G115: 0 or 4..20
-	perWord := 2 - BoolInt(log != 0)
-	words := uint32((p.Depth + perWord - 1) / perWord) //nolint:gosec // G115: the plan's samples fit the SRAM
-	if words == 0 || words > sramcapture.Words {
-		return c, hal.Refuse("record depth", "the SRAM holds one record of its whole memory")
+	if p.Request.PretrigRoom < 0 {
+		return pp, hal.Refuse("pretrigger room", "the room before the trigger is a count of samples")
+	}
+	pp.cfg.Source, pp.cfg.DecimationLog2, pp.cfg.Pick = sramcapture.ADC, uint8(log), p.Pick && log != 0 //nolint:gosec // G115: 0 or 4..20
+	pp.perWord = 2 - BoolInt(log != 0)
+	pp.words = uint32((p.Depth + pp.perWord - 1) / pp.perWord) //nolint:gosec // G115: the plan's samples fit the SRAM
+	if pp.words == 0 || pp.words > sramcapture.Words {
+		return planPart{}, hal.Refuse("record depth", "the SRAM holds one record of its whole memory")
 	}
 	frac := p.Request.PretrigFrac
 	if !(frac >= 0 && frac <= 1) {
 		frac = .5
 	}
-	pre := min(uint32(math.Floor(float64(words)*frac)), words-1)
-	c.PreWords, c.PostWords = pre, words-pre
-	return c, nil
+	pre := uint32(math.Floor(float64(pp.words)*frac)) + uint32(p.Request.PretrigRoom/pp.perWord) //nolint:gosec // G115: a room of samples within the record
+	pp.pre = min(pre, pp.words-1)
+	pp.sampleS = p.SampleS
+	return pp, nil
 }

@@ -208,16 +208,21 @@ func (c *sramCycle) Claim(context.Context) bool {
 	return false
 }
 
-// Plan builds the capture's fabric configuration from the settings (or
-// takes the retained record's to replay it) and stages it.
+// Plan programs the capture's trigger and configures its plan on the board
+// from the settings, or takes the retained record's to replay it.
 // TRLC-LINKS: REQ-SDS-008, REQ-SDS-009, REQ-SDS-010, REQ-SDS-011
 func (c *sramCycle) Plan(context.Context) (core.Capture, bool) {
 	e := c.e
-	c.cfg, c.plan, c.tdiv, c.norm, c.tp = e.sramConfig()
 	c.replay = !e.running.Load() && c.retained
 	if c.replay {
+		// the settings only for the timebase the stopped record is shown at
+		_, c.tdiv, _, _ = e.sramConfigInto(&c.cfg)
 		c.cfg, c.plan, c.norm, c.tp = c.savedCfg, c.savedPlan, c.savedNorm, c.savedTP
 		c.plan = acq.RetainedSRAMPlan(c.plan, c.tdiv)
+	} else {
+		// staged on the board: the trigger programmed, the plan configured
+		c.plan, c.tdiv, c.norm, c.tp = e.planCapture(boardTarget{e})
+		c.cfg = e.hw().Staged()
 	}
 	e.mu.Lock()
 	if e.pendSet {
@@ -238,7 +243,6 @@ func (c *sramCycle) Plan(context.Context) (core.Capture, bool) {
 		c.retained = false
 		c.held = heldRecall{} // a new capture: the stopped record's copies go
 		c.symbols = e.symbolCount(c.cfg)
-		e.hw().StageCapture(c.cfg)
 	}
 	// AUTO waits for enough prehistory plus a bounded event wait. SINGLE/NORM
 	// never fabricate a trigger.

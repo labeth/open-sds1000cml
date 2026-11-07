@@ -83,7 +83,7 @@ func TestLiveSRAMPlanKeepsTheDisplayBandwidth(t *testing.T) {
 // TRLC-LINKS: REQ-SDS-010, REQ-SDS-214
 func TestBusLeaseSamplesFinelyEnough(t *testing.T) {
 	e, _ := newTestEngine(t, newFakeBus())
-	e.hardwareEnvelope = true
+	setCaps(e, func(c *acq.Caps) { c.Envelope = true })
 	b, _ := PlanTdiv(10e-3)
 	e.band = b
 	_, full, _, _, _ := e.sramConfig()
@@ -106,7 +106,7 @@ func TestBusLeaseSamplesFinelyEnough(t *testing.T) {
 // TRLC-LINKS: REQ-SDS-010, REQ-SDS-214, REQ-SDS-280
 func TestBusLeaseFinerThanTheDecimationTakesTheFullRate(t *testing.T) {
 	e, _ := newTestEngine(t, newFakeBus())
-	e.hardwareEnvelope = true
+	setCaps(e, func(c *acq.Caps) { c.Envelope = true })
 	for _, c := range []struct{ tdiv, want float64 }{{100e-6, 10e-9}, {100e-6, 20e-9}, {50e-6, 10e-9}, {20e-6, 20e-9}, {200e-6, 30e-9}} {
 		b, _ := PlanTdiv(c.tdiv)
 		e.band = b

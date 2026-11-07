@@ -258,7 +258,7 @@ func TestSingleUsesThePreviewPlanInFilteredModes(t *testing.T) {
 		t.Fatal("no band for 200us/div")
 	}
 	e.band = b
-	e.hardwareEnvelope = true
+	setCaps(e, func(c *acq.Caps) { c.Envelope = true })
 	for _, tc := range []struct {
 		mode    int32
 		single  bool
@@ -290,7 +290,8 @@ func TestRawImageTimebaseFitsItsRecord(t *testing.T) {
 		t.Fatalf("raw record screen %g, want 200us/div", got)
 	}
 	for _, raw := range []bool{false, true} {
-		e := &Engine{rawOnly: raw, band: Band{TdivS: 1e-3}}
+		e := &Engine{band: Band{TdivS: 1e-3}}
+		setCaps(e, func(c *acq.Caps) { c.RawOnly = raw })
 		e.trigPosFrac.Store(math.Float64bits(.5))
 		_, p, tdiv, _, _ := e.sramConfig()
 		set := e.band.TdivS

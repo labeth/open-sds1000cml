@@ -18,7 +18,7 @@ func TestPlanHysteresisFastSPI(t *testing.T) {
 		want uint8
 	}{{4, 6}, {8, 6}, {9, 13}, {188, 13}} {
 		cfg := sramcapture.Config{SPI: sramcapture.SPITriggerConfig{Enabled: true, ClockChannel: 1, GapTicks: c.gap}}
-		e.planHysteresis(&cfg, false)
+		e.planHysteresis(&cfg)
 		if cfg.TriggerHysteresis != c.want {
 			t.Fatalf("gap %d: band %d, want %d", c.gap, cfg.TriggerHysteresis, c.want)
 		}

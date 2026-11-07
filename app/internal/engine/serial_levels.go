@@ -329,15 +329,15 @@ func (e *Engine) serialNoHardware() string {
 		}
 		return "loading the " + want + " FPGA image"
 	}
-	packet := func(proto int) bool { return e.hardwarePacket&(1<<proto) != 0 }
+	packet := func(proto int) bool { return e.caps().Packet&(1<<proto) != 0 }
 	have := map[int]bool{
-		core.SerUART: e.hardwareUART, core.SerI2C: e.hardwareI2C, core.SerSPI: e.hardwareSPI, core.SerManchester: e.hardwareManchester,
-		core.SerSENT: e.hardwareSENT, core.SerCAN: packet(core.SerCAN), core.SerMIL1553: e.hardwareMIL1553, core.SerARINC: packet(core.SerARINC),
-		core.SerUSB: e.hardwareUSBLS, core.SerFlexRay: packet(core.SerFlexRay), core.SerMIDI: e.hardwareUART,
+		core.SerUART: e.caps().UART, core.SerI2C: e.caps().I2C, core.SerSPI: e.caps().SPI, core.SerManchester: e.caps().Manchester,
+		core.SerSENT: e.caps().SENT, core.SerCAN: packet(core.SerCAN), core.SerMIL1553: e.caps().MIL1553, core.SerARINC: packet(core.SerARINC),
+		core.SerUSB: e.caps().USBLS, core.SerFlexRay: packet(core.SerFlexRay), core.SerMIDI: e.caps().UART,
 	}
 	for proto := core.SerLIN; proto < SerialProtocols; proto++ {
 		if acq.SymbolProtocol(proto) {
-			have[proto] = e.hardwareSymbol
+			have[proto] = e.caps().Symbol
 		}
 	}
 	if known, ok := have[p.Proto]; ok && !known {
@@ -349,7 +349,7 @@ func (e *Engine) serialNoHardware() string {
 	if n := len(core.PatternOf(p)); n > 32 {
 		return fmt.Sprintf("a match of %d units is over the 32 the matcher holds", n)
 	}
-	if core.SequenceNeeded(p) && !e.hardwareSequence {
+	if core.SequenceNeeded(p) && !e.caps().Sequence {
 		return "this FPGA image has no sequence trigger for a match this long or with wildcards"
 	}
 	return "the matcher cannot take this match"

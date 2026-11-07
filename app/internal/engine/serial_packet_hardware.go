@@ -16,14 +16,13 @@ import (
 // at start and after every image switch.
 // TRLC-LINKS: REQ-SDS-013
 func (e *Engine) probeSerialHardware() {
-	c := e.hw().ProbeImage(e.logf)
-	e.hardwareUART, e.hardwareI2C, e.hardwareSPI = c.UART, c.I2C, c.SPI
-	e.hardwareSampleSPI, e.hardwareSampleUART, e.hardwareSampleI2C = c.SampleSPI, c.SampleUART, c.SampleI2C
-	e.hardwareSENT, e.hardwareUSBLS, e.hardwareMIL1553, e.hardwareManchester = c.SENT, c.USBLS, c.MIL1553, c.Manchester
-	e.hardwareSequence, e.hardwareEnvelope, e.hardwareQualifier, e.hardwareSymbol = c.Sequence, c.Envelope, c.Qualifier, c.Symbol
-	e.sequenceOnly, e.hardwarePacket, e.rawOnly = c.SequenceOnly, c.Packet, c.RawOnly
-	e.boxDecim, e.pickDecim, e.pickAlt = c.BoxDecim, c.PickDecim, c.PickAlt
+	e.hw().ProbeImage(e.logf)
 }
+
+// caps is the loaded image's capabilities, as the board probed them:
+// immutable while the owner loop runs on the image.
+// TRLC-LINKS: REQ-SDS-013
+func (e *Engine) caps() acq.Caps { return e.hw().ImageCaps() }
 
 // hasImage reports an embedded protocol image.
 // TRLC-LINKS: REQ-SDS-013

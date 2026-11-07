@@ -22,7 +22,7 @@ func TestSequenceOnGeneralImage(t *testing.T) {
 		t.Fatalf("a native UART pattern switched images: %v", images.loads)
 	}
 	e.SetSerialParams(SerialParams{Proto: core.SerUART, Baud: 115200, HaveThr: true, Threshold: 103, ChA: 1, Pattern: []PatternElem{{Kind: 4, Value: 0, Mask: 0}}})
-	if e.serviceImage() || b.image != "general" || !e.hardwareSequence || !e.hardwareUART {
+	if e.serviceImage() || b.image != "general" || !e.caps().Sequence || !e.caps().UART {
 		t.Fatalf("general image: %v %s", images.loads, b.image)
 	}
 	cfg, _, _, _, _ := e.sramConfig()
@@ -82,7 +82,8 @@ func TestFrameUnitStart(t *testing.T) {
 // TRLC-LINKS: REQ-SDS-013, REQ-SDS-223
 func TestMatchKeepsItsUnits(t *testing.T) {
 	pre := func(p SerialParams) uint32 {
-		e := &Engine{band: Band{TdivS: 200e-6}, rawOnly: true}
+		e := &Engine{band: Band{TdivS: 200e-6}}
+		setCaps(e, func(c *acq.Caps) { c.RawOnly = true })
 		e.trigPosFrac.Store(math.Float64bits(.1))
 		e.SetSerialParams(p)
 		e.SetSerialMode(SerialTrigger)

@@ -69,7 +69,8 @@ func TestEnvelopeWindowKeepsTheScreen(t *testing.T) {
 
 // TRLC-LINKS: REQ-SDS-010
 func TestEnvelopeAllowed(t *testing.T) {
-	e := &Engine{hardwareEnvelope: true}
+	e := &Engine{}
+	setCaps(e, func(c *acq.Caps) { c.Envelope = true })
 	if !e.envelopeAllowed() {
 		t.Fatal("plain edge capture refused")
 	}
@@ -100,7 +101,7 @@ func TestEnvelopeAllowed(t *testing.T) {
 	if !e.envelopeAllowed() {
 		t.Fatal("peak mode refused")
 	}
-	e.hardwareEnvelope = false
+	setCaps(e, func(c *acq.Caps) { c.Envelope = false })
 	if e.envelopeAllowed() {
 		t.Fatal("an image without the envelope recall")
 	}
@@ -148,7 +149,8 @@ func TestOrderEnvelopeHead(t *testing.T) {
 // 15.6 MHz of a 32 ns capture filtered at 4.2 MHz at 5us/div).
 // TRLC-LINKS: REQ-SDS-010, REQ-SDS-070
 func TestSpectrumLease(t *testing.T) {
-	e := &Engine{hardwareEnvelope: true, clk: Clock{Now: time.Now}}
+	e := &Engine{clk: Clock{Now: time.Now}}
+	setCaps(e, func(c *acq.Caps) { c.Envelope = true })
 	e.LeaseSpectrumView(3 * time.Second)
 	block := e.envelopeBlock()
 	if block != blockSpectrum {
@@ -176,7 +178,8 @@ func TestSpectrumLease(t *testing.T) {
 // as short a record.
 // TRLC-LINKS: REQ-SDS-010, REQ-SDS-214
 func TestSearchLease(t *testing.T) {
-	e := &Engine{hardwareEnvelope: true, clk: Clock{Now: time.Now}, band: Band{TdivS: 20e-3}}
+	e := &Engine{clk: Clock{Now: time.Now}, band: Band{TdivS: 20e-3}}
+	setCaps(e, func(c *acq.Caps) { c.Envelope = true })
 	e.running.Store(true)
 	e.trigPosFrac.Store(math.Float64bits(.5))
 	if !e.rollActive() {
