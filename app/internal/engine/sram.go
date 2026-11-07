@@ -733,17 +733,25 @@ func (e *Engine) calibrateRecord(f *sample.Frame, q1, q2 []uint16, savedScale [2
 	return q1, q2
 }
 
+// ensurePrecision gives frame f Q8.8 samples made from its codes, in q1
+// and q2's storage, when it has none.
+// TRLC-LINKS: REQ-SDS-012
+func ensurePrecision(f *sample.Frame, q1, q2 []uint16) {
+	if len(f.Precision(0)) == f.Len() {
+		return
+	}
+	f.Traces[0].Precision, f.Traces[1].Precision = core.QBuffer(q1, f.Len()), core.QBuffer(q2, f.Len())
+	q1, q2, c1, c2 := f.Precision(0), f.Precision(1), f.Codes8(0), f.Codes8(1)
+	for i := range f.Len() {
+		q1[i], q2[i] = uint16(c1[i])<<8, uint16(c2[i])<<8
+	}
+}
+
 // eres applies the ERES boxcar of length points to frame f (its Q8.8
 // samples made from the codes when it has none, in q1 and q2).
 // TRLC-LINKS: REQ-SDS-012
 func (c *frameConditioner) eres(f *sample.Frame, q1, q2 []uint16, length int) {
-	if len(f.Precision(0)) != f.Len() {
-		f.Traces[0].Precision, f.Traces[1].Precision = core.QBuffer(q1, f.Len()), core.QBuffer(q2, f.Len())
-		q1, q2, c1, c2 := f.Precision(0), f.Precision(1), f.Codes8(0), f.Codes8(1)
-		for i := range f.Len() {
-			q1[i], q2[i] = uint16(c1[i])<<8, uint16(c2[i])<<8
-		}
-	}
+	ensurePrecision(f, q1, q2)
 	c.scratch = core.QBuffer(c.scratch, f.Len())
 	core.EresQ8(f.Precision(0), c.scratch, length)
 	core.EresQ8(f.Precision(1), c.scratch, length)
@@ -881,13 +889,7 @@ func (e *Engine) averageFrame(f *sample.Frame, avg *core.SramAverage, cfg sramca
 		avg.Reset()
 		avg.Key = key
 	}
-	if len(f.Precision(0)) != f.Len() {
-		f.Traces[0].Precision, f.Traces[1].Precision = core.QBuffer(q1, f.Len()), core.QBuffer(q2, f.Len())
-		q1, q2, c1, c2 := f.Precision(0), f.Precision(1), f.Codes8(0), f.Codes8(1)
-		for i := range f.Len() {
-			q1[i], q2[i] = uint16(c1[i])<<8, uint16(c2[i])<<8
-		}
-	}
+	ensurePrecision(f, q1, q2)
 	count := 0
 	if edge >= 0 {
 		count = avg.Push(f, n)
