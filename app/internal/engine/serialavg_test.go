@@ -3,9 +3,10 @@
 package engine
 
 import (
-	core "github.com/labeth/open-dso-core/engine"
 	"math"
 	"testing"
+
+	core "github.com/labeth/open-dso-core/engine"
 )
 
 // A serial trigger's match edge goes either way: a UART start bit falls. The

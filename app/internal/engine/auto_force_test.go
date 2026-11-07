@@ -3,9 +3,10 @@
 package engine
 
 import (
-	core "github.com/labeth/open-dso-core/engine"
 	"testing"
 	"time"
+
+	core "github.com/labeth/open-dso-core/engine"
 )
 
 // AUTO forces a capture whose wait is over only while the hardware has not

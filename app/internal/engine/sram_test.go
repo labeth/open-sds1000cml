@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/labeth/open-dso-core/sample"
+	"github.com/labeth/open-sds1000cml/app/internal/board/acq"
 	"github.com/labeth/open-sds1000cml/app/internal/sramcapture"
 )
 
@@ -186,7 +187,7 @@ func TestSRAMTriggerHysteresisCoversSelectedConverterSpread(t *testing.T) {
 func TestStoppedSRAMTimebasePreservesAcquisition(t *testing.T) {
 	for _, p := range []SRAMPlan{PlanSRAM(1e-7), PlanPrecisionSRAM(1e-7, 5)} {
 		for _, td := range []float64{1e-9, 1e-6, 1} {
-			got := retainedSRAMPlan(p, td)
+			got := acq.RetainedSRAMPlan(p, td)
 			if got.SampleS != p.SampleS || got.Log != p.Log || got.Samples != p.Samples {
 				t.Fatalf("retimed stored samples: %+v -> %+v", p, got)
 			}
@@ -228,7 +229,7 @@ func TestLiveSRAMWindowFollowsTriggerPosition(t *testing.T) {
 func TestLiveSRAMWindowKeepsTheScreenOverThePreRoom(t *testing.T) {
 	m := sramcapture.Metadata{Length: 524288, TriggerIndex: 70000, SamplesPerWord: 1, FractionBits: 8}
 	screen := 400000
-	off, n := liveSRAMWindowPre(m, screen, 0.1, 300000)
+	off, n := acq.LiveSRAMWindowPre(m, screen, 0.1, 300000)
 	if after := int(off + n - m.TriggerIndex); after < screen*9/10 {
 		t.Fatalf("window %d+%d: %d after the trigger, want the screen's %d", off, n, after, screen*9/10)
 	}

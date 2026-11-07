@@ -1,6 +1,6 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-ENGINE
 
-package engine
+package acq
 
 import (
 	"math"
@@ -10,7 +10,7 @@ import (
 )
 
 // TRLC-LINKS: REQ-SDS-013, REQ-SDS-018
-func planHardwareUSBLS(p *SerialParams) sramcapture.USBLSTriggerConfig {
+func PlanHardwareUSBLS(p *core.SerialParams) sramcapture.USBLSTriggerConfig {
 	if p.Proto != core.SerUSB || !p.HaveThr || p.ChA < 0 || p.ChA > 1 || len(p.Bytes) > 4 || p.Baud <= 0 || math.IsNaN(p.Threshold) || math.IsInf(p.Threshold, 0) || p.Threshold < 0 || p.Threshold > 255 {
 		return sramcapture.USBLSTriggerConfig{}
 	}

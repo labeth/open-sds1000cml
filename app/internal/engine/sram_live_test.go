@@ -10,6 +10,7 @@ import (
 
 	core "github.com/labeth/open-dso-core/engine"
 	"github.com/labeth/open-dso-core/sample"
+	"github.com/labeth/open-sds1000cml/app/internal/board/acq"
 	"github.com/labeth/open-sds1000cml/app/internal/sramcapture"
 )
 
@@ -19,7 +20,7 @@ import (
 func TestLiveSRAMPlanBoundsTheScreen(t *testing.T) {
 	for _, tdiv := range []float64{200e-6, 500e-6, 10e-3, 1} {
 		p := PlanSRAM(tdiv)
-		live, ok := liveSRAMPlan(p, liveScreenSamples)
+		live, ok := acq.LiveSRAMPlan(p, liveScreenSamples)
 		if !ok {
 			t.Fatalf("%g s/div: screen %d not reduced", tdiv, p.Screen)
 		}
@@ -31,7 +32,7 @@ func TestLiveSRAMPlanBoundsTheScreen(t *testing.T) {
 		}
 	}
 	for _, tdiv := range []float64{1e-6, 500e-9} {
-		if _, ok := liveSRAMPlan(PlanSRAM(tdiv), liveScreenSamples); ok {
+		if _, ok := acq.LiveSRAMPlan(PlanSRAM(tdiv), liveScreenSamples); ok {
 			t.Fatalf("%g s/div: a short raw screen was decimated", tdiv)
 		}
 	}
@@ -47,7 +48,7 @@ func TestLiveSRAMPlanBoundsTheScreen(t *testing.T) {
 func TestLiveSRAMPlanKeepsTheDisplayBandwidth(t *testing.T) {
 	for _, tdiv := range []float64{20e-6, 50e-6, 200e-6, 500e-6, 2e-3, 10e-3} {
 		p := PlanSRAM(tdiv)
-		live, ok := liveSRAMPlan(p, liveBudget("averaging", 0, 0))
+		live, ok := acq.LiveSRAMPlan(p, liveBudget("averaging", 0, 0))
 		if !ok {
 			continue
 		}
@@ -55,23 +56,23 @@ func TestLiveSRAMPlanKeepsTheDisplayBandwidth(t *testing.T) {
 		if bw < 1.3*pixNyq {
 			t.Errorf("%g s/div: /%d keeps %.0f Hz, under 1.3 x the pixel Nyquist %.0f Hz", tdiv, 1<<live.Log, bw, pixNyq)
 		}
-		spec, ok := liveSRAMPlan(p, liveBudget(blockSpectrum, 0, 0))
+		spec, ok := acq.LiveSRAMPlan(p, liveBudget(blockSpectrum, 0, 0))
 		if ok && (spec.Screen > spectrumLiveSamples || spec.Screen <= spectrumLiveSamples/2 && spec.Log > 4) {
 			t.Errorf("%g s/div: the spectrum's record holds %d samples at /%d", tdiv, spec.Screen, 1<<spec.Log)
 		}
 	}
-	if live, _ := liveSRAMPlan(PlanSRAM(500e-6), liveBudget("averaging", 0, 0)); live.Log != 9 {
+	if live, _ := acq.LiveSRAMPlan(PlanSRAM(500e-6), liveBudget("averaging", 0, 0)); live.Log != 9 {
 		t.Errorf("500us/div: /%d, want /512", 1<<live.Log)
 	}
-	if spec, _ := liveSRAMPlan(PlanSRAM(500e-6), liveBudget(blockSpectrum, 0, 0)); spec.Log != 8 {
+	if spec, _ := acq.LiveSRAMPlan(PlanSRAM(500e-6), liveBudget(blockSpectrum, 0, 0)); spec.Log != 8 {
 		t.Errorf("500us/div spectrum: /%d, want /256", 1<<spec.Log)
 	}
-	if spec, ok := liveSRAMPlan(PlanSRAM(200e-6), liveBudget(blockSpectrum, 0, 0)); !ok || spec.Log != 6 || spec.Screen != 15625 {
+	if spec, ok := acq.LiveSRAMPlan(PlanSRAM(200e-6), liveBudget(blockSpectrum, 0, 0)); !ok || spec.Log != 6 || spec.Screen != 15625 {
 		t.Errorf("200us/div spectrum: /%d, %d samples; want /64, 15625 (an 8192-point FFT one for one)", 1<<spec.Log, spec.Screen)
 	}
 	if p := PlanSRAM(5e-6); liveDecimatesPlan(blockSpectrum, p) {
 		t.Error("5us/div spectrum decimated: 25000 samples stay at the full rate")
-	} else if _, ok := liveSRAMPlan(p, liveBudget(blockSpectrum, 0, 0)); ok {
+	} else if _, ok := acq.LiveSRAMPlan(p, liveBudget(blockSpectrum, 0, 0)); ok {
 		t.Error("5us/div spectrum: the full-rate screen planned decimated")
 	}
 }

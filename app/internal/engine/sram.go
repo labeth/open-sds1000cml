@@ -8,62 +8,14 @@ import (
 	"errors"
 	"fmt"
 	"math"
-	"slices"
 	"time"
 
 	"github.com/labeth/open-dso-core/dsp"
 	core "github.com/labeth/open-dso-core/engine"
 	"github.com/labeth/open-dso-core/sample"
+	"github.com/labeth/open-sds1000cml/app/internal/board/acq"
 	"github.com/labeth/open-sds1000cml/app/internal/sramcapture"
 )
-
-// SRAMPlan retains the complete physical record. Reduction is the smallest
-// supported power of two that fits a screen into that record, leaving the ARM
-// all remaining samples for measurements and display reduction.
-// TRLC-LINKS: REQ-SDS-010, REQ-SDS-040
-type SRAMPlan struct {
-	Log             uint8
-	Samples, Screen int
-	SampleS         float64
-}
-
-// FullRateTdiv is the slowest of tdivs whose SRAM record is sampled at the
-// fastest rate (0 for none): where BUS detection looks again when a record
-// hid the bus (decimated, or too short).
-// TRLC-LINKS: REQ-SDS-214
-func FullRateTdiv(tdivs []float64) float64 {
-	if len(tdivs) == 0 {
-		return 0
-	}
-	full, best := PlanSRAM(slices.Min(tdivs)).SampleS, 0.0
-	for _, t := range tdivs {
-		if PlanSRAM(t).SampleS <= full && t > best {
-			best = t
-		}
-	}
-	return best
-}
-
-// PlanSRAM plans the SRAM record for a timebase: the full record at 2 ns a
-// sample while ten divisions fit, else the smallest decimation that fits them.
-// TRLC-LINKS: REQ-SDS-214
-func PlanSRAM(tdiv float64) SRAMPlan {
-	p := SRAMPlan{Samples: int(sramcapture.SamplesPerChannel), SampleS: 2e-9}
-	if !(tdiv > 0) || math.IsInf(tdiv, 0) {
-		tdiv = 500e-6
-	}
-	if 10*tdiv > float64(p.Samples)*p.SampleS {
-		p.Log = 4
-		p.Samples = int(sramcapture.Words)
-		p.SampleS = 32e-9
-		for p.Log < 20 && 10*tdiv > float64(p.Samples)*p.SampleS {
-			p.Log++
-			p.SampleS *= 2
-		}
-	}
-	p.Screen = int(math.Min(float64(p.Samples), math.Max(2, math.Round(10*tdiv/p.SampleS))))
-	return p
-}
 
 // rawScreenTdiv is the slowest timebase whose ten divisions a raw record
 // (an image without decimation: 2 ns a sample, one SRAM deep) holds whole.
@@ -87,45 +39,6 @@ func rawScreenTdiv() float64 {
 // 500us/div, /1024 passes 36.6 kHz and a 115200 Bd UART's bits vanish in
 // Average and ERES). About 13 frames a second there, against 20.
 const liveScreenSamples = 8192
-
-// liveSRAMPlan decimates p until its screen fits budget samples (or the
-// deepest decimation), with a record of a few screens; ok is false when p's
-// screen already reads in budget words.
-// TRLC-LINKS: REQ-SDS-010
-func liveSRAMPlan(p SRAMPlan, budget int) (SRAMPlan, bool) {
-	// A raw screen packs two samples a word: what bounds the readout is words.
-	if words := p.Screen / (2 - boolInt(p.Log != 0)); words <= budget {
-		return p, false
-	}
-	span := float64(p.Screen) * p.SampleS
-	if p.Log < 4 {
-		p.Log, p.SampleS = 4, finestDecimatedS
-	}
-	for p.Log < 20 && span/p.SampleS > float64(budget) {
-		p.Log++
-		p.SampleS *= 2
-	}
-	p.Screen = int(math.Max(2, math.Round(span/p.SampleS)))
-	p.Samples = min(int(sramcapture.Words), max(4*p.Screen, 8192))
-	return p, true
-}
-
-// PlanPrecisionSRAM keeps the selected sample rate fixed as the view changes.
-// TRLC-LINKS: REQ-SDS-010, REQ-SDS-036
-func PlanPrecisionSRAM(tdiv float64, log uint8) SRAMPlan {
-	if !(tdiv > 0) || math.IsInf(tdiv, 0) {
-		tdiv = 500e-6
-	}
-	if log < 4 {
-		log = 4
-	}
-	if log > 20 {
-		log = 20
-	}
-	p := SRAMPlan{Log: log, Samples: int(sramcapture.Words), SampleS: float64(uint64(1)<<log) / 500e6}
-	p.Screen = int(math.Min(float64(p.Samples), math.Max(2, math.Round(10*tdiv/p.SampleS))))
-	return p
-}
 
 // fullRateFrame reports whether a frame read with bucket words a bucket (0:
 // raw) from a record of the given decimation, in acquisition mode acq, holds
@@ -301,7 +214,7 @@ func (e *Engine) sramConfig() (sramcapture.Config, SRAMPlan, float64, bool, core
 // TRLC-LINKS: REQ-SDS-009, REQ-SDS-011, REQ-SDS-013, REQ-SDS-014
 func (e *Engine) buildSRAMConfig(c *sramcapture.Config, p SRAMPlan, tp core.TrigParams) SRAMPlan {
 	samples := p.Samples
-	perWord := 2 - boolInt(p.Log != 0)
+	perWord := 2 - acq.BoolInt(p.Log != 0)
 	words := uint32((samples + perWord - 1) / perWord) //nolint:gosec // G115: the plan's samples fit the SRAM
 	p.Samples = int(words) * perWord
 	pre := uint32(float64(words) * math.Float64frombits(e.trigPosFrac.Load()))
@@ -430,10 +343,10 @@ func (e *Engine) sramConfigInto(c *sramcapture.Config) (SRAMPlan, float64, bool,
 	// SINGLE keeps the deep record, except in the noise-reducing modes: their
 	// result is the filtered capture the preview shows (a block of deep records
 	// took minutes, and a raw deep record is noisier than the preview).
-	acq := e.acqMode.Load()
-	filtered := acq == AcqAverage || acq == AcqPrecision || acq == AcqEres
+	mode := e.acqMode.Load()
+	filtered := mode == AcqAverage || mode == AcqPrecision || mode == AcqEres
 	budget := liveBudget(block, float64(p.Screen)*p.SampleS, math.Float64frombits(e.busSampleS.Load()))
-	if live, ok := liveSRAMPlan(p, budget); ok && (!e.singleArmed.Load() || filtered) && !e.rawOnly && liveDecimatesPlan(block, p) {
+	if live, ok := acq.LiveSRAMPlan(p, budget); ok && (!e.singleArmed.Load() || filtered) && !e.rawOnly && liveDecimatesPlan(block, p) {
 		if block == blockSearch || block == blockSamples || block == blockSpectrum || block == blockBus {
 			live.Samples = min(live.Samples, max(int(leaseRecord*float64(live.Screen)), 8192))
 		}
@@ -443,7 +356,7 @@ func (e *Engine) sramConfigInto(c *sramcapture.Config) (SRAMPlan, float64, bool,
 	// trigger reads the raw samples (as the edge and the qualifier do; the
 	// zones judge the filter's words): the decode reads edges, which the
 	// precision filter's band smooths away
-	c.Pick = e.pickAlt && block == blockBus && c.DecimationLog2 != 0 && hardwareSerialName(*c) != ""
+	c.Pick = e.pickAlt && block == blockBus && c.DecimationLog2 != 0 && acq.HardwareSerialName(*c) != ""
 	return p, tdiv, norm, tp
 }
 
@@ -467,18 +380,18 @@ func averageAlignEdge(local []uint8, hint float64, nearer, rising bool) float64 
 // trigger left when the request cannot be planned in hardware.
 // TRLC-LINKS: REQ-SDS-013
 func (e *Engine) planSerial(c *sramcapture.Config, serial SerialParams, fallbackNormal bool) {
-	if symbolProtocol(serial.Proto) {
+	if acq.SymbolProtocol(serial.Proto) {
 		// ADR-SYMBOL-TRIGGER: the whole request compiles into the symbol
 		// trigger (it has no sequence trigger: the units are its window's).
 		if e.hardwareSymbol {
-			c.Symbol = planHardwareSymbol(&serial)
+			c.Symbol = acq.PlanHardwareSymbol(&serial)
 		}
 		if !c.Symbol.Enabled {
 			c.Normal = fallbackNormal
 			return
 		}
 		c.Normal, c.TriggerChannel = true, c.Symbol.Channel
-		first, second := uint8(math.Round(serial.Threshold)), secondLevel(serial)
+		first, second := uint8(math.Round(serial.Threshold)), acq.SecondLevel(serial)
 		if int(c.Symbol.Channel) != serial.ChA {
 			first, second = second, first
 		}
@@ -503,10 +416,10 @@ func (e *Engine) planSerial(c *sramcapture.Config, serial SerialParams, fallback
 		}
 	}
 	if e.hardwarePacket != 0 {
-		c.Packet = planHardwarePacket(&serial, e.hardwarePacket, e.arincAux.Load())
+		c.Packet = acq.PlanHardwarePacket(&serial, e.hardwarePacket, e.arincAux.Load())
 	}
 	if e.hardwareManchester {
-		c.Manchester = planHardwareManchester(&serial)
+		c.Manchester = acq.PlanHardwareManchester(&serial)
 	}
 	if c.Packet.Enabled || c.Manchester.Enabled {
 		c.Normal = true
@@ -514,22 +427,22 @@ func (e *Engine) planSerial(c *sramcapture.Config, serial SerialParams, fallback
 		c.TriggerLevel = uint8(math.Round(serial.Threshold))
 	}
 	if e.hardwareUSBLS {
-		c.USBLS = planHardwareUSBLS(&serial)
+		c.USBLS = acq.PlanHardwareUSBLS(&serial)
 	}
 	if e.hardwareMIL1553 {
-		c.MIL1553 = planHardwareMIL1553(&serial)
+		c.MIL1553 = acq.PlanHardwareMIL1553(&serial)
 	}
 	if e.hardwareSENT {
-		c.SENT = planHardwareSENT(&serial)
+		c.SENT = acq.PlanHardwareSENT(&serial)
 	}
 	if e.hardwareUART {
-		c.UART = planHardwareUART(&serial, e.hardwareSampleUART)
+		c.UART = acq.PlanHardwareUART(&serial, e.hardwareSampleUART)
 	}
 	if e.hardwareSPI {
-		c.SPI = planHardwareSPI(&serial, e.hardwareSampleSPI)
+		c.SPI = acq.PlanHardwareSPI(&serial, e.hardwareSampleSPI)
 	}
 	if e.hardwareI2C {
-		c.I2C = planHardwareI2C(&serial, e.hardwareSampleI2C)
+		c.I2C = acq.PlanHardwareI2C(&serial, e.hardwareSampleI2C)
 	}
 	if c.USBLS.Enabled {
 		c.Normal = true
@@ -556,31 +469,21 @@ func (e *Engine) planSerial(c *sramcapture.Config, serial SerialParams, fallback
 	if c.SPI.Enabled {
 		c.Normal = true
 		c.TriggerChannel = c.SPI.ClockChannel
-		c.TriggerLevel, c.SecondLevel = uint8(math.Round(serial.Threshold)), secondLevel(serial)
+		c.TriggerLevel, c.SecondLevel = uint8(math.Round(serial.Threshold)), acq.SecondLevel(serial)
 	}
 	if c.I2C.Enabled {
 		c.Normal = true
 		c.TriggerChannel = c.I2C.ClockChannel
-		c.TriggerLevel, c.SecondLevel = uint8(math.Round(serial.Threshold)), secondLevel(serial)
+		c.TriggerLevel, c.SecondLevel = uint8(math.Round(serial.Threshold)), acq.SecondLevel(serial)
 	}
-	if needSequence && hardwareSerialName(*c) != "" {
-		if c.Sequence = planSequence(request); c.Sequence.Length == 0 {
+	if needSequence && acq.HardwareSerialName(*c) != "" {
+		if c.Sequence = acq.PlanSequence(request); c.Sequence.Length == 0 {
 			// Unplannable in hardware: back to software qualification.
 			c.Packet, c.Manchester, c.USBLS, c.MIL1553, c.SENT = sramcapture.PacketTriggerConfig{}, sramcapture.ManchesterTriggerConfig{}, sramcapture.USBLSTriggerConfig{}, sramcapture.MIL1553TriggerConfig{}, sramcapture.SENTTriggerConfig{}
 			c.UART, c.SPI, c.I2C = sramcapture.UARTTriggerConfig{}, sramcapture.SPITriggerConfig{}, sramcapture.I2CTriggerConfig{}
 			c.Normal = fallbackNormal
 		}
 	}
-}
-
-// secondLevel is the code SPI's data line or I2C's SDA is sliced at: its
-// own threshold when planned (serialPlanParams), else the first line's.
-// TRLC-LINKS: REQ-SDS-013
-func secondLevel(p SerialParams) uint8 {
-	if p.HaveThrB && p.ThresholdB >= 0 && p.ThresholdB <= 255 {
-		return uint8(math.Round(p.ThresholdB))
-	}
-	return uint8(math.Round(p.Threshold))
 }
 
 // planHysteresis sets the fabric trigger's re-arm band from the converter
@@ -620,22 +523,14 @@ func (e *Engine) planHysteresis(c *sramcapture.Config, _ bool) {
 		band = math.Max(band, spread(1-int(c.TriggerChannel)))
 	}
 	c.TriggerHysteresis = uint8(math.Min(255, math.Max(4, math.Ceil(band)+2)))
-	if c.SPI.Enabled && c.SPI.GapTicks <= sampleSPIFastGap && c.TriggerHysteresis > sampleSPIFastBand {
+	if c.SPI.Enabled && c.SPI.GapTicks <= acq.SampleSPIFastGap && c.TriggerHysteresis > acq.SampleSPIFastBand {
 		// SPI on the samples at 25 MHz and up: its edges take a few ns, too
 		// fast for a converter's offset to cross the level back on them, and
 		// its sampled swing shrinks (104 MHz at 1 V/div with 10x probes dipped
 		// to 116 of the 115 the offsets' band asked, and a clock edge was lost)
-		c.TriggerHysteresis = sampleSPIFastBand
+		c.TriggerHysteresis = acq.SampleSPIFastBand
 	}
 }
-
-// sampleSPIFastGap is the idle gap of an SPI clock of 25 MHz and up (in
-// receiver clocks), and sampleSPIFastBand the re-arm band its receiver on
-// the samples takes (codes each side of the level).
-const (
-	sampleSPIFastGap  = 8
-	sampleSPIFastBand = 6
-)
 
 // decodedIdlePause is the wait between the owner loop's passes while a
 // decoded stream's worker builds its lines: a reader's request waits at most
@@ -667,14 +562,14 @@ func (e *Engine) decodedIdle() {
 // TRLC-LINKS: REQ-SDS-011, REQ-SDS-013, REQ-SDS-014
 func (e *Engine) noteBackendsLocked(cfg sramcapture.Config, tp core.TrigParams) {
 	e.stats.SerialBackend = ""
-	if name := hardwareSerialName(cfg); name != "" {
+	if name := acq.HardwareSerialName(cfg); name != "" {
 		e.stats.SerialBackend = "hardware-" + name
 	} else if e.serialMode.Load() == SerialTrigger {
 		e.stats.SerialBackend = "none: " + e.serialNoHardware()
 	}
 	e.stats.TriggerBackend = ""
 	if cfg.Qualifier.Enabled {
-		e.stats.TriggerBackend = "hardware-" + qualName(cfg.Qualifier.Kind)
+		e.stats.TriggerBackend = "hardware-" + acq.QualName(cfg.Qualifier.Kind)
 	} else if tp.Typ != TrigEdge && e.serialMode.Load() != SerialTrigger {
 		_, _, why := e.planQualifier(tp, int(cfg.TriggerChannel), e.trigRising.Load())
 		e.stats.TriggerBackend = "none: " + why
@@ -729,7 +624,7 @@ func (e *Engine) armAndWait(cfg sramcapture.Config, plan SRAMPlan, tdiv float64,
 	*singleGen = e.singleGen.Load()
 	// AUTO waits for enough prehistory plus a bounded event wait. SINGLE/NORM
 	// never fabricate a trigger. Long waits continue servicing controls.
-	autoWait := 100*time.Millisecond + time.Duration(float64(cfg.PreWords)*float64(2-boolInt(plan.Log != 0))*plan.SampleS*1e9)
+	autoWait := 100*time.Millisecond + time.Duration(float64(cfg.PreWords)*float64(2-acq.BoolInt(plan.Log != 0))*plan.SampleS*1e9)
 	var next sramcapture.Config
 	var settingsAt time.Time
 	for !e.stopReq.Load() {
@@ -975,7 +870,7 @@ func (e *Engine) serialTriggerKind(f *sample.Frame, m sramcapture.Metadata, cfg 
 	if e.serialMode.Load() != SerialTrigger {
 		return qualified
 	}
-	name := hardwareSerialName(cfg)
+	name := acq.HardwareSerialName(cfg)
 	if name == "" {
 		// No matcher could take the request (its levels are still being
 		// learned from these untriggered captures, or the image has none
@@ -1006,7 +901,7 @@ func (e *Engine) serialTriggerKind(f *sample.Frame, m sramcapture.Metadata, cfg 
 		// stop bit at its rates
 		end := hw
 		if cfg.UART.Period16 != 0 && f.SampleS > 0 {
-			end = math.Max(f.TriggerAt, hw-sampleUARTMatchLagS/f.SampleS)
+			end = math.Max(f.TriggerAt, hw-acq.SampleUARTMatchLagS/f.SampleS)
 		}
 		f.Match = &sample.Match{EndS: (end - f.TriggerAt) * f.SampleS}
 	}
@@ -1136,7 +1031,7 @@ func (e *Engine) runSRAM() { //nolint:gocyclo,funlen // the owner loop: one capt
 	})
 	e.probeSerialHardware()
 	e.mu.Lock()
-	e.stats.Image = imageGeneralName
+	e.stats.Image = acq.ImageGeneralName
 	e.mu.Unlock()
 	e.logf("engine: full-depth SRAM capture; software protocol qualification has capture dead time")
 	e.startConverters("the start") // as after every image load (loadImage)
@@ -1161,7 +1056,7 @@ func (e *Engine) runSRAM() { //nolint:gocyclo,funlen // the owner loop: one capt
 	for !e.stopReq.Load() {
 		e.setBusy("", 0) // set again only around a recall and its processing
 		e.serviceCommands()
-		if roll.streaming && (!e.rollActive() || e.protocolImage != imageStream || len(e.sramJobs) != 0) {
+		if roll.streaming && (!e.rollActive() || e.protocolImage != acq.ImageStream || len(e.sramJobs) != 0) {
 			e.rollStreamStop(&roll) // leaving roll: free the fabric for records
 		}
 		// A decoded stream's triggered record becomes the stopped capture: it is
@@ -1180,7 +1075,7 @@ func (e *Engine) runSRAM() { //nolint:gocyclo,funlen // the owner loop: one capt
 			if a.m.SampleRateHz > 0 && a.m.SamplesPerWord > 0 { // a decimated record (a software stream's capture)
 				savedPlan = SRAMPlan{Log: a.cfg.DecimationLog2, Samples: int(a.m.Length) * int(a.m.SamplesPerWord), SampleS: 1 / a.m.SampleRateHz}
 			}
-			savedPlan = retainedSRAMPlan(savedPlan, e.Snapshot().TdivS)
+			savedPlan = acq.RetainedSRAMPlan(savedPlan, e.Snapshot().TdivS)
 			savedNorm, savedForced, savedTP = true, false, core.TrigParams{Typ: TrigEdge}
 			retained, recalled, adopting = true, false, true
 			e.logf("engine: showing the decoded stream's record (%d words, trigger word %d)", a.m.Length, a.m.TriggerIndex)
@@ -1234,7 +1129,7 @@ func (e *Engine) runSRAM() { //nolint:gocyclo,funlen // the owner loop: one capt
 		if rolling {
 			retained, recalled = false, false // the roll view is not a retained record
 			e.viewHeld.Store(false)
-			if e.protocolImage == imageStream {
+			if e.protocolImage == acq.ImageStream {
 				e.rollStreamStep(&roll)
 			} else {
 				e.rollStep(&roll)
@@ -1245,7 +1140,7 @@ func (e *Engine) runSRAM() { //nolint:gocyclo,funlen // the owner loop: one capt
 		replay := !e.running.Load() && retained
 		if replay {
 			cfg, plan, norm, tp = savedCfg, savedPlan, savedNorm, savedTP
-			plan = retainedSRAMPlan(plan, tdiv)
+			plan = acq.RetainedSRAMPlan(plan, tdiv)
 		}
 		e.mu.Lock()
 		if e.pendSet {
@@ -1313,7 +1208,7 @@ func (e *Engine) runSRAM() { //nolint:gocyclo,funlen // the owner loop: one capt
 			case cfg.Qualifier.Enabled && cfg.Qualifier.Kind == sramcapture.QualVideo && plan.SampleS > 0:
 				pre = int(8e-6 / plan.SampleS) // a line sync's width
 			}
-			recallOffset, recallWords = liveSRAMWindowPre(m, screen, posFrac, pre)
+			recallOffset, recallWords = acq.LiveSRAMWindowPre(m, screen, posFrac, pre)
 		}
 		// While running, a window larger than the display needs is read as a
 		// peak-detect envelope; the deep record stays in SRAM for a stop.
@@ -1327,7 +1222,7 @@ func (e *Engine) runSRAM() { //nolint:gocyclo,funlen // the owner loop: one capt
 		if !fullRecall {
 			why := e.envelopeBlock()
 			if why == "" {
-				bucket, recallOffset, recallWords = envelopeWindow(recallOffset, recallWords, envBuckets, m.Length, uint32(pre/max(1, int(m.SamplesPerWord)))) //nolint:gosec // G115: pre is a sample offset within the record
+				bucket, recallOffset, recallWords = acq.EnvelopeWindow(recallOffset, recallWords, envBuckets, m.Length, uint32(pre/max(1, int(m.SamplesPerWord)))) //nolint:gosec // G115: pre is a sample offset within the record
 			}
 			readout = liveReadoutName(why, bucket, singleShot)
 			rawForLease = why == blockRaw && !singleShot && !replay
@@ -1338,7 +1233,7 @@ func (e *Engine) runSRAM() { //nolint:gocyclo,funlen // the owner loop: one capt
 		frozenAt := e.clk.Now()
 		f := e.arena.Write()
 		q1, q2 := f.Precision(0), f.Precision(1)
-		resetFrame(f)
+		acq.ResetFrame(f)
 		f.SetLen(int(recallWords) * int(m.SamplesPerWord))
 		f.WinPoints, f.SampleS = plan.Screen, 1/m.SampleRateHz
 		f.Snapshot = sample.Settings{TdivS: tdiv, DisplayedS: math.Min(tdiv, float64(plan.Samples)*plan.SampleS/10), Norm: norm}
@@ -1473,10 +1368,10 @@ func (e *Engine) runSRAM() { //nolint:gocyclo,funlen // the owner loop: one capt
 		if bucket != 0 {
 			// After the (min, max)-pair calibration above: put each pair in
 			// time order so the live envelope also serves as samples.
-			orderEnvelopeHead(f.Codes8(0)[:f.Len()], f.Precision(0))
-			orderEnvelopeHead(f.Codes8(1)[:f.Len()], f.Precision(1))
-			orderEnvelope(f.Codes8(0)[:f.Len()], f.Precision(0))
-			orderEnvelope(f.Codes8(1)[:f.Len()], f.Precision(1))
+			acq.OrderEnvelopeHead(f.Codes8(0)[:f.Len()], f.Precision(0))
+			acq.OrderEnvelopeHead(f.Codes8(1)[:f.Len()], f.Precision(1))
+			acq.OrderEnvelope(f.Codes8(0)[:f.Len()], f.Precision(0))
+			acq.OrderEnvelope(f.Codes8(1)[:f.Len()], f.Precision(1))
 			f.Flags.Set(sample.Ordered, true)
 		}
 		switch {
@@ -1529,12 +1424,12 @@ func (e *Engine) runSRAM() { //nolint:gocyclo,funlen // the owner loop: one capt
 			// The FPGA's qualifier decided; software only places the trigger
 			// point on the event's level crossing.
 			if f.Status.Triggered {
-				f.TrigKind, f.TrigNode = sample.HardwareNode, qualName(cfg.Qualifier.Kind)
+				f.TrigKind, f.TrigNode = sample.HardwareNode, acq.QualName(cfg.Qualifier.Kind)
 				q := f.Precision(0)
 				if cfg.TriggerChannel == 1 {
 					q = f.Precision(1)
 				}
-				f.TriggerAt = placeQualified(f, disc, q, cfg.Qualifier, cfg.TriggerLevel)
+				f.TriggerAt = acq.PlaceQualified(f, disc, q, cfg.Qualifier, cfg.TriggerLevel)
 			}
 		case tp.Typ != TrigEdge && e.serialMode.Load() != SerialTrigger:
 			// No qualifier could take it: nothing triggers. Software never
@@ -1681,51 +1576,6 @@ func (e *Engine) runSRAM() { //nolint:gocyclo,funlen // the owner loop: one capt
 	}
 }
 
-// TRLC-LINKS: REQ-SDS-040
-func boolInt(v bool) int {
-	if v {
-		return 1
-	}
-	return 0
-}
-
-// liveSRAMWindowPre is liveSRAMWindow holding extraPre more samples before the
-// trigger, as many as the record holds beyond the screen: the screen's end
-// stays (a T55xx command at 2ms/div lost its last 2 ms to a serial
-// trigger's room).
-// TRLC-LINKS: REQ-SDS-010
-func liveSRAMWindowPre(m sramcapture.Metadata, screen int, posFrac float64, extraPre int) (uint32, uint32) {
-	per := int(m.SamplesPerWord)
-	samples := max(2048, screen+512)
-	if m.FractionBits == 8 {
-		samples = max(256, screen+128)
-	}
-	margin := samples - screen
-	extraPre = max(0, extraPre)
-	if over := samples + extraPre - int(m.Length)*per; over > 0 {
-		extraPre = max(0, extraPre-over)
-	}
-	samples += extraPre
-	words := min(m.Length, uint32((samples+per-1)/per)) //nolint:gosec // G115: samples are bounded by the record
-	// The trigger sits at posFrac of the screen, so the window holds
-	// screen·posFrac samples before it plus half the margin. Centring the
-	// window leaves a quarter of the screen as a flat extension at trigger
-	// position 0.2 or 0.8 (1 µs/div).
-	if !(posFrac >= 0 && posFrac <= 1) {
-		posFrac = .5
-	}
-	pre := uint32((float64(screen)*posFrac + float64(margin)/2 + float64(extraPre)) / float64(per))
-	pre = min(pre, words)
-	offset := uint32(0)
-	if m.TriggerIndex > pre {
-		offset = m.TriggerIndex - pre
-	}
-	if offset+words > m.Length {
-		offset = m.Length - words
-	}
-	return offset, words
-}
-
 // liveScale is the front end's scale now.
 // TRLC-LINKS: REQ-SDS-040
 func (e *Engine) liveScale() [2]core.ChScale {
@@ -1734,13 +1584,6 @@ func (e *Engine) liveScale() [2]core.ChScale {
 		s[ch] = core.ChScale{Vdiv: math.Float64frombits(e.chVdivBits[ch].Load()), Off: math.Float64frombits(e.trigOffV[ch].Load())}
 	}
 	return s
-}
-
-// A stopped timebase change reuses the captured sample pitch and depth.
-// TRLC-LINKS: REQ-SDS-010, REQ-SDS-040
-func retainedSRAMPlan(p SRAMPlan, tdiv float64) SRAMPlan {
-	p.Screen = int(math.Min(float64(p.Samples), math.Max(2, math.Round(10*tdiv/p.SampleS))))
-	return p
 }
 
 // symbolCount reads the symbol trigger's match count (modulo 2^16), or -1

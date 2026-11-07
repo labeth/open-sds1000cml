@@ -3,13 +3,14 @@
 package engine
 
 import (
-	core "github.com/labeth/open-dso-core/engine"
 	"math/rand"
 	"os"
 	"runtime"
 	"slices"
 	"syscall"
 	"testing"
+
+	core "github.com/labeth/open-dso-core/engine"
 )
 
 // feedPeakRef is feedPeak's pair ordering a sample at a time with branches,

@@ -12,6 +12,7 @@ import (
 
 	core "github.com/labeth/open-dso-core/engine"
 	"github.com/labeth/open-dso-core/sample"
+	"github.com/labeth/open-sds1000cml/app/internal/board/acq"
 	"github.com/labeth/open-sds1000cml/app/internal/bus"
 	"github.com/labeth/open-sds1000cml/app/internal/sramcapture"
 )
@@ -493,7 +494,7 @@ func (e *Engine) rollPublish(r *rollView, decimation uint32, filter, readout, st
 	p, tdiv := r.plan, r.tdiv
 	f := e.arena.Write()
 	q1, q2 := f.Precision(0), f.Precision(1)
-	resetFrame(f)
+	acq.ResetFrame(f)
 	f.SetLen(p.screen)
 	f.WinPoints, f.SampleS, f.CaptureS = p.screen, p.sampleS, p.sampleS
 	f.Snapshot = sample.Settings{TdivS: tdiv, DisplayedS: tdiv}
@@ -618,7 +619,7 @@ func (e *Engine) rollStreamStep(r *rollView) {
 // could not (the error is reported).
 // TRLC-LINKS: REQ-SDS-010, REQ-SDS-035
 func (e *Engine) rollStreamStart(r *rollView, p rollPlan) bool {
-	if err := e.freshStreamImage(imageStream); err != nil {
+	if err := e.freshStreamImage(acq.ImageStream); err != nil {
 		e.busErr(err)
 		e.sleepBeating(100 * time.Millisecond)
 		return false
@@ -788,7 +789,7 @@ func (e *Engine) peakSamples(r *rollView, raw []byte) ([]uint16, []uint16) {
 			q[ch][1] = qb[0]
 		}
 		c[ch][1] = core.RoundQ8(q[ch][1])
-		orderEnvelope(c[ch], q[ch])
+		acq.OrderEnvelope(c[ch], q[ch])
 		out[ch] = q[ch][2:]
 	}
 	return out[0], out[1]

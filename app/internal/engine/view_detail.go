@@ -8,6 +8,7 @@ import (
 
 	core "github.com/labeth/open-dso-core/engine"
 	"github.com/labeth/open-dso-core/sample"
+	"github.com/labeth/open-sds1000cml/app/internal/board/acq"
 	"github.com/labeth/open-sds1000cml/app/internal/sramcapture"
 )
 
@@ -62,7 +63,7 @@ func planView(m sramcapture.Metadata, from, to float64, buckets uint32) (core.Vi
 		return core.ViewPlan{}, false
 	}
 	p := core.ViewPlan{Buckets: buckets}
-	p.Bucket, p.Start, p.Length = envelopeWindow(uint32(from), uint32(to-from), buckets, m.Length, 0)
+	p.Bucket, p.Start, p.Length = acq.EnvelopeWindow(uint32(from), uint32(to-from), buckets, m.Length, 0)
 	p.N = int(p.Length) * int(m.SamplesPerWord)
 	if p.Bucket != 0 {
 		p.N = 2 * int(buckets)
@@ -97,7 +98,7 @@ type viewRead struct {
 // TRLC-LINKS: REQ-SDS-021
 func newViewRead(m sramcapture.Metadata, p core.ViewPlan) *viewRead {
 	n := p.N
-	f := recordFrame(n)
+	f := acq.RecordFrame(n)
 	if m.FractionBits == 8 {
 		f.Traces[0].Precision, f.Traces[1].Precision = make([]uint16, n), make([]uint16, n)
 	}
@@ -135,10 +136,10 @@ func (e *Engine) window(m sramcapture.Metadata, r *viewRead, scale [2]core.ChSca
 			cal.debiasEnvelope(0, f.Codes8(0), q1, false)
 			cal.debiasEnvelope(1, f.Codes8(1), q2, false)
 		}
-		orderEnvelopeHead(f.Codes8(0), nil)
-		orderEnvelopeHead(f.Codes8(1), nil)
-		orderEnvelope(f.Codes8(0), nil)
-		orderEnvelope(f.Codes8(1), nil)
+		acq.OrderEnvelopeHead(f.Codes8(0), nil)
+		acq.OrderEnvelopeHead(f.Codes8(1), nil)
+		acq.OrderEnvelope(f.Codes8(0), nil)
+		acq.OrderEnvelope(f.Codes8(1), nil)
 	} else if cal := e.interleaveCalibration; cal != nil && m.FractionBits == 0 && n >= 2000 {
 		q1, q2 := e.viewQ8(n)
 		cal.apply(f.Codes8(0), f.Codes8(1), q1, q2, [2]float64{scale[0].Vdiv, scale[1].Vdiv}, sampleS)

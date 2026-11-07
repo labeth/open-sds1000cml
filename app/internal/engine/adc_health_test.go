@@ -10,6 +10,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/labeth/open-sds1000cml/app/internal/board/acq"
 )
 
 // snapsOf samples a signal at n random instants, as the fabric's snapshots
@@ -157,7 +159,7 @@ func TestImageLoadChecksConverters(t *testing.T) {
 	// the bring-up's encode restart is the cure: nothing to recover
 	conv := &fakeConverters{encFrom: 1}
 	e, _, calls := newConvEngine(t, conv)
-	e.loadImage(imageFast)
+	e.loadImage(acq.ImageFast)
 	if got := strings.Join(*calls, ","); got != "load fast,encode,check" {
 		t.Errorf("bring-up: %s", got)
 	}
@@ -168,7 +170,7 @@ func TestImageLoadChecksConverters(t *testing.T) {
 	// a second encode restart
 	conv = &fakeConverters{encFrom: 2}
 	e, _, calls = newConvEngine(t, conv)
-	e.loadImage(imageFast)
+	e.loadImage(acq.ImageFast)
 	if got := strings.Join(*calls, ","); got != "load fast,encode,check,encode,check" {
 		t.Errorf("encode restart: %s", got)
 	}
@@ -179,7 +181,7 @@ func TestImageLoadChecksConverters(t *testing.T) {
 	// the encode restarts do not help: the second load of the image does
 	conv = &fakeConverters{reloads: 1}
 	e, _, calls = newConvEngine(t, conv)
-	e.loadImage(imageFast)
+	e.loadImage(acq.ImageFast)
 	if got := strings.Join(*calls, ","); got != "load fast,encode,check,encode,check,load fast,encode,check" {
 		t.Errorf("reload: %s", got)
 	}
@@ -206,7 +208,7 @@ func TestStuckConvertersAreReported(t *testing.T) {
 	e, _, calls := newConvEngine(t, conv)
 	now := time.Unix(1000, 0)
 	e.clk.Now = func() time.Time { return now }
-	e.loadImage(imageFast)
+	e.loadImage(acq.ImageFast)
 	want := "load fast,encode,check,encode,check" + strings.Repeat(",load fast,encode,check", adcReloads)
 	if got := strings.Join(*calls, ","); got != want {
 		t.Errorf("recoveries: %s", got)
@@ -217,7 +219,7 @@ func TestStuckConvertersAreReported(t *testing.T) {
 	}
 	// a fresh configuration runs the whole recovery again
 	*calls = nil
-	e.loadImage(imageFast)
+	e.loadImage(acq.ImageFast)
 	if got := strings.Join(*calls, ","); got != want {
 		t.Errorf("another load: %s", got)
 	}

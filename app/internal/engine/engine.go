@@ -12,6 +12,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/labeth/open-sds1000cml/app/internal/board/acq"
+
 	core "github.com/labeth/open-dso-core/engine"
 	"github.com/labeth/open-dso-core/sample"
 	"github.com/labeth/open-sds1000cml/app/internal/bus"
@@ -325,7 +327,7 @@ type Engine struct {
 	lastPublish           time.Time // when the newest frame was published (guarded by mu)
 	logf                  func(string, ...any)
 	arena                 *core.Arena
-	sram                  recordMemory
+	sram                  acq.Memory
 	adc                   adcHealth // the converters' health checks (adc_health.go)
 	panelScan             sramcapture.PanelConfig
 	panelScanSet          bool

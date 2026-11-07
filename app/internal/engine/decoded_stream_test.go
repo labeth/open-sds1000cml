@@ -8,6 +8,7 @@ import (
 	"time"
 
 	core "github.com/labeth/open-dso-core/engine"
+	"github.com/labeth/open-sds1000cml/app/internal/board/acq"
 	"github.com/labeth/open-sds1000cml/app/internal/sramcapture"
 )
 
@@ -17,11 +18,11 @@ import (
 func TestStreamTriggerPatternsPlan(t *testing.T) {
 	p := SerialParams{Proto: core.SerUART, Baud: 115200, ChA: 1, HaveThr: true, Threshold: 169}
 	p.Pattern = []PatternElem{{Kind: core.PatternError}}
-	if c := planSequence(p); c.Length != 1 || c.Elements[0].Kind != sramcapture.SequenceError {
+	if c := acq.PlanSequence(p); c.Length != 1 || c.Elements[0].Kind != sramcapture.SequenceError {
 		t.Fatalf("error trigger: %+v", c)
 	}
 	p.Pattern = []PatternElem{{Kind: core.PatternData, Value: 0x55, Mask: core.UnitMask(p)}}
-	if c := planSequence(p); c.Length != 1 || c.Elements[0].Value != 0x55 {
+	if c := acq.PlanSequence(p); c.Length != 1 || c.Elements[0].Value != 0x55 {
 		t.Fatalf("value trigger: %+v", c)
 	}
 	if streamNever <= 0x1fffffff {

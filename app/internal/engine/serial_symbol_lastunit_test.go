@@ -7,6 +7,7 @@ import (
 
 	"github.com/labeth/open-dso-core/decode"
 	core "github.com/labeth/open-dso-core/engine"
+	"github.com/labeth/open-sds1000cml/app/internal/board/acq"
 )
 
 // Every symbol-trigger protocol's frames matched on their last unit, whole:
@@ -46,7 +47,7 @@ func TestSymbolTriggerMatchesLastUnit(t *testing.T) {
 					frames[len(frames)-1] = append(frames[len(frames)-1], s)
 				}
 			}
-			spec, ok := symbolSpec(p)
+			spec, ok := acq.SymbolSpec(p)
 			if !ok {
 				t.Skip("no symbol spec")
 			}
@@ -66,7 +67,7 @@ func TestSymbolTriggerMatchesLastUnit(t *testing.T) {
 					continue
 				}
 				last := len(units) - 1
-				wd := spec.width(last)
+				wd := spec.Width(last)
 				if wd <= 0 {
 					continue
 				}
@@ -77,7 +78,7 @@ func TestSymbolTriggerMatchesLastUnit(t *testing.T) {
 				}
 				pat = append(pat, symData(units[last].Val&mask, mask))
 				p.Pattern = pat
-				if !planHardwareSymbol(&p).Enabled {
+				if !acq.PlanHardwareSymbol(&p).Enabled {
 					continue // past the block's window (a long frame on a protocol without a leader)
 				}
 				tried++

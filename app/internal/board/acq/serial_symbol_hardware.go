@@ -1,6 +1,6 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-ENGINE
 
-package engine
+package acq
 
 import (
 	"math"
@@ -11,12 +11,12 @@ import (
 	"github.com/labeth/open-sds1000cml/app/internal/sramcapture"
 )
 
-// symbolProtocol reports a protocol the qualify image's symbol trigger
+// SymbolProtocol reports a protocol the qualify image's symbol trigger
 // takes (ADR-SYMBOL-TRIGGER): the buses of timed pulses on one or two lines.
 // MIDI is plain UART characters and runs on the general image's receiver.
 // TRLC-LINKS: REQ-SDS-013
-func symbolProtocol(proto int) bool {
-	return proto >= core.SerLIN && proto < SerialProtocols && proto != core.SerMIDI
+func SymbolProtocol(proto int) bool {
+	return proto >= core.SerLIN && proto < core.SerialProtocols && proto != core.SerMIDI
 }
 
 // symbolTwoLines reports the protocols of two lines (line B in use): the
@@ -114,22 +114,22 @@ func (b *symBits) bmc(value, mask, n int, msb bool) {
 	}
 }
 
-// symTab builds the run table: durations in seconds become prescaled tick
+// SymTab builds the run table: durations in seconds become prescaled tick
 // counts; a bucket of the table takes a window's code when its middle count
 // lies inside the window.
-type symTab struct {
+type SymTab struct {
 	t        [sramcapture.SymbolTableSize]uint8
-	prescale int
+	Prescale int
 }
 
 // newSymTab is a table whose longest finite window bound is longest
 // seconds, every entry the given leader and data codes.
 // TRLC-LINKS: REQ-SDS-013
-func newSymTab(longest float64, lead, data uint8) *symTab {
-	t := &symTab{}
+func newSymTab(longest float64, lead, data uint8) *SymTab {
+	t := &SymTab{}
 	clocks := longest / (sramcapture.SymbolClockNs * 1e-9)
-	for t.prescale < 7 && clocks/float64(int(1)<<t.prescale) >= decode.SymbolMaxCount-1 {
-		t.prescale++
+	for t.Prescale < 7 && clocks/float64(int(1)<<t.Prescale) >= decode.SymbolMaxCount-1 {
+		t.Prescale++
 	}
 	t.t[0] = lead<<4 | data
 	for n := 1; n < len(t.t); n *= 2 { // every entry: the filled part copied over the rest
@@ -140,25 +140,25 @@ func newSymTab(longest float64, lead, data uint8) *symTab {
 
 // count is a duration's prescaled tick count.
 // TRLC-LINKS: REQ-SDS-013
-func (t *symTab) count(s float64) float64 {
+func (t *SymTab) Count(s float64) float64 {
 	if math.IsInf(s, 1) {
 		return math.Inf(1)
 	}
 	w := math.Round(s / (sramcapture.SymbolClockNs * 1e-9))
-	return math.Max(0, math.Floor((w-1)/float64(int(1)<<t.prescale)))
+	return math.Max(0, math.Floor((w-1)/float64(int(1)<<t.Prescale)))
 }
 
 // each calls f with every index of level whose bucket's middle count lies
 // in [lo, hi] seconds (hi +Inf: open-ended).
 // TRLC-LINKS: REQ-SDS-013
-func (t *symTab) each(level bool, lo, hi float64, f func(int)) {
-	clo, chi := t.count(lo), t.count(hi)
+func (t *SymTab) Each(level bool, lo, hi float64, f func(int)) {
+	clo, chi := t.Count(lo), t.Count(hi)
 	if math.IsNaN(clo) || math.IsNaN(chi) {
 		return // no middle lies in such a window
 	}
 	// The middles ascend with the index: the window is one run of them.
-	i0 := sort.Search(1024, func(i int) bool { return symMids[i] >= clo })
-	i1 := sort.Search(1024, func(i int) bool { return symMids[i] > chi })
+	i0 := sort.Search(1024, func(i int) bool { return SymMids[i] >= clo })
+	i1 := sort.Search(1024, func(i int) bool { return SymMids[i] > chi })
 	for i := i0; i < i1; i++ {
 		idx := i
 		if level {
@@ -168,9 +168,9 @@ func (t *symTab) each(level bool, lo, hi float64, f func(int)) {
 	}
 }
 
-// symMids is each table index's bucket middle in prescaled counts: an
+// SymMids is each table index's bucket middle in prescaled counts: an
 // exponent and a mantissa, the last bucket the saturated runs. They ascend.
-var symMids = func() (mids [1024]float64) {
+var SymMids = func() (mids [1024]float64) {
 	for i := range mids {
 		e, m := i>>6, i&63
 		if e == 0 {
@@ -188,18 +188,18 @@ var symMids = func() (mids [1024]float64) {
 
 // lead sets the leader code of a window; data its data code.
 // TRLC-LINKS: REQ-SDS-013
-func (t *symTab) lead(level bool, lo, hi float64, code uint8) {
-	t.each(level, lo, hi, func(i int) { t.t[i] = t.t[i]&15 | code<<4 })
+func (t *SymTab) lead(level bool, lo, hi float64, code uint8) {
+	t.Each(level, lo, hi, func(i int) { t.t[i] = t.t[i]&15 | code<<4 })
 }
 
 // TRLC-LINKS: REQ-SDS-013
-func (t *symTab) data(level bool, lo, hi float64, code uint8) {
-	t.each(level, lo, hi, func(i int) { t.t[i] = t.t[i]&0xf0 | code })
+func (t *SymTab) data(level bool, lo, hi float64, code uint8) {
+	t.Each(level, lo, hi, func(i int) { t.t[i] = t.t[i]&0xf0 | code })
 }
 
 // both sets a window's leader and data codes.
 // TRLC-LINKS: REQ-SDS-013
-func (t *symTab) both(level bool, lo, hi float64, lead, data uint8) {
+func (t *SymTab) both(level bool, lo, hi float64, lead, data uint8) {
 	t.lead(level, lo, hi, lead)
 	t.data(level, lo, hi, data)
 }
@@ -221,14 +221,14 @@ type symUnit struct{ value, mask int }
 // that ask nothing out: a start fires at the frame's opening.
 type symSpec struct {
 	cfg          sramcapture.SymbolTriggerConfig
-	tab          *symTab
+	tab          *SymTab
 	start        func(b *symBits, units []symUnit) bool
 	unit         func(b *symBits, i int, u symUnit) bool
-	width        func(i int) int
+	Width        func(i int) int
 	period       int
 	sliding      bool
 	noFrame      bool
-	oneFrame     bool
+	OneFrame     bool
 	dropFreeTail bool
 	custom       func(units []symUnit, anchored bool) (symBits, int, bool)
 }
@@ -260,16 +260,16 @@ func uartChar(b *symBits, u symUnit, bits int, parity string) {
 	b.fixed(1)
 }
 
-// symbolSpec compiles a protocol's line timing: false when its rate is out
+// SymbolSpec compiles a protocol's line timing: false when its rate is out
 // of the block's reach.
 // TRLC-LINKS: REQ-SDS-013, REQ-SDS-018
-func symbolSpec(p SerialParams) (symSpec, bool) { //nolint:gocyclo,funlen // one case per protocol: the table reads as one
+func SymbolSpec(p core.SerialParams) (symSpec, bool) { //nolint:gocyclo,funlen // one case per protocol: the table reads as one
 	T := 1 / float64(p.Baud)
 	inf := math.Inf(1)
 	us, ms := 1e-6, 1e-3
 	q8 := func(s float64) uint32 { return uint32(math.Round(s / (sramcapture.SymbolClockNs * 1e-9) * 256)) }
 	w8 := func(int) int { return 8 }
-	s := symSpec{cfg: sramcapture.SymbolTriggerConfig{Enabled: true, Channel: uint8(p.ChA), InvA: p.Inverted, InvB: p.Inverted, UnitQ8: 2048}, width: w8} //nolint:gosec // G115: the channel is 0 or 1 (serialPlanParams)
+	s := symSpec{cfg: sramcapture.SymbolTriggerConfig{Enabled: true, Channel: uint8(p.ChA), InvA: p.Inverted, InvB: p.Inverted, UnitQ8: 2048}, Width: w8} //nolint:gosec // G115: the channel is 0 or 1 (serialPlanParams)
 	none := func(*symBits, []symUnit) bool { return true }
 	s.start = none
 	set := func(mode, lead int, longest float64, data uint8) {
@@ -386,9 +386,9 @@ func symbolSpec(p SerialParams) (symSpec, bool) { //nolint:gocyclo,funlen // one
 		if p.Bits == 15 {
 			addr = 8
 		}
-		s.width = func(i int) int { return []int{7, addr, 8, 0}[min(i, 3)] }
+		s.Width = func(i int) int { return []int{7, addr, 8, 0}[min(i, 3)] }
 		s.unit = func(b *symBits, i int, u symUnit) bool {
-			w := s.width(i)
+			w := s.Width(i)
 			if w == 0 || (i == 2 && p.Bits != 20) {
 				return false
 			}
@@ -402,7 +402,7 @@ func symbolSpec(p SerialParams) (symSpec, bool) { //nolint:gocyclo,funlen // one
 		set(sramcapture.SymbolLevel, 1, 5*ms, decode.SymDataSep)
 		s.cfg.UnitQ8 = q8(half)
 		s.tab.both(true, 5*ms, inf, leadStep0, decode.SymDataRestart)
-		s.width = func(i int) int { return []int{5, 7, 0}[min(i, 2)] }
+		s.Width = func(i int) int { return []int{5, 7, 0}[min(i, 2)] }
 		s.start = func(b *symBits, units []symUnit) bool {
 			b.fixed(0) // S1's second half
 			s2 := symUnit{}
@@ -486,7 +486,7 @@ func symbolSpec(p SerialParams) (symSpec, bool) { //nolint:gocyclo,funlen // one
 		// 24-bit sample LSB first
 		set(sramcapture.SymbolEdge, 0, T, decode.SymDataSep)
 		s.cfg.UnitQ8, s.sliding = q8(T/2), true
-		s.width = func(int) int { return 24 }
+		s.Width = func(int) int { return 24 }
 		s.start = func(b *symBits, _ []symUnit) bool { b.fixed(1, 0, 0, 1, 1, 1, 0, 0); return true }
 		s.unit = func(b *symBits, i int, u symUnit) bool {
 			if i != 0 {
@@ -507,7 +507,7 @@ func symbolSpec(p SerialParams) (symSpec, bool) { //nolint:gocyclo,funlen // one
 		// A3, parity, stop 0, park 1}, turnaround, ACK (OK 1,0,0 LSB first)
 		set(sramcapture.SymbolClocked, 0, T, decode.SymDataSep)
 		s.cfg.TwoLines, s.sliding = true, true
-		s.width = func(i int) int { return []int{8, 3, 32, 0}[min(i, 3)] }
+		s.Width = func(i int) int { return []int{8, 3, 32, 0}[min(i, 3)] }
 		var read, readKnown bool
 		count := 0
 		request := func(b *symBits, u symUnit) {
@@ -551,7 +551,7 @@ func symbolSpec(p SerialParams) (symSpec, bool) { //nolint:gocyclo,funlen // one
 		// the header's 13 further bits; TA, 16 data bits, MSB first
 		set(sramcapture.SymbolClocked, 0, T, decode.SymDataSep)
 		s.cfg.TwoLines, s.sliding = true, true
-		s.width = func(i int) int { return []int{14, 16, 0}[min(i, 2)] }
+		s.Width = func(i int) int { return []int{14, 16, 0}[min(i, 2)] }
 		s.start = func(b *symBits, _ []symUnit) bool {
 			for range 32 {
 				b.fixed(1)
@@ -588,7 +588,7 @@ func symbolSpec(p SerialParams) (symSpec, bool) { //nolint:gocyclo,funlen // one
 		case 34:
 			widths = []int{16, 16}
 		}
-		s.width = func(i int) int {
+		s.Width = func(i int) int {
 			if i < len(widths) {
 				return widths[i]
 			}
@@ -596,10 +596,10 @@ func symbolSpec(p SerialParams) (symSpec, bool) { //nolint:gocyclo,funlen // one
 		}
 		s.start = func(b *symBits, _ []symUnit) bool { b.skip(1); return true } // leading parity
 		s.unit = func(b *symBits, i int, u symUnit) bool {
-			if s.width(i) == 0 {
+			if s.Width(i) == 0 {
 				return false
 			}
-			b.field(u.value, u.mask, s.width(i), true)
+			b.field(u.value, u.mask, s.Width(i), true)
 			return true
 		}
 	default:
@@ -612,7 +612,7 @@ func symbolSpec(p SerialParams) (symSpec, bool) { //nolint:gocyclo,funlen // one
 			return s, false // eight receiver clocks a unit at least (the block's floor)
 		}
 	}
-	s.cfg.Prescale = uint8(s.tab.prescale) //nolint:gosec // G115: symTab caps the prescale at 7
+	s.cfg.Prescale = uint8(s.tab.Prescale) //nolint:gosec // G115: symTab caps the prescale at 7
 	return s, true
 }
 
@@ -621,13 +621,13 @@ func symbolSpec(p SerialParams) (symSpec, bool) { //nolint:gocyclo,funlen // one
 // symbol trigger cannot take. A free tail is dropped where the protocol
 // says so.
 // TRLC-LINKS: REQ-SDS-013, REQ-SDS-018
-func (s *symSpec) units(elems []PatternElem) ([]symUnit, bool) {
+func (s *symSpec) units(elems []core.PatternElem) ([]symUnit, bool) {
 	var units []symUnit
 	for i, e := range elems {
 		switch {
 		case e.Kind == core.PatternStart && i == 0:
 		case e.Kind == core.PatternData:
-			w := s.width(len(units))
+			w := s.Width(len(units))
 			if w <= 0 || w > 32 {
 				return nil, false
 			}
@@ -670,34 +670,34 @@ func (s *symSpec) customConfig(units []symUnit, anchored bool) sramcapture.Symbo
 	return c
 }
 
-// planHardwareSymbol compiles a request on a protocol of the symbol trigger
+// PlanHardwareSymbol compiles a request on a protocol of the symbol trigger
 // (ADR-SYMBOL-TRIGGER) into the block's settings: the frame start is the
 // leader (or, sliding, the start's own bits), and units follow it at their
 // line positions; units without a start match at any unit boundary of a
 // frame where every unit has the same bits. Error tokens and requests past
 // the 64-bit window are unplannable.
 // TRLC-LINKS: REQ-SDS-013, REQ-SDS-018
-func planHardwareSymbol(p *SerialParams) sramcapture.SymbolTriggerConfig {
+func PlanHardwareSymbol(p *core.SerialParams) sramcapture.SymbolTriggerConfig {
 	off := sramcapture.SymbolTriggerConfig{}
-	if !symbolProtocol(p.Proto) || !serialThresholdOK(p) {
+	if !SymbolProtocol(p.Proto) || !SerialThresholdOK(p) {
 		return off
 	}
 	if symbolTwoLines(p.Proto) && p.ChB != 1-p.ChA {
 		return off
 	}
-	s, ok := symbolSpec(*p)
+	s, ok := SymbolSpec(*p)
 	if !ok {
 		return off
 	}
 	elems := core.PatternOf(*p)
 	if len(elems) == 0 {
-		elems = []PatternElem{{Kind: core.PatternStart}}
+		elems = []core.PatternElem{{Kind: core.PatternStart}}
 	}
 	anchored := elems[0].Kind == core.PatternStart
 	switch {
 	case s.noFrame:
 		anchored = false
-	case s.oneFrame:
+	case s.OneFrame:
 		anchored = true
 	}
 	units, ok := s.units(elems)

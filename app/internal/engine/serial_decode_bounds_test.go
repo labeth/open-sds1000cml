@@ -3,9 +3,10 @@
 package engine
 
 import (
-	core "github.com/labeth/open-dso-core/engine"
 	"runtime"
 	"testing"
+
+	core "github.com/labeth/open-dso-core/engine"
 )
 
 // decodeAlloc is the bytes one decode of a busy line of n samples (a toggle

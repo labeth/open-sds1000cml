@@ -11,6 +11,7 @@ import (
 
 	core "github.com/labeth/open-dso-core/engine"
 	"github.com/labeth/open-dso-core/sample"
+	"github.com/labeth/open-sds1000cml/app/internal/board/acq"
 	"github.com/labeth/open-sds1000cml/app/internal/sramcapture"
 )
 
@@ -247,7 +248,7 @@ func TestSerialPreRoomHoldsTheMatchStart(t *testing.T) {
 		t.Fatalf("I2C room %d", room)
 	}
 	m := sramcapture.Metadata{Length: 524288, SamplesPerWord: 2, TriggerIndex: 262144}
-	off, n := liveSRAMWindowPre(m, 10000, .5, 4000)
+	off, n := acq.LiveSRAMWindowPre(m, 10000, .5, 4000)
 	if pre := int(m.TriggerIndex-off) * 2; n != (10000+512+4000)/2 || pre != 5000+256+4000 {
 		t.Fatalf("window %d words, %d samples before the trigger", n, pre)
 	}
@@ -261,8 +262,8 @@ func TestSerialPreRoomHoldsTheMatchStart(t *testing.T) {
 func TestRecordHoldsTheMatchBeforeTheTrigger(t *testing.T) {
 	e := levelsEngine(SerialParams{Proto: core.SerUART, ChA: 0, ChB: 1, Baud: 115200, Bits: 8, Parity: "none"})
 	e.band = Band{TdivS: 200e-6}
-	c0, plan, _, _, _ := e.sramConfig()                                                                  // no match: nothing kept before the trigger
-	words := func(s float64) uint32 { return uint32(s/plan.SampleS) / uint32(2-boolInt(plan.Log != 0)) } // samples a word
+	c0, plan, _, _, _ := e.sramConfig()                                                                      // no match: nothing kept before the trigger
+	words := func(s float64) uint32 { return uint32(s/plan.SampleS) / uint32(2-acq.BoolInt(plan.Log != 0)) } // samples a word
 	near := func(got, want uint32) bool { d := int(got) - int(want); return d >= -1 && d <= 1 }
 	e.SetSerialParams(SerialParams{Proto: core.SerUART, ChA: 0, ChB: 1, Baud: 115200, Bits: 8, Parity: "none", Bytes: []int{0x48}})
 	if c, _, _, _, _ := e.sramConfig(); !near(c.PreWords, c0.PreWords+words(10/115200.0)) {
@@ -290,7 +291,7 @@ func TestRecordKeepsTheScreenAfterTheTrigger(t *testing.T) {
 	e.trigPosFrac.Store(math.Float64bits(0.1))
 	e.serLv.ShiftS.Store(math.Float64bits(20e-3)) // a lead longer than the record holds beside the screen
 	c, plan, _, _, _ := e.sramConfig()
-	perWord := float64(2 - boolInt(plan.Log != 0))
+	perWord := float64(2 - acq.BoolInt(plan.Log != 0))
 	if after := float64(c.PostWords) * perWord; after < 0.9*float64(plan.Screen) {
 		t.Fatalf("%v samples after the trigger, want the screen's %v (pre %d post %d)", after, 0.9*float64(plan.Screen), c.PreWords, c.PostWords)
 	}

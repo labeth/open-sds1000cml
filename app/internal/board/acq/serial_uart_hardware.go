@@ -1,6 +1,6 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-ENGINE
 
-package engine
+package acq
 
 import (
 	"math"
@@ -10,12 +10,12 @@ import (
 	"github.com/labeth/open-sds1000cml/app/internal/sramcapture"
 )
 
-// planHardwareUART plans the image's UART receiver: on the 125 MHz line
+// PlanHardwareUART plans the image's UART receiver: on the 125 MHz line
 // levels, 8N1 within generalUARTReach; or on the samples (sample), 5 to 9
 // data bits with no, even or odd parity, a bit of 16 ns (62.5 MBd) to about
 // a millisecond, every edge in a frame re-timing the bits after it.
 // TRLC-LINKS: REQ-SDS-013, REQ-SDS-229
-func planHardwareUART(p *SerialParams, sample bool) sramcapture.UARTTriggerConfig {
+func PlanHardwareUART(p *core.SerialParams, sample bool) sramcapture.UARTTriggerConfig {
 	// Hardware must not silently substitute the edge-trigger level for the
 	// decoder's automatic threshold. Auto slicing remains a software request.
 	if !p.HaveThr || p.Proto != core.SerUART || p.Baud <= 0 || len(p.Bytes) > 4 || p.ChA < 0 || p.ChA > 1 ||
@@ -82,11 +82,11 @@ func generalUARTReach(baud, frameBits float64) bool {
 	return ticks >= 4 && ticks <= 0xffffff && (frameBits-0.5)*(math.Abs(ticks-bit)+0.02*bit)+2 <= bit/2
 }
 
-// sampleUARTMatchLagS is how long after the matched frame's stop-bit
+// SampleUARTMatchLagS is how long after the matched frame's stop-bit
 // centre the FPGA's trigger lands with the UART receiver on the samples:
 // the receiver's latency (decode.SampleUARTLatency receiver clocks of 8 ns)
 // and the trigger path's eight acquisition words of 4 ns.
-const sampleUARTMatchLagS = (decode.SampleUARTLatency*8 + 8*4) * 1e-9
+const SampleUARTMatchLagS = (decode.SampleUARTLatency*8 + 8*4) * 1e-9
 
 // generalI2CReachHz is the fastest I2C clock the general image's receiver
 // takes: it samples SCL and SDA as 125 MHz levels, 8 ns apart, which holds

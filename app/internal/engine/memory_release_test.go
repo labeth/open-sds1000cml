@@ -3,9 +3,10 @@
 package engine
 
 import (
-	core "github.com/labeth/open-dso-core/engine"
 	"testing"
 	"time"
+
+	core "github.com/labeth/open-dso-core/engine"
 )
 
 // A frame slot's Q8.8 buffer from a deep stopped record is let go under

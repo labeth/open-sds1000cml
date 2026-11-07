@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"github.com/labeth/open-dso-core/testenv"
+	"github.com/labeth/open-sds1000cml/app/internal/board/acq"
 )
 
 // The qualify image's top level with a pulse qualifier on full-rate and
@@ -86,7 +87,7 @@ func TestQualifierDecimatedTopRTL(t *testing.T) {
 		t.Fatal(err)
 	}
 	// a high pulse over 20 us (at least 10), as AUTO's UART frame start asks
-	prescale, minTicks, maxTicks := qualTicks(10e3, 20e3)
+	prescale, minTicks, maxTicks := acq.QualTicks(10e3, 20e3)
 	for _, log := range []int{0, 4, 5, 8} {
 		regs := [][2]uint32{
 			{7, 125 | 4<<8},

@@ -3,9 +3,10 @@
 package engine
 
 import (
-	core "github.com/labeth/open-dso-core/engine"
 	"testing"
 	"time"
+
+	core "github.com/labeth/open-dso-core/engine"
 )
 
 // A capture waiting for its event polls each millisecond while a fast

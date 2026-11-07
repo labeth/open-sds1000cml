@@ -8,6 +8,7 @@ import (
 
 	core "github.com/labeth/open-dso-core/engine"
 	"github.com/labeth/open-dso-core/sample"
+	acq "github.com/labeth/open-sds1000cml/app/internal/board/acq"
 	"github.com/labeth/open-sds1000cml/app/internal/iface"
 )
 
@@ -189,7 +190,7 @@ func (e *Engine) etsFrame(norm bool) {
 	f.Flags.Set(sample.Interp, true)
 	f.Flags.Set(sample.Envelope, false) // mandatory clears: ETS is a real-time frame
 	f.Status.Degraded = false
-	setEnvCols(f, 0)
+	acq.SetEnvCols(f, 0)
 	f.SourcePtp = p
 	f.Status.Triggered = false
 	f.Status.Coherent = cov > 0

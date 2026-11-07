@@ -10,6 +10,7 @@ import (
 
 	core "github.com/labeth/open-dso-core/engine"
 	"github.com/labeth/open-dso-core/sample"
+	acq "github.com/labeth/open-sds1000cml/app/internal/board/acq"
 	"github.com/labeth/open-sds1000cml/app/internal/iface"
 )
 
@@ -368,7 +369,7 @@ func (e *Engine) oneFrame(norm bool) { //nolint:gocyclo,funlen // one native-fas
 	f.WinPoints = e.band.WinCols()
 	f.Flags.Set(sample.Interp, nativeFast)
 	f.Flags.Set(sample.Envelope, false)
-	setEnvCols(f, 0)
+	acq.SetEnvCols(f, 0)
 	f.SourcePtp = p
 	f.Status.Triggered = sawTrig
 	f.Status.Coherent = coherent

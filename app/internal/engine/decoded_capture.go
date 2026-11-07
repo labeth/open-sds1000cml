@@ -12,6 +12,7 @@ import (
 	"time"
 
 	core "github.com/labeth/open-dso-core/engine"
+	"github.com/labeth/open-sds1000cml/app/internal/board/acq"
 	"github.com/labeth/open-sds1000cml/app/internal/bus"
 	"github.com/labeth/open-sds1000cml/app/internal/sramcapture"
 )
@@ -238,13 +239,13 @@ func (e *Engine) beginDecodedCapture(ctx context.Context, cfg sramcapture.Config
 		want := ""
 		switch {
 		case cfg.Packet.Enabled:
-			want = imagePacket
+			want = acq.ImagePacket
 		case cfg.MIL1553.Enabled || cfg.SENT.Enabled || cfg.USBLS.Enabled:
-			want = imageFrame
+			want = acq.ImageFrame
 		case cfg.Manchester.Enabled:
-			want = imageLine
+			want = acq.ImageLine
 		case (cfg.SPI.Enabled && (cfg.SPI.GapTicks < 9 || cfg.SPI.Delay != 0)) || (cfg.UART.Enabled && cfg.UART.Period16 != 0) || (cfg.I2C.Enabled && cfg.I2C.Samples):
-			want = imageFast
+			want = acq.ImageFast
 		}
 		if e.images != nil && e.hasImage(want) && want != e.protocolImage {
 			if err := e.sram.Halt(ctx); err != nil {

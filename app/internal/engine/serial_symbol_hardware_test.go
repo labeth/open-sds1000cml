@@ -8,6 +8,7 @@ import (
 
 	"github.com/labeth/open-dso-core/decode"
 	core "github.com/labeth/open-dso-core/engine"
+	"github.com/labeth/open-sds1000cml/app/internal/board/acq"
 )
 
 // symWave builds two lines at the symbol trigger's 125 MHz clock from timed
@@ -111,7 +112,7 @@ func symCheck(b []int, width int, poly, init uint64, reflected bool) int {
 // TRLC-LINKS: REQ-SDS-013
 func symMatches(t *testing.T, p SerialParams, w *symWave) []int {
 	t.Helper()
-	c := planHardwareSymbol(&p)
+	c := acq.PlanHardwareSymbol(&p)
 	if !c.Enabled {
 		t.Fatalf("unplannable: %+v", p)
 	}

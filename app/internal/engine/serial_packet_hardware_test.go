@@ -8,9 +8,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/labeth/open-dso-core/decode"
 	core "github.com/labeth/open-dso-core/engine"
 	"github.com/labeth/open-dso-core/sample"
+	"github.com/labeth/open-sds1000cml/app/internal/board/acq"
 	"github.com/labeth/open-sds1000cml/app/internal/sramcapture"
 )
 
@@ -182,7 +182,7 @@ func TestPacketImageFollowsSerialTrigger(t *testing.T) {
 	}
 	e.SetSerialParams(SerialParams{Proto: core.SerCAN, Baud: 500000, HaveThr: true, Threshold: 120, Bytes: []int{0xAA, 0x0F}})
 	e.SetSerialMode(SerialTrigger)
-	if !e.serviceImage() || b.image != "packet" || e.protocolImage != imagePacket || e.hardwarePacket != 0x0540 || e.rawOnly || !e.boxDecim || e.hardwareManchester || e.hardwareMIL1553 {
+	if !e.serviceImage() || b.image != "packet" || e.protocolImage != acq.ImagePacket || e.hardwarePacket != 0x0540 || e.rawOnly || !e.boxDecim || e.hardwareManchester || e.hardwareMIL1553 {
 		t.Fatalf("packet image: loads %v image %s protocol image %q mask %x raw %v box %v", images.loads, b.image, e.protocolImage, e.hardwarePacket, e.rawOnly, e.boxDecim)
 	}
 	cfg, plan, _, _, _ := e.sramConfig()
@@ -193,8 +193,8 @@ func TestPacketImageFollowsSerialTrigger(t *testing.T) {
 		cfg.Sequence.Length != 2 || !cfg.Sequence.Qualify || cfg.Sequence.Elements[1] != (sramcapture.SequenceElement{Kind: 2, Value: 0x0F, Mask: 0xff}) {
 		t.Fatalf("plan %+v config %+v sequence %+v", plan, cfg.Packet, cfg.Sequence)
 	}
-	if hardwareSerialName(cfg) != "can-sequence" {
-		t.Fatalf("backend %q", hardwareSerialName(cfg))
+	if acq.HardwareSerialName(cfg) != "can-sequence" {
+		t.Fatalf("backend %q", acq.HardwareSerialName(cfg))
 	}
 	if e.serviceImage() {
 		t.Fatal("reloaded an image that is already loaded")
@@ -211,12 +211,12 @@ func TestPacketImageFollowsSerialTrigger(t *testing.T) {
 		t.Fatalf("line image: loads %v image %s", images.loads, b.image)
 	}
 	e.SetSerialParams(SerialParams{Proto: core.SerManchester, Baud: 1000000, HaveThr: true, Threshold: 128, Bits: 16, IEEE: true})
-	if cfg, _, _, _, _ := e.sramConfig(); !cfg.Manchester.Enabled || cfg.Packet.Enabled || hardwareSerialName(cfg) != "manchester" {
+	if cfg, _, _, _, _ := e.sramConfig(); !cfg.Manchester.Enabled || cfg.Packet.Enabled || acq.HardwareSerialName(cfg) != "manchester" {
 		t.Fatalf("Manchester plan %+v", cfg.Manchester)
 	}
 	// MIL-1553, SENT and USB run on the frame image.
 	e.SetSerialParams(SerialParams{Proto: core.SerMIL1553, Baud: 1000000, HaveThr: true, Threshold: 128})
-	if !e.serviceImage() || b.image != "frame" || e.protocolImage != imageFrame || !e.hardwareMIL1553 || !e.hardwareSENT || !e.hardwareUSBLS || e.hardwarePacket != 0 || !e.boxDecim {
+	if !e.serviceImage() || b.image != "frame" || e.protocolImage != acq.ImageFrame || !e.hardwareMIL1553 || !e.hardwareSENT || !e.hardwareUSBLS || e.hardwarePacket != 0 || !e.boxDecim {
 		t.Fatalf("frame image: loads %v image %s", images.loads, b.image)
 	}
 	e.SetSerialParams(SerialParams{Proto: core.SerUSB, Baud: 1500000, HaveThr: true, Threshold: 128})
@@ -226,7 +226,7 @@ func TestPacketImageFollowsSerialTrigger(t *testing.T) {
 	// A failed packet load returns to the general image and is not retried.
 	images.failPacket = true
 	e.SetSerialParams(SerialParams{Proto: core.SerFlexRay, Baud: 10000000, HaveThr: true, Threshold: 128})
-	if !e.serviceImage() || b.image != "general" || e.protocolImage != "" || e.failedImage != imagePacket {
+	if !e.serviceImage() || b.image != "general" || e.protocolImage != "" || e.failedImage != acq.ImagePacket {
 		t.Fatalf("failed load: loads %v image %s", images.loads, b.image)
 	}
 	if e.serviceImage() {
@@ -236,89 +236,6 @@ func TestPacketImageFollowsSerialTrigger(t *testing.T) {
 	e.serviceImage()
 	if e.failedImage != "" || strings.Join(images.loads, ",") != "packet,general,line,frame,packet,general" {
 		t.Fatalf("loads %v", images.loads)
-	}
-}
-
-// TRLC-LINKS: REQ-SDS-013, REQ-SDS-018
-func TestPlanHardwarePacket(t *testing.T) {
-	const all = 1<<6 | 1<<8 | 1<<10
-	base := SerialParams{HaveThr: true, Threshold: 128, ChA: 1}
-	with := func(f func(*SerialParams)) SerialParams { p := base; f(&p); return p }
-	for _, c := range []struct {
-		name  string
-		p     SerialParams
-		mask  uint16
-		arinc uint32
-		want  sramcapture.PacketTriggerConfig
-	}{
-		{"can-fd", with(func(p *SerialParams) {
-			p.Proto, p.Baud, p.DataBaud, p.Bytes = core.SerCAN, 1000000, 5000000, []int{1, 2, 3, 4, 5, 6, 7, 8}
-		}), all, 0, sramcapture.PacketTriggerConfig{Enabled: true, Protocol: 6, Channel: 1, Ticks: 32000, Aux: 6400, Pattern: 0x0102030405060708, Length: 8}},
-		{"can-too-long", with(func(p *SerialParams) { p.Proto, p.Baud, p.Bytes = core.SerCAN, 1000000, make([]int, 9) }), all, 0, sramcapture.PacketTriggerConfig{}},
-		{"can-too-fast", with(func(p *SerialParams) { p.Proto, p.Baud = core.SerCAN, 20000000 }), all, 0, sramcapture.PacketTriggerConfig{}},
-		{
-			"flexray", with(func(p *SerialParams) { p.Proto, p.Baud, p.Bytes = core.SerFlexRay, 10000000, []int{0x55} }), all, 0,
-			sramcapture.PacketTriggerConfig{Enabled: true, Protocol: 10, Channel: 1, Ticks: 3200, Pattern: 0x55, Length: 1},
-		},
-		{"flexray-absent", with(func(p *SerialParams) { p.Proto, p.Baud = core.SerFlexRay, 10000000 }), 1 << 6, 0, sramcapture.PacketTriggerConfig{}},
-		{
-			"arinc", with(func(p *SerialParams) { p.Proto, p.Baud, p.Bytes = core.SerARINC, 100000, []int{0x2abcd} }), all, 0x8d72a15c,
-			sramcapture.PacketTriggerConfig{Enabled: true, Protocol: 8, Channel: 1, Ticks: 1250, Aux: 0x8d72a15c, Pattern: 0x7ffff<<42 | 0x2abcd<<10},
-		},
-		{
-			"arinc-any", with(func(p *SerialParams) { p.Proto, p.Baud = core.SerARINC, 12500 }), all, 0x8d72a15c,
-			sramcapture.PacketTriggerConfig{Enabled: true, Protocol: 8, Channel: 1, Ticks: 10000, Aux: 0x8d72a15c},
-		},
-		{"arinc-no-levels", with(func(p *SerialParams) { p.Proto, p.Baud = core.SerARINC, 100000 }), all, 0, sramcapture.PacketTriggerConfig{}},
-		{"arinc-two-words", with(func(p *SerialParams) { p.Proto, p.Baud, p.Bytes = core.SerARINC, 100000, []int{1, 2} }), all, 0x8d72a15c, sramcapture.PacketTriggerConfig{}},
-		{"auto-threshold", with(func(p *SerialParams) { p.Proto, p.Baud, p.HaveThr = core.SerCAN, 500000, false }), all, 0, sramcapture.PacketTriggerConfig{}},
-		{"uart", with(func(p *SerialParams) { p.Proto, p.Baud = core.SerUART, 115200 }), all, 0, sramcapture.PacketTriggerConfig{}},
-	} {
-		if got := planHardwarePacket(&c.p, c.mask, c.arinc); got != c.want {
-			t.Errorf("%s: got %+v want %+v", c.name, got, c.want)
-		}
-	}
-	m := planHardwareManchester(&SerialParams{Proto: core.SerManchester, Baud: 1000000, HaveThr: true, Threshold: 128, IEEE: true, MSB: true, Bits: 16, Bytes: []int{0xA55A, 0x0FF0}})
-	if m != (sramcapture.ManchesterTriggerConfig{Enabled: true, IEEE: true, MSB: true, Bits: 16, BitTicks: 125, Pattern: 0xA55A0FF0, Length: 2}) {
-		t.Fatalf("Manchester %+v", m)
-	}
-	if m := planHardwareManchester(&SerialParams{Proto: core.SerManchester, Baud: 1000000, HaveThr: true, Bytes: []int{256}}); m.Enabled {
-		t.Fatal("a word wider than the default eight bits was accepted")
-	}
-}
-
-// The FPGA's integer slicer must classify every code exactly as the
-// decoder's float thresholds do.
-// TRLC-LINKS: REQ-SDS-018
-func TestARINCLevelsMatchDecoder(t *testing.T) {
-	for _, rails := range [][3]int{{128, 210, 40}, {120, 200, 60}, {131, 180, 90}, {100, 250, 5}} {
-		var codes []uint8
-		for i := range 4000 {
-			v := rails[0]
-			switch i % 20 {
-			case 0, 1, 2:
-				v = rails[1]
-			case 10, 11:
-				v = rails[2]
-			}
-			codes = append(codes, uint8(v+(i*7)%3-1))
-		}
-		p := SerialParams{Proto: core.SerARINC, Baud: 100000, HaveThr: true, Threshold: float64(rails[0])}
-		aux := arincLevels(codes, p)
-		if aux == 0 {
-			t.Fatalf("rails %v: no levels", rails)
-		}
-		_, hi, lo, exitHi, exitLo, reason := decode.ARINC429Levels(codes, decode.ARINC429Cfg{Bitrate: p.Baud, Threshold: p.Threshold, HaveThr: true})
-		if reason != "" {
-			t.Fatal(reason)
-		}
-		h, l, eh, el := int(aux>>8&0xff), int(aux&0xff), int(aux>>24), int(aux>>16&0xff)
-		for c := range 256 {
-			v := float64(c)
-			if (v >= hi) != (c >= h) || (v <= lo) != (c <= l) || (v < exitHi) != (c < eh) || (v > exitLo) != (c > el) {
-				t.Fatalf("rails %v code %d: float %.2f %.2f %.2f %.2f integer %d %d %d %d", rails, c, hi, lo, exitHi, exitLo, h, l, eh, el)
-			}
-		}
 	}
 }
 
@@ -376,7 +293,7 @@ func TestFastImageTakesFastSPI(t *testing.T) {
 		t.Fatalf("1 MHz plan %+v", cfg.SPI)
 	}
 	e.SetSerialParams(SerialParams{Proto: core.SerSPI, SPIClockHz: 104000000, ChA: 1, ChB: 0, MSB: true, HaveThr: true, Threshold: 128, Bytes: []int{0x4f}})
-	if !e.serviceImage() || b.image != "fast" || e.protocolImage != imageFast || !e.hardwareSampleSPI || !e.boxDecim || !e.pickDecim {
+	if !e.serviceImage() || b.image != "fast" || e.protocolImage != acq.ImageFast || !e.hardwareSampleSPI || !e.boxDecim || !e.pickDecim {
 		t.Fatalf("104 MHz: loads %v image %s", images.loads, b.image)
 	}
 	cfg, _, _, _, _ := e.sramConfig()
@@ -384,8 +301,8 @@ func TestFastImageTakesFastSPI(t *testing.T) {
 		cfg.SPI != (sramcapture.SPITriggerConfig{Enabled: true, ClockChannel: 1, MSB: true, GapTicks: 4, Pattern: 0x4f, Length: 1, Delay: 23}) {
 		t.Fatalf("104 MHz plan %+v", cfg.SPI)
 	}
-	if hardwareSerialName(cfg) != "spi" {
-		t.Fatalf("backend %q", hardwareSerialName(cfg))
+	if acq.HardwareSerialName(cfg) != "spi" {
+		t.Fatalf("backend %q", acq.HardwareSerialName(cfg))
 	}
 	e.SetSerialParams(SerialParams{Proto: core.SerSPI, SPIClockHz: 1000000, ChA: 1, ChB: 0, MSB: true, HaveThr: true, Threshold: 128})
 	if !e.serviceImage() || b.image != "general" || strings.Join(images.loads, ",") != "fast,general" {
@@ -411,8 +328,8 @@ func TestBusRecordsPickSamplesOnTheQualifyImage(t *testing.T) {
 		t.Fatal("picked without BUS's lease")
 	}
 	e.LeaseBusSamples(104e-9, 5*time.Second)
-	if cfg, _, _, _, _ := e.sramConfig(); !cfg.Pick || cfg.DecimationLog2 == 0 || hardwareSerialName(cfg) == "" {
-		t.Fatalf("BUS's lease: pick %v decimation %d trigger %q", cfg.Pick, cfg.DecimationLog2, hardwareSerialName(cfg))
+	if cfg, _, _, _, _ := e.sramConfig(); !cfg.Pick || cfg.DecimationLog2 == 0 || acq.HardwareSerialName(cfg) == "" {
+		t.Fatalf("BUS's lease: pick %v decimation %d trigger %q", cfg.Pick, cfg.DecimationLog2, acq.HardwareSerialName(cfg))
 	}
 	e.SetSerialMode(SerialOff)
 	if cfg, _, _, _, _ := e.sramConfig(); cfg.Pick {

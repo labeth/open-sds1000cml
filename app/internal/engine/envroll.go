@@ -7,6 +7,7 @@ import (
 
 	core "github.com/labeth/open-dso-core/engine"
 	"github.com/labeth/open-dso-core/sample"
+	acq "github.com/labeth/open-sds1000cml/app/internal/board/acq"
 	"github.com/labeth/open-sds1000cml/app/internal/iface"
 )
 
@@ -149,7 +150,7 @@ func (e *Engine) envFrame(norm bool) {
 	if triggered {
 		f.TriggerAt = edgeX
 		f.Flags.Set(sample.Envelope, false)
-		setEnvCols(f, 0)
+		acq.SetEnvCols(f, 0)
 		f.Status.Triggered = true
 	} else {
 		// Scatter the CENTRAL display span (not the margin) so the untriggered
@@ -159,7 +160,7 @@ func (e *Engine) envFrame(norm bool) {
 		e.envReduce(f)
 		f.TriggerAt = -1
 		f.Flags.Set(sample.Envelope, true)
-		setEnvCols(f, envDisplayCols)
+		acq.SetEnvCols(f, envDisplayCols)
 		f.Status.Triggered = false
 	}
 
@@ -258,7 +259,7 @@ func (e *Engine) envReduce(f *sample.Frame) {
 			}
 		}
 	}
-	setEnvCols(f, envDisplayCols)
+	acq.SetEnvCols(f, envDisplayCols)
 	reduce(e.envRing1, f.Min8(0), f.Max8(0))
 	reduce(e.envRing2, f.Min8(1), f.Max8(1))
 }
@@ -366,7 +367,7 @@ func (e *Engine) rollUpdate(norm bool) {
 	f.Flags.Set(sample.Interp, false)
 	f.Flags.Set(sample.Envelope, true)
 	f.Status.Degraded = false
-	setEnvCols(f, envDisplayCols)
+	acq.SetEnvCols(f, envDisplayCols)
 	f.SourcePtp = p
 	f.Status.Triggered = false
 	f.Status.Coherent = got > 0 // live words arrived; there is no halt to confirm
@@ -461,7 +462,7 @@ func (e *Engine) rollReduce(f *sample.Frame) {
 			}
 		}
 	}
-	setEnvCols(f, envDisplayCols)
+	acq.SetEnvCols(f, envDisplayCols)
 	reduce(e.rollSnaps1, f.Min8(0), f.Max8(0))
 	reduce(e.rollSnaps2, f.Min8(1), f.Max8(1))
 }

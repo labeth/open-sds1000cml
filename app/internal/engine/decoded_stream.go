@@ -10,6 +10,7 @@ import (
 	"time"
 
 	core "github.com/labeth/open-dso-core/engine"
+	"github.com/labeth/open-sds1000cml/app/internal/board/acq"
 	"github.com/labeth/open-sds1000cml/app/internal/decodedlines"
 	"github.com/labeth/open-sds1000cml/app/internal/sramcapture"
 )
@@ -49,7 +50,7 @@ var ErrLevelsLearning = errors.New("the ARINC 429 levels are not learned yet")
 // TRLC-LINKS: REQ-SDS-013, REQ-SDS-018
 func (e *Engine) BeginDecodedStream(ctx context.Context, p SerialParams, trig StreamTrigger, value int) (sramcapture.RecordIdentity, error) {
 	p.Bytes, p.Addr, p.RW = nil, -1, 2
-	if symbolProtocol(p.Proto) {
+	if acq.SymbolProtocol(p.Proto) {
 		// ADR-STREAM-SOFT-DECODE: the symbol trigger's image has no decoded
 		// event transport; these buses are decoded in software.
 		return e.beginSoftStream(ctx, p, trig, value)
@@ -75,7 +76,7 @@ func (e *Engine) BeginDecodedStream(ctx context.Context, p SerialParams, trig St
 				e.decodedStarting = time.Time{}
 			}
 		}()
-		want := protocolImage(p)
+		want := acq.ProtocolImage(p)
 		if e.images != nil && e.hasImage(want) && want != e.protocolImage {
 			if err := e.sram.Halt(ctx); err != nil {
 				return nil, err
@@ -109,7 +110,7 @@ func (e *Engine) decodedStreamConfig(p SerialParams, trig StreamTrigger) (sramca
 	words := sramcapture.SamplesPerChannel / 2
 	c := sramcapture.Config{Source: sramcapture.ADC, PreWords: words / 2, PostWords: words - words/2, Normal: true}
 	e.planSerial(&c, p, false)
-	if hardwareSerialName(c) == "" {
+	if acq.HardwareSerialName(c) == "" {
 		return c, errors.New("the loaded image cannot stream this protocol with that trigger")
 	}
 	if trig == StreamManual {

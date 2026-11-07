@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	core "github.com/labeth/open-dso-core/engine"
+	"github.com/labeth/open-sds1000cml/app/internal/board/acq"
 	"github.com/labeth/open-sds1000cml/app/internal/decodedlines"
 	"github.com/labeth/open-sds1000cml/app/internal/sramcapture"
 )
@@ -55,7 +56,7 @@ func TestDecodedStreamOnErrorPlansTheErrorToken(t *testing.T) {
 			t.Errorf("protocol %d: a history of %d words, the transcript's window %d samples", c.p.Proto, cfg.PreWords, decodedlines.HistorySamples)
 		}
 		if cfg.Sequence.Length != 1 || cfg.Sequence.Elements[0].Kind != sramcapture.SequenceError || cfg.Sequence.Qualify || !cfg.Normal {
-			t.Errorf("protocol %d (%s): sequence %+v", c.p.Proto, hardwareSerialName(cfg), cfg.Sequence)
+			t.Errorf("protocol %d (%s): sequence %+v", c.p.Proto, acq.HardwareSerialName(cfg), cfg.Sequence)
 		}
 	}
 }

@@ -3,9 +3,10 @@
 package engine
 
 import (
-	core "github.com/labeth/open-dso-core/engine"
 	"math"
 	"time"
+
+	core "github.com/labeth/open-dso-core/engine"
 )
 
 // SOUND's takes (ADR-SOUND): the audio stream works like the rest of the

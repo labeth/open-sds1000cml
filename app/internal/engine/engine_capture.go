@@ -8,6 +8,7 @@ import (
 
 	core "github.com/labeth/open-dso-core/engine"
 	"github.com/labeth/open-dso-core/sample"
+	acq "github.com/labeth/open-sds1000cml/app/internal/board/acq"
 	"github.com/labeth/open-sds1000cml/app/internal/iface"
 )
 
@@ -357,7 +358,7 @@ func (e *Engine) stitchFrame(norm bool) {
 	f.WinPoints = decimWin
 	f.TriggerAt = -1
 	f.Flags.Set(sample.Interp|sample.Envelope, false)
-	setEnvCols(f, 0)
+	acq.SetEnvCols(f, 0)
 	f.Content = sample.RawDecimated
 	f.Snapshot.Norm = norm
 	f.Snapshot.TdivS = e.band.TdivS

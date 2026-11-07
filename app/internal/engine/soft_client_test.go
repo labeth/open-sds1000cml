@@ -7,8 +7,6 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"fmt"
-	core "github.com/labeth/open-dso-core/engine"
-	"github.com/labeth/open-dso-core/webclient"
 	"math/rand"
 	"os"
 	"os/exec"
@@ -18,6 +16,9 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	core "github.com/labeth/open-dso-core/engine"
+	"github.com/labeth/open-dso-core/webclient"
 
 	"github.com/labeth/open-dso-core/decode"
 	"github.com/labeth/open-dso-core/testenv"

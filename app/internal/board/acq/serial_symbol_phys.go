@@ -1,6 +1,6 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-ENGINE
 
-package engine
+package acq
 
 import (
 	"math"
@@ -17,7 +17,7 @@ import (
 // Each frame start and unit is laid out as the decoder of the protocol
 // reads it, bit for bit in the block's bit source.
 // TRLC-LINKS: REQ-SDS-013, REQ-SDS-257
-func physSymbolSpec(p *SerialParams, s *symSpec) bool { //nolint:gocyclo,funlen // one case per protocol: the table reads as one
+func physSymbolSpec(p *core.SerialParams, s *symSpec) bool { //nolint:gocyclo,funlen // one case per protocol: the table reads as one
 	if p.Baud <= 0 && p.Proto != core.SerSDCard && p.Proto != core.SerPDI && p.Proto != core.SerCJTAG {
 		return false
 	}
@@ -30,7 +30,7 @@ func physSymbolSpec(p *SerialParams, s *symSpec) bool { //nolint:gocyclo,funlen 
 		s.tab = newSymTab(longest, decode.SymLeadNone, data)
 	}
 	w8 := func(int) int { return 8 }
-	s.width = w8
+	s.Width = w8
 	byteLSB := func(b *symBits, _ int, u symUnit) bool { b.field(u.value, u.mask, 8, false); return true }
 	freeOnly := func(_ *symBits, _ int, u symUnit) bool { return u.mask == 0 }
 	// a bit as Manchester half levels: first half v (high is a 1)
@@ -44,7 +44,7 @@ func physSymbolSpec(p *SerialParams, s *symSpec) bool { //nolint:gocyclo,funlen 
 		s.cfg.TwoLines, s.cfg.InvA, s.cfg.InvB = true, false, p.Proto == core.SerQuad
 		s.tab.both(true, 2*T, inf, leadStep0, decode.SymDataRestart)
 		s.tab.both(false, 2*T, inf, leadStep0, decode.SymDataRestart)
-		s.width = func(int) int { return 1 }
+		s.Width = func(int) int { return 1 }
 		s.period = 1
 		s.unit = func(b *symBits, _ int, u symUnit) bool { b.field(u.value, u.mask, 1, false); return true }
 	case core.SerPWM:
@@ -84,7 +84,7 @@ func physSymbolSpec(p *SerialParams, s *symSpec) bool { //nolint:gocyclo,funlen 
 			break
 		}
 		// PT2262: a trit of two pulses, 0 short short, 1 long long, F short long
-		s.width = func(int) int { return 2 }
+		s.Width = func(int) int { return 2 }
 		s.period = 2
 		s.unit = func(b *symBits, _ int, u symUnit) bool {
 			switch {
@@ -114,7 +114,7 @@ func physSymbolSpec(p *SerialParams, s *symSpec) bool { //nolint:gocyclo,funlen 
 			}
 			manch(b, v, care)
 		}
-		s.width = func(int) int { return 4 }
+		s.Width = func(int) int { return 4 }
 		s.start = func(b *symBits, _ []symUnit) bool {
 			ones := 8
 			if v21 {
@@ -227,13 +227,13 @@ func physSymbolSpec(p *SerialParams, s *symSpec) bool { //nolint:gocyclo,funlen 
 		s.tab.data(true, 0.16*sec, 0.26*sec, decode.SymDataBit1)
 		s.tab.both(false, 1.5*sec, inf, leadStep0, decode.SymDataRestart)
 		fields := [][2]int{{21, 7}, {29, 6}, {36, 6}, {42, 3}, {45, 5}, {50, 8}}
-		s.width = func(i int) int {
+		s.Width = func(i int) int {
 			if i < len(fields) {
 				return fields[i][1]
 			}
 			return 0
 		}
-		s.oneFrame, s.dropFreeTail = true, true
+		s.OneFrame, s.dropFreeTail = true, true
 		s.custom = func(units []symUnit, _ bool) (symBits, int, bool) {
 			var bits [59]int
 			var care [59]bool
@@ -323,7 +323,7 @@ func physSymbolSpec(p *SerialParams, s *symSpec) bool { //nolint:gocyclo,funlen 
 			s.tab.both(false, 40*fc, inf, leadStep0, decode.SymDataRestart)
 			bit := func(b *symBits, v, care bool) { b.put(true, true); b.put(v, care) }
 			write := false
-			s.width = func(i int) int {
+			s.Width = func(i int) int {
 				if i == 0 {
 					return 3
 				}
@@ -374,14 +374,14 @@ func physSymbolSpec(p *SerialParams, s *symSpec) bool { //nolint:gocyclo,funlen 
 		if p.Bits == 70 {
 			widths = []int{2, 8, 8, 8, 8, 1, 8, 8, 8, 8, 3}
 		}
-		s.width = func(i int) int {
+		s.Width = func(i int) int {
 			if i < len(widths) {
 				return widths[i]
 			}
 			return 0
 		}
 		s.unit = func(b *symBits, i int, u symUnit) bool {
-			w := s.width(i)
+			w := s.Width(i)
 			if w == 0 {
 				return false
 			}
@@ -399,7 +399,7 @@ func physSymbolSpec(p *SerialParams, s *symSpec) bool { //nolint:gocyclo,funlen 
 		s.tab.data(false, 0.5*T, 1.5*T, decode.SymDataBit0)
 		s.tab.both(true, 1.5*T, inf, leadStep0, decode.SymDataRestart)
 		s.tab.both(false, 1.5*T, inf, leadStep0, decode.SymDataRestart)
-		s.oneFrame = true
+		s.OneFrame = true
 		s.unit = func(b *symBits, i int, u symUnit) bool {
 			if i != 0 {
 				return false // one frame a request
@@ -645,7 +645,7 @@ var irmpFrames = map[int]irmpFrame{
 // and the address and command lie at their places in it; Samsung's command
 // inverse and NEC42's inverses are asked with a whole unit.
 // TRLC-LINKS: REQ-SDS-013, REQ-SDS-257
-func irmpSymbolSpec(p *SerialParams, s *symSpec, set func(mode, lead int, longest float64, data uint8)) bool {
+func irmpSymbolSpec(p *core.SerialParams, s *symSpec, set func(mode, lead int, longest float64, data uint8)) bool {
 	f, ok := irmpFrames[p.Bits]
 	if !ok {
 		return false
@@ -667,13 +667,13 @@ func irmpSymbolSpec(p *SerialParams, s *symSpec, set func(mode, lead int, longes
 	} else {
 		s.tab.both(true, f.space*us, inf, leadStep0, decode.SymDataRestart)
 	}
-	s.width = func(i int) int {
+	s.Width = func(i int) int {
 		if i < len(f.units) {
 			return len(f.units[i])
 		}
 		return 0
 	}
-	s.oneFrame, s.dropFreeTail = true, true
+	s.OneFrame, s.dropFreeTail = true, true
 	s.custom = func(units []symUnit, _ bool) (symBits, int, bool) {
 		val := make([]bool, f.bits)
 		care := make([]bool, f.bits)

@@ -4,163 +4,12 @@ package engine
 
 import (
 	"errors"
-	"math"
 	"time"
 
-	"github.com/labeth/open-dso-core/decode"
 	core "github.com/labeth/open-dso-core/engine"
 	"github.com/labeth/open-dso-core/sample"
-	"github.com/labeth/open-sds1000cml/app/internal/sramcapture"
+	"github.com/labeth/open-sds1000cml/app/internal/board/acq"
 )
-
-// Hardware plans mirror the registry decoders: a pattern the software matcher
-// could not find in one packet is never sent to hardware, and polarity or
-// threshold choices the decoder does not honour are not added.
-// TRLC-LINKS: REQ-SDS-013, REQ-SDS-018
-func serialThresholdOK(p *SerialParams) bool {
-	return p.HaveThr && !math.IsNaN(p.Threshold) && !math.IsInf(p.Threshold, 0) && p.Threshold >= 0 && p.Threshold <= 255 &&
-		p.ChA >= 0 && p.ChA <= 1 && p.Baud > 0
-}
-
-// q8Ticks is a bit period in 125 MHz receiver clocks with eight fraction bits.
-// TRLC-LINKS: REQ-SDS-013
-func q8Ticks(baud int) uint32 { return uint32(math.Round(125e6 * 256 / float64(baud))) }
-
-// planHardwarePacket plans CAN / CAN FD, FlexRay or ARINC 429 for the shared
-// packet block. mask is the image's protocol mask; arinc holds slicer levels
-// taken from a recent record (arincLevels), zero when none is known yet.
-// TRLC-LINKS: REQ-SDS-013, REQ-SDS-018
-func planHardwarePacket(p *SerialParams, mask uint16, arinc uint32) sramcapture.PacketTriggerConfig {
-	off := sramcapture.PacketTriggerConfig{}
-	if !serialThresholdOK(p) || p.Proto < 0 || p.Proto > 15 || mask&(1<<p.Proto) == 0 {
-		return off
-	}
-	c := sramcapture.PacketTriggerConfig{Enabled: true, Protocol: uint8(p.Proto), Channel: uint8(p.ChA)} //nolint:gosec // G115: the protocol is checked to 0..15 above, the channel is 0 or 1
-	bytes := func(limit int) bool {
-		if len(p.Bytes) > limit {
-			return false
-		}
-		for _, b := range p.Bytes {
-			if b < 0 || b > 255 {
-				return false
-			}
-			c.Pattern = c.Pattern<<8 | uint64(b)
-		}
-		c.Length = uint8(len(p.Bytes)) //nolint:gosec // G115: a pattern of at most eight bytes
-		return true
-	}
-	switch p.Proto {
-	case core.SerCAN:
-		c.Ticks, c.Aux = q8Ticks(p.Baud), q8Ticks(p.Baud)
-		if p.DataBaud > 0 {
-			c.Aux = q8Ticks(p.DataBaud)
-		}
-		// The registry decodes dominant-low regardless of the polarity control.
-		if c.Ticks < 2048 || c.Ticks > 0xffffff || c.Aux < 2048 || c.Aux > 0xffffff || !bytes(8) {
-			return off
-		}
-	case core.SerFlexRay:
-		c.Ticks = q8Ticks(p.Baud)
-		if c.Ticks < 1024 || c.Ticks > 0xffffff || !bytes(8) {
-			return off
-		}
-	case core.SerARINC:
-		// One data field per word: a single pattern value selects bits 11..29.
-		ticks := math.Round(125e6 / float64(p.Baud))
-		if arinc == 0 || ticks < 4 || ticks > 0xffffff || len(p.Bytes) > 1 {
-			return off
-		}
-		c.Ticks, c.Aux = uint32(ticks), arinc
-		if len(p.Bytes) == 1 {
-			if p.Bytes[0] < 0 || p.Bytes[0] > 0x7ffff {
-				return off
-			}
-			c.Pattern = uint64(0x7ffff)<<42 | uint64(p.Bytes[0])<<10 //nolint:gosec // G115: checked to 0..0x7ffff above
-		}
-	default:
-		return off
-	}
-	return c
-}
-
-// arincLevels converts the decoder's slicer for this record into the packet
-// block's integer thresholds {exit_hi, exit_lo, hi, lo}: a code enters HI at
-// ceil(hi), LO at floor(lo), and returns to NULL below ceil(exit_hi) or above
-// floor(exit_lo), matching the decoder's float comparisons.
-// TRLC-LINKS: REQ-SDS-018
-func arincLevels(codes []uint8, p SerialParams) uint32 {
-	_, hi, lo, exitHi, exitLo, reason := decode.ARINC429Levels(codes, decode.ARINC429Cfg{Bitrate: p.Baud, Threshold: p.Threshold, HaveThr: p.HaveThr})
-	if reason != "" {
-		return 0
-	}
-	h, l, eh, el := math.Ceil(hi), math.Floor(lo), math.Ceil(exitHi), math.Floor(exitLo)
-	if !(l >= 0 && l < el && el <= eh && eh < h && h <= 255) {
-		return 0
-	}
-	return uint32(eh)<<24 | uint32(el)<<16 | uint32(h)<<8 | uint32(l)
-}
-
-// planHardwareManchester follows Manchester: 1..16-bit words (8 by
-// default), either convention and bit order, up to four contiguous words.
-// TRLC-LINKS: REQ-SDS-013, REQ-SDS-018
-func planHardwareManchester(p *SerialParams) sramcapture.ManchesterTriggerConfig {
-	bits := p.Bits
-	if bits == 0 {
-		bits = 8
-	}
-	ticks := math.Round(125e6 / math.Max(1, float64(p.Baud)))
-	if p.Proto != core.SerManchester || !serialThresholdOK(p) || bits < 1 || bits > 16 || len(p.Bytes) > 4 || ticks < 8 || ticks > 0x3fffff {
-		return sramcapture.ManchesterTriggerConfig{}
-	}
-	c := sramcapture.ManchesterTriggerConfig{Enabled: true, Channel: uint8(p.ChA), IEEE: p.IEEE, MSB: p.MSB, Bits: uint8(bits), BitTicks: uint32(ticks), Length: uint8(len(p.Bytes))} //nolint:gosec // G115: the checks above bound each field
-	for _, w := range p.Bytes {
-		if w < 0 || w >= 1<<bits {
-			return sramcapture.ManchesterTriggerConfig{}
-		}
-		c.Pattern = c.Pattern<<16 | uint64(w)
-	}
-	return c
-}
-
-// hardwareSerialName names the enabled hardware decoder, or "" for none,
-// with a "-sequence" suffix when the sequence trigger matches for it.
-// TRLC-LINKS: REQ-SDS-013
-func hardwareSerialName(c sramcapture.Config) string {
-	name := decoderName(c)
-	if name != "" && c.Sequence.Length != 0 {
-		name += "-sequence"
-	}
-	return name
-}
-
-// TRLC-LINKS: REQ-SDS-013
-func decoderName(c sramcapture.Config) string {
-	switch {
-	case c.Symbol.Enabled:
-		return "symbol"
-	case c.Packet.Enabled && c.Packet.Protocol == sramcapture.PacketCAN:
-		return "can"
-	case c.Packet.Enabled && c.Packet.Protocol == sramcapture.PacketARINC:
-		return "arinc429"
-	case c.Packet.Enabled && c.Packet.Protocol == sramcapture.PacketFlexRay:
-		return "flexray"
-	case c.Manchester.Enabled:
-		return "manchester"
-	case c.USBLS.Enabled:
-		return "usbls"
-	case c.MIL1553.Enabled:
-		return "mil1553"
-	case c.SENT.Enabled:
-		return "sent"
-	case c.SPI.Enabled:
-		return "spi"
-	case c.I2C.Enabled:
-		return "i2c"
-	case c.UART.Enabled:
-		return "uart"
-	}
-	return ""
-}
 
 // probeSerialHardware records the loaded image's hardware decoders. It runs
 // at start and after every image switch.
@@ -211,83 +60,24 @@ func (e *Engine) probeSerialHardware() {
 	}
 }
 
-// Protocol images (ADR-PROTOCOL-PACKET-IMAGE); "" is the general image.
-const (
-	imagePacket = "packet"
-	// imageLine has the line-code decoder Manchester; the packet
-	// image has ARINC 429, CAN and FlexRay.
-	imageLine = "line"
-	// imageFrame has MIL-1553, SENT and USB, out of the packet and line
-	// images so each keeps room for box decimation (ADR-TRIGGER-ANY-TIMEBASE).
-	imageFrame = "frame"
-	// imageStream is the continuous-capture image roll mode runs on
-	// (ADR-STREAM-IMAGE).
-	imageStream = "stream"
-	// imageBits is the stream image with digital words, the decoded
-	// stream's lines sliced in the FPGA (ADR-STREAM-BITS).
-	imageBits = "bits"
-	// imageFast has SPI, UART and I2C on the samples: SPI to a 125 MHz
-	// clock, UART to 62.5 MBd, I2C's high-speed mode (ADR-SAMPLE-DOMAIN-SPI).
-	imageFast = "fast"
-)
-
-// imageGeneralName is how the status names the general image.
-const imageGeneralName = "general"
-
-// protocolImage names the image whose hardware triggers p, or "" for the
-// general image with UART, I2C and SPI (ADR-IMAGE-REGROUP-DECIMATION). SPI,
-// UART and I2C past the reach of the general image's receivers on 125 MHz
-// line levels (an SPI clock of about 20 MHz, a UART of about 10 MBd or any
-// format but 8N1, an I2C clock past fast-mode plus), or with Fine asking
-// for the best timing, run on the fast image's receivers on the samples
-// (ADR-SAMPLE-DOMAIN-SPI); otherwise the general image stays, without a
-// load of seconds.
-// TRLC-LINKS: REQ-SDS-013, REQ-SDS-229
-func protocolImage(p SerialParams) string {
-	if symbolProtocol(p.Proto) {
-		return imageQualify
-	}
-	switch p.Proto {
-	case core.SerManchester:
-		return imageLine
-	case core.SerCAN, core.SerARINC, core.SerFlexRay:
-		return imagePacket
-	case core.SerMIL1553, core.SerSENT, core.SerUSB:
-		return imageFrame
-	case core.SerSPI:
-		if (p.Fine || !planHardwareSPI(&p, false).Enabled) && planHardwareSPI(&p, true).Enabled {
-			return imageFast
-		}
-	case core.SerUART:
-		if (p.Fine || !planHardwareUART(&p, false).Enabled) && planHardwareUART(&p, true).Enabled {
-			return imageFast
-		}
-	case core.SerI2C:
-		if (p.Fine || p.I2CClockHz > generalI2CReachHz) && planHardwareI2C(&p, true).Enabled {
-			return imageFast
-		}
-	}
-	return ""
-}
-
 // hasImage reports an embedded protocol image.
 // TRLC-LINKS: REQ-SDS-013
 func (e *Engine) hasImage(name string) bool {
 	switch name {
-	case imagePacket:
+	case acq.ImagePacket:
 		return e.images.HasPacket()
-	case imageLine:
+	case acq.ImageLine:
 		return e.images.HasLine()
-	case imageFrame:
+	case acq.ImageFrame:
 		return e.images.HasFrame()
-	case imageStream:
+	case acq.ImageStream:
 		return e.images.HasStream()
-	case imageBits:
+	case acq.ImageBits:
 		b, ok := e.images.(BitsImages)
 		return ok && b.HasBits()
-	case imageQualify:
+	case acq.ImageQualify:
 		return e.images.HasQualify()
-	case imageFast:
+	case acq.ImageFast:
 		return e.images.HasFast()
 	}
 	return true
@@ -304,12 +94,12 @@ func (e *Engine) wantImage() string {
 	// The audio stream runs on the stream image while it is leased or still
 	// streaming: a trigger's image would replace the fabric under the stream.
 	if (e.soundWanted() || e.soundStreaming()) && e.images.HasStream() {
-		return imageStream
+		return acq.ImageStream
 	}
 	// Roll streaming (opt-in) runs gap-free on the stream image; a stop keeps
 	// it, so RUN resumes without a reload.
-	if e.rollStream.Load() && e.images.HasStream() && (e.rollActive() || (!e.running.Load() && e.protocolImage == imageStream)) {
-		return imageStream
+	if e.rollStream.Load() && e.images.HasStream() && (e.rollActive() || (!e.running.Load() && e.protocolImage == acq.ImageStream)) {
+		return acq.ImageStream
 	}
 	if e.serialMode.Load() != SerialTrigger {
 		// A pulse, slope or video trigger runs on the qualifier image.
@@ -317,12 +107,12 @@ func (e *Engine) wantImage() string {
 		typ := e.tp.Typ
 		e.mu.Unlock()
 		if (typ != TrigEdge || e.zonesOn()) && e.images.HasQualify() { // and the zone trigger
-			return imageQualify
+			return acq.ImageQualify
 		}
 		// The qualifier image captures and triggers on an edge as the general
 		// one does (precision decimation too); held, an edge stays on it.
-		if e.holdQualify.Load() && e.protocolImage == imageQualify {
-			return imageQualify
+		if e.holdQualify.Load() && e.protocolImage == acq.ImageQualify {
+			return acq.ImageQualify
 		}
 		return ""
 	}
@@ -334,11 +124,11 @@ func (e *Engine) wantImage() string {
 	p, why := e.serialPlanParams(p)
 	// An SPI clock measured again stays on the image it ran on: the fast
 	// image's captures measure it as well, without two loads.
-	if why == core.SPIMeasuring && e.protocolImage == imageFast {
-		return imageFast
+	if why == core.SPIMeasuring && e.protocolImage == acq.ImageFast {
+		return acq.ImageFast
 	}
 	// (protocolImage plans SPI itself: its clock, not a baud.)
-	if name := protocolImage(p); name != "" && (name == imageFast || serialThresholdOK(&p)) && e.hasImage(name) {
+	if name := acq.ProtocolImage(p); name != "" && (name == acq.ImageFast || acq.SerialThresholdOK(&p)) && e.hasImage(name) {
 		return name
 	}
 	return ""
@@ -372,21 +162,21 @@ func (e *Engine) serviceImage() bool {
 // TRLC-LINKS: REQ-SDS-013, REQ-SDS-005
 func (e *Engine) imageLoader(name string) func() error {
 	switch name {
-	case imagePacket:
+	case acq.ImagePacket:
 		return e.images.LoadPacket
-	case imageLine:
+	case acq.ImageLine:
 		return e.images.LoadLine
-	case imageFrame:
+	case acq.ImageFrame:
 		return e.images.LoadFrame
-	case imageStream:
+	case acq.ImageStream:
 		return e.images.LoadStream
-	case imageBits:
+	case acq.ImageBits:
 		if b, ok := e.images.(BitsImages); ok {
 			return b.LoadBits
 		}
-	case imageQualify:
+	case acq.ImageQualify:
 		return e.images.LoadQualify
-	case imageFast:
+	case acq.ImageFast:
 		return e.images.LoadFast
 	}
 	return e.images.LoadGeneral
@@ -420,7 +210,7 @@ func (e *Engine) loadImage(name string) bool {
 	load := e.imageLoader(name)
 	shown := name
 	if shown == "" {
-		shown = imageGeneralName
+		shown = acq.ImageGeneralName
 	}
 	e.logf("engine: loading the %s image", shown)
 	e.setBusy("loading "+shown+" image", 0) // the loading indicator covers the reload
@@ -439,7 +229,7 @@ func (e *Engine) loadImage(name string) bool {
 		} else {
 			e.busErr(err)
 		}
-		name, shown = "", imageGeneralName
+		name, shown = "", acq.ImageGeneralName
 	}
 	e.protocolImage = name
 	e.probeSerialHardware()
@@ -465,7 +255,7 @@ func (e *Engine) reloadImage() error {
 	}
 	shown := e.protocolImage
 	if shown == "" {
-		shown = imageGeneralName
+		shown = acq.ImageGeneralName
 	}
 	e.setBusy("reloading "+shown+" image", 0)
 	defer e.beatWhile()()
@@ -479,7 +269,7 @@ func (e *Engine) reloadImage() error {
 			return restore
 		}
 		e.mu.Lock()
-		e.stats.Image = imageGeneralName
+		e.stats.Image = acq.ImageGeneralName
 		e.mu.Unlock()
 	}
 	e.probeSerialHardware()
@@ -488,11 +278,6 @@ func (e *Engine) reloadImage() error {
 	}
 	return nil
 }
-
-// arincBitSamples is the samples a bit a decimated record must hold for the
-// ARINC slicer levels to be taken from it: its filter rounds the edges, not
-// the levels a half bit holds.
-const arincBitSamples = 8
 
 // noteARINCLevels takes the ARINC slicer levels from a sampled record the
 // first time the current decode parameters need them; hardware ARINC
@@ -513,10 +298,10 @@ func (e *Engine) noteARINCLevels(f *sample.Frame) {
 	// the bits, read in milliseconds where the full-rate record of 200us/div
 	// takes seconds (and a decimated envelope asked for none: the trigger
 	// waited for a record something else asked for).
-	if planned, _ := e.serialPlanParams(p); p.Proto != core.SerARINC || !serialThresholdOK(&planned) || f.Len() < 8 {
+	if planned, _ := e.serialPlanParams(p); p.Proto != core.SerARINC || !acq.SerialThresholdOK(&planned) || f.Len() < 8 {
 		return
 	}
-	resolves := uint32(f.AcqDecim) <= 1 || p.Baud > 0 && f.SampleS > 0 && f.SampleS*arincBitSamples <= 1/float64(p.Baud)
+	resolves := uint32(f.AcqDecim) <= 1 || p.Baud > 0 && f.SampleS > 0 && f.SampleS*acq.ArincBitSamples <= 1/float64(p.Baud)
 	switch {
 	case (f.Content == sample.PeakPairs || f.Flags.Has(sample.Envelope)) && p.Baud > 0:
 		e.lease(&e.sampleLease, time.Second)
@@ -529,7 +314,7 @@ func (e *Engine) noteARINCLevels(f *sample.Frame) {
 	if p.ChA == 1 {
 		codes = f.Codes8(1)[:f.Len()]
 	}
-	e.arincAux.Store(arincLevels(codes, p))
+	e.arincAux.Store(acq.ArincLevels(codes, p))
 }
 
 // noteBackendsLoading says, for the seconds an image load takes, that the
@@ -538,7 +323,7 @@ func (e *Engine) noteARINCLevels(f *sample.Frame) {
 // load).
 // TRLC-LINKS: REQ-SDS-011, REQ-SDS-014
 func (e *Engine) noteBackendsLoading(image string) {
-	shown := map[string]string{imageQualify: "qualifier", imagePacket: "packet", imageLine: "line", imageStream: "stream", imageBits: "digital stream", "": imageGeneralName}[image]
+	shown := map[string]string{acq.ImageQualify: "qualifier", acq.ImagePacket: "packet", acq.ImageLine: "line", acq.ImageStream: "stream", acq.ImageBits: "digital stream", "": acq.ImageGeneralName}[image]
 	why := "none: loading the " + shown + " FPGA image"
 	zones := e.zonesOn()
 	serial := e.serialMode.Load() == SerialTrigger

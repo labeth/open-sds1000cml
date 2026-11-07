@@ -1,17 +1,17 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-ENGINE
 
-package engine
+package acq
 
 import (
 	core "github.com/labeth/open-dso-core/engine"
 	"github.com/labeth/open-sds1000cml/app/internal/sramcapture"
 )
 
-// planSequence maps the request into the hardware's event values: ARINC's
+// PlanSequence maps the request into the hardware's event values: ARINC's
 // data field sits at bits 10..28 of its word, and an I2C data unit requires
 // the address flag (bit 8) clear. Length zero means unplannable.
 // TRLC-LINKS: REQ-SDS-013
-func planSequence(p SerialParams) sramcapture.SequenceTriggerConfig {
+func PlanSequence(p core.SerialParams) sramcapture.SequenceTriggerConfig {
 	var c sramcapture.SequenceTriggerConfig
 	elems := core.PatternOf(p)
 	if len(elems) == 0 || len(elems) > sramcapture.SequenceMax {

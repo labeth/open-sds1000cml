@@ -3,9 +3,10 @@
 package engine
 
 import (
-	core "github.com/labeth/open-dso-core/engine"
 	"math/bits"
 	"testing"
+
+	core "github.com/labeth/open-dso-core/engine"
 )
 
 // recip divides as the divide instruction does wherever its bound holds:

@@ -12,6 +12,7 @@ import (
 	"time"
 
 	core "github.com/labeth/open-dso-core/engine"
+	"github.com/labeth/open-sds1000cml/app/internal/board/acq"
 	"github.com/labeth/open-sds1000cml/app/internal/bus"
 	"github.com/labeth/open-sds1000cml/app/internal/sramcapture"
 )
@@ -315,7 +316,7 @@ func (e *Engine) soundStart(s *soundState) error {
 	// After a fault the stream image can fault every new stream at its first
 	// word until it is loaded again (seen on the instrument); a fresh load
 	// costs about a second, once per loss.
-	if e.protocolImage != imageStream || s.reload || e.streamReload {
+	if e.protocolImage != acq.ImageStream || s.reload || e.streamReload {
 		s.reload, e.streamReload = false, false
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 		err := e.sram.Halt(ctx)
@@ -323,8 +324,8 @@ func (e *Engine) soundStart(s *soundState) error {
 		if err != nil {
 			return err
 		}
-		e.loadImage(imageStream)
-		if e.protocolImage != imageStream {
+		e.loadImage(acq.ImageStream)
+		if e.protocolImage != acq.ImageStream {
 			return errors.New("the stream image did not load")
 		}
 	}

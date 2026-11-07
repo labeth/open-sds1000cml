@@ -6,6 +6,7 @@ import (
 	"math"
 
 	core "github.com/labeth/open-dso-core/engine"
+	"github.com/labeth/open-sds1000cml/app/internal/board/acq"
 	"github.com/labeth/open-sds1000cml/app/internal/sramcapture"
 )
 
@@ -13,7 +14,7 @@ import (
 // needing more samples, retain the whole visible span instead of aliasing it.
 // TRLC-LINKS: REQ-SDS-010
 func liveSRAMWindow(m sramcapture.Metadata, screen int, posFrac float64) (uint32, uint32) {
-	return liveSRAMWindowPre(m, screen, posFrac, 0)
+	return acq.LiveSRAMWindowPre(m, screen, posFrac, 0)
 }
 
 // softAnchor bounds a software qualifier to the anchors the display can

@@ -9,6 +9,7 @@ import (
 	"github.com/labeth/open-dso-core/decode"
 	core "github.com/labeth/open-dso-core/engine"
 	"github.com/labeth/open-dso-core/sample"
+	"github.com/labeth/open-sds1000cml/app/internal/board/acq"
 )
 
 // The serial trigger is the FPGA's (ADR-SERIAL-HARDWARE-TRIGGER): its
@@ -322,9 +323,9 @@ func (e *Engine) serialNoHardware() string {
 	if why != "" {
 		return why
 	}
-	if want := protocolImage(planned); want != e.protocolImage && e.images != nil && e.hasImage(want) {
+	if want := acq.ProtocolImage(planned); want != e.protocolImage && e.images != nil && e.hasImage(want) {
 		if want == "" {
-			want = imageGeneralName
+			want = acq.ImageGeneralName
 		}
 		return "loading the " + want + " FPGA image"
 	}
@@ -335,7 +336,7 @@ func (e *Engine) serialNoHardware() string {
 		core.SerUSB: e.hardwareUSBLS, core.SerFlexRay: packet(core.SerFlexRay), core.SerMIDI: e.hardwareUART,
 	}
 	for proto := core.SerLIN; proto < SerialProtocols; proto++ {
-		if symbolProtocol(proto) {
+		if acq.SymbolProtocol(proto) {
 			have[proto] = e.hardwareSymbol
 		}
 	}

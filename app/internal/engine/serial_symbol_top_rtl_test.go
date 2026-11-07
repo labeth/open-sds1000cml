@@ -14,6 +14,7 @@ import (
 	"github.com/labeth/open-dso-core/decode"
 	core "github.com/labeth/open-dso-core/engine"
 	"github.com/labeth/open-dso-core/testenv"
+	"github.com/labeth/open-sds1000cml/app/internal/board/acq"
 	"github.com/labeth/open-sds1000cml/app/internal/sramcapture"
 )
 
@@ -176,7 +177,7 @@ func compileQualifyTop(t *testing.T, dir, name, defines string, extra ...string)
 func runSymbolTop(t *testing.T, dir, image, name string, p SerialParams, w *symWave, log int, pre string, extra ...string) string {
 	t.Helper()
 	name = strings.NewReplacer("/", "-", " ", "-").Replace(name)
-	c := planHardwareSymbol(&p)
+	c := acq.PlanHardwareSymbol(&p)
 	if !c.Enabled {
 		t.Fatal("unplannable")
 	}

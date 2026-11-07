@@ -3,9 +3,10 @@
 package engine
 
 import (
-	core "github.com/labeth/open-dso-core/engine"
 	"math"
 	"testing"
+
+	core "github.com/labeth/open-dso-core/engine"
 )
 
 // square builds n samples of a square wave: low then high each halfPeriod.

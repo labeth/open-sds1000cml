@@ -5,6 +5,8 @@ package engine
 import (
 	"slices"
 	"testing"
+
+	"github.com/labeth/open-sds1000cml/app/internal/board/acq"
 )
 
 // streamImages is packetImages with a stream image that records its loads.
@@ -30,15 +32,15 @@ func TestStreamFaultAtStartReloadsTheImage(t *testing.T) {
 	si := streamImages{images}
 	e.images = si
 	e.noteStreamLoss(123456)
-	if err := e.freshStreamImage(imageStream); err != nil || slices.Contains(images.loads, "stream") {
+	if err := e.freshStreamImage(acq.ImageStream); err != nil || slices.Contains(images.loads, "stream") {
 		t.Fatalf("a loss mid-stream reloaded: %v %v", err, images.loads)
 	}
 	e.noteStreamLoss(0)
-	if err := e.freshStreamImage(imageStream); err != nil || !slices.Contains(images.loads, "stream") || e.protocolImage != imageStream {
+	if err := e.freshStreamImage(acq.ImageStream); err != nil || !slices.Contains(images.loads, "stream") || e.protocolImage != acq.ImageStream {
 		t.Fatalf("a fault at the first word: %v loads %v image %q", err, images.loads, e.protocolImage)
 	}
 	n := len(images.loads)
-	if err := e.freshStreamImage(imageStream); err != nil || len(images.loads) != n {
+	if err := e.freshStreamImage(acq.ImageStream); err != nil || len(images.loads) != n {
 		t.Fatalf("reloaded twice: %v", images.loads)
 	}
 }
@@ -64,7 +66,7 @@ func TestStreamFaultReloadsTheStreamsOwnImage(t *testing.T) {
 	e, _, images := newPacketTestEngine(t)
 	e.images = bitsImages{streamImages{images}}
 	e.noteStreamLoss(0)
-	if err := e.freshStreamImage(imageBits); err != nil || !slices.Equal(images.loads, []string{"bits"}) || e.protocolImage != imageBits {
+	if err := e.freshStreamImage(acq.ImageBits); err != nil || !slices.Equal(images.loads, []string{"bits"}) || e.protocolImage != acq.ImageBits {
 		t.Fatalf("digital stream fault: %v loads %v image %q", err, images.loads, e.protocolImage)
 	}
 }

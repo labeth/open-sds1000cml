@@ -1,6 +1,6 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-ENGINE
 
-package engine
+package acq
 
 import (
 	"context"
@@ -10,13 +10,13 @@ import (
 	"github.com/labeth/open-sds1000cml/app/internal/sramcapture"
 )
 
-// recordMemory is what the engine asks of the SRAM capture fabric: arming and
-// recalling records, streams, the decoded-event queue, the stacking port, the
-// panel chain and the image's capabilities. *sramcapture.Capture implements
-// it; naming the set lets a recorder stand in for the fabric and log every
-// call the acquisition owner makes.
+// Memory is the SRAM capture fabric's port as the board drives it: arming
+// and recalling records, streams, the decoded-event queue, the stacking
+// port, the panel chain and the image's capabilities. *sramcapture.Capture
+// implements it; naming the set lets a recorder stand in for the fabric and
+// log every call the acquisition owner makes.
 // TRLC-LINKS: REQ-SDS-033, REQ-SDS-082
-type recordMemory interface {
+type Memory interface {
 	Arm(ctx context.Context, cfg sramcapture.Config) error
 	Poll() (sramcapture.Metadata, error)
 	Status() (sramcapture.Metadata, error)
@@ -84,4 +84,4 @@ type recordMemory interface {
 	ReadPanel() (sramcapture.PanelFrame, error)
 }
 
-var _ recordMemory = (*sramcapture.Capture)(nil)
+var _ Memory = (*sramcapture.Capture)(nil)

@@ -1,0 +1,182 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-ENGINE
+
+// Package acq is the SDS1000CML+'s acquisition board: the SRAM capture
+// fabric, its FPGA images, the MAX V's panel and DAC words, behind the HAL
+// (open-dso-core/hal) the engine's owner loop drives.
+//
+// Setters stage; Acquirer.Arm commits the staged capture (plan and trigger
+// in one sramcapture.Config, the fabric's single arm write). Every method
+// that touches the bus runs on the owner goroutine; the lamp word, offset
+// and level DACs that other goroutines set are staged and written at the
+// owner's commit points (Platform.Service) and, the lamps only, between the
+// bursts of a long read.
+package acq
+
+import (
+	"encoding/json"
+	"sync"
+	"time"
+
+	"github.com/labeth/open-dso-core/hal"
+	"github.com/labeth/open-dso-core/sample"
+	"github.com/labeth/open-sds1000cml/app/internal/bus"
+	"github.com/labeth/open-sds1000cml/app/internal/sramcapture"
+)
+
+// Board is the SDS1000CML+ behind the HAL.
+type Board struct {
+	mem   Memory // nil without the SRAM fabric (the register-path tests)
+	panel panelPort
+
+	profile   hal.Profile
+	frontEnd  hal.FrontEnd
+	levelGrid func(src int) hal.Grid
+	display   hal.Display
+	input     hal.Input
+	storage   hal.Storage
+	handover  hal.Handover
+
+	images      ImageSwitcher
+	imageLoaded string // the image in use: "" the general one
+
+	// acquisition state, owner only
+	plan     hal.Plan
+	staged   sramcapture.Config
+	state    hal.AcqState
+	rec      sramcapture.Metadata // the halted record Readout reads
+	reading  bool                 // inside a read: Service flushes the lamps only
+	yield    func()               // the current read's yield
+	progress func(done, total int)
+	trig     trigState
+	scratch  readScratch
+	stream   streamState
+
+	diagMu sync.Mutex
+	diag   boardDiag
+}
+
+// boardDiag is the board's counters for the status "diag" object.
+type boardDiag struct {
+	Arms     uint64 `json:"arms"`
+	Forces   uint64 `json:"forces"`
+	Halts    uint64 `json:"halts"`
+	Reads    uint64 `json:"reads"`
+	ReadErrs uint64 `json:"read_errors"`
+	Image    string `json:"image"`
+}
+
+// Config is what the board is built from.
+type Config struct {
+	Memory Memory  // the SRAM fabric; nil: none
+	Panel  bus.Bus // the CS3 plane: lamps, offset and level DACs
+	// LampLag hears how long a lamp word waited for its flush; WriteErr a
+	// failed panel write.
+	LampLag  func(time.Duration)
+	WriteErr func(error)
+}
+
+// New is the board over cfg's fabric and panel plane.
+func New(cfg Config) *Board {
+	b := &Board{mem: cfg.Memory}
+	b.panel.bus, b.panel.lampLag, b.panel.writeErr = cfg.Panel, cfg.LampLag, cfg.WriteErr
+	return b
+}
+
+var _ hal.Board = (*Board)(nil)
+
+// HasMemory reports whether the SRAM fabric is there.
+func (b *Board) HasMemory() bool { return b.mem != nil }
+
+// Memory is the fabric's port, for the paths the HAL does not cover yet
+// (decoded capture, the stacking scan, the panel chain, the drum streams).
+func (b *Board) Memory() Memory { return b.mem }
+
+// SetProfile, SetFrontEnd, SetLevelGrid, SetDevices and SetHandover attach
+// the parts the composition builds outside the acquisition.
+func (b *Board) SetProfile(p hal.Profile)              { b.profile = p }
+func (b *Board) SetFrontEnd(fe hal.FrontEnd)           { b.frontEnd = fe }
+func (b *Board) SetLevelGrid(g func(src int) hal.Grid) { b.levelGrid = g }
+func (b *Board) SetHandover(h hal.Handover)            { b.handover = h }
+func (b *Board) SetDevices(d hal.Display, in hal.Input, st hal.Storage) {
+	b.display, b.input, b.storage = d, in, st
+}
+
+// Profile is the unit's capabilities.
+func (b *Board) Profile() hal.Profile { return b.profile }
+
+// Platform is bring-up, the hand-over and the owner's housekeeping.
+func (b *Board) Platform() hal.Platform { return (*platformFacet)(b) }
+
+// Planner is the SRAM capture plan arithmetic.
+func (b *Board) Planner() hal.Planner { return (*plannerFacet)(b) }
+
+// Acquirer arms and serves captures.
+func (b *Board) Acquirer() hal.Acquirer { return (*acquirerFacet)(b) }
+
+// Readout reads windows of the halted record.
+func (b *Board) Readout() hal.Readout { return (*readoutFacet)(b) }
+
+// Trigger stages the fabric's trigger.
+func (b *Board) Trigger() hal.Trigger { return (*triggerFacet)(b) }
+
+// FrontEnd is the analog front end the composition attached.
+func (b *Board) FrontEnd() hal.FrontEnd { return b.frontEnd }
+
+// Display, Input and Storage are the devices the composition attached.
+func (b *Board) Display() hal.Display { return b.display }
+func (b *Board) Input() hal.Input     { return b.input }
+func (b *Board) Storage() hal.Storage { return b.storage }
+
+// Streamer is the fabric's stream port, when the image has one.
+func (b *Board) Streamer() (hal.Streamer, bool) {
+	if b.mem == nil {
+		return nil, false
+	}
+	return (*streamerFacet)(b), true
+}
+
+// Images is the FPGA image set, when the composition attached a loader.
+func (b *Board) Images() (hal.Images, bool) {
+	if b.images == nil {
+		return nil, false
+	}
+	return (*imagesFacet)(b), true
+}
+
+// Stacker is the stacking image's accumulator, when it is fitted.
+func (b *Board) Stacker() (hal.Stacker, bool) {
+	if b.mem == nil || b.images == nil || !b.images.HasStack() {
+		return nil, false
+	}
+	return (*stackerFacet)(b), true
+}
+
+// Segments, Counter, LogicProbe and Generator: the SDS1000CML+ has none.
+func (b *Board) Segments() (hal.Segments, bool)     { return nil, false }
+func (b *Board) Counter() (hal.Counter, bool)       { return nil, false }
+func (b *Board) LogicProbe() (hal.LogicProbe, bool) { return nil, false }
+func (b *Board) Generator() (hal.Generator, bool)   { return nil, false }
+
+// Extensions are served by the composition's web adapter until the web
+// server moves to the core.
+func (b *Board) Extensions() []hal.Extension { return nil }
+
+func (b *Board) count(f func(*boardDiag)) {
+	b.diagMu.Lock()
+	f(&b.diag)
+	b.diagMu.Unlock()
+}
+
+func (b *Board) diagJSON() json.RawMessage {
+	b.diagMu.Lock()
+	d := b.diag
+	b.diagMu.Unlock()
+	d.Image = imageName(b.imageLoaded)
+	out, _ := json.Marshal(d)
+	return out
+}
+
+// recordID is the record's identity as the frames carry it.
+func recordID(m sramcapture.Metadata) sample.RecordID {
+	return sample.RecordID{Epoch: m.EventEpoch, Seq: m.RecordID}
+}

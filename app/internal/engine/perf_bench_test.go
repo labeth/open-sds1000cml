@@ -12,6 +12,7 @@ import (
 
 	core "github.com/labeth/open-dso-core/engine"
 	"github.com/labeth/open-dso-core/sample"
+	"github.com/labeth/open-sds1000cml/app/internal/board/acq"
 	"github.com/labeth/open-sds1000cml/app/internal/sramcapture"
 )
 
@@ -25,8 +26,8 @@ func BenchmarkPlanHardwareUART(b *testing.B) {
 	q := p
 	q.Parity, q.Baud = "even", 1000000
 	for b.Loop() {
-		planHardwareUART(&p, false)
-		planHardwareUART(&q, true)
+		acq.PlanHardwareUART(&p, false)
+		acq.PlanHardwareUART(&q, true)
 	}
 }
 
@@ -61,15 +62,15 @@ func planParams() map[string]SerialParams {
 func planByValue(name string, p SerialParams) bool {
 	switch name {
 	case "spi":
-		return planHardwareSPI(&p, true).Enabled
+		return acq.PlanHardwareSPI(&p, true).Enabled
 	case "i2c":
-		return planHardwareI2C(&p, true).Enabled
+		return acq.PlanHardwareI2C(&p, true).Enabled
 	case "sent":
-		return planHardwareSENT(&p).Enabled
+		return acq.PlanHardwareSENT(&p).Enabled
 	case "mil1553":
-		return planHardwareMIL1553(&p).Enabled
+		return acq.PlanHardwareMIL1553(&p).Enabled
 	}
-	return planHardwareUSBLS(&p).Enabled
+	return acq.PlanHardwareUSBLS(&p).Enabled
 }
 
 // planByPointer calls each planner on p itself.
@@ -79,15 +80,15 @@ func planByValue(name string, p SerialParams) bool {
 func planByPointer(name string, p *SerialParams) bool {
 	switch name {
 	case "spi":
-		return planHardwareSPI(p, true).Enabled
+		return acq.PlanHardwareSPI(p, true).Enabled
 	case "i2c":
-		return planHardwareI2C(p, true).Enabled
+		return acq.PlanHardwareI2C(p, true).Enabled
 	case "sent":
-		return planHardwareSENT(p).Enabled
+		return acq.PlanHardwareSENT(p).Enabled
 	case "mil1553":
-		return planHardwareMIL1553(p).Enabled
+		return acq.PlanHardwareMIL1553(p).Enabled
 	}
-	return planHardwareUSBLS(p).Enabled
+	return acq.PlanHardwareUSBLS(p).Enabled
 }
 
 // TRLC-LINKS: REQ-SDS-013
@@ -310,22 +311,22 @@ func BenchmarkViewWindow(b *testing.B) {
 // TRLC-LINKS: REQ-SDS-013
 //
 //go:noinline
-func planPacketByValue(p SerialParams) bool { return planHardwarePacket(&p, 0xffff, 0).Enabled }
+func planPacketByValue(p SerialParams) bool { return acq.PlanHardwarePacket(&p, 0xffff, 0).Enabled }
 
 // TRLC-LINKS: REQ-SDS-013
 //
 //go:noinline
-func planPacketByPointer(p *SerialParams) bool { return planHardwarePacket(p, 0xffff, 0).Enabled }
+func planPacketByPointer(p *SerialParams) bool { return acq.PlanHardwarePacket(p, 0xffff, 0).Enabled }
 
 // TRLC-LINKS: REQ-SDS-013
 //
 //go:noinline
-func planSymbolByValue(p SerialParams) bool { return planHardwareSymbol(&p).Enabled }
+func planSymbolByValue(p SerialParams) bool { return acq.PlanHardwareSymbol(&p).Enabled }
 
 // TRLC-LINKS: REQ-SDS-013
 //
 //go:noinline
-func planSymbolByPointer(p *SerialParams) bool { return planHardwareSymbol(p).Enabled }
+func planSymbolByPointer(p *SerialParams) bool { return acq.PlanHardwareSymbol(p).Enabled }
 
 // TRLC-LINKS: REQ-SDS-013
 func BenchmarkPlanPacketSymbol(b *testing.B) {
@@ -362,7 +363,7 @@ func BenchmarkPlanSymbolPhys(b *testing.B) {
 	}
 	for b.Loop() {
 		for i := range ps {
-			planHardwareSymbol(&ps[i])
+			acq.PlanHardwareSymbol(&ps[i])
 		}
 	}
 }
@@ -628,8 +629,8 @@ func BenchmarkFundamentalHz(b *testing.B) {
 // TRLC-LINKS: REQ-SDS-011
 func BenchmarkQualName(b *testing.B) {
 	for b.Loop() {
-		qualName(sramcapture.QualPulse)
-		qualName(sramcapture.QualVideo)
+		acq.QualName(sramcapture.QualPulse)
+		acq.QualName(sramcapture.QualVideo)
 	}
 }
 

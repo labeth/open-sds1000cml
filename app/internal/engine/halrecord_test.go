@@ -22,6 +22,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/labeth/open-sds1000cml/app/internal/board/acq"
+
 	core "github.com/labeth/open-dso-core/engine"
 	"github.com/labeth/open-dso-core/sample"
 	"github.com/labeth/open-dso-core/superres"
@@ -117,7 +119,7 @@ type memRecorder struct {
 	fill     int                     // polls until a capture's record is full
 }
 
-var _ recordMemory = (*memRecorder)(nil)
+var _ acq.Memory = (*memRecorder)(nil)
 
 const recWords = sramcapture.Words
 

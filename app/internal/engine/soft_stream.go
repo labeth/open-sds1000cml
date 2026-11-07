@@ -14,6 +14,7 @@ import (
 
 	"github.com/labeth/open-dso-core/decode"
 	core "github.com/labeth/open-dso-core/engine"
+	"github.com/labeth/open-sds1000cml/app/internal/board/acq"
 	"github.com/labeth/open-sds1000cml/app/internal/bus"
 	"github.com/labeth/open-sds1000cml/app/internal/decodedlines"
 	"github.com/labeth/open-sds1000cml/app/internal/sramcapture"
@@ -406,7 +407,7 @@ func (e *Engine) beginSoftStream(ctx context.Context, p SerialParams, trig Strea
 		// must be one it matches wherever it comes.
 		q := p
 		q.Bytes, q.Pattern = nil, []PatternElem{{Kind: core.PatternData, Value: value & core.UnitMask(p), Mask: core.UnitMask(p)}}
-		if !planHardwareSymbol(&q).Enabled {
+		if !acq.PlanHardwareSymbol(&q).Enabled {
 			return sramcapture.RecordIdentity{}, fmt.Errorf("%s streams as captures, and the FPGA's symbol trigger matches %X only at a fixed place in a frame: stop it by hand", d.Name, value&core.UnitMask(p))
 		}
 	}
@@ -422,11 +423,11 @@ func (e *Engine) beginSoftStream(ctx context.Context, p SerialParams, trig Strea
 		if e.decodedSession != nil || e.soft != nil {
 			return nil, errors.New("a decoded stream is already running")
 		}
-		want := imageQualify
+		want := acq.ImageQualify
 		if bits {
-			want = imageBits
+			want = acq.ImageBits
 		} else if gapFree {
-			want = imageStream
+			want = acq.ImageStream
 		}
 		if e.images == nil || !e.hasImage(want) {
 			return nil, fmt.Errorf("this build has no %s FPGA image to stream %s", want, d.Name)
@@ -567,9 +568,9 @@ func (s *softStream) modeText(elapsed time.Duration) string {
 // softStreamStart starts the stream image's continuous peak stream.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-240, REQ-SDS-035
 func (e *Engine) softStreamStart(s *softStream) error {
-	image := imageStream
+	image := acq.ImageStream
 	if s.bits {
-		image = imageBits
+		image = acq.ImageBits
 	}
 	if err := e.freshStreamImage(image); err != nil {
 		return err
@@ -1035,7 +1036,7 @@ func (s *softStream) feedPeak(raw []byte, cal *InterleaveCalibration) {
 // reads the raw interleaved codes, as the edge trigger does).
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
 func (e *Engine) planBitsLevels(s *softStream, cfg *sramcapture.Config) {
-	a, b := uint8(math.Round(min(max(s.p.Threshold, 0), 255))), secondLevel(s.p)
+	a, b := uint8(math.Round(min(max(s.p.Threshold, 0), 255))), acq.SecondLevel(s.p)
 	cfg.TriggerLevel, cfg.SecondLevel, cfg.SliceLines = a, b, true
 	if s.p.ChA&1 == 1 {
 		cfg.TriggerLevel, cfg.SecondLevel = b, a
@@ -1333,8 +1334,8 @@ func (s *softStream) valuePattern(at int) []PatternElem {
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-240, REQ-SDS-260
 func (s *softStream) stopPattern() []PatternElem {
 	pat := s.valuePattern(-1)
-	spec, ok := symbolSpec(s.p)
-	if (ok && spec.oneFrame || !s.symbolPlans(pat)) && s.proto != "morse" {
+	spec, ok := acq.SymbolSpec(s.p)
+	if (ok && spec.OneFrame || !s.symbolPlans(pat)) && s.proto != "morse" {
 		pat = s.valuePattern(s.stopUnit)
 	}
 	return pat
@@ -1356,7 +1357,7 @@ func bitsLen(mask int) int {
 func (s *softStream) symbolPlans(pat []PatternElem) bool {
 	p := s.p
 	p.Bytes, p.Pattern = nil, pat
-	return planHardwareSymbol(&p).Enabled
+	return acq.PlanHardwareSymbol(&p).Enabled
 }
 
 // softRecordConfig is a record of words at decimation log on the symbol
@@ -1377,12 +1378,12 @@ func (e *Engine) softRecordConfig(s *softStream, words uint32, log uint8, patter
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
 func (e *Engine) softArmRecord(s *softStream) {
 	s.phase = softDone
-	if !e.hasImage(imageQualify) {
+	if !e.hasImage(acq.ImageQualify) {
 		s.err = errors.New("no qualify FPGA image for the record")
 		return
 	}
-	if e.protocolImage != imageQualify {
-		if e.loadImage(imageQualify); e.protocolImage != imageQualify {
+	if e.protocolImage != acq.ImageQualify {
+		if e.loadImage(acq.ImageQualify); e.protocolImage != acq.ImageQualify {
 			s.err = errors.New("the qualify FPGA image did not load for the record")
 			return
 		}
@@ -1509,7 +1510,7 @@ func (e *Engine) softCapture(s *softStream) {
 	if n == 0 || !(m.SampleRateHz > 0) {
 		return
 	}
-	f := recordFrame(n)
+	f := acq.RecordFrame(n)
 	if m.FractionBits == 8 {
 		f.Traces[0].Precision, f.Traces[1].Precision = make([]uint16, n), make([]uint16, n)
 	}

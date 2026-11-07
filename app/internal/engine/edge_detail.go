@@ -8,6 +8,7 @@ import (
 
 	core "github.com/labeth/open-dso-core/engine"
 	"github.com/labeth/open-dso-core/sample"
+	acq "github.com/labeth/open-sds1000cml/app/internal/board/acq"
 	"github.com/labeth/open-sds1000cml/app/internal/sramcapture"
 )
 
@@ -37,7 +38,7 @@ func (e *Engine) recallEdgeWindow(ctx context.Context, m sramcapture.Metadata, w
 	}
 	start = min(start, m.Length-edgeWindowWords)
 	n := edgeWindowWords * int(m.SamplesPerWord)
-	f := recordFrame(n)
+	f := acq.RecordFrame(n)
 	if m.FractionBits == 8 {
 		f.Traces[0].Precision, f.Traces[1].Precision = make([]uint16, n), make([]uint16, n)
 	}
