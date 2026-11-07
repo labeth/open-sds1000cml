@@ -8,8 +8,8 @@ import (
 	"time"
 
 	"github.com/labeth/open-dso-core/decode"
+	"github.com/labeth/open-dso-core/framecalc"
 	"github.com/labeth/open-dso-core/sample"
-	"github.com/labeth/open-sds1000cml/app/internal/panel/framecalc"
 )
 
 // Auto is no decoding mode (REQ-SDS-214): it detects the bus once and fills

@@ -10,8 +10,8 @@ import (
 	"testing"
 
 	"github.com/labeth/open-dso-core/sample"
+	"github.com/labeth/open-dso-core/uimodel/wsview"
 	"github.com/labeth/open-sds1000cml/app/internal/engine"
-	"github.com/labeth/open-sds1000cml/app/internal/panel/wsview"
 )
 
 // Reachability (REQ-SDS-212): every setting is a sheet row, every row can be

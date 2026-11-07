@@ -7,8 +7,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/labeth/open-dso-core/framecalc"
 	"github.com/labeth/open-sds1000cml/app/internal/engine"
-	"github.com/labeth/open-sds1000cml/app/internal/panel/framecalc"
 )
 
 // The serial trigger is the TRIG tab's fifth Type; it decodes with the BUS

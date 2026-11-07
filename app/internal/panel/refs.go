@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/labeth/open-dso-core/dsp"
 	"github.com/labeth/open-dso-core/sample"
 	"github.com/labeth/open-dso-core/uimodel"
 	"github.com/labeth/open-sds1000cml/app/internal/analog"
@@ -104,9 +105,9 @@ func (c *Controller) captureRefFrom(f *sample.Frame, slot int) {
 	}
 	left := xc - float64(win)*posFrac
 	r.posFrac = posFrac
-	r.c1 = screenColumns(analog.CoupleDisplay(f.Codes8(0)[:valid], cpl[0]), left, win, f.Flags.Has(sample.Interp))
+	r.c1 = screenColumns(dsp.CoupleDisplay(f.Codes8(0)[:valid], cpl[0]), left, win, f.Flags.Has(sample.Interp))
 	if len(f.Codes8(1)) >= valid {
-		r.c2 = screenColumns(analog.CoupleDisplay(f.Codes8(1)[:valid], cpl[1]), left, win, f.Flags.Has(sample.Interp))
+		r.c2 = screenColumns(dsp.CoupleDisplay(f.Codes8(1)[:valid], cpl[1]), left, win, f.Flags.Has(sample.Interp))
 	}
 	r.setup = c.takeSetup()
 	r.at = c.now()

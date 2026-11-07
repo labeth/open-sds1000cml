@@ -6,8 +6,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/labeth/open-dso-core/framecalc"
 	"github.com/labeth/open-dso-core/sample"
-	"github.com/labeth/open-sds1000cml/app/internal/panel/framecalc"
 )
 
 // linFrameRecord is a 20 ms record of LIN frames at 19200 bit/s on C1 (C2

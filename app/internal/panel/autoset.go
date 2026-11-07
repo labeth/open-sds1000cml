@@ -9,12 +9,12 @@ import (
 	"strings"
 	"time"
 
+	"github.com/labeth/open-dso-core/framecalc"
 	"github.com/labeth/open-dso-core/measure"
 	"github.com/labeth/open-dso-core/sample"
+	"github.com/labeth/open-dso-core/uimodel/wsview"
 	"github.com/labeth/open-sds1000cml/app/internal/board"
 	"github.com/labeth/open-sds1000cml/app/internal/engine"
-	"github.com/labeth/open-sds1000cml/app/internal/panel/framecalc"
-	"github.com/labeth/open-sds1000cml/app/internal/panel/wsview"
 )
 
 const divX = 10 // horizontal graticule divisions (spec 07)

@@ -20,6 +20,7 @@ import (
 	"time"
 
 	"github.com/labeth/open-dso-core/engine/fanout"
+	"github.com/labeth/open-dso-core/render"
 	scpihost "github.com/labeth/open-dso-core/scpi/host"
 	"github.com/labeth/open-dso-core/webserver"
 	"github.com/labeth/open-sds1000cml/app/internal/analog"
@@ -192,7 +193,7 @@ func Run() {
 	startMark("panel up")
 
 	// Device-screen PNG for the web /api/screen.png endpoint: the exact LCD render.
-	screenPNG := func() []byte { return lcd.EncodePNG(renderScreen(e, fe, fo)) }
+	screenPNG := func() []byte { return render.EncodePNG(renderScreen(e, fe, fo)) }
 	// SCPI over VXI-11 (spec 11): the host instrument-control interface.
 	// SCDP renders a fresh headless frame — works with or without the LCD.
 	// Created BEFORE the web server so its INVS shadow (the display-invert

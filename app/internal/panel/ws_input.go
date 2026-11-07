@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/labeth/open-sds1000cml/app/internal/panel/framecalc"
-	"github.com/labeth/open-sds1000cml/app/internal/panel/wsview"
+	"github.com/labeth/open-dso-core/framecalc"
+	"github.com/labeth/open-dso-core/uimodel/wsview"
 )
 
 // Input routing (REQ-SDS-211, REQ-SDS-213). F1..F5 switch workspaces with

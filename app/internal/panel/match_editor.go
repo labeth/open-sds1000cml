@@ -9,8 +9,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/labeth/open-dso-core/uimodel/wsview"
 	"github.com/labeth/open-sds1000cml/app/internal/engine"
-	"github.com/labeth/open-sds1000cml/app/internal/panel/wsview"
 )
 
 // The match editor is a full-screen keyboard for the serial trigger's match,

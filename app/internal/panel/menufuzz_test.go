@@ -32,11 +32,11 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/labeth/open-dso-core/framecalc"
+	"github.com/labeth/open-dso-core/render"
+	"github.com/labeth/open-dso-core/uimodel/wsview"
 	"github.com/labeth/open-sds1000cml/app/internal/analog"
 	"github.com/labeth/open-sds1000cml/app/internal/engine"
-	"github.com/labeth/open-sds1000cml/app/internal/lcd"
-	"github.com/labeth/open-sds1000cml/app/internal/panel/framecalc"
-	"github.com/labeth/open-sds1000cml/app/internal/panel/wsview"
 )
 
 // fuzzAction is one scripted step: a button press, a knob turn or a frame.
@@ -298,7 +298,7 @@ func TestUIFuzz(t *testing.T) {
 			dump := func() string {
 				return fmt.Sprintf("reproducing sequence (%d steps):\n%s", len(actions), strings.Join(actions, " "))
 			}
-			sf := lcd.NewMemSurface()
+			sf := render.NewImage565(&render.Metrics800x480)
 			for i := range steps {
 				a := alphabet[rng.Intn(len(alphabet))]
 				actions = append(actions, a.name)
@@ -312,7 +312,7 @@ func TestUIFuzz(t *testing.T) {
 					a.run(r)
 					if i%25 == 0 {
 						r.c.OnFrame(r.f)
-						lcd.Render(sf, r.f, r.hud(), true)
+						render.Render(sf, r.f, r.hud(), true)
 					}
 				}()
 				r.clk.advance(100e6)

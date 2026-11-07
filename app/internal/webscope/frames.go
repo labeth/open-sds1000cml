@@ -6,6 +6,7 @@ import (
 	"math"
 	"time"
 
+	"github.com/labeth/open-dso-core/dsp"
 	"github.com/labeth/open-dso-core/measure"
 	"github.com/labeth/open-dso-core/sample"
 	"github.com/labeth/open-dso-core/webserver"
@@ -81,10 +82,10 @@ func (s *Scope) buildReply(f *sample.Frame, cols int, full bool, since uint64, o
 	if s.fe != nil && f.Len() > 0 && !f.Flags.Has(sample.Envelope) {
 		cpl[0], cpl[1] = s.fe.Coupling(0), s.fe.Coupling(1)
 		if cpl[0] != analog.CplDC {
-			c1, moff[0] = analog.CoupleDisplay(f.Codes8(0)[:f.Len()], cpl[0]), 0
+			c1, moff[0] = dsp.CoupleDisplay(f.Codes8(0)[:f.Len()], cpl[0]), 0
 		}
 		if cpl[1] != analog.CplDC {
-			c2, moff[1] = analog.CoupleDisplay(f.Codes8(1)[:f.Len()], cpl[1]), 0
+			c2, moff[1] = dsp.CoupleDisplay(f.Codes8(1)[:f.Len()], cpl[1]), 0
 		}
 	}
 	rep := wire.FrameReply{
@@ -151,8 +152,8 @@ func (s *Scope) buildReply(f *sample.Frame, cols int, full bool, since uint64, o
 			if vn > 1 && vn <= len(v.Codes8(0)) && vn <= len(v.Codes8(1)) && d.To > d.From {
 				last := d.To - (d.To-d.From)/float64(vn) // where its last value lies
 				rep.ViewA, rep.ViewB, rep.ViewN = d.From/float64(n-1), last/float64(n-1), vn
-				rep.VC1 = shape.RawInt16(analog.CoupleDisplayBy(v.Codes8(0)[:vn], f.Codes8(0)[:n], cpl[0]))
-				rep.VC2 = shape.RawInt16(analog.CoupleDisplayBy(v.Codes8(1)[:vn], f.Codes8(1)[:n], cpl[1]))
+				rep.VC1 = shape.RawInt16(dsp.CoupleDisplayBy(v.Codes8(0)[:vn], f.Codes8(0)[:n], cpl[0]))
+				rep.VC2 = shape.RawInt16(dsp.CoupleDisplayBy(v.Codes8(1)[:vn], f.Codes8(1)[:n], cpl[1]))
 			}
 		}
 	default:

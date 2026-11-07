@@ -9,12 +9,13 @@ import (
 	"time"
 
 	"github.com/labeth/open-dso-core/decode"
+	"github.com/labeth/open-dso-core/dsp"
+	"github.com/labeth/open-dso-core/framecalc"
 	"github.com/labeth/open-dso-core/measure"
 	"github.com/labeth/open-dso-core/sample"
+	"github.com/labeth/open-dso-core/uimodel/wsview"
 	"github.com/labeth/open-sds1000cml/app/internal/analog"
 	"github.com/labeth/open-sds1000cml/app/internal/engine"
-	"github.com/labeth/open-sds1000cml/app/internal/panel/framecalc"
-	"github.com/labeth/open-sds1000cml/app/internal/panel/wsview"
 )
 
 // Per-frame analysis for the workspace panes. The render paths call OnFrame
@@ -312,7 +313,7 @@ func measureCh(f *sample.Frame, s *sv, ch int) *measure.Result {
 	}
 	cpl := s.cpl[ch]
 	if cpl != analog.CplDC {
-		sig = analog.CoupleDisplay(sig, cpl)
+		sig = dsp.CoupleDisplay(sig, cpl)
 		off = 0
 	}
 	q := f.Precision(0)

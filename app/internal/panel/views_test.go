@@ -12,11 +12,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/labeth/open-dso-core/render"
 	"github.com/labeth/open-dso-core/sample"
+	"github.com/labeth/open-dso-core/uimodel/wsview"
 	"github.com/labeth/open-sds1000cml/app/internal/analog"
 	"github.com/labeth/open-sds1000cml/app/internal/engine"
-	"github.com/labeth/open-sds1000cml/app/internal/lcd"
-	"github.com/labeth/open-sds1000cml/app/internal/panel/wsview"
 	"github.com/labeth/open-sds1000cml/app/internal/streamview"
 )
 
@@ -80,7 +80,7 @@ type viewRig struct {
 	fmu   sync.Mutex // f: the super-res loop reads it from its goroutine
 	f     *sample.Frame
 	seq   uint64
-	spect *lcd.Spectrogram
+	spect *render.Spectrogram
 }
 
 // fakeStream is a decoded stream that never starts (Auto finds nothing).
@@ -118,7 +118,7 @@ func newViewRig(t *testing.T) *viewRig {
 	c := newCtl(eng, bwlFE{fe}, -1, engine.SupportedTdivs(), 500e-6, t.Logf)
 	c.decode(idle(), true)
 	c.detectSync = true
-	r := &viewRig{t: t, c: c, eng: eng, fe: fe, clk: withClock(c), spect: lcd.NewSpectrogram()}
+	r := &viewRig{t: t, c: c, eng: eng, fe: fe, clk: withClock(c), spect: render.NewSpectrogram()}
 	c.SetFrameSource(func(fn func(*sample.Frame)) {
 		r.fmu.Lock()
 		f := r.f
@@ -154,23 +154,21 @@ func (r *viewRig) show(f *sample.Frame) {
 
 // hud is the LCD state for the controller's snapshot, as the app builds it.
 // TRLC-LINKS: REQ-SDS-211, REQ-SDS-212, REQ-SDS-214, REQ-SDS-215, REQ-SDS-216, REQ-SDS-217, REQ-SDS-218
-func (r *viewRig) hud() lcd.HUD {
+func (r *viewRig) hud() render.HUD {
 	c, st := r.c, r.eng.Snapshot()
 	d, v := c.Snapshot()
-	h := lcd.HUD{
-		C1VdivV: analog.Detents[r.fe.idx[0]].VdivV, C2VdivV: analog.Detents[r.fe.idx[1]].VdivV,
+	h := render.HUD{
+		Ch:    [render.MaxChans]render.Channel{{VdivV: analog.Detents[r.fe.idx[0]].VdivV, Show: d.ShowC1}, {VdivV: analog.Detents[r.fe.idx[1]].VdivV, Show: d.ShowC2}},
 		TdivS: st.TdivS, TrigSrc: st.TrigSource, TrigRising: st.TrigRising, Running: st.Running, Norm: st.Norm,
-		Single: st.Single, TrigPosFrac: st.TrigPosFrac, TwoChan: true, URL: "http://192.168.1.209:8080",
-		ShowC1: d.ShowC1, ShowC2: d.ShowC2, ChanExplicit: true, ShowMeas: d.ShowMeas, MeasItems: d.MeasItems,
+		Single: st.Single, TrigPosFrac: st.TrigPosFrac, NumChans: 2, URL: "http://192.168.1.209:8080", ChanExplicit: true, ShowMeas: d.ShowMeas, MeasItems: d.MeasItems,
 		ViewMode: d.ViewMode, MathMode: d.MathMode, FFTSrc: d.FFTSrc, AutosetBusy: d.AutosetBusy, AutosetMsg: d.AutosetMsg,
-		Notice: v.Notice, Remote: d.Remote, UI: v, Match: lcd.MatchView(c.MatchEditor()), Zoom: d.Zoom, ZoomOff: d.ZoomOff,
+		Notice: v.Notice, Remote: d.Remote, UI: v, Match: render.MatchView(c.MatchEditor()), Zoom: d.Zoom, ZoomOff: d.ZoomOff,
 		Persist: d.Persist, DecProto: d.DecProto, DecBaud: d.DecBaud, DecChA: d.DecChA, DecChB: d.DecChB,
 		DecCPOL: d.DecCPOL, DecCPHA: d.DecCPHA, DecFormat: d.DecFormat, CurOn: d.CurOn, CurType: d.CurType,
 		CurSel: d.CurSel, CurX: d.CurX, CurY: d.CurY, MaskMode: st.MaskMode, MaskPass: st.MaskPass, MaskFail: st.MaskFail,
-		MaskMsg: c.MaskStatus(), Spect: r.spect,
-	}
+		MaskMsg: c.MaskStatus(), Spect: r.spect}
 	h.TrigLvlV = (31437 - float64(st.TrigCode)) / 911
-	h.TrigLvlDiv = h.TrigLvlV / h.C1VdivV
+	h.TrigLvlDiv = h.TrigLvlV / h.Ch[0].VdivV
 	for i, rw := range c.RefView() {
 		h.RefC1[i], h.RefC2[i], h.RefShow[i], h.RefVdiv[i], h.RefOff[i], h.RefProbe[i] = rw.C1, rw.C2, rw.Show, rw.Vdiv, rw.Off, rw.Probe
 	}
@@ -191,17 +189,17 @@ func (r *viewRig) shot(name string) wsview.View {
 		r.c.OnFrame(r.f) // as the LCD loop does each tick
 	}
 	v := r.c.View()
-	sf := lcd.NewMemSurface()
+	sf := render.NewImage565(&render.Metrics800x480)
 	func() {
 		defer func() {
 			if p := recover(); p != nil {
 				r.t.Fatalf("%s: render panicked: %v", name, p)
 			}
 		}()
-		lcd.Render(sf, r.f, r.hud(), true)
+		render.Render(sf, r.f, r.hud(), true)
 	}()
 	if dir := os.Getenv("PANEL_VIEWS_DIR"); dir != "" {
-		if err := os.WriteFile(filepath.Join(dir, name+".png"), lcd.EncodePNG(sf), 0o644); err != nil {
+		if err := os.WriteFile(filepath.Join(dir, name+".png"), render.EncodePNG(sf), 0o644); err != nil {
 			r.t.Fatal(err)
 		}
 	}

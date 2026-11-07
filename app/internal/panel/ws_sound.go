@@ -10,8 +10,8 @@ import (
 	"time"
 
 	"github.com/labeth/open-dso-core/sound"
+	"github.com/labeth/open-dso-core/uimodel/wsview"
 	"github.com/labeth/open-sds1000cml/app/internal/engine"
-	"github.com/labeth/open-sds1000cml/app/internal/panel/wsview"
 )
 
 // SOUND is SPECTRUM's fourth view (ADR-SOUND): F3 again cycles FFT,

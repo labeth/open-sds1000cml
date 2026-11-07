@@ -5,7 +5,7 @@ package panel
 import (
 	"sync"
 
-	"github.com/labeth/open-sds1000cml/app/internal/panel/wsview"
+	"github.com/labeth/open-dso-core/uimodel/wsview"
 )
 
 // The Help guide (the SYS tab, opened by the Help key on its Help row): the
