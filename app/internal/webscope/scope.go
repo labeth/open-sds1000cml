@@ -11,10 +11,13 @@ package webscope
 import (
 	"time"
 
+	"github.com/labeth/open-dso-core/hal"
 	"github.com/labeth/open-dso-core/instrument"
 	"github.com/labeth/open-dso-core/sample"
 	"github.com/labeth/open-dso-core/scopeweb"
+	"github.com/labeth/open-dso-core/uimodel/panel"
 	"github.com/labeth/open-dso-core/webserver"
+	"github.com/labeth/open-dso-core/webserver/wire"
 	"github.com/labeth/open-sds1000cml/app/internal/buildinfo"
 	"github.com/labeth/open-sds1000cml/app/internal/engine"
 )
@@ -141,12 +144,90 @@ type Scope struct {
 
 	// setups is the numbered setup store behind /api/setup (SetSetupMemory).
 	setups webserver.Setups
+
+	capsOn bool // WithBoard: the capabilities document can be served
+}
+
+// Option completes the scope's configuration.
+type Option func(*scopeweb.Config)
+
+// WithBoard makes the board's HAL the source of the capabilities document
+// (WithCaps): its profile, front end and trigger, completed with what this
+// engine serves beyond them.
+// TRLC-LINKS: REQ-SDS-164
+func WithBoard(b hal.Board) Option { return func(c *scopeweb.Config) { c.Board = b } }
+
+// capsOfThisScope completes the HAL's projection with what this engine
+// serves: the four trigger types it programs, 25 codes a division, its five
+// acquisition modes, its record depths, the 20 MHz limit, the 1 MΩ input
+// and the five F-keys (the page's own assumptions of a scope without caps,
+// so its page is the same with them), and the setup memory this adapter
+// holds.
+// TRLC-LINKS: REQ-SDS-164
+func (s *Scope) capsOfThisScope(c *wire.Caps) {
+	if s.setups != nil {
+		c.Features["setups"] = wire.Feature{OK: true, Slots: panel.SetupSlots}
+	}
+	c.Vertical.BWLimits = []string{"full", "20M"}
+	c.Trigger.Types = []string{"edge", "pulse", "slope", "video"}
+	c.Codes.CodesPerDiv = 25
+	c.Acquisition.Modes = []string{"normal", "average", "eres", "peak", "precision"}
+	c.Timebase.Depths = []int{2048, 6144, 14336, 20480}
+	c.Vertical.Impedances = []string{"1M"}
+	c.UI.FKeys = 5
+}
+
+// WithCaps is the scope serving its capabilities document when it was
+// made WithBoard; else the scope as it is.
+// TRLC-LINKS: REQ-SDS-164
+func (s *Scope) WithCaps() webserver.Scope {
+	if !s.capsOn {
+		return s
+	}
+	return capsScope{s}
+}
+
+// capsScope is the scope with its capabilities (webserver.CapsSource).
+type capsScope struct{ *Scope }
+
+// Caps is the capabilities document.
+// TRLC-LINKS: REQ-SDS-164
+func (c capsScope) Caps() wire.Caps { return c.CapsDocument() }
+
+// CapsGen is the document's generation.
+// TRLC-LINKS: REQ-SDS-164
+func (c capsScope) CapsGen() uint64 { return c.CapsDocument().Gen }
+
+// Frames are the scope's frames in wire v1 alone: the caps list frame wire
+// [1], so the page reads the frames it always read (byte for byte, at the
+// CPU cost measured on the bench). Wire v2 on this scope waits for its own
+// bench check.
+// TRLC-LINKS: REQ-SDS-163, REQ-SDS-164
+func (c capsScope) Frames() webserver.Frames { return v1Frames{c.Scope.Frames()} }
+
+// v1Frames are frames without the v2 encoder.
+type v1Frames struct{ webserver.Frames }
+
+// QuietRLock is the frames' quiet lock, when they have one.
+// TRLC-LINKS: REQ-SDS-163
+func (f v1Frames) QuietRLock() {
+	if q, ok := f.Frames.(webserver.Quiet); ok {
+		q.QuietRLock()
+	}
+}
+
+// QuietRUnlock releases it.
+// TRLC-LINKS: REQ-SDS-163
+func (f v1Frames) QuietRUnlock() {
+	if q, ok := f.Frames.(webserver.Quiet); ok {
+		q.QuietRUnlock()
+	}
 }
 
 // New is the SDS1000CML+ scope over the engine sc and the board's levels lv;
 // fe and panel may be nil, and screen renders the LCD as a PNG.
 // TRLC-LINKS: REQ-SDS-161, REQ-SDS-162, REQ-SDS-163, REQ-SDS-164
-func New(sc Engine, fe Analog, lv Levels, panel Panel, screen func() []byte) *Scope {
+func New(sc Engine, fe Analog, lv Levels, panel Panel, screen func() []byte, opts ...Option) *Scope {
 	s := &Scope{sc: sc, fe: fe, lv: lv, panel: panel, screen: screen}
 	cfg := scopeweb.Config{
 		Frames:   frameSource{s},
@@ -161,6 +242,13 @@ func New(sc Engine, fe Analog, lv Levels, panel Panel, screen func() []byte) *Sc
 	}
 	if panel != nil {
 		cfg.UI = panel
+	}
+	for _, o := range opts {
+		o(&cfg)
+	}
+	if cfg.Board != nil {
+		s.capsOn = true
+		cfg.CapsEdit = s.capsOfThisScope
 	}
 	s.Scope = scopeweb.New(cfg)
 	return s

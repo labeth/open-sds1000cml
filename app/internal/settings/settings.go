@@ -27,8 +27,8 @@ import (
 	core "github.com/labeth/open-dso-core/settings"
 )
 
-// The setup's shape is the core's; this package loads, saves, collects and
-// applies it for this scope.
+// Version is the setup's schema version: the core's, whose shape this
+// package loads, saves, collects and applies for this scope.
 const Version = core.Version
 
 // maxFileSize caps what the loader will even parse: a real settings file is
@@ -36,18 +36,30 @@ const Version = core.Version
 // on a 64 MB-class ARM).
 const maxFileSize = 64 << 10
 
+// The setup's parts are the core's.
 type (
-	Channel  = core.Channel
-	Trigger  = core.Trigger
-	Acq      = core.Acq
-	Decode   = core.Decode
+	// Channel is the core's settings.Channel.
+	Channel = core.Channel
+	// Trigger is the core's settings.Trigger.
+	Trigger = core.Trigger
+	// Acq is the core's settings.Acq.
+	Acq = core.Acq
+	// Decode is the core's settings.Decode.
+	Decode = core.Decode
+	// Settings is the core's settings.Settings.
 	Settings = core.Settings
-	Bode     = core.Bode
-	Sound    = core.Sound
-	Screen   = core.Screen
-	Serial   = core.Serial
-	UI       = core.UI
-	Display  = core.Display
+	// Bode is the core's settings.Bode.
+	Bode = core.Bode
+	// Sound is the core's settings.Sound.
+	Sound = core.Sound
+	// Screen is the core's settings.Screen.
+	Screen = core.Screen
+	// Serial is the core's settings.Serial.
+	Serial = core.Serial
+	// UI is the core's settings.UI.
+	UI = core.UI
+	// Display is the core's settings.Display.
+	Display = core.Display
 )
 
 // PathIn is the settings file in the stick's ota/ directory (OTA_DIR, which

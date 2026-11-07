@@ -58,7 +58,6 @@ const (
 // the core's hardware stacking setup.
 type StackConfig = superres.StackConfig
 
-
 // TRLC-LINKS: REQ-SDS-141
 func (c *Capture) stackTileBins() (int, error) {
 	id, err := c.read(selStackLevel)

@@ -21,13 +21,12 @@ import (
 // acquisition board's loader).
 type ImageSwitcher = acq.ImageSwitcher
 
-// FPGAStackRequest and FPGAStackResult are the core's hardware stacking
-// session and its outcome.
 type (
+	// FPGAStackRequest is the core's hardware stacking session.
 	FPGAStackRequest = superres.StackRequest
-	FPGAStackResult  = superres.StackResult
+	// FPGAStackResult is its outcome.
+	FPGAStackResult = superres.StackResult
 )
-
 
 // SetImageSwitcher enables FPGA stacking. Call before Run.
 // TRLC-LINKS: REQ-SDS-141

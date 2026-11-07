@@ -146,7 +146,6 @@ type Config struct {
 // it: the core engine's record.
 type AcqSample = core.AcqSample
 
-
 // CmdNote records one web set-control invocation (name + numeric value +
 // the published Seq at the time), so the acq log can be read against "what we
 // did just before". Pure instrumentation.

@@ -160,7 +160,9 @@ func (l *Levels) SaveTrigLevel() TrigLevelSaved { return SaveTrigLevelIn(l.eng.S
 
 // SaveTrigLevelIn keeps the level in engine state st already read.
 // TRLC-LINKS: REQ-SDS-098
-func SaveTrigLevelIn(st engine.Stats) TrigLevelSaved { return TrigLevelSaved{Word: uint64(st.TrigCode)} }
+func SaveTrigLevelIn(st engine.Stats) TrigLevelSaved {
+	return TrigLevelSaved{Word: uint64(st.TrigCode)}
+}
 
 // RestoreTrigLevel puts a kept level back; the boot comparator's is left.
 // TRLC-LINKS: REQ-SDS-098
@@ -245,5 +247,5 @@ func (l *Levels) TrigStepsV(n int) float64 { return TrigStepsV(n) }
 // DAC code) on the global fit, as the setup's summary names it.
 // TRLC-LINKS: REQ-SDS-098, REQ-SDS-136
 func (l *Levels) LevelWordV(word int) float64 {
-	return engine.TrigLevelVolts(uint16(min(max(word, 1), 65535))) //nolint:gosec // G115: clamped to 1..65535
+	return engine.TrigLevelVolts(uint16(min(max(word, 1), 65535)))
 }
