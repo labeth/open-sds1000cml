@@ -25,6 +25,7 @@ import (
 	"github.com/labeth/open-dso-core/webserver"
 	"github.com/labeth/open-sds1000cml/app/internal/analog"
 	"github.com/labeth/open-sds1000cml/app/internal/board"
+	"github.com/labeth/open-sds1000cml/app/internal/board/acq"
 	"github.com/labeth/open-sds1000cml/app/internal/buildinfo"
 	"github.com/labeth/open-sds1000cml/app/internal/bus"
 	"github.com/labeth/open-sds1000cml/app/internal/cal"
@@ -135,7 +136,14 @@ func Run() {
 	} else {
 		interleaveCal = c
 	}
-	e := engine.New(engine.Config{Bus: b, Logf: logf, SRAM: sramBackend, InterleaveCalibration: interleaveCal})
+	// The acquisition board: the record memory and the panel plane behind
+	// the HAL; the engine's owner loop drives it.
+	var mem acq.Memory
+	if sramBackend != nil { // a nil *Capture must leave the interface nil
+		mem = sramBackend
+	}
+	acqBoard := acq.New(acq.Config{Memory: mem, Panel: b})
+	e := engine.New(engine.Config{Bus: b, Logf: logf, Board: acqBoard, InterleaveCalibration: interleaveCal})
 	e.SetImageSwitcher(imageSwitcher{fd: gpmcFD})
 
 	go healthLoop(e, healthPath)
@@ -181,9 +189,9 @@ func Run() {
 	// stages: the controllers' side of the board's levels.
 	levels := board.New(e, bfe)
 	if fe != nil {
-		e.Board().SetFrontEnd(fe)
+		acqBoard.SetFrontEnd(fe)
 	}
-	e.Board().SetLevelGrid(levels.TrigLevelGrid)
+	acqBoard.SetLevelGrid(levels.TrigLevelGrid)
 	pc := panel.New(e, pfe, levels, keyFD, engine.SupportedTdivs(), 500e-6, logf)
 	pc.SetFrameSource(fo.WithFrame) // let the AUTO button measure the live signal
 	// Decoded stream (ADR-PANEL-DECODED-STREAM): the panel starts it from the

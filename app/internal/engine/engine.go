@@ -132,13 +132,16 @@ const defaultMatureUs = 750
 // TRLC-LINKS: REQ-SDS-001, REQ-SDS-007, REQ-SDS-008
 type Config struct {
 	InterleaveCalibration *InterleaveCalibration
-	SRAM                  *sramcapture.Capture // non-nil selects the external SRAM ABI
-	Bus                   bus.Bus
-	Clock                 Clock         // zero → real clock
-	FramePeriod           time.Duration // publish pacing floor; default defaultFramePeriod
-	ArmSettle             time.Duration // default defaultArmSettle
-	PollEvery             time.Duration // wait-gate poll pace; default 150 µs
-	Logf                  func(format string, a ...any)
+	// Board is the acquisition board the composition built; nil: the
+	// engine builds one over SRAM and Bus.
+	Board       *acq.Board
+	SRAM        *sramcapture.Capture // non-nil selects the external SRAM ABI
+	Bus         bus.Bus
+	Clock       Clock         // zero → real clock
+	FramePeriod time.Duration // publish pacing floor; default defaultFramePeriod
+	ArmSettle   time.Duration // default defaultArmSettle
+	PollEvery   time.Duration // wait-gate poll pace; default 150 µs
+	Logf        func(format string, a ...any)
 }
 
 // Stats is the exported snapshot for the health writer and the web UI.
@@ -464,13 +467,13 @@ type Engine struct {
 	maskCap     atomic.Uint64 // capture ordinal: counts every mask-tested frame
 	beatN       atomic.Uint64 // liveness heartbeat (see Beats)
 	zoneSkip    atomic.Int64  // zone-armed publishes that could not be tested (env/roll)
-	zoneHeld    int           // engine goroutine only: AUTO liveness fallback counter
+	zoneHeld    core.Liveness // engine goroutine only: AUTO liveness for the zone gate
 	zm          core.ZoneMaskState
 	maskMap     core.MaskMapState // engine goroutine only: the mask read through time (maskThroughTime)
 	// serial / protocol trigger (serialtrig.go)
 	serialMode    atomic.Int32
 	serialMatches atomic.Int64
-	serialHeld    int // engine goroutine only: AUTO liveness fallback counter
+	serialHeld    core.Liveness // engine goroutine only: AUTO liveness for the serial gate
 	ser           core.SerialState
 	serLv         core.SerialLevels // the lines' levels and SPI clock, for the hardware matcher (serial_levels.go)
 	qualExt       core.QualExtent   // the channels' extents, for the hardware qualifiers (qualify_hardware.go)
@@ -609,20 +612,24 @@ type Engine struct {
 // none, the register path) and the panel plane, and takes its facets.
 // TRLC-LINKS: REQ-SDS-001
 func (e *Engine) useMemory(m acq.Memory) {
-	e.sram = m
-	e.board = acq.New(acq.Config{
-		Memory: m, Panel: e.b,
-		LampLag: func(d time.Duration) {
-			e.mu.Lock()
-			e.stats.LEDLagMs = float64(d) / float64(time.Millisecond)
-			e.mu.Unlock()
-		},
-		WriteErr: e.busErr,
-	})
-	e.board.SetImages(e.images)
-	e.acqr, e.plat = e.board.Acquirer(), e.board.Platform()
+	e.useBoard(acq.New(acq.Config{Memory: m, Panel: e.b}))
+}
+
+// useBoard drives board b: the owner hears its panel plane's lamp lag and
+// write errors, and takes its facets.
+// TRLC-LINKS: REQ-SDS-001
+func (e *Engine) useBoard(b *acq.Board) {
+	e.sram = b.Memory()
+	e.board = b
+	b.SetReporting(func(d time.Duration) {
+		e.mu.Lock()
+		e.stats.LEDLagMs = float64(d) / float64(time.Millisecond)
+		e.mu.Unlock()
+	}, e.busErr)
+	b.SetImages(e.images)
+	e.acqr, e.plat = b.Acquirer(), b.Platform()
 	e.readYield = e.plat.Service
-	e.rdx = e.board.Readout()
+	e.rdx = b.Readout()
 }
 
 // hw is the acquisition board, built over the record memory on first use
@@ -634,11 +641,6 @@ func (e *Engine) hw() *acq.Board {
 	}
 	return e.board
 }
-
-// Board is the acquisition board the owner loop drives: the composition
-// attaches the parts it builds (the front end, the levels' grid).
-// TRLC-LINKS: REQ-SDS-001
-func (e *Engine) Board() *acq.Board { return e.hw() }
 
 // acquirer, platform and yield are the board's acquirer, its platform and
 // the readout's yield (the platform's Service).
@@ -677,8 +679,9 @@ func New(cfg Config) *Engine {
 	if cfg.Logf == nil {
 		cfg.Logf = func(string, ...any) {}
 	}
+	hasSRAM := cfg.SRAM != nil || cfg.Board != nil && cfg.Board.HasMemory()
 	capacity := deepRecord
-	if cfg.SRAM != nil {
+	if hasSRAM {
 		capacity = int(sramcapture.SamplesPerChannel)
 	}
 	start, _ := PlanTdiv(500e-6) // decimated start detent: shows the cal edge fast
@@ -698,11 +701,15 @@ func New(cfg Config) *Engine {
 		sramJobs:              make(chan core.OwnerJob, 1),
 		decodedRequests:       make(chan core.OwnerJob, 8),
 	}
-	var mem acq.Memory
-	if cfg.SRAM != nil { // a nil *Capture must leave the interface nil
-		mem = cfg.SRAM
+	if cfg.Board != nil {
+		e.useBoard(cfg.Board)
+	} else {
+		var mem acq.Memory
+		if cfg.SRAM != nil { // a nil *Capture must leave the interface nil
+			mem = cfg.SRAM
+		}
+		e.useMemory(mem)
 	}
-	e.useMemory(mem)
 	// Tuning defaults. ROOT-CAUSE FIX for the native-fast half-record: the free-run
 	// wait returned the instant done+fill asserted and halted immediately, catching
 	// the deep record half-filled (one memory bank). Holding ~2 ms more before halt
@@ -723,7 +730,7 @@ func New(cfg Config) *Engine {
 	e.tuneGcCtl.Store(false)
 	e.tuneMaxRetry.Store(2)   // light backstop; full records are now the norm
 	e.tuneRenderMs.Store(120) // legacy capture cadence
-	if cfg.SRAM != nil {
+	if hasSRAM {
 		e.tuneRenderMs.Store(2)
 	}
 	// fill-extra and halt-settle were workarounds tuned against what turned out

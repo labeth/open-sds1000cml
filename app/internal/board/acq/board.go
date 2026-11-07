@@ -85,6 +85,13 @@ func New(cfg Config) *Board {
 
 var _ hal.Board = (*Board)(nil)
 
+// SetReporting attaches what the owner hears of the panel plane: how long
+// a lamp word waited for its flush, and a failed write.
+// TRLC-LINKS: REQ-SDS-001
+func (b *Board) SetReporting(lampLag func(time.Duration), writeErr func(error)) {
+	b.panel.lampLag, b.panel.writeErr = lampLag, writeErr
+}
+
 // HasMemory reports whether the SRAM fabric is there.
 // TRLC-LINKS: REQ-SDS-001
 func (b *Board) HasMemory() bool { return b.mem != nil }
