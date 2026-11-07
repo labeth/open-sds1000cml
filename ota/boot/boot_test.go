@@ -100,6 +100,9 @@ func TestRespawnLoopBounded(t *testing.T) {
 		"OTA_DIR":        otaDir,
 		"OTA_AGENT_A":    agentA,
 		"OTA_AGENT_RUNS": "3",
+		// whole-second timing: a fast exit over a second boundary must not
+		// count as a stable run (see TestCrashLoopRevertsToConfirmed)
+		"OTA_AGENT_STABLE": "3600",
 	}, "agent-loop-stop", 5*time.Second)
 
 	if got := strings.Count(boot, "agent-start slot=A"); got != 3 {
@@ -200,6 +203,11 @@ func TestCrashLoopRevertsToConfirmed(t *testing.T) {
 		"OTA_AGENT_CONFIRMED": confirmedFile,
 		"OTA_AGENT_MAXFAILS":  "3",
 		"OTA_AGENT_RUNS":      "6",
+		// The loop times a run with whole seconds of date +%s, so a crash
+		// that straddles a second boundary lasts "1 s". With the default
+		// test STABLE of 1 s that run would count as stable (confirming B
+		// and clearing the fail count); an hour keeps every crash a crash.
+		"OTA_AGENT_STABLE": "3600",
 	}, "agent-loop-stop", 6*time.Second)
 
 	if !strings.Contains(boot, "agent-revert B -> A") {
