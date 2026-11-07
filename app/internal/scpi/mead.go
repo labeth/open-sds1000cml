@@ -84,11 +84,15 @@ func (h *Handler) mead(a, b int, arg string) []byte {
 	}
 	value, unit := math.NaN(), "S"
 	h.sc.WithFrame(func(f *sample.Frame) {
-		if f == nil || f.Len() < 4 || len(f.Codes8(0)) < f.Len() || len(f.Codes8(1)) < f.Len() || !(f.SampleS > 0) {
+		if f == nil || f.Len() < 4 || a >= len(f.Traces) || b >= len(f.Traces) || !(f.SampleS > 0) {
 			return
 		}
-		ch := [2][]uint8{f.Codes8(0)[:f.Len()], f.Codes8(1)[:f.Len()]}
-		ea, eb := findEdges(ch[a]), findEdges(ch[b])
+		// Both channels' edges on the 8-bit view.
+		va, vb := view8(&f.Traces[a]), view8(&f.Traces[b])
+		if len(va) < f.Len() || len(vb) < f.Len() {
+			return
+		}
+		ea, eb := findEdges(va[:f.Len()]), findEdges(vb[:f.Len()])
 		if ea == nil || eb == nil {
 			return
 		}
@@ -205,13 +209,11 @@ func (h *Handler) crva(ch int, arg string) []byte {
 	dt := (x[1] - x[0]) * 10 * tdiv
 	val := [2]string{noReading, noReading}
 	h.sc.WithFrame(func(f *sample.Frame) {
-		if f == nil || f.Len() < 2 || f.WinPoints < 2 {
+		if f == nil || f.Len() < 2 || f.WinPoints < 2 || ch >= len(f.Traces) {
 			return
 		}
-		sig := f.Codes8(0)
-		if ch == 1 {
-			sig = f.Codes8(1)
-		}
+		t := &f.Traces[ch]
+		sig, cpd := view8(t), t.CodesPerDiv8()
 		if len(sig) < f.Len() {
 			return
 		}
@@ -222,7 +224,7 @@ func (h *Handler) crva(ch int, arg string) []byte {
 		for k := range val {
 			i := int(math.Round(centre + (x[k]-posFrac)*float64(f.WinPoints)))
 			if i >= 0 && i < f.Len() {
-				val[k] = sciV((float64(sig[i])-128)*vdiv/25*probe - offV*probe)
+				val[k] = sciV((float64(sig[i])-sample.Mid8)*vdiv/cpd*probe - offV*probe)
 			}
 		}
 	})
@@ -231,4 +233,14 @@ func (h *Handler) crva(ch int, arg string) []byte {
 		inv = fmt.Sprintf("%.2EHz", 1/math.Abs(dt))
 	}
 	return h.reply(header, fmt.Sprintf("HREL,%s,%s,%s,%s", sciS(dt), inv, val[0], val[1]))
+}
+
+// view8 is trace t's codes on the 8-bit view: 8-bit codes as they are (their
+// whole slice), wider words mapped.
+// TRLC-LINKS: REQ-SDS-024
+func view8(t *sample.Trace) []uint8 {
+	if t.Format.Storage == sample.U16 {
+		return t.View8()
+	}
+	return t.Codes8
 }

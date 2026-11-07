@@ -31,7 +31,25 @@ type fakeScope struct {
 func (f *fakeScope) Snapshot() engine.Stats { return f.stats }
 
 // TRLC-LINKS: REQ-SDS-024
-func (f *fakeScope) WithFrame(fn func(*sample.Frame)) { fn(f.frame) }
+func (f *fakeScope) WithFrame(fn func(*sample.Frame)) { fn(asPublished(f.frame)) }
+
+// asPublished gives frame f's traces the format the engine's frames state,
+// where a test left it out: 8-bit codes at 25 a division.
+// TRLC-LINKS: REQ-SDS-024
+func asPublished(f *sample.Frame) *sample.Frame {
+	if f == nil {
+		return nil
+	}
+	for i := range f.Traces {
+		if t := &f.Traces[i]; t.Format.Storage == 0 {
+			t.Format = engine.CodeFormat
+			if t.CodesPerDiv == 0 {
+				t.CodesPerDiv = engine.CodesPerDiv
+			}
+		}
+	}
+	return f
+}
 
 // TRLC-LINKS: REQ-SDS-024
 func (f *fakeScope) SetRunning(on bool) {
@@ -846,5 +864,30 @@ func TestATTNRefusesNonFinite(t *testing.T) {
 		if p := fe.probe[0]; p != 10 {
 			t.Errorf("C1:ATTN %s left the probe at %v, want 10 kept", v, p)
 		}
+	}
+}
+
+// PAVA? measures a 12-bit trace on its 8-bit view at its own codes a
+// division: the same square as 8-bit codes reads the same.
+// TRLC-LINKS: REQ-SDS-024
+func TestPAVAReadsTwelveBitTraces(t *testing.T) {
+	h, fs := newH(t)
+	n := 5000
+	c := make([]uint8, n)
+	w := make([]uint16, n)
+	for i := range c {
+		c[i] = 78
+		if (i/250)%2 == 1 {
+			c[i] = 178
+		}
+		w[i] = uint16(c[i]) << 8
+	}
+	fs.frame = &sample.Frame{Seq: 1, SampleS: 2e-9, Traces: []sample.Trace{{Valid: n, Codes8: c}, {Ch: 1, Valid: n, Codes8: c}}}
+	want := do(t, h, "C1:PAVA? ALL")
+	f12 := sample.CodeFormat{Bits: 12, Storage: sample.U16, Shift: 4, Max: 0xFFF0, Mid: 0x8000}
+	fs.frame = &sample.Frame{Seq: 2, SampleS: 2e-9, Traces: []sample.Trace{
+		{Valid: n, Codes16: w, Format: f12, CodesPerDiv: 25 * 256}, {Ch: 1, Valid: n, Codes16: w, Format: f12, CodesPerDiv: 25 * 256}}}
+	if got := do(t, h, "C1:PAVA? ALL"); got != want || !strings.Contains(want, "AMPL,4.00") {
+		t.Fatalf("12-bit PAVA? ALL\n%q\nwant the 8-bit\n%q", got, want)
 	}
 }

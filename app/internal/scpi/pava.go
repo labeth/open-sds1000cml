@@ -93,13 +93,17 @@ func (h *Handler) pava(ch int, arg string) []byte {
 	cpl := h.coupling(ch)
 	var r *measure.Result
 	h.sc.WithFrame(func(f *sample.Frame) {
-		if f == nil || f.Len() == 0 {
+		if f == nil || f.Len() == 0 || ch >= len(f.Traces) {
 			return
 		}
-		sig, q := f.Codes8(0), f.Precision(0)
-		if ch == 1 {
-			sig, q = f.Codes8(1), f.Precision(1)
+		// The measurement reads the trace on the 8-bit view at its own codes
+		// a division; a wider converter's words are measured as Q8.8 there.
+		t := &f.Traces[ch]
+		sig, q := t.Codes8, t.Precision
+		if t.Format.Storage == sample.U16 {
+			sig, q = t.View8(), nil
 		}
+		vpc := vdiv / t.CodesPerDiv8() * probe
 		valid := min(f.Len(), len(sig))
 		if len(q) >= valid {
 			q = q[:valid]
@@ -113,9 +117,13 @@ func (h *Handler) pava(ch int, arg string) []byte {
 				q = q[a:b]
 			}
 		}
-		r = measure.ComputeAcquisition(sig[from:valid], q, vdiv/25*probe, offV*probe, f.SampleS, cpl, f.Cond.Guard)
+		if t.Format.Storage == sample.U16 {
+			r = measure.ComputeTrace(t, from, valid, vpc, offV*probe, f.SampleS, cpl, f.Cond.Guard)
+		} else {
+			r = measure.ComputeAcquisition(sig[from:valid], q, vpc, offV*probe, f.SampleS, cpl, f.Cond.Guard)
+		}
 		if r != nil && f.Content == sample.PeakPairs {
-			r = r.WithEnvelopeTiming(sig[:valid], vdiv/25*probe, offV*probe, f.SampleS).WithEdgeDetail(vdiv/25*probe, offV*probe, engine.EdgeWindows(f, ch)...)
+			r = r.WithEnvelopeTiming(sig[:valid], vpc, offV*probe, f.SampleS).WithEdgeDetail(vpc, offV*probe, engine.EdgeWindows(f, ch)...)
 		}
 	})
 	if r != nil && h.inverted(ch) {
