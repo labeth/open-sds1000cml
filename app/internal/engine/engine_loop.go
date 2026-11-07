@@ -3,6 +3,7 @@
 package engine
 
 import (
+	"context"
 	"math"
 	"runtime"
 	"runtime/debug"
@@ -43,10 +44,7 @@ func (e *Engine) Run() {
 	defer close(e.done)
 	defer func() {
 		if r := recover(); r != nil {
-			e.logf("engine: PANIC (wedged, parked): %v\n%s", r, debug.Stack()) // the stack: a parked panic is found only from the log
-			e.mu.Lock()
-			e.stats.Wedged = true
-			e.mu.Unlock()
+			e.parked(r, debug.Stack())
 			// Park servicing nothing: health stops advancing, the agent
 			// relaunches us on the still-live fd.
 			for !e.stopReq.Load() {
@@ -59,7 +57,9 @@ func (e *Engine) Run() {
 		e.setMemoryBackstop()
 	}
 	if e.sram != nil {
-		e.runSRAM()
+		// The core owner loop runs the fabric's cycle; it contains a
+		// panic itself (parked).
+		e.newSRAMLoop().Run(context.Background())
 		return
 	}
 	if err := e.checkIdentity(); err != nil {
@@ -134,6 +134,16 @@ func (e *Engine) Run() {
 			e.oneFrame(norm)
 		}
 	}
+}
+
+// parked logs a contained panic and marks the engine wedged; the owner
+// then parks until stopped.
+// TRLC-LINKS: REQ-SDS-001, REQ-SDS-006
+func (e *Engine) parked(r any, stack []byte) {
+	e.logf("engine: PANIC (wedged, parked): %v\n%s", r, stack) // the stack: a parked panic is found only from the log
+	e.mu.Lock()
+	e.stats.Wedged = true
+	e.mu.Unlock()
 }
 
 // TRLC-LINKS: REQ-SDS-011
