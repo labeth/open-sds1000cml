@@ -5,9 +5,9 @@ header Cache-Control: no-cache
 header Content-Length: 73640
 header Content-Security-Policy: default-src 'self'; script-src 'self'; connect-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; object-src 'none'; base-uri 'none'
 header Content-Type: text/html; charset=utf-8
-header Etag: "23dd1fe270c748f4"
+header Etag: "39885639dc5aaf3e"
 header Vary: Accept-Encoding
-body: 73640 bytes, sha256 9c5016afe8618ca26944676cecef54b1beefd9bd5adb1645abdabc3fc075b3e9
+body: 73640 bytes, sha256 35e476881a3580eae0015abe7770a8b6cace21db6576e8a453d727b4f69c9ae2
 
 === GET /remote
 status 200
@@ -16,9 +16,9 @@ header Cache-Control: no-cache
 header Content-Length: 1662
 header Content-Security-Policy: default-src 'self'; script-src 'self'; connect-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; object-src 'none'; base-uri 'none'
 header Content-Type: text/html; charset=utf-8
-header Etag: "3a61f491a70175b3"
+header Etag: "309ff53416b183c9"
 header Vary: Accept-Encoding
-body: 1662 bytes, sha256 acd6f412e34eba14129514ba5e63c3a94b5c510b0d42179dd49b63d3629c35f5
+body: 1662 bytes, sha256 ffa8ce05e682df602be3a3dcbbb851d1d764a8a7628cf7464dcfc872232250ad
 00000000  3c 21 64 6f 63 74 79 70  65 20 68 74 6d 6c 3e 0a  |<!doctype html>.|
 00000010  3c 68 74 6d 6c 20 6c 61  6e 67 3d 22 65 6e 22 3e  |<html lang="en">|
 00000020  0a 3c 68 65 61 64 3e 0a  3c 6d 65 74 61 20 63 68  |.<head>.<meta ch|
@@ -112,8 +112,8 @@ body: 1662 bytes, sha256 acd6f412e34eba14129514ba5e63c3a94b5c510b0d42179dd49b63d
 000005a0  3f 76 3d 62 37 30 65 61  34 38 34 39 31 30 32 33  |?v=b70ea48491023|
 000005b0  64 64 37 22 3e 3c 2f 73  63 72 69 70 74 3e 0a 3c  |dd7"></script>.<|
 000005c0  73 63 72 69 70 74 20 73  72 63 3d 22 73 6f 75 6e  |script src="soun|
-000005d0  64 5f 63 6c 69 65 6e 74  2e 6a 73 3f 76 3d 38 63  |d_client.js?v=8c|
-000005e0  35 38 63 63 35 39 34 38  33 36 34 35 39 63 22 3e  |58cc594836459c">|
+000005d0  64 5f 63 6c 69 65 6e 74  2e 6a 73 3f 76 3d 36 63  |d_client.js?v=6c|
+000005e0  37 62 35 65 65 34 62 32  66 62 35 33 37 36 22 3e  |7b5ee4b2fb5376">|
 000005f0  3c 2f 73 63 72 69 70 74  3e 0a 3c 73 63 72 69 70  |</script>.<scrip|
 00000600  74 20 73 72 63 3d 22 72  65 6d 6f 74 65 5f 73 6f  |t src="remote_so|
 00000610  75 6e 64 2e 6a 73 3f 76  3d 37 38 61 30 34 64 63  |und.js?v=78a04dc|
@@ -144,21 +144,21 @@ body: 30 bytes, sha256 b7419965e3b91642ef8efe43a592b3b4e0b6d4fb4c5eb416f8bc11ad4
 status 200
 header Accept-Ranges: bytes
 header Cache-Control: no-cache
-header Content-Length: 40991
+header Content-Length: 41326
 header Content-Type: text/javascript; charset=utf-8
-header Etag: "ec5f02e22d3ce83c"
+header Etag: "aff0ed96a680b9a0"
 header Vary: Accept-Encoding
-body: 40991 bytes, sha256 51a600fc56d8f1c96507acb07568b645a3ee20c8e00eca372078be4bf25fac46
+body: 41326 bytes, sha256 6b2f3422bc26a7929f50ea27a4345932b49101c950b23ff3f99b672376636bfc
 
 === GET /base.css
 status 200
 header Accept-Ranges: bytes
 header Cache-Control: no-cache
-header Content-Length: 28405
+header Content-Length: 29172
 header Content-Type: text/css; charset=utf-8
-header Etag: "2e9a84abd5f34571"
+header Etag: "d6de09611086bdd7"
 header Vary: Accept-Encoding
-body: 28405 bytes, sha256 0715193ef4f735b5cb30b944e40153d73e4b151f1668ccc12676be4a3b1e575a
+body: 29172 bytes, sha256 a3fab77bfed6cac0ac02fe105ea5e9243557d64e58a931533aec7eb298756657
 
 === GET /remote.webmanifest
 status 200
@@ -496,9 +496,9 @@ header Accept-Ranges: bytes
 header Cache-Control: no-cache
 header Content-Encoding: gzip
 header Content-Type: text/javascript; charset=utf-8
-header Etag: "ec5f02e22d3ce83c-gz"
+header Etag: "aff0ed96a680b9a0-gz"
 header Vary: Accept-Encoding
-gzip body: 40991 bytes, sha256 51a600fc56d8f1c96507acb07568b645a3ee20c8e00eca372078be4bf25fac46
+gzip body: 41326 bytes, sha256 6b2f3422bc26a7929f50ea27a4345932b49101c950b23ff3f99b672376636bfc
 
 === GET /remote-awake.mp4
 request header Range: bytes=0-15
@@ -520,9 +520,9 @@ header Cache-Control: no-cache
 header Content-Length: 73640
 header Content-Security-Policy: default-src 'self'; script-src 'self'; connect-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; object-src 'none'; base-uri 'none'
 header Content-Type: text/html; charset=utf-8
-header Etag: "23dd1fe270c748f4"
+header Etag: "39885639dc5aaf3e"
 header Vary: Accept-Encoding
-body: 73640 bytes, sha256 9c5016afe8618ca26944676cecef54b1beefd9bd5adb1645abdabc3fc075b3e9
+body: 73640 bytes, sha256 35e476881a3580eae0015abe7770a8b6cace21db6576e8a453d727b4f69c9ae2
 
 === GET /debug/pprof/
 status 200
