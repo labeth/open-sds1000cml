@@ -3,6 +3,7 @@
 package analog
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/labeth/open-dso-core/hal"
@@ -101,10 +102,22 @@ func (f *FrontEnd) Couplings(int) []hal.CouplingOption {
 }
 
 // Calibration names the calibration table in use: "file" or "backup" (the
-// unit's), or "defaults" (the compiled ones).
+// unit's, which the vendor's factory calibration wrote), or "defaults" (the
+// compiled ones).
 // TRLC-LINKS: REQ-SDS-015
 func (f *FrontEnd) Calibration() hal.CalSource {
-	return hal.CalSource{Source: f.tab.Source, Valid: f.tab.Source != "defaults"}
+	if f.tab.Source == "defaults" {
+		return hal.CalSource{Source: f.tab.Source}
+	}
+	return hal.CalSource{Source: f.tab.Source, Author: "vendor", Valid: true}
+}
+
+// SelfCal is refused: this firmware has no self-calibration and runs on the
+// unit's factory table.
+// TRLC-LINKS: REQ-SDS-015
+func (f *FrontEnd) SelfCal(context.Context, func(float64)) (hal.CalReport, error) {
+	return hal.CalReport{Source: f.Calibration()}, hal.Refuse("self-calibration",
+		"this firmware has no self-calibration: it runs on the unit's factory calibration table")
 }
 
 // SetVdivV sets channel ch's V/div to v volts at the BNC, a ladder step.

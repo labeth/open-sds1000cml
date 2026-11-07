@@ -64,6 +64,11 @@ supervisor:
 # not optional hardware.
 options: []
 
+# Why the optional parts this scope lacks are absent (hal.OptionalParts).
+absent:
+  logic-probe: "the SDS1102CML+ has no digital probe input"
+  generator: "the SDS1102CML+ has no signal source output"
+
 budget:
   cores: 1
   target_fps: 60
