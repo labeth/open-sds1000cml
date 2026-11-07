@@ -175,12 +175,12 @@ func TestRouteGoldens(t *testing.T) {
 				if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 					t.Fatal(err)
 				}
-				if err := os.WriteFile(path, out.Bytes(), 0o644); err != nil { //nolint:gosec // G306: a test golden, read by the test
+				if err := os.WriteFile(path, out.Bytes(), 0o644); err != nil {
 					t.Fatal(err)
 				}
 				return
 			}
-			want, err := os.ReadFile(path) //nolint:gosec // G304: the golden named by the case
+			want, err := os.ReadFile(path)
 			if err != nil {
 				t.Fatalf("%v (record with -update-route-goldens)", err)
 			}
@@ -633,7 +633,7 @@ func rpost(path, body string) routeReq {
 
 // routeCases are the recorded scope states and requests.
 // TRLC-LINKS: REQ-SDS-161, REQ-SDS-162, REQ-SDS-163, REQ-SDS-164
-func routeCases() []routeCase { //nolint:funlen // one table of every route
+func routeCases() []routeCase {
 	full := func(f func(uint64) *sample.Frame) func() *Server {
 		return func() *Server { s, _, _ := goldenFull(f(31)); return s }
 	}

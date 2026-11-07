@@ -82,7 +82,7 @@ func (b *Board) codes(ch int, dv float64, minimum uint8) uint8 {
 
 // trigConfig is s as the fabric's trigger fields of c.
 // TRLC-LINKS: REQ-SDS-011
-func (b *Board) trigConfig(s hal.TriggerSpec, c *sramcapture.Config) error { //nolint:gocyclo // one case a node
+func (b *Board) trigConfig(s hal.TriggerSpec, c *sramcapture.Config) error {
 	switch {
 	case len(s.Stages) != 1:
 		return hal.Refuse("trigger sequence", "the fabric's trigger is one stage")
@@ -101,7 +101,7 @@ func (b *Board) trigConfig(s hal.TriggerSpec, c *sramcapture.Config) error { //n
 	}
 	ch := g.Source.Index
 	caps := b.trig.caps
-	c.TriggerChannel = uint8(ch) //nolint:gosec // G115: 0 or 1 above
+	c.TriggerChannel = uint8(ch)
 	c.Normal = true
 	c.Falling = g.Levels.Slope == hal.Falling
 	var err error
@@ -109,7 +109,7 @@ func (b *Board) trigConfig(s hal.TriggerSpec, c *sramcapture.Config) error { //n
 		return err
 	}
 	c.TriggerHysteresis = b.codes(ch, g.Levels.Hysteresis, minHysteresis)
-	switch g.Node {
+	switch g.Node { //nolint:exhaustive // the nodes the fabric programs; every other node is refused below
 	case hal.NodeEdge:
 		if g.Levels.Slope == hal.Either {
 			return hal.Refuse("edge on either slope", "the fabric's edge trigger takes one slope")
@@ -135,7 +135,7 @@ func (b *Board) qualConfig(g hal.TrigStage, ch int, c *sramcapture.Config) error
 	q := sramcapture.QualifierConfig{Enabled: true, Channel: c.TriggerChannel, Negative: c.Falling}
 	var minNs, maxNs float64
 	if g.Qual != nil {
-		switch g.Qual.Op {
+		switch g.Qual.Op { //nolint:exhaustive // default: the qualifier has no outside condition
 		case hal.Shorter:
 			q.Cond, maxNs = core.CondLess, g.Qual.MaxS*1e9
 		case hal.Longer:
@@ -146,7 +146,7 @@ func (b *Board) qualConfig(g hal.TrigStage, ch int, c *sramcapture.Config) error
 			return hal.Refuse("time qualifier outside", "the qualifier takes shorter, longer or inside")
 		}
 	}
-	switch g.Node {
+	switch g.Node { //nolint:exhaustive // trigConfig sends only pulse, slope and video stages here
 	case hal.NodePulse:
 		q.Kind = sramcapture.QualPulse
 	case hal.NodeSlope:
@@ -172,7 +172,7 @@ func (b *Board) qualConfig(g hal.TrigStage, ch int, c *sramcapture.Config) error
 		}
 		q.Kind, q.Cond = sramcapture.QualVideo, sramcapture.QualAny
 		if !g.Video.AnyLine && g.Video.Line > 0 {
-			q.Line = uint16(max(1, min(1023, g.Video.Line-first+1))) //nolint:gosec // G115: clamped
+			q.Line = uint16(max(1, min(1023, g.Video.Line-first+1)))
 		}
 		minNs, maxNs = 0, 0
 	}
@@ -192,7 +192,7 @@ func (b *Board) protoConfig(g hal.TrigStage, ch int, c *sramcapture.Config) erro
 			return hal.Refuse("UART trigger", "this FPGA image has no UART receiver")
 		}
 		p.Proto, p.Baud, p.Bits, p.Inverted = core.SerUART, int(math.Round(pt.Baud)), pt.Bits, !pt.IdleHigh
-		switch pt.Parity {
+		switch pt.Parity { //nolint:exhaustive // default: the receiver has no mark or space parity
 		case prototrig.NoParity:
 			p.Parity = core.ParityNone
 		case prototrig.Even:
@@ -298,7 +298,7 @@ func (t *triggerFacet) Default(node hal.TrigNode, src hal.Source) (hal.TrigStage
 		centre = -b.frontEnd.Get(src.Index).OffsetV
 	}
 	st := hal.TrigStage{Node: node, Source: src, Levels: hal.Levels{High: centre, Slope: hal.Rising}}
-	switch node {
+	switch node { //nolint:exhaustive // default: the other nodes have no single-source default here
 	case hal.NodeEdge:
 	case hal.NodePulse:
 		st.Qual = &hal.Qualifier{Op: hal.Inside, MinS: 1e-6, MaxS: 5e-6}

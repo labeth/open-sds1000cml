@@ -132,7 +132,7 @@ func (l *Levels) StepTrigLevel(n, src int) float64 {
 	}
 	// The code falls as the level rises.
 	nc := min(max(int(c)-n, engine.TrigCodeMin), engine.TrigCodeMax)
-	return l.trigVoltsOf(l.eng.SetTrigLevelCode(uint16(nc)), src) //nolint:gosec // G115: clamped to the DAC's range
+	return l.trigVoltsOf(l.eng.SetTrigLevelCode(uint16(nc)), src)
 }
 
 // TrigLevelGrid is the level's step and range at source src's tip now: one

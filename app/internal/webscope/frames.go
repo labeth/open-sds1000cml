@@ -47,7 +47,7 @@ func (s *Scope) vertScales() (off, vpc [2]float64) {
 // permits reusing ≤100 ms-old measurements on a seq advance (fast free-run
 // only — pass false for single-shot/stopped, where values must be exact).
 // TRLC-LINKS: REQ-SDS-163, REQ-SDS-164
-func (s *Scope) buildReply(f *sample.Frame, cols int, full bool, since uint64, off, vpc [2]float64, posFrac float64, measThrottle bool) wire.FrameReply { //nolint:gocyclo // one reply assembled; each branch adds one optional part
+func (s *Scope) buildReply(f *sample.Frame, cols int, full bool, since uint64, off, vpc [2]float64, posFrac float64, measThrottle bool) wire.FrameReply {
 	if f == nil || f.Seq == 0 || f.Seq == since {
 		seq := uint64(0)
 		if f != nil {

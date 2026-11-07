@@ -23,7 +23,7 @@ type cmd = core.Command
 // grammar with C1/C2 prefixes, no status model (the status queries answer
 // 0) and no long headers.
 // TRLC-LINKS: REQ-SDS-024
-func (h *Handler) dialect() core.Dialect { //nolint:funlen // the dialect table: one row per header
+func (h *Handler) dialect() core.Dialect {
 	d := core.Dialect{
 		Name:    "SDS1000CML+ legacy",
 		Grammar: core.Line,
@@ -641,7 +641,7 @@ func (h *Handler) setHCSU(c *core.Call) error {
 
 // channelCommands are the Cn: headers.
 // TRLC-LINKS: REQ-SDS-024
-func (h *Handler) channelCommands() []cmd { //nolint:funlen // the channel table: one row per header
+func (h *Handler) channelCommands() []cmd {
 	ch := func(c *core.Call) int { return c.N(0) - 1 }
 	// The programming guide's form is <source>:TRLV / <source>:TRSL. One
 	// level and slope exist, the trigger source's; another channel has none
