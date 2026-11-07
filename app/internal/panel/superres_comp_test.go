@@ -6,8 +6,8 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/labeth/open-dso-core/sample"
 	"github.com/labeth/open-dso-core/superres"
-	"github.com/labeth/open-sds1000cml/app/internal/engine"
 )
 
 // Native review must show the accumulated mean without implicit deconvolution.
@@ -64,8 +64,8 @@ func TestSoftwareReviewCannotOverwriteFPGAProgress(t *testing.T) {
 // TRLC-LINKS: REQ-SDS-140
 func TestNativeStackRefusesPeakEnvelopeSeed(t *testing.T) {
 	c, _, _ := newC(t)
-	c.frameFn = func(fn func(*engine.Frame)) {
-		fn(&engine.Frame{C1: []uint8{50, 200, 50, 200, 50, 200, 50, 200}, Valid: 8, PeakDetect: true})
+	c.frameFn = func(fn func(*sample.Frame)) {
+		fn(&sample.Frame{Content: sample.PeakPairs, Traces: []sample.Trace{{Codes8: []uint8{50, 200, 50, 200, 50, 200, 50, 200}, Valid: 8}, {Ch: 1, Valid: 8}}})
 	}
 	if c.srSeedAndStart() || c.srActive || c.srStack != nil {
 		t.Fatal("min/max envelope became a chronological stack reference")

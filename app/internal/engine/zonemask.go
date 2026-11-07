@@ -6,6 +6,8 @@ import (
 	"math"
 	"sync"
 	"time"
+
+	"github.com/labeth/open-dso-core/sample"
 )
 
 // Zone trigger + mask testing (docs/zonemask-plan.md): capture-path
@@ -233,7 +235,7 @@ func (e *Engine) zoneMaskUncomparable() {
 // engine goroutine; f is the producer slot (safe to read). All zones must
 // pass (intersect zones must be hit, avoid zones must be missed).
 // TRLC-LINKS: REQ-SDS-014
-func (e *Engine) zonesQualify(f *Frame, valid int, edgeX, sampleS float64) bool {
+func (e *Engine) zonesQualify(f *sample.Frame, valid int, edgeX, sampleS float64) bool {
 	e.zm.mu.Lock()
 	zones := e.zm.zones
 	e.zm.mu.Unlock()
@@ -242,9 +244,9 @@ func (e *Engine) zonesQualify(f *Frame, valid int, edgeX, sampleS float64) bool 
 	}
 	for i := range zones {
 		z := &zones[i]
-		sig := f.C1
+		sig := f.Codes8(0)
 		if z.Ch == 1 {
-			sig = f.C2
+			sig = f.Codes8(1)
 		}
 		if len(sig) < valid {
 			return false
@@ -279,7 +281,7 @@ func (e *Engine) zonesQualify(f *Frame, valid int, edgeX, sampleS float64) bool 
 // captures failures into the ring, and reports whether acquisition should
 // stop (stop-on-fail). Runs on the engine goroutine.
 // TRLC-LINKS: REQ-SDS-014
-func (e *Engine) maskEval(f *Frame, valid, liveDepth int, edgeX, sampleS, posFrac float64) (fail, stop bool) {
+func (e *Engine) maskEval(f *sample.Frame, valid, liveDepth int, edgeX, sampleS, posFrac float64) (fail, stop bool) {
 	mode := int(e.maskMode.Load())
 	if mode == MaskOff {
 		return false, false
@@ -324,9 +326,9 @@ func (e *Engine) maskEval(f *Frame, valid, liveDepth int, edgeX, sampleS, posFra
 		e.maskSkip.Add(1)
 		return false, false
 	}
-	sig := f.C1
+	sig := f.Codes8(0)
 	if m.Ch == 1 {
-		sig = f.C2
+		sig = f.Codes8(1)
 	}
 	if len(sig) < valid {
 		e.maskSkip.Add(1)
@@ -381,13 +383,13 @@ func (e *Engine) maskEval(f *Frame, valid, liveDepth int, edgeX, sampleS, posFra
 		e.zm.epochOK = true
 	}
 	mf := MaskFail{
-		C1: append([]uint8(nil), f.C1[:valid]...), Valid: valid,
+		C1: append([]uint8(nil), f.Codes8(0)[:valid]...), Valid: valid,
 		Seq: seq, EdgeX: edgeX, SampleS: sampleS, WinCols: frameWin,
 		AtNs:    int64(e.clk.Now().Sub(e.zm.t0)),
 		FailCol: failCol, FailCode: failCode, FailSample: failSample,
 	}
-	if len(f.C2) >= valid {
-		mf.C2 = append([]uint8(nil), f.C2[:valid]...)
+	if len(f.Codes8(1)) >= valid {
+		mf.C2 = append([]uint8(nil), f.Codes8(1)[:valid]...)
 	}
 	e.zm.ring = append(e.zm.ring, mf)
 	if len(e.zm.ring) > maskRingCap {
@@ -418,22 +420,22 @@ type maskMapState struct {
 // samples the screen otherwise (mapLo nil when it does not). ok is false
 // when f is not comparable with m.
 // TRLC-LINKS: REQ-SDS-014
-func (e *Engine) maskFrameWindow(m *Mask, f *Frame, valid int, posFrac float64) (w int, mapLo, mapHi []uint8, ok bool) {
-	w = f.WinCols
+func (e *Engine) maskFrameWindow(m *Mask, f *sample.Frame, valid int, posFrac float64) (w int, mapLo, mapHi []uint8, ok bool) {
+	w = f.WinPoints
 	if w <= 0 || w > valid {
 		w = valid
 	}
-	if m.TdivS != f.TdivS {
+	if m.TdivS != f.Snapshot.TdivS {
 		return w, nil, nil, false // another timebase: not comparable
 	}
-	if w == m.WinCols && m.SampleS == f.SampleS && m.PeakDetect == f.PeakDetect {
+	if w == m.WinCols && m.SampleS == f.SampleS && m.PeakDetect == (f.Content == sample.PeakPairs) {
 		return w, nil, nil, true
 	}
 	// The same screen sampled otherwise - a full-rate record while a view
 	// holds a lease, the live envelope after one: the mask is read through
 	// trigger-relative time, as the web draws it. Skipped, a mask built
 	// during a lease would test nothing once the lease ends.
-	if mapLo, mapHi = e.maskThroughTime(m, w, f.SampleS, f.PeakDetect, posFrac); mapLo == nil {
+	if mapLo, mapHi = e.maskThroughTime(m, w, f.SampleS, f.Content == sample.PeakPairs, posFrac); mapLo == nil {
 		return w, nil, nil, false // a window of another span: not comparable
 	}
 	return w, mapLo, mapHi, true

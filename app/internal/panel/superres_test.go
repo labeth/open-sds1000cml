@@ -9,6 +9,7 @@ import (
 	"testing/synctest"
 	"time"
 
+	"github.com/labeth/open-dso-core/sample"
 	"github.com/labeth/open-dso-core/superres"
 	"github.com/labeth/open-sds1000cml/app/internal/engine"
 )
@@ -45,10 +46,10 @@ func TestSuperresFinalStackReleasesRawLease(t *testing.T) {
 		eng := &leaseEng{fakeEng: base}
 		c := New(eng, fe, -1, engine.SupportedTdivs(), 500e-6, t.Logf)
 		var seq uint64
-		c.frameFn = func(fn func(*engine.Frame)) {
+		c.frameFn = func(fn func(*sample.Frame)) {
 			seq++
 			w := make([]uint8, 256)
-			fn(&engine.Frame{C1: w, C2: w, Valid: len(w), SampleS: 2e-9, Seq: seq})
+			fn(&sample.Frame{SampleS: 2e-9, Seq: seq, Traces: []sample.Trace{{Codes8: w, Valid: len(w)}, {Ch: 1, Codes8: w, Valid: len(w)}}})
 		}
 		st := superres.New(16, 4)
 		st.SampleS = 1e-9 // stacked at another timebase
@@ -76,10 +77,10 @@ func TestSuperresTimebaseChangeFreezesStack(t *testing.T) {
 		eng := &leaseEng{fakeEng: base}
 		c := New(eng, fe, -1, engine.SupportedTdivs(), 500e-6, t.Logf)
 		var seq uint64
-		c.frameFn = func(fn func(*engine.Frame)) {
+		c.frameFn = func(fn func(*sample.Frame)) {
 			seq++
 			w := make([]uint8, 256)
-			fn(&engine.Frame{C1: w, C2: w, Valid: len(w), SampleS: 2e-9, TdivS: 200e-6, Seq: seq})
+			fn(&sample.Frame{SampleS: 2e-9, Seq: seq, Snapshot: sample.Settings{TdivS: 200e-6}, Traces: []sample.Trace{{Codes8: w, Valid: len(w)}, {Ch: 1, Codes8: w, Valid: len(w)}}})
 		}
 		st := superres.New(16, 4)
 		st.SampleS = 2e-9 // same pitch: only the timebase moved
@@ -119,12 +120,12 @@ func TestSuperresArmFromStoppedDeepRecord(t *testing.T) {
 		return w
 	}
 	deep, live := wave(1<<16), wave(1024)
-	c.frameFn = func(fn func(*engine.Frame)) {
+	c.frameFn = func(fn func(*sample.Frame)) {
 		if !eng.Snapshot().Running {
-			fn(&engine.Frame{C1: deep, C2: deep, Valid: len(deep), EdgeX: 32768, SampleS: 2e-9, Seq: 1})
+			fn(&sample.Frame{TriggerAt: 32768, SampleS: 2e-9, Seq: 1, Traces: []sample.Trace{{Codes8: deep, Valid: len(deep)}, {Ch: 1, Codes8: deep, Valid: len(deep)}}})
 			return
 		}
-		fn(&engine.Frame{C1: live, C2: live, Valid: len(live), EdgeX: 512, SampleS: 2e-9, Seq: 2})
+		fn(&sample.Frame{TriggerAt: 512, SampleS: 2e-9, Seq: 2, Traces: []sample.Trace{{Codes8: live, Valid: len(live)}, {Ch: 1, Codes8: live, Valid: len(live)}}})
 	}
 	if err := c.srArm(); err != nil {
 		t.Fatal(err)
@@ -154,7 +155,7 @@ func TestSuperresSeedsOffThePanelLoop(t *testing.T) {
 		fr.SampleS = 1e-9
 		hold := make(chan struct{})
 		var calls atomic.Int32
-		c.SetFrameSource(func(fn func(*engine.Frame)) {
+		c.SetFrameSource(func(fn func(*sample.Frame)) {
 			if calls.Add(1) == 2 { // the seed's first look waits here
 				<-hold
 			}
@@ -204,7 +205,7 @@ func TestSuperresSeedKeepsAStopPressedMeanwhile(t *testing.T) {
 			fr.SampleS = 1e-9
 			hold := make(chan struct{})
 			var calls atomic.Int32
-			c.SetFrameSource(func(fn func(*engine.Frame)) {
+			c.SetFrameSource(func(fn func(*sample.Frame)) {
 				if calls.Add(1) == 2 { // the seed's first look waits here
 					<-hold
 				}

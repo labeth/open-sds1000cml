@@ -7,8 +7,8 @@ import (
 	"errors"
 	"time"
 
+	"github.com/labeth/open-dso-core/sample"
 	"github.com/labeth/open-dso-core/webserver/wire"
-	"github.com/labeth/open-sds1000cml/app/internal/engine"
 )
 
 // busSampler is the engine's lease of bus samples: while it holds, the
@@ -36,7 +36,7 @@ type records struct {
 func (rs records) Take(ctx context.Context, want float64, wait time.Duration) (wire.Record, error) {
 	s := rs.s
 	var start uint64
-	s.sc.WithFrame(func(f *engine.Frame) {
+	s.sc.WithFrame(func(f *sample.Frame) {
 		if f != nil {
 			start = f.Seq
 		}
@@ -50,18 +50,18 @@ func (rs records) Take(ctx context.Context, want float64, wait time.Duration) (w
 			rs.lease.LeaseBusSamples(want, 3*time.Second)
 			renewed = time.Now()
 		}
-		s.sc.WithFrame(func(f *engine.Frame) {
+		s.sc.WithFrame(func(f *sample.Frame) {
 			// a frame captured after the request, sampled - no envelope - every want or finer
-			if f == nil || f.Seq <= start+1 || f.IsEnv || f.PeakDetect || !(f.SampleS > 0) || f.SampleS > want*1.01 {
+			if f == nil || f.Seq <= start+1 || f.Flags.Has(sample.Envelope) || f.Content == sample.PeakPairs || !(f.SampleS > 0) || f.SampleS > want*1.01 {
 				return
 			}
-			n := min(f.Valid, len(f.C1), len(f.C2))
+			n := min(f.Len(), len(f.Codes8(0)), len(f.Codes8(1)))
 			if n < recordMin {
 				return
 			}
-			rec = wire.Record{Seq: f.Seq, SampleS: f.SampleS, TdivS: f.TdivS}
-			rec.C1 = append([]byte(nil), f.C1[:n]...)
-			rec.C2 = append([]byte(nil), f.C2[:n]...)
+			rec = wire.Record{Seq: f.Seq, SampleS: f.SampleS, TdivS: f.Snapshot.TdivS}
+			rec.C1 = append([]byte(nil), f.Codes8(0)[:n]...)
+			rec.C2 = append([]byte(nil), f.Codes8(1)[:n]...)
 			got = true
 		})
 		if !got {

@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/labeth/open-dso-core/decode"
-	"github.com/labeth/open-sds1000cml/app/internal/engine"
+	"github.com/labeth/open-dso-core/sample"
 	"github.com/labeth/open-sds1000cml/app/internal/panel/framecalc"
 )
 
@@ -70,22 +70,22 @@ func decodesBus(res decode.Result) bool {
 // triggering) nothing is judged. It runs within OnFrame: the detection itself
 // runs off it.
 // TRLC-LINKS: REQ-SDS-214, REQ-SDS-222
-func (c *Controller) watchBus(s *sv, f *engine.Frame) {
+func (c *Controller) watchBus(s *sv, f *sample.Frame) {
 	k := keyOf(f)
 	c.mu.Lock()
 	w, busy := c.auto, c.ui.busDetecting
 	streaming := c.decMode == decModeStream
 	c.mu.Unlock()
 	if !w.filled || busy || streaming || s.decProto == framecalc.ProtoOff || !s.st.Running ||
-		k == (frameKey{}) || k == w.seen || f.IsEnv || (f.PeakDetect && !f.Ordered) {
+		k == (frameKey{}) || k == w.seen || f.Flags.Has(sample.Envelope) || (f.Content == sample.PeakPairs && !f.Flags.Has(sample.Ordered)) {
 		return
 	}
 	res := framecalc.Decode(f, decodeParamsOf(s))
 	good := decodesBus(res)
 	// says nothing of the bus: an envelope too coarse for it, or lines with no
 	// edges (a probe off, a gap in the traffic)
-	neutral := !good && (f.PeakDetect && f.Ordered && !res.OK && strings.Contains(res.Error, "not resolved") || idleLines(f) ||
-		w.armed && f.TdivS > 0 && w.tdiv > 0 && math.Abs(f.TdivS-w.tdiv) > 1e-3*w.tdiv)
+	neutral := !good && (f.Content == sample.PeakPairs && f.Flags.Has(sample.Ordered) && !res.OK && strings.Contains(res.Error, "not resolved") || idleLines(f) ||
+		w.armed && f.Snapshot.TdivS > 0 && w.tdiv > 0 && math.Abs(f.Snapshot.TdivS-w.tdiv) > 1e-3*w.tdiv)
 	now := c.now()
 	c.mu.Lock()
 	if !c.auto.filled || c.auto.seen == k {
@@ -95,7 +95,7 @@ func (c *Controller) watchBus(s *sv, f *engine.Frame) {
 	c.auto.seen = k
 	switch {
 	case good:
-		c.auto.armed, c.auto.good, c.auto.tdiv, c.auto.bad = true, now, f.TdivS, 0
+		c.auto.armed, c.auto.good, c.auto.tdiv, c.auto.bad = true, now, f.Snapshot.TdivS, 0
 	case !neutral:
 		c.auto.bad++
 	}
@@ -112,7 +112,7 @@ func (c *Controller) watchBus(s *sv, f *engine.Frame) {
 
 // idleLines reports a capture with no edges on either channel.
 // TRLC-LINKS: REQ-SDS-214, REQ-SDS-222
-func idleLines(f *engine.Frame) bool {
+func idleLines(f *sample.Frame) bool {
 	valid := framecalc.Valid(f)
 	return decode.ShortestRun(framecalc.Channel(f, 0, valid)) == 0 && decode.ShortestRun(framecalc.Channel(f, 1, valid)) == 0
 }

@@ -7,18 +7,16 @@ import (
 	"time"
 
 	"github.com/labeth/open-dso-core/measure"
+	"github.com/labeth/open-dso-core/sample"
 	"github.com/labeth/open-sds1000cml/app/internal/sramcapture"
 )
 
-// EdgeWindow is a full-rate stretch of the record around one edge of a live
-// envelope frame: the edge's shape, which the envelope's (min, max) buckets
-// cannot hold, for rise, fall, overshoot and preshoot.
-type EdgeWindow struct {
-	C1, C2  []uint8  // calibrated codes, when the calibration applied
-	Q1, Q2  []uint16 // calibrated Q8.8; nil when the calibration did not apply
-	SampleS float64
-	Full    bool // samples at the full rate (a raw record), not a decimated record's
-}
+// A live envelope frame's edge windows (details Edge and EdgeOpp) are
+// full-rate stretches of the record around one edge: the edge's shape, which
+// the envelope's (min, max) buckets cannot hold, for rise, fall, overshoot
+// and preshoot. Their codes are calibrated when the calibration applied, with
+// the calibrated Q8.8 as precision words (none when it did not apply); their
+// content is RawFullRate on a raw record, RawDecimated on a decimated one.
 
 // edgeWindowWords is a window's length in record words: 2048 samples of a raw
 // record (4 us at 2 ns), the least the converter calibration finds its
@@ -128,7 +126,7 @@ func nearestEdgeBucket(pairs []uint8, trig int) (int, bool) {
 // centred on word w, and calibrates a raw record's converters (a decimated
 // record is filtered across them already); nil when the read fails.
 // TRLC-LINKS: REQ-SDS-021, REQ-SDS-016
-func (e *Engine) recallEdgeWindow(ctx context.Context, m sramcapture.Metadata, w uint32, scale [2]chScale) *EdgeWindow {
+func (e *Engine) recallEdgeWindow(ctx context.Context, m sramcapture.Metadata, w uint32, scale [2]chScale) *sample.Frame {
 	if m.Length < edgeWindowWords || m.SamplesPerWord == 0 {
 		return nil
 	}
@@ -138,45 +136,69 @@ func (e *Engine) recallEdgeWindow(ctx context.Context, m sramcapture.Metadata, w
 	}
 	start = min(start, m.Length-edgeWindowWords)
 	n := edgeWindowWords * int(m.SamplesPerWord)
-	f := &Frame{C1: make([]uint8, n), C2: make([]uint8, n), Valid: n}
+	f := &sample.Frame{Traces: []sample.Trace{{Codes8: make([]uint8, n), Valid: n}, {Ch: 1, Codes8: make([]uint8, n), Valid: n}}}
 	if m.FractionBits == 8 {
-		f.Q1, f.Q2 = make([]uint16, n), make([]uint16, n)
+		f.Traces[0].Precision, f.Traces[1].Precision = make([]uint16, n), make([]uint16, n)
 	}
 	writer := sramFrameWriter{f: f, m: m}
 	if err := e.sram.RecallReadsOf(ctx, m, sramcapture.RecordRead{Offset: start, Count: edgeWindowWords, Dst: &writer}); err != nil || writer.n != n {
 		return nil
 	}
-	ew := &EdgeWindow{C1: f.C1, C2: f.C2, Q1: f.Q1, Q2: f.Q2, SampleS: 1 / m.SampleRateHz, Full: m.SamplesPerWord == 2 && m.FractionBits == 0}
+	f.SampleS, f.Content = 1/m.SampleRateHz, sample.RawDecimated
+	if m.SamplesPerWord == 2 && m.FractionBits == 0 {
+		f.Content = sample.RawFullRate
+	}
 	if cal := e.interleaveCalibration; cal != nil && m.SamplesPerWord == 2 && m.FractionBits == 0 {
 		q1, q2 := make([]uint16, n), make([]uint16, n)
-		if cal.apply(f.C1, f.C2, q1, q2, [2]float64{scale[0].vdiv, scale[1].vdiv}, ew.SampleS) {
-			ew.Q1, ew.Q2 = q1, q2
+		if cal.apply(f.Codes8(0), f.Codes8(1), q1, q2, [2]float64{scale[0].vdiv, scale[1].vdiv}, f.SampleS) {
+			f.Traces[0].Precision, f.Traces[1].Precision = q1, q2
 		}
 	}
-	return ew
+	return f
 }
 
-// EdgeWindows is channel ch's samples of the frame's edge windows, for
+// EdgeWindows is channel ch's samples of frame f's edge windows, for
 // measure.Result.WithEdgeDetail; none on a frame without them. The codes are
 // the calibrated ones rounded: the Q8.8 values would cost each measurement a
 // 65536-bin histogram (512 KB), on every LCD repaint - half the frame rate.
 // TRLC-LINKS: REQ-SDS-021
-func (f *Frame) EdgeWindows(ch int) []measure.EdgeWindow {
+func EdgeWindows(f *sample.Frame, ch int) []measure.EdgeWindow {
 	var out []measure.EdgeWindow // nil without windows
-	for _, w := range [2]*EdgeWindow{f.Edge, f.EdgeOpp} {
-		if w == nil {
+	for _, r := range [2]sample.Role{sample.Edge, sample.EdgeOpp} {
+		d := f.Detail(r)
+		if d == nil {
 			continue
 		}
 		if out == nil {
 			out = make([]measure.EdgeWindow, 0, 2) // both, one allocation
 		}
-		sig := w.C1
-		if ch == 1 {
-			sig = w.C2
-		}
-		out = append(out, measure.EdgeWindow{Sig: sig, SampleS: w.SampleS, Shape: w.Full})
+		w := d.Frame
+		out = append(out, measure.EdgeWindow{Sig: w.Codes8(ch), SampleS: w.SampleS, Shape: w.Content == sample.RawFullRate})
 	}
 	return out
+}
+
+// EdgeRead numbers the read frame f's edge windows come from (0: none):
+// they are carried to the frames between reads.
+// TRLC-LINKS: REQ-SDS-021
+func EdgeRead(f *sample.Frame) uint64 {
+	for _, r := range [2]sample.Role{sample.Edge, sample.EdgeOpp} {
+		if d := f.Detail(r); d != nil {
+			return d.Read
+		}
+	}
+	return 0
+}
+
+// addEdgeWindows gives frame f the edge windows d holds.
+// TRLC-LINKS: REQ-SDS-021
+func addEdgeWindows(f *sample.Frame, d *edgeDetail) {
+	if d.edge != nil {
+		f.Details = append(f.Details, sample.Detail{Role: sample.Edge, Read: d.read, Frame: d.edge})
+	}
+	if d.opp != nil {
+		f.Details = append(f.Details, sample.Detail{Role: sample.EdgeOpp, Read: d.read, Frame: d.opp})
+	}
 }
 
 // edgeDetailEvery is how often the edge windows are read: the two reads cost a
@@ -193,12 +215,12 @@ type edgeKey struct {
 
 // edgeDetail is the last edge windows read, carried to the frames until the
 // next read; a capture under another key drops them. read numbers the reads
-// (Frame.EdgeRead), so statistics count a reading once, not on every frame
+// (EdgeRead), so statistics count a reading once, not on every frame
 // it is carried to.
 type edgeDetail struct {
 	key       edgeKey
 	at        time.Time
-	edge, opp *EdgeWindow
+	edge, opp *sample.Frame
 	read      uint64
 }
 
@@ -214,7 +236,7 @@ func (d *edgeDetail) due(key edgeKey, now time.Time) bool {
 
 // store keeps the windows read at now.
 // TRLC-LINKS: REQ-SDS-021
-func (d *edgeDetail) store(key edgeKey, now time.Time, edge, opp *EdgeWindow) {
+func (d *edgeDetail) store(key edgeKey, now time.Time, edge, opp *sample.Frame) {
 	d.key, d.at, d.edge, d.opp = key, now, edge, opp
 	d.read++
 }

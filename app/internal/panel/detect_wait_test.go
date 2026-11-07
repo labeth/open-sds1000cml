@@ -6,27 +6,32 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/labeth/open-sds1000cml/app/internal/engine"
+	"github.com/labeth/open-dso-core/sample"
 	"github.com/labeth/open-sds1000cml/app/internal/panel/framecalc"
 )
 
 // envelopeOf is f as the live peak-detect readout at a slow timebase: one
 // (min, max) pair per bucket of the capture, time-ordered.
 // TRLC-LINKS: REQ-SDS-214
-func envelopeOf(f *engine.Frame, bucket int) *engine.Frame {
-	n := f.Valid / bucket
+func envelopeOf(f *sample.Frame, bucket int) *sample.Frame {
+	n := f.Len() / bucket
 	c1, c2 := make([]uint8, 2*n), make([]uint8, 2*n)
 	for b := range n {
 		lo, hi := uint8(255), uint8(0)
-		for _, v := range f.C1[b*bucket : (b+1)*bucket] {
+		for _, v := range f.Codes8(0)[b*bucket : (b+1)*bucket] {
 			lo, hi = min(lo, v), max(hi, v)
 		}
 		c1[2*b], c1[2*b+1] = lo, hi
 		c2[2*b], c2[2*b+1] = 210, 210
 	}
-	return &engine.Frame{
-		C1: c1, C2: c2, Valid: 2 * n, WinCols: 2 * n, EdgeX: float64(n), SampleS: f.SampleS * float64(bucket) / 2,
-		TdivS: f.TdivS, PeakDetect: true, Ordered: true,
+	return &sample.Frame{
+		WinPoints: 2 * n,
+		TriggerAt: float64(n),
+		SampleS:   f.SampleS * float64(bucket) / 2,
+		Content:   sample.PeakPairs,
+		Flags:     sample.Ordered,
+		Snapshot:  sample.Settings{TdivS: f.Snapshot.TdivS},
+		Traces:    []sample.Trace{{Codes8: c1, Valid: 2 * n}, {Ch: 1, Codes8: c2, Valid: 2 * n}},
 	}
 }
 
@@ -39,7 +44,7 @@ func TestBusDetectWaitsForSamples(t *testing.T) {
 	raw := uartFrame([]string{"Hi U\\x55\\xaa"}, 115200, 300e-6, 20e-9, 200000)
 	env := envelopeOf(raw, 1500)
 	calls := 0
-	c.SetFrameSource(func(fn func(*engine.Frame)) {
+	c.SetFrameSource(func(fn func(*sample.Frame)) {
 		calls++
 		if calls <= 3 {
 			fn(env)
@@ -47,7 +52,7 @@ func TestBusDetectWaitsForSamples(t *testing.T) {
 		}
 		fn(raw)
 	})
-	if _, _, found := (&Controller{frameFn: func(fn func(*engine.Frame)) { fn(env) }}).detectOnScreen(); found {
+	if _, _, found := (&Controller{frameFn: func(fn func(*sample.Frame)) { fn(env) }}).detectOnScreen(); found {
 		t.Fatal("the test's envelope is decodable: it proves nothing")
 	}
 	c.runDetect()

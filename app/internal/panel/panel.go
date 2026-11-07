@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/labeth/open-dso-core/decode"
+	"github.com/labeth/open-dso-core/sample"
 	"github.com/labeth/open-dso-core/superres"
 	"github.com/labeth/open-sds1000cml/app/internal/analog"
 	"github.com/labeth/open-sds1000cml/app/internal/engine"
@@ -321,7 +322,7 @@ type Controller struct {
 
 	// frameFn reads the latest published frame (fo.WithFrame) for autoset; nil
 	// until SetFrameSource is called (AUTO then falls back to plain AUTO/run).
-	frameFn func(func(*engine.Frame))
+	frameFn func(func(*sample.Frame))
 	// autoset runs as a background sweep; autosetStop cancels it (second AUTO).
 	autosetBusy bool
 	autosetStop chan struct{}

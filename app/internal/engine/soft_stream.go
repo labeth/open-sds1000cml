@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/labeth/open-dso-core/decode"
+	"github.com/labeth/open-dso-core/sample"
 	"github.com/labeth/open-sds1000cml/app/internal/bus"
 	"github.com/labeth/open-sds1000cml/app/internal/decodedlines"
 	"github.com/labeth/open-sds1000cml/app/internal/sramcapture"
@@ -1504,14 +1505,15 @@ func (e *Engine) softCapture(s *softStream) {
 	end := e.clk.Now()
 	s.armed = false
 	hit := s.trig == StreamOnValue && s.symCount >= 0 && e.symbolCount(s.capCfg) != s.symCount
-	f := &Frame{}
+	f := &sample.Frame{Traces: []sample.Trace{{}, {Ch: 1}}}
 	n := int(m.Length) * int(m.SamplesPerWord)
 	if n == 0 || !(m.SampleRateHz > 0) {
 		return
 	}
-	f.C1, f.C2, f.Valid = make([]uint8, n), make([]uint8, n), n
+	f.Traces[0].Codes8, f.Traces[1].Codes8 = make([]uint8, n), make([]uint8, n)
+	f.SetLen(n)
 	if m.FractionBits == 8 {
-		f.Q1, f.Q2 = make([]uint16, n), make([]uint16, n)
+		f.Traces[0].Precision, f.Traces[1].Precision = make([]uint16, n), make([]uint16, n)
 	}
 	writer := sramFrameWriter{f: f, m: m}
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -1525,9 +1527,9 @@ func (e *Engine) softCapture(s *softStream) {
 	}
 	span := float64(n) / m.SampleRateHz
 	s.read += time.Duration(span * float64(time.Second))
-	a, b := f.C1, f.C2
+	a, b := f.Codes8(0), f.Codes8(1)
 	if s.p.ChA&1 == 1 {
-		a, b = f.C2, f.C1
+		a, b = f.Codes8(1), f.Codes8(0)
 	}
 	if !clockedTwoLine(s.p.Proto) {
 		b = nil

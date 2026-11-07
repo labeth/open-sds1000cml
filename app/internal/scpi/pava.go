@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/labeth/open-dso-core/measure"
+	"github.com/labeth/open-dso-core/sample"
 	"github.com/labeth/open-sds1000cml/app/internal/analog"
 	"github.com/labeth/open-sds1000cml/app/internal/engine"
 )
@@ -100,30 +101,30 @@ func (h *Handler) pava(ch int, arg string) []byte {
 	probe := h.probe(ch)
 	cpl := h.coupling(ch)
 	var r *measure.Result
-	h.sc.WithFrame(func(f *engine.Frame) {
-		if f == nil || f.Valid == 0 {
+	h.sc.WithFrame(func(f *sample.Frame) {
+		if f == nil || f.Len() == 0 {
 			return
 		}
-		sig, q := f.C1, f.Q1
+		sig, q := f.Codes8(0), f.Precision(0)
 		if ch == 1 {
-			sig, q = f.C2, f.Q2
+			sig, q = f.Codes8(1), f.Precision(1)
 		}
-		valid := min(f.Valid, len(sig))
+		valid := min(f.Len(), len(sig))
 		if len(q) >= valid {
 			q = q[:valid]
 		} else {
 			q = nil
 		}
 		from := 0
-		if a, b := f.MeasureRange(); b-a < valid { // a roll view's captured stretch
+		if a, b := engine.MeasureRange(f); b-a < valid { // a roll view's captured stretch
 			from, valid = a, b
 			if q != nil {
 				q = q[a:b]
 			}
 		}
-		r = measure.ComputeAcquisition(sig[from:valid], q, vdiv/25*probe, offV*probe, f.SampleS, cpl, f.FilterGuard)
-		if r != nil && f.PeakDetect {
-			r = r.WithEnvelopeTiming(sig[:valid], vdiv/25*probe, offV*probe, f.SampleS).WithEdgeDetail(vdiv/25*probe, offV*probe, f.EdgeWindows(ch)...)
+		r = measure.ComputeAcquisition(sig[from:valid], q, vdiv/25*probe, offV*probe, f.SampleS, cpl, f.Cond.Guard)
+		if r != nil && f.Content == sample.PeakPairs {
+			r = r.WithEnvelopeTiming(sig[:valid], vdiv/25*probe, offV*probe, f.SampleS).WithEdgeDetail(vdiv/25*probe, offV*probe, engine.EdgeWindows(f, ch)...)
 		}
 	})
 	if r != nil && h.inverted(ch) {

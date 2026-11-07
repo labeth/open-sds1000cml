@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/labeth/open-dso-core/decode"
+	"github.com/labeth/open-dso-core/sample"
 )
 
 // ---- synthetic protocol waveforms (mirrors internal/decode/decode_test.go) ---
@@ -99,17 +100,17 @@ func i2cWave(addr7, rw int, data []int, h int) (scl, sda []uint8) {
 // TRLC-LINKS: REQ-SDS-013
 func TestSerialQualifyUART(t *testing.T) {
 	w := uartWave([]int{0x11, 0x22, 0x55, 0x33}, 40)
-	f := &Frame{C1: w, C2: make([]uint8, len(w)), Valid: len(w), SampleS: 1e-6}
+	f := &sample.Frame{SampleS: 1e-6, Traces: []sample.Trace{{Codes8: w, Valid: len(w)}, {Ch: 1, Codes8: make([]uint8, len(w)), Valid: len(w)}}}
 	e := &Engine{}
 
 	// byte present → match, anchored inside the record.
 	e.SetSerialParams(SerialParams{Proto: serUART, ChA: 0, Bytes: []int{0x55}})
-	ok, anchor := e.serialQualify(f, f.Valid, f.SampleS)
+	ok, anchor := e.serialQualify(f, f.Len(), f.SampleS)
 	if !ok {
 		t.Fatal("UART 0x55 should match")
 	}
-	if anchor < 0 || anchor >= f.Valid {
-		t.Fatalf("anchor %d out of [0,%d)", anchor, f.Valid)
+	if anchor < 0 || anchor >= f.Len() {
+		t.Fatalf("anchor %d out of [0,%d)", anchor, f.Len())
 	}
 	// the 0x55 is the 3rd byte — its anchor must be past the first two bytes.
 	if anchor < 40*8 {
@@ -118,23 +119,23 @@ func TestSerialQualifyUART(t *testing.T) {
 
 	// absent byte → no match.
 	e.SetSerialParams(SerialParams{Proto: serUART, ChA: 0, Bytes: []int{0x99}})
-	if ok, _ := e.serialQualify(f, f.Valid, f.SampleS); ok {
+	if ok, _ := e.serialQualify(f, f.Len(), f.SampleS); ok {
 		t.Fatal("UART 0x99 should NOT match")
 	}
 
 	// a 2-byte sequence in order → match; reversed → no match.
 	e.SetSerialParams(SerialParams{Proto: serUART, ChA: 0, Bytes: []int{0x22, 0x55}})
-	if ok, _ := e.serialQualify(f, f.Valid, f.SampleS); !ok {
+	if ok, _ := e.serialQualify(f, f.Len(), f.SampleS); !ok {
 		t.Fatal("sequence 22 55 should match")
 	}
 	e.SetSerialParams(SerialParams{Proto: serUART, ChA: 0, Bytes: []int{0x55, 0x22}})
-	if ok, _ := e.serialQualify(f, f.Valid, f.SampleS); ok {
+	if ok, _ := e.serialQualify(f, f.Len(), f.SampleS); ok {
 		t.Fatal("reversed sequence 55 22 should NOT match")
 	}
 
 	// empty pattern → any decodable byte matches.
 	e.SetSerialParams(SerialParams{Proto: serUART, ChA: 0})
-	if ok, _ := e.serialQualify(f, f.Valid, f.SampleS); !ok {
+	if ok, _ := e.serialQualify(f, f.Len(), f.SampleS); !ok {
 		t.Fatal("empty pattern should match any UART traffic")
 	}
 }
@@ -142,14 +143,14 @@ func TestSerialQualifyUART(t *testing.T) {
 // TRLC-LINKS: REQ-SDS-013
 func TestSerialQualifySPI(t *testing.T) {
 	clk, data := spiWave([]int{0xA5, 0x3C, 0x55}, 20)
-	f := &Frame{C1: clk, C2: data, Valid: len(clk), SampleS: 2e-7}
+	f := &sample.Frame{SampleS: 2e-7, Traces: []sample.Trace{{Codes8: clk, Valid: len(clk)}, {Ch: 1, Codes8: data, Valid: len(clk)}}}
 	e := &Engine{}
 	e.SetSerialParams(SerialParams{Proto: serSPI, ChA: 0, ChB: 1, MSB: true, Bytes: []int{0x3C}})
-	if ok, a := e.serialQualify(f, f.Valid, f.SampleS); !ok || a < 0 {
+	if ok, a := e.serialQualify(f, f.Len(), f.SampleS); !ok || a < 0 {
 		t.Fatalf("SPI 0x3C should match (ok=%v anchor=%d)", ok, a)
 	}
 	e.SetSerialParams(SerialParams{Proto: serSPI, ChA: 0, ChB: 1, MSB: true, Bytes: []int{0x77}})
-	if ok, _ := e.serialQualify(f, f.Valid, f.SampleS); ok {
+	if ok, _ := e.serialQualify(f, f.Len(), f.SampleS); ok {
 		t.Fatal("SPI 0x77 should NOT match")
 	}
 }
@@ -157,44 +158,44 @@ func TestSerialQualifySPI(t *testing.T) {
 // TRLC-LINKS: REQ-SDS-013
 func TestSerialQualifyI2C(t *testing.T) {
 	scl, sda := i2cWave(0x50, 0 /*write*/, []int{0xDE, 0xAD}, 20)
-	f := &Frame{C1: scl, C2: sda, Valid: len(scl), SampleS: 2e-7}
+	f := &sample.Frame{SampleS: 2e-7, Traces: []sample.Trace{{Codes8: scl, Valid: len(scl)}, {Ch: 1, Codes8: sda, Valid: len(scl)}}}
 	e := &Engine{}
 
 	// address 0x50 WRITE → match, anchored on the transaction start.
 	e.SetSerialParams(SerialParams{Proto: serI2C, ChA: 0, ChB: 1, Addr: 0x50, RW: 0})
-	ok, anchor := e.serialQualify(f, f.Valid, f.SampleS)
+	ok, anchor := e.serialQualify(f, f.Len(), f.SampleS)
 	if !ok {
 		t.Fatal("I2C write to 0x50 should match")
 	}
-	if anchor < 0 || anchor >= f.Valid {
+	if anchor < 0 || anchor >= f.Len() {
 		t.Fatalf("I2C anchor %d out of range", anchor)
 	}
 
 	// same address but READ direction → no match (this transaction is a write).
 	e.SetSerialParams(SerialParams{Proto: serI2C, ChA: 0, ChB: 1, Addr: 0x50, RW: 1})
-	if ok, _ := e.serialQualify(f, f.Valid, f.SampleS); ok {
+	if ok, _ := e.serialQualify(f, f.Len(), f.SampleS); ok {
 		t.Fatal("I2C read qualifier should NOT match a write transaction")
 	}
 
 	// different address → no match.
 	e.SetSerialParams(SerialParams{Proto: serI2C, ChA: 0, ChB: 1, Addr: 0x22, RW: 2})
-	if ok, _ := e.serialQualify(f, f.Valid, f.SampleS); ok {
+	if ok, _ := e.serialQualify(f, f.Len(), f.SampleS); ok {
 		t.Fatal("I2C addr 0x22 should NOT match a 0x50 transaction")
 	}
 
 	// address + required data byte present → match; absent data → no match.
 	e.SetSerialParams(SerialParams{Proto: serI2C, ChA: 0, ChB: 1, Addr: 0x50, RW: 0, Bytes: []int{0xAD}})
-	if ok, _ := e.serialQualify(f, f.Valid, f.SampleS); !ok {
+	if ok, _ := e.serialQualify(f, f.Len(), f.SampleS); !ok {
 		t.Fatal("I2C 0x50 write containing 0xAD should match")
 	}
 	e.SetSerialParams(SerialParams{Proto: serI2C, ChA: 0, ChB: 1, Addr: 0x50, RW: 0, Bytes: []int{0xBE}})
-	if ok, _ := e.serialQualify(f, f.Valid, f.SampleS); ok {
+	if ok, _ := e.serialQualify(f, f.Len(), f.SampleS); ok {
 		t.Fatal("I2C 0x50 write NOT containing 0xBE should not match")
 	}
 
 	// any-address (Addr<0, RW any) → match.
 	e.SetSerialParams(SerialParams{Proto: serI2C, ChA: 0, ChB: 1, Addr: -1, RW: 2})
-	if ok, _ := e.serialQualify(f, f.Valid, f.SampleS); !ok {
+	if ok, _ := e.serialQualify(f, f.Len(), f.SampleS); !ok {
 		t.Fatal("I2C any-address should match a transaction")
 	}
 }
@@ -202,10 +203,10 @@ func TestSerialQualifyI2C(t *testing.T) {
 // TRLC-LINKS: REQ-SDS-013
 func TestSerialQualifyPassAndReject(t *testing.T) {
 	e := &Engine{}
-	f := &Frame{C1: make([]uint8, 100), C2: make([]uint8, 100), Valid: 100, SampleS: 1e-6}
+	f := &sample.Frame{SampleS: 1e-6, Traces: []sample.Trace{{Codes8: make([]uint8, 100), Valid: 100}, {Ch: 1, Codes8: make([]uint8, 100), Valid: 100}}}
 	// unconfigured (proto off) → pass through, no re-anchor.
 	e.SetSerialParams(SerialParams{Proto: 0})
-	if ok, a := e.serialQualify(f, f.Valid, f.SampleS); !ok || a != -1 {
+	if ok, a := e.serialQualify(f, f.Len(), f.SampleS); !ok || a != -1 {
 		t.Fatalf("unconfigured serial must pass through (ok=%v a=%d)", ok, a)
 	}
 	// too few samples → reject.
@@ -214,7 +215,7 @@ func TestSerialQualifyPassAndReject(t *testing.T) {
 		t.Fatal("valid<8 must reject")
 	}
 	// flat/undecodable record → reject (no OK decode).
-	if ok, _ := e.serialQualify(f, f.Valid, f.SampleS); ok {
+	if ok, _ := e.serialQualify(f, f.Len(), f.SampleS); ok {
 		t.Fatal("flat record should not match a byte pattern")
 	}
 }
@@ -321,9 +322,9 @@ func TestIndexSeqUnit(t *testing.T) {
 func TestSerialRegistryUnknownFailsClosed(t *testing.T) {
 	e := New(Config{Bus: newFakeBus()})
 	w := uartWave([]int{0x55}, 16)
-	f := &Frame{C1: w, C2: w, Valid: len(w), SampleS: 1e-6}
+	f := &sample.Frame{SampleS: 1e-6, Traces: []sample.Trace{{Codes8: w, Valid: len(w)}, {Ch: 1, Codes8: w, Valid: len(w)}}}
 	e.SetSerialParams(SerialParams{Proto: 987654})
-	if ok, _ := e.serialQualify(f, f.Valid, f.SampleS); ok {
+	if ok, _ := e.serialQualify(f, f.Len(), f.SampleS); ok {
 		t.Fatal("unknown protocol qualified a trigger")
 	}
 }
@@ -361,22 +362,22 @@ func TestSerialQualifyPicksCentredMatch(t *testing.T) {
 		bytes = append(bytes, msg...)
 	}
 	w := uartWave(bytes, 40)
-	f := &Frame{C1: w, C2: make([]uint8, len(w)), Valid: len(w), SampleS: 1e-6}
+	f := &sample.Frame{SampleS: 1e-6, Traces: []sample.Trace{{Codes8: w, Valid: len(w)}, {Ch: 1, Codes8: make([]uint8, len(w)), Valid: len(w)}}}
 	e := &Engine{}
 	e.SetSerialParams(SerialParams{Proto: serUART, ChA: 0, Bytes: []int{0x55, 0xAA}})
-	_, first := e.serialQualify(f, f.Valid, f.SampleS)
+	_, first := e.serialQualify(f, f.Len(), f.SampleS)
 	screen := len(w) / 2
-	ok, anchor := e.serialQualifyAt(f, f.Valid, f.SampleS, softAnchor(f.Valid, screen, .5, -1))
+	ok, anchor := e.serialQualifyAt(f, f.Len(), f.SampleS, softAnchor(f.Len(), screen, .5, -1))
 	if !ok || anchor == first {
 		t.Fatalf("ok=%v anchor=%d, want a later match than the first (%d)", ok, anchor, first)
 	}
-	if anchor < screen/2 || anchor > f.Valid-screen/2 {
-		t.Fatalf("anchor %d leaves the screen off the record [%d,%d]", anchor, screen/2, f.Valid-screen/2)
+	if anchor < screen/2 || anchor > f.Len()-screen/2 {
+		t.Fatalf("anchor %d leaves the screen off the record [%d,%d]", anchor, screen/2, f.Len()-screen/2)
 	}
 	// No match fits the span (a record little longer than the screen) → the
 	// match nearest the target still triggers, leaving the least off-record.
-	mid := f.Valid / 2
-	ok, anchor = e.serialQualifyAt(f, f.Valid, f.SampleS, anchorSpan{target: mid, lo: mid - 1, hi: mid + 1})
+	mid := f.Len() / 2
+	ok, anchor = e.serialQualifyAt(f, f.Len(), f.SampleS, anchorSpan{target: mid, lo: mid - 1, hi: mid + 1})
 	if !ok || anchor == first {
 		t.Fatalf("fallback ok=%v anchor=%d, want the match nearest %d (not the first, %d)", ok, anchor, mid, first)
 	}
@@ -385,7 +386,7 @@ func TestSerialQualifyPicksCentredMatch(t *testing.T) {
 		t.Fatalf("fallback anchor %d is %d from the target, over half a message period (%d)", anchor, d, period)
 	}
 	// Unconstrained, the first match triggers (the band pipeline's rule).
-	if ok, a := e.serialQualify(f, f.Valid, f.SampleS); !ok || a != first {
+	if ok, a := e.serialQualify(f, f.Len(), f.SampleS); !ok || a != first {
 		t.Fatalf("serialQualify ok=%v anchor=%d, want first %d", ok, a, first)
 	}
 }

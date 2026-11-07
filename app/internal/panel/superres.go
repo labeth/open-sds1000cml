@@ -8,8 +8,8 @@ import (
 	"math"
 	"time"
 
+	"github.com/labeth/open-dso-core/sample"
 	"github.com/labeth/open-dso-core/superres"
-	"github.com/labeth/open-sds1000cml/app/internal/engine"
 )
 
 // Device super-res (spec: reference-locked stack-and-crunch), the ACQ tab's
@@ -67,9 +67,9 @@ func (c *Controller) srSampledCols() int {
 	if c.frameFn == nil { // no frame source (as every other reader allows)
 		return 0
 	}
-	c.frameFn(func(f *engine.Frame) {
-		if f != nil && !f.IsEnv && !f.PeakDetect {
-			cols = min(max(f.Valid, 0), len(f.C1))
+	c.frameFn(func(f *sample.Frame) {
+		if f != nil && !f.Flags.Has(sample.Envelope) && f.Content != sample.PeakPairs {
+			cols = min(max(f.Len(), 0), len(f.Codes8(0)))
 		}
 	})
 	return cols
@@ -216,21 +216,21 @@ func (c *Controller) srSeedAndStartGen(gen uint64) bool {
 	var seq uint64
 	grab := func() {
 		c1, c2 = nil, nil
-		c.frameFn(func(f *engine.Frame) {
-			if f == nil || f.IsEnv || f.PeakDetect {
+		c.frameFn(func(f *sample.Frame) {
+			if f == nil || f.Flags.Has(sample.Envelope) || f.Content == sample.PeakPairs {
 				return
 			}
-			v := f.Valid
-			if v < 1 || v > len(f.C1) {
-				v = len(f.C1)
+			v := f.Len()
+			if v < 1 || v > len(f.Codes8(0)) {
+				v = len(f.Codes8(0))
 			}
 			if v < 8 {
 				return
 			}
-			cols, edgeX, sampleS, winCols, seedTdiv, seq = v, f.EdgeX, f.SampleS, f.WinCols, f.TdivS, f.Seq
-			c1 = append([]uint8(nil), f.C1[:v]...)
-			if len(f.C2) >= v {
-				c2 = append([]uint8(nil), f.C2[:v]...)
+			cols, edgeX, sampleS, winCols, seedTdiv, seq = v, f.TriggerAt, f.SampleS, f.WinPoints, f.Snapshot.TdivS, f.Seq
+			c1 = append([]uint8(nil), f.Codes8(0)[:v]...)
+			if len(f.Codes8(1)) >= v {
+				c2 = append([]uint8(nil), f.Codes8(1)[:v]...)
 			} else {
 				c2 = c1
 			}
@@ -251,7 +251,9 @@ func (c *Controller) srSeedAndStartGen(gen uint64) bool {
 			c.srLeaseRaw()
 			time.Sleep(50 * time.Millisecond)
 			fresh := false
-			c.frameFn(func(f *engine.Frame) { fresh = f != nil && f.Seq != stale && !f.IsEnv && !f.PeakDetect })
+			c.frameFn(func(f *sample.Frame) {
+				fresh = f != nil && f.Seq != stale && !f.Flags.Has(sample.Envelope) && f.Content != sample.PeakPairs
+			})
 			if fresh {
 				break
 			}
@@ -569,25 +571,25 @@ type srFrame struct {
 // TRLC-LINKS: REQ-SDS-140
 func (c *Controller) srTakeFrame(lastSeq uint64, buf1, buf2 *[]uint8) srFrame {
 	var fr srFrame
-	c.frameFn(func(f *engine.Frame) {
-		if f != nil && (f.IsEnv || f.PeakDetect) {
+	c.frameFn(func(f *sample.Frame) {
+		if f != nil && (f.Flags.Has(sample.Envelope) || f.Content == sample.PeakPairs) {
 			fr.envelope = true
 			return
 		}
 		if f == nil || f.Seq == lastSeq {
 			return
 		}
-		v := f.Valid
-		if v < 1 || v > len(f.C1) {
-			v = len(f.C1)
+		v := f.Len()
+		if v < 1 || v > len(f.Codes8(0)) {
+			v = len(f.Codes8(0))
 		}
 		if v < 8 {
 			return
 		}
-		fr.seq, fr.cols, fr.edgeX, fr.sampleS, fr.tdiv = f.Seq, v, f.EdgeX, f.SampleS, f.TdivS
+		fr.seq, fr.cols, fr.edgeX, fr.sampleS, fr.tdiv = f.Seq, v, f.TriggerAt, f.SampleS, f.Snapshot.TdivS
 		fr.c1, fr.c2 = srFrameCopy(f, v, *buf1, *buf2)
 		*buf1 = fr.c1
-		if len(f.C2) >= v {
+		if len(f.Codes8(1)) >= v {
 			*buf2 = fr.c2
 		}
 	})
@@ -618,12 +620,12 @@ func srFrameChange(st *superres.Stack, fr srFrame, seedTdiv float64) string {
 // none): a raw frame is half a million samples a channel, a fresh copy each
 // frame. A short C2 shares C1's copy.
 // TRLC-LINKS: REQ-SDS-140
-func srFrameCopy(f *engine.Frame, v int, b1, b2 []uint8) (c1, c2 []uint8) {
-	c1 = append(b1[:0], f.C1[:v]...) //nolint:gocritic // appendAssign: b1 is the caller's reused buffer, its copy returned as c1
-	if len(f.C2) < v {
+func srFrameCopy(f *sample.Frame, v int, b1, b2 []uint8) (c1, c2 []uint8) {
+	c1 = append(b1[:0], f.Codes8(0)[:v]...) //nolint:gocritic // appendAssign: b1 is the caller's reused buffer, its copy returned as c1
+	if len(f.Codes8(1)) < v {
 		return c1, c1
 	}
-	return c1, append(b2[:0], f.C2[:v]...)
+	return c1, append(b2[:0], f.Codes8(1)[:v]...)
 }
 
 // SuperresView returns the current super-res state for the LCD overlay/review.
@@ -662,7 +664,9 @@ func (c *Controller) srWaitRaw() {
 	c.srLeaseRaw()
 	for range 60 {
 		raw := false
-		c.frameFn(func(f *engine.Frame) { raw = f != nil && !f.IsEnv && !f.PeakDetect })
+		c.frameFn(func(f *sample.Frame) {
+			raw = f != nil && !f.Flags.Has(sample.Envelope) && f.Content != sample.PeakPairs
+		})
 		if raw {
 			return
 		}

@@ -7,12 +7,12 @@ import (
 	"math"
 	"testing"
 
-	"github.com/labeth/open-sds1000cml/app/internal/engine"
+	"github.com/labeth/open-dso-core/sample"
 	"github.com/labeth/open-sds1000cml/app/internal/panel/wsview"
 )
 
 // TRLC-LINKS: REQ-SDS-068
-func sgSine(n int, freqHz, sampleS float64) *engine.Frame {
+func sgSine(n int, freqHz, sampleS float64) *sample.Frame {
 	c := make([]uint8, n)
 	for i := range n {
 		v := 128 + 90*math.Sin(2*math.Pi*freqHz*float64(i)*sampleS)
@@ -24,7 +24,7 @@ func sgSine(n int, freqHz, sampleS float64) *engine.Frame {
 		}
 		c[i] = uint8(v)
 	}
-	return &engine.Frame{C1: c, C2: c, Valid: n, SampleS: sampleS}
+	return &sample.Frame{SampleS: sampleS, Traces: []sample.Trace{{Codes8: c, Valid: n}, {Ch: 1, Codes8: c, Valid: n}}}
 }
 
 // The colormap must be monotone in brightness (higher dB reads hotter).
@@ -119,8 +119,8 @@ func TestSpectrogramTracksSteppedFrequency(t *testing.T) {
 func TestSpectrogramRowsPerStretch(t *testing.T) {
 	const n, dt = 8192, 2e-9
 	early, late := sgSine(n, 20e6, dt), sgSine(n, 100e6, dt)
-	f := &engine.Frame{C1: append(append([]uint8{}, early.C1[:n/2]...), late.C1[n/2:]...), Valid: n, SampleS: dt}
-	f.C2 = f.C1
+	f := &sample.Frame{SampleS: dt, Traces: []sample.Trace{{Codes8: append(append([]uint8{}, early.Codes8(0)[:n/2]...), late.Codes8(0)[n/2:]...), Valid: n}, {Ch: 1, Valid: n}}}
+	f.Traces[1].Codes8 = f.Codes8(0)
 	sg := NewSpectrogram()
 	sg.Push(f, 0, 0.5/dt)
 	if sg.Rows() != 4 {
@@ -154,14 +154,14 @@ func TestRenderSpectrogramView(t *testing.T) {
 	const dt = 2e-9
 	// A broadband (noisy) record lights every frequency column, so the waterfall
 	// densely fills the heatmap — a clean discriminator from the centred hint.
-	noise := func() *engine.Frame {
+	noise := func() *sample.Frame {
 		c := make([]uint8, n)
 		s := uint32(12345)
 		for i := range c {
 			s = s*1664525 + 1013904223
 			c[i] = uint8(64 + s>>25) // 64..191 spread
 		}
-		return &engine.Frame{C1: c, C2: c, Valid: n, SampleS: dt}
+		return &sample.Frame{SampleS: dt, Traces: []sample.Trace{{Codes8: c, Valid: n}, {Ch: 1, Codes8: c, Valid: n}}}
 	}
 	sg := NewSpectrogram()
 	for range 30 { // many rows so the waterfall (not just the hint) is drawn

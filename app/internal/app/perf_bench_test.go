@@ -5,7 +5,7 @@ package app
 import (
 	"testing"
 
-	"github.com/labeth/open-sds1000cml/app/internal/engine"
+	"github.com/labeth/open-dso-core/sample"
 	"github.com/labeth/open-sds1000cml/app/internal/lcd"
 	"github.com/labeth/open-sds1000cml/app/internal/panel/wsview"
 )
@@ -23,7 +23,7 @@ func benchHUD() lcd.HUD {
 // TRLC-LINKS: REQ-SDS-168
 func BenchmarkRenderSigOf(b *testing.B) {
 	hud := benchHUD()
-	f := &engine.Frame{Seq: 9}
+	f := &sample.Frame{Seq: 9, Traces: []sample.Trace{{}, {Ch: 1}}}
 	for b.Loop() {
 		renderSigOf(f, hud, true)
 	}

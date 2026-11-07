@@ -5,6 +5,7 @@ package panel
 import (
 	"testing"
 
+	"github.com/labeth/open-dso-core/sample"
 	"github.com/labeth/open-sds1000cml/app/internal/engine"
 )
 
@@ -60,12 +61,12 @@ func TestAutosetVerifyTrigLevelKeepsComputedWhenNothingFires(t *testing.T) {
 func TestAutosetSRAMUsesPublishedTriggerEvidence(t *testing.T) {
 	e := &fakeEng{stats: engine.Stats{BandKind: "sram"}}
 	c := &Controller{eng: e}
-	f := &engine.Frame{Coherent: true, Trigd: true}
-	c.SetFrameSource(func(fn func(*engine.Frame)) { fn(f) })
+	f := &sample.Frame{Status: sample.Status{Coherent: true, Triggered: true}, Traces: []sample.Trace{{}, {Ch: 1}}}
+	c.SetFrameSource(func(fn func(*sample.Frame)) { fn(f) })
 	if !c.trigFiring() {
 		t.Fatal("ignored SRAM frame trigger")
 	}
-	f.Trigd = false
+	f.Status.Triggered = false
 	if c.trigFiring() {
 		t.Fatal("forced SRAM frame counted as triggered")
 	}

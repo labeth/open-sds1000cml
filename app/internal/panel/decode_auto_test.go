@@ -8,7 +8,7 @@ import (
 	"testing/synctest"
 	"time"
 
-	"github.com/labeth/open-sds1000cml/app/internal/engine"
+	"github.com/labeth/open-dso-core/sample"
 	"github.com/labeth/open-sds1000cml/app/internal/panel/framecalc"
 	"github.com/labeth/open-sds1000cml/app/internal/settings"
 )
@@ -16,12 +16,12 @@ import (
 // fastUART is the rig's bus: a 460800 Bd UART; otherBus a 115200 Bd one the
 // probes moved to.
 // TRLC-LINKS: REQ-SDS-214, REQ-SDS-222
-func fastUART() *engine.Frame {
+func fastUART() *sample.Frame {
 	return uartFrame([]string{"Hi!\r\n", "OK\r\n"}, 460800, 100e-6, 100e-9, 20000)
 }
 
 // TRLC-LINKS: REQ-SDS-214, REQ-SDS-222
-func otherBus() *engine.Frame {
+func otherBus() *sample.Frame {
 	return uartFrame([]string{"slower bus\r\n"}, 115200, 60e-6, 100e-9, 20000)
 }
 
@@ -172,7 +172,7 @@ func TestIdleLinesDoNotDetect(t *testing.T) {
 		}
 		for range 2 * autoLostCaptures {
 			r.clk.advance(autoLostAfter)
-			r.show(&engine.Frame{C1: flat, C2: flat, Valid: len(flat), WinCols: len(flat), SampleS: 100e-9})
+			r.show(&sample.Frame{WinPoints: len(flat), SampleS: 100e-9, Traces: []sample.Trace{{Codes8: flat, Valid: len(flat)}, {Ch: 1, Codes8: flat, Valid: len(flat)}}})
 		}
 		time.Sleep(100 * time.Millisecond)
 		if s := r.c.snap(); s.decBaud != 460800 || s.ui.busDetecting || strings.Contains(r.c.View().Notice, "detecting the bus again") {
@@ -199,17 +199,21 @@ func TestAutoKeepsTheBusAtAnotherTimebase(t *testing.T) {
 		r.show(fastUART())
 		full := fastUART()
 		at := 0
-		for i := 400; i < len(full.C1); i++ {
-			if full.C1[i] < 100 && full.C1[i-1] > 150 { // a start bit
+		for i := 400; i < len(full.Codes8(0)); i++ {
+			if full.Codes8(0)[i] < 100 && full.Codes8(0)[i-1] > 150 { // a start bit
 				at = i - 10
 				break
 			}
 		}
 		const n = 120 // 12 us: five bits of one character at 1.2 us/div
-		closer := func() *engine.Frame {
-			return &engine.Frame{
-				C1: append([]uint8(nil), full.C1[at:at+n]...), C2: append([]uint8(nil), full.C2[at:at+n]...),
-				Valid: n, WinCols: n, EdgeX: n / 2, TdivS: n * 100e-9 / 10, SampleS: 100e-9, Trigd: true,
+		closer := func() *sample.Frame {
+			return &sample.Frame{
+				WinPoints: n,
+				TriggerAt: n / 2,
+				SampleS:   100e-9,
+				Snapshot:  sample.Settings{TdivS: n * 100e-9 / 10},
+				Status:    sample.Status{Triggered: true},
+				Traces:    []sample.Trace{{Codes8: append([]uint8(nil), full.Codes8(0)[at:at+n]...), Valid: n}, {Ch: 1, Codes8: append([]uint8(nil), full.Codes8(1)[at:at+n]...), Valid: n}},
 			}
 		}
 		note := r.c.snap().ui.busNote

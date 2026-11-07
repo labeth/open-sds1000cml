@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/labeth/open-dso-core/measure"
+	"github.com/labeth/open-dso-core/sample"
 	"github.com/labeth/open-sds1000cml/app/internal/analog"
 	"github.com/labeth/open-sds1000cml/app/internal/engine"
 	"github.com/labeth/open-sds1000cml/app/internal/panel/wsview"
@@ -90,15 +91,15 @@ func timedFor(ch int, base *measure.Result, cache bool, vpc, off, ss float64, ta
 // readouts show it (the probe-scaled V/div, the software coupling, the
 // display invert); nil without the channel.
 // TRLC-LINKS: REQ-SDS-021
-func chanMeasure(f *engine.Frame, hud HUD, ch int) *measure.Result {
+func chanMeasure(f *sample.Frame, hud HUD, ch int) *measure.Result {
 	valid := frameValid(f)
-	if ch == 1 && len(f.C2) < valid {
+	if ch == 1 && len(f.Codes8(1)) < valid {
 		return nil
 	}
-	sig := f.C1[:valid]
+	sig := f.Codes8(0)[:valid]
 	vdiv, probe, off, cpl := hud.C1VdivV, hud.Probe1, hud.OffC1V, hud.Cpl1
 	if ch == 1 {
-		sig = f.C2[:valid]
+		sig = f.Codes8(1)[:valid]
 		vdiv, probe, off, cpl = hud.C2VdivV, hud.Probe2, hud.OffC2V, hud.Cpl2
 	}
 	if probe < 1 {
@@ -110,7 +111,7 @@ func chanMeasure(f *engine.Frame, hud HUD, ch int) *measure.Result {
 	}
 	vpc := vdiv * float64(zoomOf(hud, ch)) / 25 * probe
 	q := frameQ(f, ch)
-	if a, b := f.MeasureRange(); b-a < len(sig) { // a roll view's captured stretch
+	if a, b := engine.MeasureRange(f); b-a < len(sig) { // a roll view's captured stretch
 		sig = sig[a:b]
 		if len(q) >= b {
 			q = q[a:b]
@@ -118,10 +119,10 @@ func chanMeasure(f *engine.Frame, hud HUD, ch int) *measure.Result {
 			q = nil
 		}
 	}
-	m := measFor(ch, sig, q, f.FilterGuard, f.Seq, f.Content, vpc, off*probe, hud.SampleS, probe, cpl)
-	if f.PeakDetect {
+	m := measFor(ch, sig, q, f.Cond.Guard, f.Seq, f.ContentID, vpc, off*probe, hud.SampleS, probe, cpl)
+	if f.Content == sample.PeakPairs {
 		m = timedFor(ch, m, f.Seq != 0, vpc, off*probe, hud.SampleS, func(m *measure.Result) *measure.Result {
-			return m.WithEnvelopeTiming(sig, vpc, off*probe, hud.SampleS).WithEdgeDetail(vpc, off*probe, f.EdgeWindows(ch)...)
+			return m.WithEnvelopeTiming(sig, vpc, off*probe, hud.SampleS).WithEdgeDetail(vpc, off*probe, engine.EdgeWindows(f, ch)...)
 		})
 	}
 	// After the timing: the invert swaps rise and fall and complements the
@@ -193,8 +194,8 @@ var allMeasParams = []string{
 // its chosen parameters (every parameter when nothing is chosen), via the
 // shared measure package so the values match the web exactly.
 // TRLC-LINKS: REQ-SDS-021, REQ-SDS-217
-func drawMeasPanel(sf Surface, p plotArea, f *engine.Frame, hud HUD) {
-	if f == nil || f.Valid == 0 {
+func drawMeasPanel(sf Surface, p plotArea, f *sample.Frame, hud HUD) {
+	if f == nil || f.Len() == 0 {
 		return
 	}
 	sc1, sc2 := hud.shownChans()
@@ -223,7 +224,7 @@ func drawMeasPanel(sf Surface, p plotArea, f *engine.Frame, hud HUD) {
 
 // measBox renders one channel's readouts at left edge x.
 // TRLC-LINKS: REQ-SDS-021
-func measBox(sf Surface, p plotArea, f *engine.Frame, hud HUD, ch, x int, params []string) bool {
+func measBox(sf Surface, p plotArea, f *sample.Frame, hud HUD, ch, x int, params []string) bool {
 	m := chanMeasure(f, hud, ch)
 	if m == nil {
 		return false
@@ -445,7 +446,7 @@ var softkeyY = [5]int{80, 160, 240, 320, 410}
 // trigger position (top pointer), and the per-channel ground/offset arrows on
 // the left edge — the same references the web canvas shows (spec 07 §6).
 // TRLC-LINKS: REQ-SDS-021
-func drawMarkers(sf Surface, p plotArea, f *engine.Frame, hud HUD) {
+func drawMarkers(sf Surface, p plotArea, f *sample.Frame, hud HUD) {
 	px := func(x, y int, c uint16) {
 		if x >= 0 && x < p.w && y >= p.y0 && y < H {
 			sf.SetPixel(x, y, c)
@@ -494,7 +495,7 @@ func drawMarkers(sf Surface, p plotArea, f *engine.Frame, hud HUD) {
 // trigX is the trigger position's column, -1 when the screen does not show
 // it (trigFrac).
 // TRLC-LINKS: REQ-SDS-021
-func trigX(p plotArea, f *engine.Frame, hud HUD) int {
+func trigX(p plotArea, f *sample.Frame, hud HUD) int {
 	frac, ok := trigFrac(f, hud)
 	if !ok {
 		return -1
@@ -506,15 +507,15 @@ func trigX(p plotArea, f *engine.Frame, hud HUD) int {
 // position, or zoomed, where the trace's window (traceWindow, centred on the
 // trigger plus the pan) puts it; false when that is off the screen.
 // TRLC-LINKS: REQ-SDS-021
-func trigFrac(f *engine.Frame, hud HUD) (float64, bool) {
+func trigFrac(f *sample.Frame, hud HUD) (float64, bool) {
 	frac := hud.TrigPosFrac
 	if !(frac >= 0 && frac <= 1) {
 		frac = 0.5
 	}
-	if hud.Zoom > 1 && f != nil && len(f.C1) > 0 {
+	if hud.Zoom > 1 && f != nil && len(f.Codes8(0)) > 0 {
 		valid := frameValid(f)
 		win, xc, posFrac := traceWindow(f, hud, valid)
-		anchor := f.EdgeX
+		anchor := f.TriggerAt
 		if anchor < 0 {
 			anchor = float64(valid) / 2
 		}
@@ -524,11 +525,11 @@ func trigFrac(f *engine.Frame, hud HUD) (float64, bool) {
 }
 
 // TRLC-LINKS: REQ-SDS-021
-func drawHUD(sf Surface, f *engine.Frame, hud HUD) {
-	if f != nil && f.NoiseGainIdeal > 1 {
-		label := fmt.Sprintf("Ideal +%.2f bits (not ENOB)", math.Log2(f.NoiseGainIdeal))
-		if f.PassbandHz > 0 {
-			label += "  pass " + fmtFreq(f.PassbandHz) + fmt.Sprintf("  FPGA /%d", f.Decimation)
+func drawHUD(sf Surface, f *sample.Frame, hud HUD) {
+	if f != nil && f.Cond.NoiseGain > 1 {
+		label := fmt.Sprintf("Ideal +%.2f bits (not ENOB)", math.Log2(f.Cond.NoiseGain))
+		if f.Cond.PassbandHz > 0 {
+			label += "  pass " + fmtFreq(f.Cond.PassbandHz) + fmt.Sprintf("  FPGA /%d", uint32(f.AcqDecim))
 		}
 		DrawText(sf, 200, 14, label, colInfo, 1)
 	}
@@ -536,7 +537,7 @@ func drawHUD(sf Surface, f *engine.Frame, hud HUD) {
 	if hud.TwoChan {
 		DrawText(sf, 96, 2, "C2 "+vdivLabel(hud.C2VdivV, hud.Probe2)+cplTag(hud.Cpl2), colC2, 1)
 	}
-	if f != nil && f.Valid > 0 { // clipping warning — railed traces make readings suspect
+	if f != nil && f.Len() > 0 { // clipping warning — railed traces make readings suspect
 		clip := frameClipped(f)
 		if clip[0] {
 			DrawText(sf, 4, 14, "CLIP", colTrig, 1)
@@ -549,7 +550,7 @@ func drawHUD(sf Surface, f *engine.Frame, hud HUD) {
 	// it's C1 voltage, so "M <t/div>" would be misleading there. But X-Y/FFT
 	// fall through to Y-T on an envelope frame, so only label them when the
 	// alternate view actually renders (matches the Render() branch condition).
-	altView := f != nil && !f.IsEnv && len(f.C1) > 0
+	altView := f != nil && !f.Flags.Has(sample.Envelope) && len(f.Codes8(0)) > 0
 	switch {
 	case hud.ViewMode == 1 && altView:
 		DrawText(sf, 200, 2, "X-Y", colMath, 1)
@@ -581,7 +582,7 @@ func drawHUD(sf Surface, f *engine.Frame, hud HUD) {
 	// and the menu panel in every view. No network → nothing.
 	DrawStatusSlot(sf, hud)
 
-	if f == nil || f.Valid == 0 || hud.UI.Layout.HideBottom {
+	if f == nil || f.Len() == 0 || hud.UI.Layout.HideBottom {
 		return
 	}
 	// Bottom quick-readout: calibrated Vpp + frequency per channel, via the
@@ -644,11 +645,11 @@ func trigReadout(hud HUD) string {
 }
 
 // TRLC-LINKS: REQ-SDS-021
-func frameQ(f *engine.Frame, ch int) []uint16 {
+func frameQ(f *sample.Frame, ch int) []uint16 {
 	if ch == 1 {
-		return f.Q2
+		return f.Precision(1)
 	}
-	return f.Q1
+	return f.Precision(0)
 }
 
 // zoomOf is a channel's display zoom: codes sit on the analog range, a
@@ -677,7 +678,7 @@ var clipCache struct {
 
 // frameClipped reports whether each channel's codes touch a rail.
 // TRLC-LINKS: REQ-SDS-021
-func frameClipped(f *engine.Frame) [2]bool {
+func frameClipped(f *sample.Frame) [2]bool {
 	valid := frameValid(f) // clamp to len(C1) — f.Valid can exceed the slice
 	clipCache.Lock()
 	defer clipCache.Unlock()
@@ -685,8 +686,8 @@ func frameClipped(f *engine.Frame) [2]bool {
 		return clipCache.clip
 	}
 	var clip [2]bool
-	clip[0] = measure.Clipped(f.C1[:valid])
-	clip[1] = len(f.C2) >= valid && measure.Clipped(f.C2[:valid])
+	clip[0] = measure.Clipped(f.Codes8(0)[:valid])
+	clip[1] = len(f.Codes8(1)) >= valid && measure.Clipped(f.Codes8(1)[:valid])
 	clipCache.seq, clipCache.valid, clipCache.clip = f.Seq, valid, clip
 	return clip
 }

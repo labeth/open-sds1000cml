@@ -12,6 +12,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/labeth/open-dso-core/sample"
 	"github.com/labeth/open-sds1000cml/app/internal/bus"
 	"github.com/labeth/open-sds1000cml/app/internal/iface"
 	"github.com/labeth/open-sds1000cml/app/internal/sramcapture"
@@ -919,7 +920,7 @@ func (e *Engine) Snapshot() Stats {
 
 // Consume hands the newest published frame to a consumer (the web layer).
 // TRLC-LINKS: REQ-SDS-007
-func (e *Engine) Consume() (*Frame, bool) { return e.arena.Consume() }
+func (e *Engine) Consume() (*sample.Frame, bool) { return e.arena.Consume() }
 
 // AcqLog returns the last n acquisition samples (most-recent-last) plus the
 // HALF rate over the last up-to-64 recorded samples. Instrumentation only; the

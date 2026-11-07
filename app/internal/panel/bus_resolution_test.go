@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/labeth/open-dso-core/decode"
+	"github.com/labeth/open-dso-core/sample"
 	"github.com/labeth/open-sds1000cml/app/internal/engine"
 	"github.com/labeth/open-sds1000cml/app/internal/panel/framecalc"
 	"github.com/labeth/open-sds1000cml/app/internal/streamview"
@@ -22,7 +23,7 @@ import (
 // bytes to address 0x24, the clock at fclk, n samples sampleS apart. SDA
 // moves only mid SCL-low, as the bench source does.
 // TRLC-LINKS: REQ-SDS-214
-func i2cFrame(fclk, sampleS float64, n int, bytes ...int) *engine.Frame {
+func i2cFrame(fclk, sampleS float64, n int, bytes ...int) *sample.Frame {
 	c1, c2 := make([]uint8, n), make([]uint8, n)
 	q := 1 / fclk / 4 / sampleS // a quarter clock in samples
 	t := 0.0
@@ -55,9 +56,13 @@ func i2cFrame(fclk, sampleS float64, n int, bytes ...int) *engine.Frame {
 		put(hi, lo, 2)
 		put(hi, hi, 2) // STOP: SDA rises, SCL high
 	}
-	return &engine.Frame{
-		C1: c1, C2: c2, Valid: n, WinCols: n, EdgeX: float64(n) / 2, SampleS: sampleS,
-		TdivS: float64(n) * sampleS / 10, Trigd: true,
+	return &sample.Frame{
+		WinPoints: n,
+		TriggerAt: float64(n) / 2,
+		SampleS:   sampleS,
+		Snapshot:  sample.Settings{TdivS: float64(n) * sampleS / 10},
+		Status:    sample.Status{Triggered: true},
+		Traces:    []sample.Trace{{Codes8: c1, Valid: n}, {Ch: 1, Codes8: c2, Valid: n}},
 	}
 }
 
@@ -65,8 +70,8 @@ func i2cFrame(fclk, sampleS float64, n int, bytes ...int) *engine.Frame {
 // pair per bucket of both channels, each pair in the order that continues
 // from the value before it.
 // TRLC-LINKS: REQ-SDS-214
-func envelope2(f *engine.Frame, bucket int) *engine.Frame {
-	n := f.Valid / bucket
+func envelope2(f *sample.Frame, bucket int) *sample.Frame {
+	n := f.Len() / bucket
 	env := func(src []uint8) []uint8 {
 		out := make([]uint8, 0, 2*n)
 		last := src[0]
@@ -85,9 +90,14 @@ func envelope2(f *engine.Frame, bucket int) *engine.Frame {
 		}
 		return out
 	}
-	return &engine.Frame{
-		C1: env(f.C1), C2: env(f.C2), Valid: 2 * n, WinCols: 2 * n, EdgeX: float64(n),
-		SampleS: f.SampleS * float64(bucket) / 2, TdivS: f.TdivS, PeakDetect: true, Ordered: true,
+	return &sample.Frame{
+		WinPoints: 2 * n,
+		TriggerAt: float64(n),
+		SampleS:   f.SampleS * float64(bucket) / 2,
+		Content:   sample.PeakPairs,
+		Flags:     sample.Ordered,
+		Snapshot:  sample.Settings{TdivS: f.Snapshot.TdivS},
+		Traces:    []sample.Trace{{Codes8: env(f.Codes8(0)), Valid: 2 * n}, {Ch: 1, Codes8: env(f.Codes8(1)), Valid: 2 * n}},
 	}
 }
 
@@ -125,7 +135,7 @@ func TestCoarseEnvelopeIsNotDecoded(t *testing.T) {
 func TestBusDetectPicksAReadableTimebase(t *testing.T) {
 	c, eng, _ := newC(t)
 	raw := i2cFrame(184e3, 2e-9, 1000000, 0x55, 0xAA, 0x0F, 0xF0)
-	c.SetFrameSource(func(fn func(*engine.Frame)) { fn(raw) })
+	c.SetFrameSource(func(fn func(*sample.Frame)) { fn(raw) })
 	c.setTdivNearest(500e-6)
 	c.runDetect()
 	c.mu.Lock()
@@ -139,7 +149,7 @@ func TestBusDetectPicksAReadableTimebase(t *testing.T) {
 	// 0A as 02 on the bench: 200us/div reads it; 100us/div keeps
 	c, eng, _ = newC(t)
 	uart := uartFrame([]string{"Hi U\\x55\\xaa"}, 115200, 300e-6, 20e-9, 200000)
-	c.SetFrameSource(func(fn func(*engine.Frame)) { fn(uart) })
+	c.SetFrameSource(func(fn func(*sample.Frame)) { fn(uart) })
 	c.setTdivNearest(500e-6)
 	c.runDetect()
 	c.mu.Lock()
@@ -149,7 +159,7 @@ func TestBusDetectPicksAReadableTimebase(t *testing.T) {
 		t.Fatalf("UART at 500us/div: tdiv %g notice %q", tdiv, notice)
 	}
 	c, eng, _ = newC(t)
-	c.SetFrameSource(func(fn func(*engine.Frame)) { fn(uart) })
+	c.SetFrameSource(func(fn func(*sample.Frame)) { fn(uart) })
 	c.setTdivNearest(100e-6)
 	c.runDetect()
 	c.mu.Lock()
@@ -169,7 +179,7 @@ func TestBusDetectRetriesAtTheFullRate(t *testing.T) {
 	c, eng, _ := newC(t)
 	fast := uartFrame([]string{"Hi U\x55\xaa"}, 20e6, 2e-6, 2e-9, 100000) // 50 ns bits
 	coarse := uartFrame([]string{"Hi U\x55\xaa"}, 20e6, 2e-6, 32e-9, 20000)
-	c.SetFrameSource(func(fn func(*engine.Frame)) {
+	c.SetFrameSource(func(fn func(*sample.Frame)) {
 		if eng.Snapshot().TdivS >= 500e-6 {
 			fn(coarse)
 			return
@@ -190,12 +200,12 @@ func TestBusDetectRetriesAtTheFullRate(t *testing.T) {
 	for i := range idle {
 		idle[i] = 210
 	}
-	c.SetFrameSource(func(fn func(*engine.Frame)) {
+	c.SetFrameSource(func(fn func(*sample.Frame)) {
 		sampleS := 2e-9 // each timebase's record
 		if eng.Snapshot().TdivS >= 500e-6 {
 			sampleS = 32e-9
 		}
-		fn(&engine.Frame{C1: idle, C2: idle, Valid: len(idle), WinCols: len(idle), SampleS: sampleS, TdivS: eng.Snapshot().TdivS})
+		fn(&sample.Frame{WinPoints: len(idle), SampleS: sampleS, Snapshot: sample.Settings{TdivS: eng.Snapshot().TdivS}, Traces: []sample.Trace{{Codes8: idle, Valid: len(idle)}, {Ch: 1, Codes8: idle, Valid: len(idle)}}})
 	})
 	c.setTdivNearest(500e-6)
 	c.runDetect()
@@ -207,13 +217,13 @@ func TestBusDetectRetriesAtTheFullRate(t *testing.T) {
 	// byte): the slowest full-rate timebase finds it and stays
 	c, eng, _ = newC(t)
 	uart := uartFrame([]string{"Hi U\x55\xaa"}, 115200, 300e-6, 20e-9, 200000)
-	c.SetFrameSource(func(fn func(*engine.Frame)) {
+	c.SetFrameSource(func(fn func(*sample.Frame)) {
 		if td := eng.Snapshot().TdivS; td < 100e-6 {
-			fn(&engine.Frame{C1: idle, C2: idle, Valid: len(idle), WinCols: len(idle), SampleS: 2e-9, TdivS: td})
+			fn(&sample.Frame{WinPoints: len(idle), SampleS: 2e-9, Snapshot: sample.Settings{TdivS: td}, Traces: []sample.Trace{{Codes8: idle, Valid: len(idle)}, {Ch: 1, Codes8: idle, Valid: len(idle)}}})
 			return
 		}
 		u := *uart
-		u.TdivS = eng.Snapshot().TdivS
+		u.Snapshot.TdivS = eng.Snapshot().TdivS
 		fn(&u)
 	})
 	c.setTdivNearest(10e-6)
@@ -240,11 +250,11 @@ func TestBusDetectReadsAFreshFrame(t *testing.T) {
 	}
 	uart := uartFrame([]string{"Hi U\x55\xaa"}, 115200, 300e-6, 20e-9, 200000)
 	looks := 0
-	c.SetFrameSource(func(fn func(*engine.Frame)) {
+	c.SetFrameSource(func(fn func(*sample.Frame)) {
 		looks++
 		seq := uint64(10 + looks/3) // a new capture every third look: 10 on screen, 11 in flight
 		if seq < 12 {
-			fn(&engine.Frame{C1: idle, C2: idle, Valid: len(idle), WinCols: len(idle), SampleS: 20e-9, TdivS: 500e-6, Seq: seq})
+			fn(&sample.Frame{WinPoints: len(idle), SampleS: 20e-9, Seq: seq, Snapshot: sample.Settings{TdivS: 500e-6}, Traces: []sample.Trace{{Codes8: idle, Valid: len(idle)}, {Ch: 1, Codes8: idle, Valid: len(idle)}}})
 			return
 		}
 		u := *uart
@@ -348,12 +358,12 @@ func newEnvRig(t *testing.T) (*Controller, *envEng, *recStream) {
 	c.detectSync = true
 	uart := uartFrame([]string{"Hi U\\x55\\xaa"}, 115200, 300e-6, 20e-9, 200000)
 	env := envelope2(uart, 244) // 2.44 us a point: 500us/div's live readout
-	c.SetFrameSource(func(fn func(*engine.Frame)) {
+	c.SetFrameSource(func(fn func(*sample.Frame)) {
 		f := *env
 		if eng.leased.Load() || eng.sampled.Load() {
 			f = *uart
 		}
-		f.TdivS = eng.Snapshot().TdivS
+		f.Snapshot.TdivS = eng.Snapshot().TdivS
 		fn(&f)
 	})
 	st := &recStream{eng: eng}
@@ -400,8 +410,8 @@ func TestAutoFindingNothingKeepsTheSettings(t *testing.T) {
 	}{{framecalc.ProtoUART, framecalc.ProtoUART}, {framecalc.ProtoOff, framecalc.ProtoOff}} {
 		c, eng, _ := newC(t)
 		c.detectSync = true
-		c.SetFrameSource(func(fn func(*engine.Frame)) {
-			fn(&engine.Frame{C1: idleLine, C2: idleLine, Valid: len(idleLine), WinCols: len(idleLine), SampleS: 2e-9, TdivS: eng.Snapshot().TdivS})
+		c.SetFrameSource(func(fn func(*sample.Frame)) {
+			fn(&sample.Frame{WinPoints: len(idleLine), SampleS: 2e-9, Snapshot: sample.Settings{TdivS: eng.Snapshot().TdivS}, Traces: []sample.Trace{{Codes8: idleLine, Valid: len(idleLine)}, {Ch: 1, Codes8: idleLine, Valid: len(idleLine)}}})
 		})
 		if err := c.setDecProto(tc.from); err != nil {
 			t.Fatal(err)
@@ -460,10 +470,10 @@ func TestStreamUsesTypedInSettingsAsTheyAre(t *testing.T) {
 	fast := uartFrame([]string{"Hi U\x55\xaa"}, 115200, 300e-6, 20e-9, 200000)
 	slow := uartFrame([]string{"slow"}, 9600, 1e-3, 20e-9, 200000)
 	f := *fast
-	f.C2 = slow.C1
-	c.SetFrameSource(func(fn func(*engine.Frame)) {
+	f.Traces[1].Codes8 = slow.Codes8(0)
+	c.SetFrameSource(func(fn func(*sample.Frame)) {
 		g := f
-		g.TdivS = eng.Snapshot().TdivS
+		g.Snapshot.TdivS = eng.Snapshot().TdivS
 		fn(&g)
 	})
 	st := &recStream{eng: &envEng{fakeEng: eng}}
@@ -585,10 +595,10 @@ func TestAutoSearchGivesTheTimebaseBackWhenLeft(t *testing.T) {
 		idle[i] = 210
 	}
 	uart := uartFrame([]string{"Hi U\x55\xaa"}, 115200, 300e-6, 20e-9, 200000)
-	c.SetFrameSource(func(fn func(*engine.Frame)) {
+	c.SetFrameSource(func(fn func(*sample.Frame)) {
 		td := eng.Snapshot().TdivS
 		if td < 100e-6 {
-			fn(&engine.Frame{C1: idle, C2: idle, Valid: len(idle), WinCols: len(idle), SampleS: 2e-9, TdivS: td})
+			fn(&sample.Frame{WinPoints: len(idle), SampleS: 2e-9, Snapshot: sample.Settings{TdivS: td}, Traces: []sample.Trace{{Codes8: idle, Valid: len(idle)}, {Ch: 1, Codes8: idle, Valid: len(idle)}}})
 			return
 		}
 		c.mu.Lock()
@@ -596,7 +606,7 @@ func TestAutoSearchGivesTheTimebaseBackWhenLeft(t *testing.T) {
 		c.decGen++
 		c.mu.Unlock()
 		u := *uart
-		u.TdivS = td
+		u.Snapshot.TdivS = td
 		fn(&u)
 	})
 	c.setTdivNearest(10e-6)
@@ -618,15 +628,15 @@ func TestBusDetectKeepsAProtocolPickedMeanwhile(t *testing.T) {
 	uart := uartFrame([]string{"Hi U\x55\xaa"}, 115200, 300e-6, 20e-9, 200000)
 	for _, tc := range []struct {
 		name   string
-		frame  *engine.Frame
+		frame  *sample.Frame
 		picked int
 	}{
-		{"no bus", &engine.Frame{C1: idle, C2: idle, Valid: len(idle), WinCols: len(idle), SampleS: 2e-9}, framecalc.ProtoUART},
+		{"no bus", &sample.Frame{WinPoints: len(idle), SampleS: 2e-9, Traces: []sample.Trace{{Codes8: idle, Valid: len(idle)}, {Ch: 1, Codes8: idle, Valid: len(idle)}}}, framecalc.ProtoUART},
 		{"a bus found", uart, framecalc.ProtoI2C},
 	} {
 		c, eng, _ := newC(t)
 		picked := false
-		c.SetFrameSource(func(fn func(*engine.Frame)) {
+		c.SetFrameSource(func(fn func(*sample.Frame)) {
 			if !picked { // the phone picks a protocol while BUS searches
 				picked = true
 				if err := c.setDecProto(tc.picked); err != nil {
@@ -634,7 +644,7 @@ func TestBusDetectKeepsAProtocolPickedMeanwhile(t *testing.T) {
 				}
 			}
 			f := *tc.frame
-			f.TdivS = eng.Snapshot().TdivS
+			f.Snapshot.TdivS = eng.Snapshot().TdivS
 			fn(&f)
 		})
 		c.setTdivNearest(500e-6)
@@ -702,7 +712,7 @@ func TestStreamOnOffOnRuns(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		c, eng, _ := newC(t)
 		uart := uartFrame([]string{"Hi U\x55\xaa"}, 115200, 300e-6, 20e-9, 200000)
-		c.SetFrameSource(func(fn func(*engine.Frame)) { fn(uart) })
+		c.SetFrameSource(func(fn func(*sample.Frame)) { fn(uart) })
 		st := &slowStream{begin: func() { eng.SetRunning(false) }}
 		c.SetDecodeStream(st)
 		set(t, c, "bus.protocol", "UART")
@@ -756,9 +766,9 @@ func TestBusSearchSaysTheScopeWaits(t *testing.T) {
 		idle[i] = 210
 	}
 	seen := map[float64]bool{}
-	c.SetFrameSource(func(fn func(*engine.Frame)) {
+	c.SetFrameSource(func(fn func(*sample.Frame)) {
 		seen[eng.Snapshot().TdivS] = true
-		fn(&engine.Frame{C1: idle, C2: idle, Valid: len(idle), WinCols: len(idle), SampleS: 2e-9, TdivS: eng.Snapshot().TdivS})
+		fn(&sample.Frame{WinPoints: len(idle), SampleS: 2e-9, Snapshot: sample.Settings{TdivS: eng.Snapshot().TdivS}, Traces: []sample.Trace{{Codes8: idle, Valid: len(idle)}, {Ch: 1, Codes8: idle, Valid: len(idle)}}})
 	})
 	const why = "no new capture - the scope waits for a trigger: Auto or Force, then again"
 	c.runDetect()

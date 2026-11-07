@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	"github.com/labeth/open-dso-core/measure"
-	"github.com/labeth/open-sds1000cml/app/internal/engine"
+	"github.com/labeth/open-dso-core/sample"
 )
 
 // An inverted channel on a live envelope frame reads the complement duty: the
@@ -16,14 +16,14 @@ import (
 // TRLC-LINKS: REQ-SDS-021
 func TestInvertedEnvelopeDuty(t *testing.T) {
 	n := 2048
-	f := &engine.Frame{C1: make([]uint8, n), C2: make([]uint8, n), Valid: n, WinCols: n, SampleS: 96e-9, PeakDetect: true, Ordered: true, Seq: 0}
+	f := &sample.Frame{WinPoints: n, SampleS: 96e-9, Seq: 0, Content: sample.PeakPairs, Flags: sample.Ordered, Traces: []sample.Trace{{Codes8: make([]uint8, n), Valid: n}, {Ch: 1, Codes8: make([]uint8, n), Valid: n}}}
 	for b := range n / 2 {
 		v := uint8(78)
 		if b%104 < 31 { // 30 % of each 104-bucket period high
 			v = 178
 		}
-		f.C1[2*b], f.C1[2*b+1] = v, v
-		f.C2[2*b], f.C2[2*b+1] = v, v
+		f.Codes8(0)[2*b], f.Codes8(0)[2*b+1] = v, v
+		f.Codes8(1)[2*b], f.Codes8(1)[2*b+1] = v, v
 	}
 	hud := HUD{C1VdivV: 1, C2VdivV: 1, Probe1: 1, Probe2: 1, SampleS: f.SampleS}
 	plain := chanMeasure(f, hud, 0)

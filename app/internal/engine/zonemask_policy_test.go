@@ -6,6 +6,7 @@ import (
 	"math"
 	"testing"
 
+	"github.com/labeth/open-dso-core/sample"
 	"github.com/labeth/open-sds1000cml/app/internal/sramcapture"
 )
 
@@ -32,10 +33,10 @@ func TestZoneMaskPublishPolicy(t *testing.T) {
 	// learn the lock geometry from a plain publish
 	e.oneFrame(false)
 	f, fresh := e.Consume()
-	if !fresh || f.EdgeX < 0 {
+	if !fresh || f.TriggerAt < 0 {
 		t.Fatalf("no locked baseline frame (fresh=%v)", fresh)
 	}
-	edgeX, sampleS := f.EdgeX, f.SampleS
+	edgeX, sampleS := f.TriggerAt, f.SampleS
 	dtLo := (1405 - edgeX) * sampleS
 	dtHi := (1445 - edgeX) * sampleS
 	e.SetZones([]Zone{{DtLoS: dtLo, DtHiS: dtHi, CodeLo: 230, CodeHi: 255}})
@@ -133,13 +134,13 @@ func TestMaskGeometryFuzz(t *testing.T) {
 			for _, liveDepth := range []int{0, int(edgeX) + 150, n} {
 				for range 12 {
 					// flat frame with one spike at a random raw position
-					f := &Frame{C1: make([]uint8, n), C2: make([]uint8, n), Valid: n}
+					f := &sample.Frame{Traces: []sample.Trace{{Codes8: make([]uint8, n), Valid: n}, {Ch: 1, Codes8: make([]uint8, n), Valid: n}}}
 					for i := range n {
-						f.C1[i] = 100
-						f.C2[i] = 100
+						f.Codes8(0)[i] = 100
+						f.Codes8(1)[i] = 100
 					}
 					spike := int(rng() * float64(n))
-					f.C1[spike] = 220
+					f.Codes8(0)[spike] = 220
 
 					left := int(math.Round(edgeX - float64(win)*posFrac))
 					testableEnd := n
@@ -294,7 +295,7 @@ func TestSingleShotWaitsForZoneQualify(t *testing.T) {
 	e.bringUp()
 	e.oneFrame(false)
 	f, fresh := e.Consume()
-	if !fresh || f.EdgeX < 0 {
+	if !fresh || f.TriggerAt < 0 {
 		t.Fatal("no baseline lock")
 	}
 	e.SetZones([]Zone{{DtLoS: 36 * f.SampleS, DtHiS: 52 * f.SampleS, CodeLo: 230, CodeHi: 255}})
@@ -327,7 +328,7 @@ func TestMaskKeepsBuilderGeometry(t *testing.T) {
 		FrameIdent: true, TdivS: .0002, SampleS: 2e-9,
 	})
 	e.SetMaskMode(MaskTest)
-	f := &Frame{C1: []uint8{50, 200}, Valid: 2, WinCols: 2, TdivS: .0002, SampleS: 2e-9}
+	f := &sample.Frame{WinPoints: 2, SampleS: 2e-9, Snapshot: sample.Settings{TdivS: .0002}, Traces: []sample.Trace{{Codes8: []uint8{50, 200}, Valid: 2}, {Ch: 1, Valid: 2}}}
 	e.maskEval(f, 2, 0, 1, f.SampleS, .5)
 	if e.maskPass.Load() != 1 || e.maskSkip.Load() != 0 {
 		t.Fatal("mask used a later envelope frame's identity")
@@ -361,28 +362,33 @@ func TestMaskTestsAnotherSamplingThroughTime(t *testing.T) {
 	e.SetMask(&Mask{Lo: lo, Hi: hi, WinCols: 1000, FrameIdent: true, TdivS: tdiv, SampleS: 1e-9})
 	e.SetMaskMode(MaskTest)
 	// The live envelope of the same screen: 100 min/max samples at 10 ns.
-	env := func(glitchAt int) *Frame {
-		f := &Frame{
-			C1: make([]uint8, 100), C2: make([]uint8, 100), Valid: 100, WinCols: 100, TdivS: tdiv,
-			SampleS: 10e-9, PeakDetect: true, Ordered: true, EdgeX: 50,
+	env := func(glitchAt int) *sample.Frame {
+		f := &sample.Frame{
+			WinPoints: 100,
+			SampleS:   10e-9,
+			TriggerAt: 50,
+			Content:   sample.PeakPairs,
+			Flags:     sample.Ordered,
+			Snapshot:  sample.Settings{TdivS: tdiv},
+			Traces:    []sample.Trace{{Codes8: make([]uint8, 100), Valid: 100}, {Ch: 1, Codes8: make([]uint8, 100), Valid: 100}},
 		}
-		for i := range f.C1 {
-			f.C1[i] = 30
+		for i := range f.Codes8(0) {
+			f.Codes8(0)[i] = 30
 			if i >= 50 {
-				f.C1[i] = 210
+				f.Codes8(0)[i] = 210
 			}
 		}
 		if glitchAt >= 0 {
-			f.C1[glitchAt] = 120
+			f.Codes8(0)[glitchAt] = 120
 		}
 		return f
 	}
 	f := env(-1)
-	if fail, _ := e.maskEval(f, f.Valid, 0, f.EdgeX, f.SampleS, .5); fail || e.maskPass.Load() != 1 || e.maskSkip.Load() != 0 {
+	if fail, _ := e.maskEval(f, f.Len(), 0, f.TriggerAt, f.SampleS, .5); fail || e.maskPass.Load() != 1 || e.maskSkip.Load() != 0 {
 		t.Fatalf("a clean envelope frame: fail %v pass %d skip %d", fail, e.maskPass.Load(), e.maskSkip.Load())
 	}
 	f = env(20)
-	if fail, _ := e.maskEval(f, f.Valid, 0, f.EdgeX, f.SampleS, .5); !fail || e.maskFail.Load() != 1 {
+	if fail, _ := e.maskEval(f, f.Len(), 0, f.TriggerAt, f.SampleS, .5); !fail || e.maskFail.Load() != 1 {
 		t.Fatalf("a glitch on the envelope: fail %v fails %d", fail, e.maskFail.Load())
 	}
 	if r := e.MaskFails(); len(r) != 1 || r[0].FailSample != 20 || r[0].WinCols != 100 {
@@ -390,8 +396,8 @@ func TestMaskTestsAnotherSamplingThroughTime(t *testing.T) {
 	}
 	// Another timebase is not the same screen.
 	f = env(-1)
-	f.TdivS = 2 * tdiv
-	if fail, _ := e.maskEval(f, f.Valid, 0, f.EdgeX, f.SampleS, .5); fail || e.maskSkip.Load() != 1 {
+	f.Snapshot.TdivS = 2 * tdiv
+	if fail, _ := e.maskEval(f, f.Len(), 0, f.TriggerAt, f.SampleS, .5); fail || e.maskSkip.Load() != 1 {
 		t.Fatalf("another timebase: fail %v skip %d", fail, e.maskSkip.Load())
 	}
 
@@ -405,29 +411,32 @@ func TestMaskTestsAnotherSamplingThroughTime(t *testing.T) {
 	}
 	e.SetMask(&Mask{Lo: lo, Hi: hi, WinCols: 100, FrameIdent: true, TdivS: tdiv, SampleS: 10e-9, PeakDetect: true})
 	e.SetMaskMode(MaskTest)
-	raw := func(glitchAt int) *Frame {
-		f := &Frame{
-			C1: make([]uint8, 1000), C2: make([]uint8, 1000), Valid: 1000, WinCols: 1000, TdivS: tdiv,
-			SampleS: 1e-9, EdgeX: 500,
+	raw := func(glitchAt int) *sample.Frame {
+		f := &sample.Frame{
+			WinPoints: 1000,
+			SampleS:   1e-9,
+			TriggerAt: 500,
+			Snapshot:  sample.Settings{TdivS: tdiv},
+			Traces:    []sample.Trace{{Codes8: make([]uint8, 1000), Valid: 1000}, {Ch: 1, Codes8: make([]uint8, 1000), Valid: 1000}},
 		}
-		for i := range f.C1 {
-			f.C1[i] = 30
+		for i := range f.Codes8(0) {
+			f.Codes8(0)[i] = 30
 			if i >= 500 {
-				f.C1[i] = 210
+				f.Codes8(0)[i] = 210
 			}
 		}
 		if glitchAt >= 0 {
-			f.C1[glitchAt] = 120
+			f.Codes8(0)[glitchAt] = 120
 		}
 		return f
 	}
 	pass0, fail0 := e.maskPass.Load(), e.maskFail.Load()
 	f = raw(-1)
-	if fail, _ := e.maskEval(f, f.Valid, 0, f.EdgeX, f.SampleS, .5); fail || e.maskPass.Load() != pass0+1 {
+	if fail, _ := e.maskEval(f, f.Len(), 0, f.TriggerAt, f.SampleS, .5); fail || e.maskPass.Load() != pass0+1 {
 		t.Fatalf("a clean full-rate record: fail %v", fail)
 	}
 	f = raw(700)
-	if fail, _ := e.maskEval(f, f.Valid, 0, f.EdgeX, f.SampleS, .5); !fail || e.maskFail.Load() != fail0+1 {
+	if fail, _ := e.maskEval(f, f.Len(), 0, f.TriggerAt, f.SampleS, .5); !fail || e.maskFail.Load() != fail0+1 {
 		t.Fatalf("a glitch in the full-rate record: fail %v", fail)
 	}
 }

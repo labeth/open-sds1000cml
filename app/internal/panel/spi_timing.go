@@ -8,6 +8,7 @@ import (
 	"math"
 
 	"github.com/labeth/open-dso-core/decode"
+	"github.com/labeth/open-dso-core/sample"
 	"github.com/labeth/open-sds1000cml/app/internal/engine"
 	"github.com/labeth/open-sds1000cml/app/internal/panel/framecalc"
 	"github.com/labeth/open-sds1000cml/app/internal/panel/wsview"
@@ -128,8 +129,8 @@ func (c *Controller) setDecFine(on bool) error {
 // delay on Auto, a middle moved by more than a quarter nanosecond re-sends
 // the bus to an armed trigger.
 // TRLC-LINKS: REQ-SDS-230
-func (c *Controller) noteSPIEye(s *sv, f *engine.Frame) {
-	if s.decProto != framecalc.ProtoSPI || f == nil || f.SampleS <= 0 || f.SampleS > 2.05e-9 || f.PeakDetect || f.IsEnv {
+func (c *Controller) noteSPIEye(s *sv, f *sample.Frame) {
+	if s.decProto != framecalc.ProtoSPI || f == nil || f.SampleS <= 0 || f.SampleS > 2.05e-9 || f.Content == sample.PeakPairs || f.Flags.Has(sample.Envelope) {
 		return
 	}
 	valid := framecalc.Valid(f)

@@ -19,6 +19,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/labeth/open-dso-core/engine/fanout"
 	"github.com/labeth/open-dso-core/vxi11srv"
 	"github.com/labeth/open-dso-core/webserver"
 	"github.com/labeth/open-sds1000cml/app/internal/analog"
@@ -26,7 +27,6 @@ import (
 	"github.com/labeth/open-sds1000cml/app/internal/bus"
 	"github.com/labeth/open-sds1000cml/app/internal/cal"
 	"github.com/labeth/open-sds1000cml/app/internal/engine"
-	"github.com/labeth/open-sds1000cml/app/internal/frames"
 	"github.com/labeth/open-sds1000cml/app/internal/lcd"
 	"github.com/labeth/open-sds1000cml/app/internal/panel"
 	"github.com/labeth/open-sds1000cml/app/internal/scpi"
@@ -162,7 +162,7 @@ func Run() {
 	go e.Run()
 	// The fan-out is the arena's single consumer; the web UI and the LCD
 	// renderer read its snapshot under the fan-out lock.
-	fo := frames.New()
+	fo := fanout.NewFrames()
 	stopFo := make(chan struct{})
 	go fo.Run(e, stopFo)
 

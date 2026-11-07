@@ -6,6 +6,7 @@ import (
 	"math"
 	"time"
 
+	"github.com/labeth/open-dso-core/sample"
 	"github.com/labeth/open-sds1000cml/app/internal/iface"
 )
 
@@ -155,12 +156,12 @@ func (e *Engine) etsFrame(norm bool) {
 		// Faithful flat fallback (spec 04 §3.7): a REAL single-capture
 		// window — the record centre — never a patchwork of stale bins.
 		off := etsDrainCols/2 - nCols/2
-		copy(f.C1[:nCols], e.etsScratch1[off:off+nCols])
-		copy(f.C2[:nCols], e.etsScratch2[off:off+nCols])
-		f.EdgeX = -1
+		copy(f.Codes8(0)[:nCols], e.etsScratch1[off:off+nCols])
+		copy(f.Codes8(1)[:nCols], e.etsScratch2[off:off+nCols])
+		f.TriggerAt = -1
 	} else {
 		e.etsRebuild(f, nCols)
-		f.EdgeX = float64(nCols) / 2 // the interleave centres the edge at W/2
+		f.TriggerAt = float64(nCols) / 2 // the interleave centres the edge at W/2
 	}
 
 	// The honesty check runs on the TRIGGER-SOURCE channel, mirroring the
@@ -168,38 +169,37 @@ func (e *Engine) etsFrame(norm bool) {
 	// not be discarded.
 	recon := func() []uint8 {
 		if int(e.trigSrc.Load()) == 1 {
-			return f.C2[:nCols]
+			return f.Codes8(1)[:nCols]
 		}
-		return f.C1[:nCols]
+		return f.Codes8(0)[:nCols]
 	}
 	_, _, p := ptp(recon())
-	if f.EdgeX >= 0 && p < etsEdgeMinPtp {
+	if f.TriggerAt >= 0 && p < etsEdgeMinPtp {
 		// Reconstruction went flat (source changed): fall back honestly.
 		off := etsDrainCols/2 - nCols/2
-		copy(f.C1[:nCols], e.etsScratch1[off:off+nCols])
-		copy(f.C2[:nCols], e.etsScratch2[off:off+nCols])
-		f.EdgeX = -1
+		copy(f.Codes8(0)[:nCols], e.etsScratch1[off:off+nCols])
+		copy(f.Codes8(1)[:nCols], e.etsScratch2[off:off+nCols])
+		f.TriggerAt = -1
 		_, _, p = ptp(recon())
 	}
 
-	f.Valid = nCols
-	f.WinCols = nCols
-	f.Interp = true
-	f.IsEnv = false // mandatory clears: ETS is a real-time frame
-	f.Degraded = false
-	f.EnvCols = 0
-	f.Ptp = p
-	f.Trigd = false
-	f.TrigPos = 0
-	f.Coherent = cov > 0
-	f.HaltOK = true
-	f.RollCodes, f.FullRate = false, false
-	f.TdivS = e.band.TdivS
-	f.DisplayedS = e.band.TdivS
+	f.SetLen(nCols)
+	f.WinPoints = nCols
+	f.Flags.Set(sample.Interp, true)
+	f.Flags.Set(sample.Envelope, false) // mandatory clears: ETS is a real-time frame
+	f.Status.Degraded = false
+	setEnvCols(f, 0)
+	f.SourcePtp = p
+	f.Status.Triggered = false
+	f.Status.Coherent = cov > 0
+	f.Status.Done = true
+	f.Content = sample.RawDecimated
+	f.Snapshot.TdivS = e.band.TdivS
+	f.Snapshot.DisplayedS = e.band.TdivS
 	f.SampleS = etColTime * 1e-9
-	f.Norm = norm
+	f.Snapshot.Norm = norm
 
-	e.commitStats(f.Coherent, true, lastPtp, 0, 0, 0)
+	e.commitStats(f.Status.Coherent, true, lastPtp, 0, 0, 0)
 	e.commitPublish(f)
 
 	// Liveness: re-track a changing source by rebuilding the accumulator —
@@ -220,7 +220,7 @@ func (e *Engine) etsFrame(norm bool) {
 // samples; interior gaps are linearly interpolated between filled columns;
 // the ends extend the nearest filled column.
 // TRLC-LINKS: REQ-SDS-019
-func (e *Engine) etsRebuild(f *Frame, nCols int) {
+func (e *Engine) etsRebuild(f *sample.Frame, nCols int) {
 	render := func(sum []int64, out []uint8) {
 		lastFilled := -1
 		firstFilled := -1
@@ -253,8 +253,8 @@ func (e *Engine) etsRebuild(f *Frame, nCols int) {
 			out[c] = out[lastFilled]
 		}
 	}
-	render(e.etsSum1, f.C1)
-	render(e.etsSum2, f.C2)
+	render(e.etsSum1, f.Codes8(0))
+	render(e.etsSum2, f.Codes8(1))
 }
 
 // etsFold adds the sub-acquisition's samples k0..k1, placed relative to

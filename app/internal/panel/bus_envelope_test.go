@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/labeth/open-dso-core/decode"
+	"github.com/labeth/open-dso-core/sample"
 	"github.com/labeth/open-sds1000cml/app/internal/engine"
 	"github.com/labeth/open-sds1000cml/app/internal/panel/framecalc"
 	"github.com/labeth/open-sds1000cml/app/internal/panel/wsview"
@@ -65,11 +66,12 @@ func loadSearchRecords(t *testing.T, path string) flash104 {
 
 // frame is one recorded frame of the fixture as the engine sends it.
 // TRLC-LINKS: REQ-SDS-214
-func (fx flash104) frame(key string, tdiv float64) *engine.Frame {
+func (fx flash104) frame(key string, tdiv float64) *sample.Frame {
 	r := fx[key]
-	f := &engine.Frame{C1: r.C1, C2: r.C2, Valid: len(r.C1), WinCols: len(r.C1), SampleS: r.SampleS, TdivS: tdiv}
+	f := &sample.Frame{WinPoints: len(r.C1), SampleS: r.SampleS, Snapshot: sample.Settings{TdivS: tdiv}, Traces: []sample.Trace{{Codes8: r.C1, Valid: len(r.C1)}, {Ch: 1, Codes8: r.C2, Valid: len(r.C1)}}}
 	if strings.HasPrefix(key, "env") {
-		f.PeakDetect, f.Ordered = true, true
+		f.Content = sample.PeakPairs
+		f.Flags.Set(sample.Ordered, true)
 	}
 	return f
 }
@@ -134,7 +136,7 @@ func searchFlash(t *testing.T, fx flash104, named bool, quiet []uint8) {
 	ctl.decode(idle(), true)
 	ctl.detectSync = true
 	raws := map[float64]int{}
-	ctl.SetFrameSource(func(fn func(*engine.Frame)) {
+	ctl.SetFrameSource(func(fn func(*sample.Frame)) {
 		tdiv := eng.Snapshot().TdivS
 		slow := "100us"
 		if tdiv >= 500e-6 {
@@ -145,7 +147,7 @@ func searchFlash(t *testing.T, fx flash104, named bool, quiet []uint8) {
 			raws[tdiv]++
 			fn(fx.frame("full20us", tdiv))
 		case eng.sampled.Load() && !named:
-			fn(&engine.Frame{C1: quiet, C2: quiet, Valid: len(quiet), WinCols: len(quiet), SampleS: 10 * tdiv / float64(len(quiet)), TdivS: tdiv})
+			fn(&sample.Frame{WinPoints: len(quiet), SampleS: 10 * tdiv / float64(len(quiet)), Snapshot: sample.Settings{TdivS: tdiv}, Traces: []sample.Trace{{Codes8: quiet, Valid: len(quiet)}, {Ch: 1, Codes8: quiet, Valid: len(quiet)}}})
 		case eng.sampled.Load():
 			fn(fx.frame("dec"+slow, tdiv))
 		default:
@@ -239,8 +241,8 @@ func TestBusAutoSaysWhatItDid(t *testing.T) {
 	for i := range quiet {
 		quiet[i] = 128
 	}
-	c3.SetFrameSource(func(fn func(*engine.Frame)) {
-		fn(&engine.Frame{C1: quiet, C2: quiet, Valid: len(quiet), WinCols: len(quiet), SampleS: 2e-9, TdivS: eng.Snapshot().TdivS})
+	c3.SetFrameSource(func(fn func(*sample.Frame)) {
+		fn(&sample.Frame{WinPoints: len(quiet), SampleS: 2e-9, Snapshot: sample.Settings{TdivS: eng.Snapshot().TdivS}, Traces: []sample.Trace{{Codes8: quiet, Valid: len(quiet)}, {Ch: 1, Codes8: quiet, Valid: len(quiet)}}})
 	})
 	c3.mu.Lock()
 	c3.ui.ws = wsview.Bus
@@ -322,10 +324,10 @@ func TestAShortRunFindNeedsTheEnvelope(t *testing.T) {
 	c, _, _ := newC(t)
 	c.detectSync = true
 	flat := make([]uint8, 4096)
-	c.SetFrameSource(func(fn func(*engine.Frame)) {
-		fn(&engine.Frame{C1: flat, C2: flat, Valid: len(flat), WinCols: len(flat), SampleS: 256e-9})
+	c.SetFrameSource(func(fn func(*sample.Frame)) {
+		fn(&sample.Frame{WinPoints: len(flat), SampleS: 256e-9, Traces: []sample.Trace{{Codes8: flat, Valid: len(flat)}, {Ch: 1, Codes8: flat, Valid: len(flat)}}})
 	})
-	all := func(*engine.Frame, bool) bool { return true }
+	all := func(*sample.Frame, bool) bool { return true }
 	i2c := decode.Result{OK: true, Proto: "i2c", SPB: 28, Roles: decode.Roles{ChA: 1, ChB: 0}}
 	short := look{res: i2c, sampleS: 256e-9, found: true, runs: [2]int{2, 7}}
 	if c.weighEnvelope(&short, all) {
@@ -360,7 +362,7 @@ func TestBusSearchSkipsAFrameInFlight(t *testing.T) {
 	ctl.decode(idle(), true)
 	ctl.detectSync = true
 	looks := 0
-	ctl.SetFrameSource(func(fn func(*engine.Frame)) {
+	ctl.SetFrameSource(func(fn func(*sample.Frame)) {
 		looks++
 		tdiv := eng.Snapshot().TdivS
 		switch {
@@ -371,7 +373,7 @@ func TestBusSearchSkipsAFrameInFlight(t *testing.T) {
 		case eng.raw.Load():
 			fn(swd.frame("full50us", tdiv))
 		case eng.sampled.Load():
-			fn(&engine.Frame{C1: quiet, C2: quiet, Valid: len(quiet), WinCols: len(quiet), SampleS: 10 * tdiv / float64(len(quiet)), TdivS: tdiv})
+			fn(&sample.Frame{WinPoints: len(quiet), SampleS: 10 * tdiv / float64(len(quiet)), Snapshot: sample.Settings{TdivS: tdiv}, Traces: []sample.Trace{{Codes8: quiet, Valid: len(quiet)}, {Ch: 1, Codes8: quiet, Valid: len(quiet)}}})
 		default:
 			fn(fx.frame("env100us", tdiv))
 		}
@@ -408,7 +410,7 @@ func TestBusSearchLooksPastAFewDenseSPIBytes(t *testing.T) {
 	ctl := New(eng, fe, -1, engine.SupportedTdivs(), 500e-6, t.Logf)
 	ctl.decode(idle(), true)
 	ctl.detectSync = true
-	ctl.SetFrameSource(func(fn func(*engine.Frame)) {
+	ctl.SetFrameSource(func(fn func(*sample.Frame)) {
 		tdiv := eng.Snapshot().TdivS
 		switch {
 		case eng.raw.Load() && tdiv < 20e-6:
@@ -416,7 +418,7 @@ func TestBusSearchLooksPastAFewDenseSPIBytes(t *testing.T) {
 		case eng.raw.Load():
 			fn(swd.frame("full50us", tdiv))
 		case eng.sampled.Load():
-			fn(&engine.Frame{C1: quiet, C2: quiet, Valid: len(quiet), WinCols: len(quiet), SampleS: 10 * tdiv / float64(len(quiet)), TdivS: tdiv})
+			fn(&sample.Frame{WinPoints: len(quiet), SampleS: 10 * tdiv / float64(len(quiet)), Snapshot: sample.Settings{TdivS: tdiv}, Traces: []sample.Trace{{Codes8: quiet, Valid: len(quiet)}, {Ch: 1, Codes8: quiet, Valid: len(quiet)}}})
 		default: // busy over most of the envelope, as the flash is
 			fn(fx.frame("env100us", tdiv))
 		}

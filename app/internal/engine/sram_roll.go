@@ -10,6 +10,7 @@ import (
 	"math"
 	"time"
 
+	"github.com/labeth/open-dso-core/sample"
 	"github.com/labeth/open-sds1000cml/app/internal/bus"
 	"github.com/labeth/open-sds1000cml/app/internal/sramcapture"
 )
@@ -490,25 +491,31 @@ func (e *Engine) rollStep(r *rollView) {
 func (e *Engine) rollPublish(r *rollView, decimation uint32, filter, readout, stages string) {
 	p, tdiv := r.plan, r.tdiv
 	f := e.arena.Write()
-	c1, c2, q1, q2 := f.C1, f.C2, f.Q1, f.Q2
-	*f = Frame{
-		C1: c1, C2: c2, Valid: p.screen, WinCols: p.screen, SampleS: p.sampleS, CaptureSampleS: p.sampleS,
-		TdivS: tdiv, DisplayedS: tdiv, EdgeX: -1, TrigPos: -1, Coherent: true, HaltOK: true, Interp: false,
-		Decimation: decimation, TriggerKind: "roll", Roll: true, CaptureDepth: p.screen, Filter: filter,
-		Q1: q1[:0], Q2: q2[:0],
-	}
-	copy(f.C1, r.c1)
-	copy(f.C2, r.c2)
-	f.Q1 = append(f.Q1, r.q1...)
-	f.Q2 = append(f.Q2, r.q2...)
-	f.Held = append([]bool(nil), r.held...)
+	q1, q2 := f.Precision(0), f.Precision(1)
+	resetFrame(f)
+	f.SetLen(p.screen)
+	f.WinPoints, f.SampleS, f.CaptureS = p.screen, p.sampleS, p.sampleS
+	f.Snapshot = sample.Settings{TdivS: tdiv, DisplayedS: tdiv}
+	f.TriggerAt = -1
+	f.Status = sample.Status{Coherent: true, Done: true}
+	f.AcqDecim = int(decimation)
+	f.TrigKind, f.Flags = sample.Untriggered, sample.Roll
+	f.Depth = p.screen
+	f.Cond.Filter = filter
+	f.Traces[0].Precision, f.Traces[1].Precision = q1[:0], q2[:0]
+	copy(f.Codes8(0), r.c1)
+	copy(f.Codes8(1), r.c2)
+	f.Traces[0].Precision = append(f.Precision(0), r.q1...)
+	f.Traces[1].Precision = append(f.Precision(1), r.q2...)
+	f.Traces[0].Held = append([]bool(nil), r.held...)
+	f.Traces[1].Held = f.Traces[0].Held
 	e.noteChannelMeans(f)
 	e.seq++
 	f.Seq = e.seq
 	e.arena.Publish()
 	now := e.clk.Now()
 	e.mu.Lock()
-	e.pubIdent = frameIdent{f.TdivS, f.SampleS, f.PeakDetect}
+	e.pubIdent = frameIdent{f.Snapshot.TdivS, f.SampleS, f.Content == sample.PeakPairs}
 	e.stats.Published++
 	e.stats.Coherent++
 	e.lastPublish = now
@@ -816,13 +823,14 @@ func (e *Engine) rollStreamStop(r *rollView) {
 // longest run of captured samples - its held stretches are no signal (a 1 kHz
 // square measured across them read 769 Hz) - else the whole record.
 // TRLC-LINKS: REQ-SDS-010, REQ-SDS-021
-func (f *Frame) MeasureRange() (int, int) {
-	if len(f.Held) != f.Valid {
-		return 0, f.Valid
+func MeasureRange(f *sample.Frame) (int, int) {
+	held, n := f.Held(0), f.Len()
+	if len(held) != n {
+		return 0, n
 	}
 	best, bestAt, at := 0, 0, -1
-	for i := 0; i <= f.Valid; i++ {
-		if i < f.Valid && !f.Held[i] {
+	for i := 0; i <= n; i++ {
+		if i < n && !held[i] {
 			if at < 0 {
 				at = i
 			}

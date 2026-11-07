@@ -6,6 +6,7 @@ import (
 	"math/rand"
 	"testing"
 
+	"github.com/labeth/open-dso-core/sample"
 	"github.com/labeth/open-sds1000cml/app/internal/engine"
 )
 
@@ -19,46 +20,52 @@ func TestRenderFuzzNoPanic(t *testing.T) {
 	sf := NewMemSurface()
 	persist := NewMemSurface()
 
-	mkFrame := func() *engine.Frame {
+	mkFrame := func() *sample.Frame {
 		switch rng.Intn(8) {
 		case 0:
 			return nil
 		case 1:
-			return &engine.Frame{} // all zero
+			return &sample.Frame{Traces: []sample.Trace{{}, {Ch: 1}}} // all zero
 		case 2: // envelope metadata lies
-			return &engine.Frame{
-				C1: make([]uint8, 100), C2: make([]uint8, 100), Valid: 100,
-				IsEnv: true, EnvCols: 800, // env arrays nil!
-				WinCols: 2048, EdgeX: 50,
+			return &sample.Frame{
+				WinPoints: 2048,
+				TriggerAt: 50,
+				Flags:     sample.Envelope,
+				Traces:    []sample.Trace{{Codes8: make([]uint8, 100), Valid: 100}, {Ch: 1, Codes8: make([]uint8, 100), Valid: 100}},
 			}
 		case 3: // short C2
-			return &engine.Frame{
-				C1: make([]uint8, 2048), C2: make([]uint8, 3), Valid: 2048,
-				WinCols: 2048, EdgeX: 1024, SampleS: 800e-9,
+			return &sample.Frame{
+				WinPoints: 2048,
+				TriggerAt: 1024,
+				SampleS:   800e-9,
+				Traces:    []sample.Trace{{Codes8: make([]uint8, 2048), Valid: 2048}, {Ch: 1, Codes8: make([]uint8, 3), Valid: 2048}},
 			}
 		case 4: // valid > len
-			return &engine.Frame{
-				C1: make([]uint8, 64), C2: make([]uint8, 64), Valid: 5000,
-				WinCols: 2048, EdgeX: -1,
+			return &sample.Frame{
+				WinPoints: 2048,
+				TriggerAt: -1,
+				Traces:    []sample.Trace{{Codes8: make([]uint8, 64), Valid: 5000}, {Ch: 1, Codes8: make([]uint8, 64), Valid: 5000}},
 			}
 		default:
 			n := 1 + rng.Intn(6000)
-			f := &engine.Frame{
-				C1: make([]uint8, n), C2: make([]uint8, n), Valid: n,
-				WinCols: 1 + rng.Intn(4096), EdgeX: float64(rng.Intn(2*n)) - float64(n)/2,
+			f := &sample.Frame{
+				Traces:    []sample.Trace{{Codes8: make([]uint8, n), Valid: n}, {Ch: 1, Codes8: make([]uint8, n), Valid: n}},
+				WinPoints: 1 + rng.Intn(4096), TriggerAt: float64(rng.Intn(2*n)) - float64(n)/2,
 				SampleS: []float64{0, 800e-9, 2e-9}[rng.Intn(3)],
-				IsEnv:   rng.Intn(6) == 0, EnvCols: rng.Intn(900),
-				Ptp: rng.Intn(255), Trigd: rng.Intn(2) == 0, Interp: rng.Intn(2) == 0,
 			}
-			if f.IsEnv {
-				f.EnvMin = make([]uint8, f.EnvCols)
-				f.EnvMax = make([]uint8, f.EnvCols)
-				f.EnvMin2 = f.EnvMin
-				f.EnvMax2 = f.EnvMax
+			env, cols := rng.Intn(6) == 0, rng.Intn(900)
+			f.SourcePtp, f.Status.Triggered = rng.Intn(255), rng.Intn(2) == 0
+			f.Flags.Set(sample.Envelope, env)
+			f.Flags.Set(sample.Interp, rng.Intn(2) == 0)
+			if env {
+				f.Traces[0].Min8 = make([]uint8, cols)
+				f.Traces[0].Max8 = make([]uint8, cols)
+				f.Traces[1].Min8 = f.Min8(0)
+				f.Traces[1].Max8 = f.Max8(0)
 			}
-			for i := range f.C1 {
-				f.C1[i] = uint8(rng.Intn(256))
-				f.C2[i] = uint8(rng.Intn(256))
+			for i := range f.Codes8(0) {
+				f.Codes8(0)[i] = uint8(rng.Intn(256))
+				f.Codes8(1)[i] = uint8(rng.Intn(256))
 			}
 			return f
 		}
@@ -106,8 +113,8 @@ func TestRenderFuzzNoPanic(t *testing.T) {
 			RefShow:     [2]bool{rng.Intn(2) == 0, false},
 			AutosetBusy: rng.Intn(6) == 0, AutosetMsg: "sweep",
 		}
-		if rng.Intn(3) == 0 && f != nil && len(f.C1) > 0 {
-			hud.RefC1[0] = f.C1 // ref same as live
+		if rng.Intn(3) == 0 && f != nil && len(f.Codes8(0)) > 0 {
+			hud.RefC1[0] = f.Codes8(0) // ref same as live
 			hud.RefShow[0] = true
 		}
 		// Fill the super-res means with real values + occasional -1 gaps so the

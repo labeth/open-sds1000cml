@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/labeth/open-sds1000cml/app/internal/engine"
+	"github.com/labeth/open-dso-core/sample"
 	"github.com/labeth/open-sds1000cml/app/internal/panel/wsview"
 	"github.com/labeth/open-sds1000cml/app/internal/settings"
 )
@@ -443,7 +443,7 @@ func TestLampsMeanFunctionInUse(t *testing.T) {
 	check("cursors on", ledCursors, true)
 	c.SetCursorsOn(false)
 	check("cursors off", ledCursors, false)
-	c.SetFrameSource(func(fn func(*engine.Frame)) { fn(smallFrame()) })
+	c.SetFrameSource(func(fn func(*sample.Frame)) { fn(smallFrame()) })
 	if res := c.SheetAction("cmp.store_a", ""); !res.OK {
 		t.Fatalf("store REF A: %s", res.Error)
 	}

@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/labeth/open-dso-core/measure"
+	"github.com/labeth/open-dso-core/sample"
 	"github.com/labeth/open-sds1000cml/app/internal/analog"
 	"github.com/labeth/open-sds1000cml/app/internal/engine"
 	"github.com/labeth/open-sds1000cml/app/internal/panel/wsview"
@@ -56,13 +57,13 @@ func newSimBench(t *testing.T, sig func(t, tdiv float64, ch int) float64) *simBe
 	c := New(eng, fe, -1, engine.SupportedTdivs(), 500e-6, t.Logf)
 	c.decode(idle(), true)
 	b := &simBench{c: c, eng: eng, fe: fe}
-	c.SetFrameSource(func(fn func(*engine.Frame)) { fn(b.capture(sig)) })
+	c.SetFrameSource(func(fn func(*sample.Frame)) { fn(b.capture(sig)) })
 	return b
 }
 
 // capture is one simulated frame at the settings in use.
 // TRLC-LINKS: REQ-SDS-224
-func (b *simBench) capture(sig func(t, tdiv float64, ch int) float64) *engine.Frame {
+func (b *simBench) capture(sig func(t, tdiv float64, ch int) float64) *sample.Frame {
 	st := b.eng.Snapshot()
 	band, _ := engine.PlanTdiv(st.TdivS)
 	dt := band.CaptureIntervalNs() * 1e-9
@@ -70,7 +71,7 @@ func (b *simBench) capture(sig func(t, tdiv float64, ch int) float64) *engine.Fr
 	idx, _ := b.fe.Snapshot()
 	b.mu.Lock()
 	b.seq++
-	f := &engine.Frame{Valid: n, SampleS: dt, TdivS: st.TdivS, Seq: b.seq, EdgeX: -1}
+	f := &sample.Frame{SampleS: dt, Seq: b.seq, TriggerAt: -1, Snapshot: sample.Settings{TdivS: st.TdivS}, Traces: []sample.Trace{{Valid: n}, {Ch: 1, Valid: n}}}
 	b.mu.Unlock()
 	for ch, offCode := range [2]uint16{st.OffC1, st.OffC2} {
 		vpc := analog.Vdiv(idx[ch]) / 25
@@ -81,9 +82,9 @@ func (b *simBench) capture(sig func(t, tdiv float64, ch int) float64) *engine.Fr
 			codes[i] = uint8(min(max(math.Round(128+(v+offV)/vpc), 0), 255))
 		}
 		if ch == 0 {
-			f.C1 = codes
+			f.Traces[0].Codes8 = codes
 		} else {
-			f.C2 = codes
+			f.Traces[1].Codes8 = codes
 		}
 	}
 	return f

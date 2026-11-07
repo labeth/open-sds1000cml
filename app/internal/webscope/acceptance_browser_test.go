@@ -9,6 +9,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/labeth/open-dso-core/sample"
 	"github.com/labeth/open-dso-core/testenv"
 	"github.com/labeth/open-sds1000cml/app/internal/engine"
 )
@@ -28,10 +29,14 @@ func TestAcceptanceBrowser(t *testing.T) {
 		c1[i] = uint8(128 + 40*math.Sin(2*math.Pi*8*float64(i)/N))
 		c2[i] = uint8(128 + 30*math.Sin(2*math.Pi*13*float64(i)/N))
 	}
-	gen := func() *engine.Frame {
-		return &engine.Frame{
-			C1: c1, C2: c2, Seq: 7, Valid: N, WinCols: N, EdgeX: N / 2,
-			TdivS: 500e-6, DisplayedS: 500e-6, SampleS: 800e-9,
+	gen := func() *sample.Frame {
+		return &sample.Frame{
+			Seq:       7,
+			WinPoints: N,
+			TriggerAt: N / 2,
+			SampleS:   800e-9,
+			Snapshot:  sample.Settings{TdivS: 500e-6, DisplayedS: 500e-6},
+			Traces:    []sample.Trace{{Codes8: c1, Valid: N}, {Ch: 1, Codes8: c2, Valid: N}},
 		}
 	}
 	// TrigCode 31434 ≈ 0 V (the level marker lands mid-screen so it's draggable).

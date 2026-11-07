@@ -10,6 +10,7 @@ import (
 
 	"github.com/labeth/open-dso-core/decode"
 	"github.com/labeth/open-dso-core/measure"
+	"github.com/labeth/open-dso-core/sample"
 	"github.com/labeth/open-sds1000cml/app/internal/analog"
 	"github.com/labeth/open-sds1000cml/app/internal/engine"
 	"github.com/labeth/open-sds1000cml/app/internal/panel/framecalc"
@@ -84,7 +85,7 @@ type anaState struct {
 	statN    int
 	statAt   time.Time    // the last reading counted
 	statFed  frameKey     // the frame counted last
-	statEdge uint64       // the edge-window read counted last (Frame.EdgeRead)
+	statEdge uint64       // the edge-window read counted last (engine.EdgeRead)
 	allVals  [2][]float64 // MEASURE all values: per channel, per parameter
 	allOK    [2]bool
 	allWin   [2]map[int]bool // the parameters taken from edge windows (carried between reads)
@@ -124,7 +125,7 @@ type frameKey struct{ seq, content uint64 }
 
 // keyOf is f's key.
 // TRLC-LINKS: REQ-SDS-214, REQ-SDS-215, REQ-SDS-216, REQ-SDS-217, REQ-SDS-218
-func keyOf(f *engine.Frame) frameKey { return frameKey{f.Seq, f.Content} }
+func keyOf(f *sample.Frame) frameKey { return frameKey{f.Seq, f.ContentID} }
 
 // seen reports whether k is the key last recorded in *last, recording it.
 // TRLC-LINKS: REQ-SDS-214, REQ-SDS-215, REQ-SDS-216, REQ-SDS-217, REQ-SDS-218
@@ -161,8 +162,8 @@ func (c *Controller) need() needKey {
 // cheap when nothing needs it. It must not read frames through the frame
 // source (the caller holds the fan-out lock).
 // TRLC-LINKS: REQ-SDS-214, REQ-SDS-215, REQ-SDS-216, REQ-SDS-217, REQ-SDS-218
-func (c *Controller) OnFrame(f *engine.Frame) {
-	if f == nil || len(f.C1) == 0 {
+func (c *Controller) OnFrame(f *sample.Frame) {
+	if f == nil || len(f.Codes8(0)) == 0 {
 		return
 	}
 	k, need := keyOf(f), c.need()
@@ -182,11 +183,11 @@ func (c *Controller) OnFrame(f *engine.Frame) {
 	}
 	a.key, a.need = k, need
 	a.g = geom{
-		valid: framecalc.Valid(f), winCols: f.WinCols, edgeX: f.EdgeX, sampleS: f.SampleS, tdivS: f.TdivS,
-		peak: f.PeakDetect, captureS: f.CaptureSampleS,
+		valid: framecalc.Valid(f), winCols: f.WinPoints, edgeX: f.TriggerAt, sampleS: f.SampleS, tdivS: f.Snapshot.TdivS,
+		peak: f.Content == sample.PeakPairs, captureS: f.CaptureS,
 	}
 	if g := a.g.valid; g > 0 { // the cursors' zoomed screen: its pan is a fraction of the record
-		c.curRecords.Store(math.Float64bits(float64(g) / float64(max(min(f.WinCols, g), 1))))
+		c.curRecords.Store(math.Float64bits(float64(g) / float64(max(min(f.WinPoints, g), 1))))
 	}
 	switch s.ui.ws {
 	case wsview.Bus:
@@ -212,7 +213,7 @@ func (c *Controller) OnFrame(f *engine.Frame) {
 	// whether the trigger source repeats, for COMPARE and the web's COMPARE
 	// alike (400 columns a frame: cheap enough to keep up everywhere)
 	c.stabFrame(a, s, f)
-	if measTabOpen(s) && s.ui.ws != wsview.Measure && !f.IsEnv {
+	if measTabOpen(s) && s.ui.ws != wsview.Measure && !f.Flags.Has(sample.Envelope) {
 		measVals(a, s, f, s.chDisp) // the MEAS tab's live values
 	}
 	if a.specLease && (s.ui.ws != wsview.Spectrum || s.viewMode != viewFFT && s.viewMode != viewSpectrogram) {
@@ -299,9 +300,9 @@ func voltsPerCode(s *sv, ch int) float64 {
 // measureCh measures one channel of the frame as the LCD's readouts do:
 // calibrated volts at the tip, the display coupling, the invert.
 // TRLC-LINKS: REQ-SDS-217
-func measureCh(f *engine.Frame, s *sv, ch int) *measure.Result {
+func measureCh(f *sample.Frame, s *sv, ch int) *measure.Result {
 	valid := framecalc.Valid(f)
-	if ch == 1 && len(f.C2) < valid {
+	if ch == 1 && len(f.Codes8(1)) < valid {
 		return nil
 	}
 	sig := framecalc.Channel(f, ch, valid)
@@ -314,9 +315,9 @@ func measureCh(f *engine.Frame, s *sv, ch int) *measure.Result {
 		sig = analog.CoupleDisplay(sig, cpl)
 		off = 0
 	}
-	q := f.Q1
+	q := f.Precision(0)
 	if ch == 1 {
-		q = f.Q2
+		q = f.Precision(1)
 	}
 	if len(q) < valid {
 		q = nil
@@ -324,7 +325,7 @@ func measureCh(f *engine.Frame, s *sv, ch int) *measure.Result {
 		q = q[:valid]
 	}
 	vpc := voltsPerCode(s, ch)
-	if a, b := f.MeasureRange(); b-a < len(sig) { // a roll view's captured stretch
+	if a, b := engine.MeasureRange(f); b-a < len(sig) { // a roll view's captured stretch
 		sig = sig[a:b]
 		if len(q) >= b {
 			q = q[a:b]
@@ -332,9 +333,9 @@ func measureCh(f *engine.Frame, s *sv, ch int) *measure.Result {
 			q = nil
 		}
 	}
-	m := measure.ComputeAcquisition(sig, q, vpc, off*s.probe[ch], f.SampleS, cpl, f.FilterGuard)
-	if f.PeakDetect && m != nil {
-		m = m.WithEnvelopeTiming(sig, vpc, off*s.probe[ch], f.SampleS).WithEdgeDetail(vpc, off*s.probe[ch], f.EdgeWindows(ch)...)
+	m := measure.ComputeAcquisition(sig, q, vpc, off*s.probe[ch], f.SampleS, cpl, f.Cond.Guard)
+	if f.Content == sample.PeakPairs && m != nil {
+		m = m.WithEnvelopeTiming(sig, vpc, off*s.probe[ch], f.SampleS).WithEdgeDetail(vpc, off*s.probe[ch], engine.EdgeWindows(f, ch)...)
 	}
 	// After the timing: the invert swaps rise and fall and complements the
 	// duty, which the envelope's timing would otherwise put back.

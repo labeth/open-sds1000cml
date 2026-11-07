@@ -6,18 +6,22 @@ import (
 	"math"
 	"testing"
 
+	"github.com/labeth/open-dso-core/sample"
 	"github.com/labeth/open-sds1000cml/app/internal/engine"
 )
 
 // TRLC-LINKS: REQ-SDS-163
 func TestFrameEndpoint(t *testing.T) {
-	f := &engine.Frame{
-		C1: make([]uint8, 2048), C2: make([]uint8, 2048),
-		Seq: 7, Valid: 2048, WinCols: 2048, EdgeX: 1024, TdivS: 500e-6,
-		DisplayedS: 500e-6, SampleS: 800e-9,
+	f := &sample.Frame{
+		Seq:       7,
+		WinPoints: 2048,
+		TriggerAt: 1024,
+		SampleS:   800e-9,
+		Snapshot:  sample.Settings{TdivS: 500e-6, DisplayedS: 500e-6},
+		Traces:    []sample.Trace{{Codes8: make([]uint8, 2048), Valid: 2048}, {Ch: 1, Codes8: make([]uint8, 2048), Valid: 2048}},
 	}
-	for i := range f.C1 {
-		f.C1[i] = uint8(i % 256)
+	for i := range f.Codes8(0) {
+		f.Codes8(0)[i] = uint8(i % 256)
 	}
 	fs := &fakeScope{frame: f, fresh: true}
 	s := newServer(fs, nil, nil, nil)
@@ -59,15 +63,18 @@ func TestDeepFrameServesRawRecord(t *testing.T) {
 	// the raw-fed stacker share one coordinate system (the raw record). No blank
 	// -1 margins: every column is a real captured sample.
 	const depth, winCols = 6144, 2048
-	f := &engine.Frame{
-		C1: make([]uint8, depth), C2: make([]uint8, depth),
-		Seq: 3, Valid: depth, WinCols: winCols, EdgeX: 2000,
-		TdivS: 500e-6, DisplayedS: 500e-6, SampleS: 500e-6 * 10 / winCols,
+	f := &sample.Frame{
+		Seq:       3,
+		WinPoints: winCols,
+		TriggerAt: 2000,
+		SampleS:   500e-6 * 10 / winCols,
+		Snapshot:  sample.Settings{TdivS: 500e-6, DisplayedS: 500e-6},
+		Traces:    []sample.Trace{{Codes8: make([]uint8, depth), Valid: depth}, {Ch: 1, Codes8: make([]uint8, depth), Valid: depth}},
 	}
-	for i := range f.C1 {
-		f.C1[i] = uint8(i % 256) // ramp so alignment is checkable
+	for i := range f.Codes8(0) {
+		f.Codes8(0)[i] = uint8(i % 256) // ramp so alignment is checkable
 	}
-	fs := &fakeScope{frameGen: func() *engine.Frame { return f }, stats: engine.Stats{Running: true, TrigPosFrac: 0.5}}
+	fs := &fakeScope{frameGen: func() *sample.Frame { return f }, stats: engine.Stats{Running: true, TrigPosFrac: 0.5}}
 	s := newServer(fs, nil, nil, nil)
 
 	rep := refReply(s, screenCols, true, 0)
@@ -104,10 +111,14 @@ func TestDtSTrueCapturePitch(t *testing.T) {
 
 	// Windowed native-fast, class 0x20 shape: 200 ns/div, 2000-sample window
 	// at the real 2 ns pitch, DisplayedS carrying the 1 ns nominal.
-	f := &engine.Frame{
-		C1: make([]uint8, 4000), C2: make([]uint8, 4000),
-		Seq: 1, Valid: 4000, WinCols: 2000, EdgeX: -1, Interp: true,
-		TdivS: 200e-9, DisplayedS: 200e-9, SampleS: 2e-9,
+	f := &sample.Frame{
+		Seq:       1,
+		WinPoints: 2000,
+		TriggerAt: -1,
+		SampleS:   2e-9,
+		Flags:     sample.Interp,
+		Snapshot:  sample.Settings{TdivS: 200e-9, DisplayedS: 200e-9},
+		Traces:    []sample.Trace{{Codes8: make([]uint8, 4000), Valid: 4000}, {Ch: 1, Codes8: make([]uint8, 4000), Valid: 4000}},
 	}
 	s := newServer(&fakeScope{frame: f, fresh: true}, nil, nil, nil)
 	rep := refReply(s, 800, false, 0)
@@ -126,10 +137,14 @@ func TestDtSTrueCapturePitch(t *testing.T) {
 	// ETS-shaped frame (equivalent-time publish: Valid == WinCols == nCols,
 	// SampleS = 10·tdiv/nCols is the reconstructed column pitch): dt_s must
 	// agree with col_span_s/cols — ETS spans are honest, no 2× correction.
-	fe := &engine.Frame{
-		C1: make([]uint8, 2500), C2: make([]uint8, 2500),
-		Seq: 9, Valid: 2500, WinCols: 2500, EdgeX: 1250, Interp: true,
-		TdivS: 50e-9, DisplayedS: 50e-9, SampleS: 10 * 50e-9 / 2500,
+	fe := &sample.Frame{
+		Seq:       9,
+		WinPoints: 2500,
+		TriggerAt: 1250,
+		SampleS:   10 * 50e-9 / 2500,
+		Flags:     sample.Interp,
+		Snapshot:  sample.Settings{TdivS: 50e-9, DisplayedS: 50e-9},
+		Traces:    []sample.Trace{{Codes8: make([]uint8, 2500), Valid: 2500}, {Ch: 1, Codes8: make([]uint8, 2500), Valid: 2500}},
 	}
 	se := newServer(&fakeScope{frame: fe, fresh: true}, nil, nil, nil)
 	repe := refReply(se, 800, false, 0)
@@ -139,10 +154,13 @@ func TestDtSTrueCapturePitch(t *testing.T) {
 
 	// Windowed with a short record (Valid < WinCols): the window clamps to
 	// Valid samples and dt_s must clamp with it.
-	f2 := &engine.Frame{
-		C1: make([]uint8, 1000), C2: make([]uint8, 1000),
-		Seq: 2, Valid: 1000, WinCols: 3000, EdgeX: -1,
-		TdivS: 500e-6, DisplayedS: 500e-6, SampleS: 800e-9,
+	f2 := &sample.Frame{
+		Seq:       2,
+		WinPoints: 3000,
+		TriggerAt: -1,
+		SampleS:   800e-9,
+		Snapshot:  sample.Settings{TdivS: 500e-6, DisplayedS: 500e-6},
+		Traces:    []sample.Trace{{Codes8: make([]uint8, 1000), Valid: 1000}, {Ch: 1, Codes8: make([]uint8, 1000), Valid: 1000}},
 	}
 	s2 := newServer(&fakeScope{frame: f2, fresh: true}, nil, nil, nil)
 	if rep2, want := refReply(s2, 800, false, 0), 1000*800e-9/800; math.Abs(rep2.DtS-want) > 1e-18 {
@@ -151,10 +169,13 @@ func TestDtSTrueCapturePitch(t *testing.T) {
 
 	// Deep serve: every point is one hardware sample, dt_s == SampleS and
 	// agrees exactly with col_span_s/cols.
-	f3 := &engine.Frame{
-		C1: make([]uint8, 6144), C2: make([]uint8, 6144),
-		Seq: 3, Valid: 6144, WinCols: 2048, EdgeX: 100,
-		TdivS: 500e-6, DisplayedS: 500e-6, SampleS: 2.4414e-6,
+	f3 := &sample.Frame{
+		Seq:       3,
+		WinPoints: 2048,
+		TriggerAt: 100,
+		SampleS:   2.4414e-6,
+		Snapshot:  sample.Settings{TdivS: 500e-6, DisplayedS: 500e-6},
+		Traces:    []sample.Trace{{Codes8: make([]uint8, 6144), Valid: 6144}, {Ch: 1, Codes8: make([]uint8, 6144), Valid: 6144}},
 	}
 	s3 := newServer(&fakeScope{frame: f3, fresh: true}, nil, nil, nil)
 	rep3 := refReply(s3, 800, true, 0)
@@ -167,11 +188,11 @@ func TestDtSTrueCapturePitch(t *testing.T) {
 
 	// Envelope frames aggregate many acquisitions — no per-point time, dt_s
 	// stays 0 (omitted on the wire).
-	f4 := &engine.Frame{
-		Seq: 4, IsEnv: true, EnvCols: 800, Valid: 800,
-		EnvMin: make([]uint8, 800), EnvMax: make([]uint8, 800),
-		EnvMin2: make([]uint8, 800), EnvMax2: make([]uint8, 800),
-		TdivS: 10e-3, DisplayedS: 10e-3,
+	f4 := &sample.Frame{
+		Seq:      4,
+		Flags:    sample.Envelope,
+		Snapshot: sample.Settings{TdivS: 10e-3, DisplayedS: 10e-3},
+		Traces:   []sample.Trace{{Valid: 800, Min8: make([]uint8, 800)[:800], Max8: make([]uint8, 800)[:800]}, {Ch: 1, Valid: 800, Min8: make([]uint8, 800)[:800], Max8: make([]uint8, 800)[:800]}},
 	}
 	s4 := newServer(&fakeScope{frame: f4, fresh: true}, nil, nil, nil)
 	if rep4 := refReply(s4, 800, false, 0); !rep4.IsEnv || rep4.DtS != 0 {

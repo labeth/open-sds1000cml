@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/labeth/open-dso-core/sample"
 	"github.com/labeth/open-sds1000cml/app/internal/engine"
 	"github.com/labeth/open-sds1000cml/app/internal/panel/framecalc"
 	"github.com/labeth/open-sds1000cml/app/internal/settings"
@@ -35,18 +36,24 @@ func (f *twoLineFrame) seg(a, b bool, d float64) {
 }
 
 // TRLC-LINKS: REQ-SDS-241
-func (f *twoLineFrame) frame() *engine.Frame {
+func (f *twoLineFrame) frame() *sample.Frame {
 	n := len(f.c1)
-	return &engine.Frame{
-		C1: f.c1, C2: f.c2, Valid: n, WinCols: n, EdgeX: float64(n) / 2, Ptp: 150,
-		TdivS: float64(n) * f.sampleS / 10, SampleS: f.sampleS, Trigd: true, FullRate: true,
+	return &sample.Frame{
+		WinPoints: n,
+		TriggerAt: float64(n) / 2,
+		SourcePtp: 150,
+		SampleS:   f.sampleS,
+		Content:   sample.RawFullRate,
+		Snapshot:  sample.Settings{TdivS: float64(n) * f.sampleS / 10},
+		Status:    sample.Status{Triggered: true},
+		Traces:    []sample.Trace{{Codes8: f.c1, Valid: n}, {Ch: 1, Codes8: f.c2, Valid: n}},
 	}
 }
 
 // spiFlashFrame is an SPI flash session (mode 0, MSB first, 1 MHz) on C1
 // (SCLK) and C2 (MOSI), its transactions 20 us apart, repeated over 1 ms.
 // TRLC-LINKS: REQ-SDS-242, REQ-SDS-247
-func spiFlashFrame() *engine.Frame {
+func spiFlashFrame() *sample.Frame {
 	f := &twoLineFrame{c1: make([]uint8, 50000), c2: make([]uint8, 50000), sampleS: 20e-9}
 	txns := [][]byte{
 		{0x9f, 0, 0, 0},
@@ -78,7 +85,7 @@ func spiFlashFrame() *engine.Frame {
 // kHz: a page write, then random reads (the word address written, a
 // repeated START, the data read), repeated over 20 ms.
 // TRLC-LINKS: REQ-SDS-243, REQ-SDS-247
-func i2cEEPROMFrame() *engine.Frame {
+func i2cEEPROMFrame() *sample.Frame {
 	f := &twoLineFrame{c1: make([]uint8, 40000), c2: make([]uint8, 40000), sampleS: 0.5e-6}
 	const bt = 10e-6
 	sda := true
@@ -327,7 +334,7 @@ func TestMatchFromLayer(t *testing.T) {
 // sbusLineFrame is an S.BUS receiver's line on C1 (100 kBd 8E2, idling
 // low), a frame every 7 ms over 30 ms, C2 idle.
 // TRLC-LINKS: REQ-SDS-244, REQ-SDS-247
-func sbusLineFrame() *engine.Frame {
+func sbusLineFrame() *sample.Frame {
 	f := &twoLineFrame{c1: make([]uint8, 30000), c2: make([]uint8, 30000), sampleS: 1e-6}
 	const bt = 10e-6
 	bit := func(b int) { f.seg(b == 0, false, bt) } // inverted: a mark is low

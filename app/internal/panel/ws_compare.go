@@ -11,6 +11,7 @@ import (
 
 	"github.com/labeth/open-dso-core/analysis"
 	"github.com/labeth/open-dso-core/dsp"
+	"github.com/labeth/open-dso-core/sample"
 	"github.com/labeth/open-sds1000cml/app/internal/analog"
 	"github.com/labeth/open-sds1000cml/app/internal/engine"
 	"github.com/labeth/open-sds1000cml/app/internal/panel/framecalc"
@@ -57,12 +58,12 @@ const stabCols = 400
 // few-nanosecond ringing after an edge, caught at another depth or in the
 // next column by another capture, widens the band and moves no midpoint out.
 // TRLC-LINKS: REQ-SDS-218
-func screenExtremes(f *engine.Frame, s *sv, ch, cols int) (lows, highs []float64) {
+func screenExtremes(f *sample.Frame, s *sv, ch, cols int) (lows, highs []float64) {
 	valid := framecalc.Valid(f)
-	if ch == 1 && len(f.C2) < valid {
+	if ch == 1 && len(f.Codes8(1)) < valid {
 		return nil, nil
 	}
-	g := geom{valid: valid, winCols: f.WinCols, edgeX: f.EdgeX, sampleS: f.SampleS}
+	g := geom{valid: valid, winCols: f.WinPoints, edgeX: f.TriggerAt, sampleS: f.SampleS}
 	left, win := windowOf(g, s)
 	sig := framecalc.Channel(f, ch, valid)
 	if s.cpl[ch] != analog.CplDC {
@@ -113,12 +114,12 @@ func floorInt(v float64) int {
 // 0 apart from it, and the web page's difference readout, which samples the
 // live record at the reference's columns, reads what the LCD reads.
 // TRLC-LINKS: REQ-SDS-218, REQ-SDS-227
-func screenPoints(f *engine.Frame, s *sv, ch int) []float64 {
+func screenPoints(f *sample.Frame, s *sv, ch int) []float64 {
 	valid := framecalc.Valid(f)
-	if ch == 1 && len(f.C2) < valid {
+	if ch == 1 && len(f.Codes8(1)) < valid {
 		return nil
 	}
-	g := geom{valid: valid, winCols: f.WinCols, edgeX: f.EdgeX, sampleS: f.SampleS}
+	g := geom{valid: valid, winCols: f.WinPoints, edgeX: f.TriggerAt, sampleS: f.SampleS}
 	left, win := windowOf(g, s)
 	sig := framecalc.Channel(f, ch, valid)
 	if s.cpl[ch] != analog.CplDC {
@@ -130,7 +131,7 @@ func screenPoints(f *engine.Frame, s *sv, ch int) []float64 {
 		pos := min(max(left+float64(x)*float64(win)/RefCols, 0), float64(valid-1))
 		i := int(pos)
 		v := float64(sig[i])
-		if f.Interp && i+1 < valid {
+		if f.Flags.Has(sample.Interp) && i+1 < valid {
 			v += (float64(sig[i+1]) - v) * (pos - float64(i))
 		}
 		out[x] = (v - 128) * z / 25
@@ -163,9 +164,9 @@ func stabKey(s *sv) stabK {
 
 // stabFrame tests the trigger source's capture against the previous one.
 // TRLC-LINKS: REQ-SDS-218
-func (c *Controller) stabFrame(a *anaState, s *sv, f *engine.Frame) {
+func (c *Controller) stabFrame(a *anaState, s *sv, f *sample.Frame) {
 	src := s.st.TrigSource & 1
-	if s.st.AcqMode == engine.AcqAverage || !s.chDisp[src] || f.IsEnv {
+	if s.st.AcqMode == engine.AcqAverage || !s.chDisp[src] || f.Flags.Has(sample.Envelope) {
 		a.stabLows, a.stabHighs = nil, nil
 		return
 	}
@@ -185,7 +186,7 @@ func (c *Controller) stabFrame(a *anaState, s *sv, f *engine.Frame) {
 		return
 	}
 	if a.stabLows != nil {
-		win := max(f.WinCols, 1)
+		win := max(f.WinPoints, 1)
 		slack := max(1, int(math.Round(6*float64(stabCols)/float64(win))))
 		ok := analysis.RepeatsBand(a.stabLows, a.stabHighs, lows, highs, 0.25, slack)
 		a.stabRes = append(a.stabRes, ok)
@@ -214,7 +215,7 @@ func stabVerdict(a *anaState) (nOK, n int, stable, ok bool) {
 
 // refDiffFrame compares each stored reference with the live trace.
 // TRLC-LINKS: REQ-SDS-218
-func (c *Controller) refDiffFrame(a *anaState, s *sv, f *engine.Frame) {
+func (c *Controller) refDiffFrame(a *anaState, s *sv, f *sample.Frame) {
 	src := s.st.TrigSource & 1
 	c.mu.Lock()
 	refs := c.refs
@@ -227,7 +228,7 @@ func (c *Controller) refDiffFrame(a *anaState, s *sv, f *engine.Frame) {
 			d.why = fmt.Sprintf("C%d is off", src+1)
 		case r.tdiv > 0 && math.Abs(r.tdiv-s.st.TdivS) > r.tdiv*1e-6:
 			d.why = "stored at " + si(r.tdiv, "s") + "/div"
-		case f.IsEnv:
+		case f.Flags.Has(sample.Envelope):
 			d.why = "no sampled frame"
 		default:
 			codes := r.c1
@@ -322,8 +323,8 @@ func (c *Controller) stackStart() error {
 
 // stackCount is how many captures the frame's average holds.
 // TRLC-LINKS: REQ-SDS-218
-func stackCount(f *engine.Frame, st *stackState) int {
-	if m := blockAvgRE.FindStringSubmatch(f.Filter); m != nil {
+func stackCount(f *sample.Frame, st *stackState) int {
+	if m := blockAvgRE.FindStringSubmatch(f.Cond.Filter); m != nil {
 		k, _ := strconv.Atoi(m[1])
 		return k
 	}
@@ -333,7 +334,7 @@ func stackCount(f *engine.Frame, st *stackState) int {
 // stackProgress follows a stack after each frame; it reports when the
 // master is complete. A changed acquisition stops it, keeping the change.
 // TRLC-LINKS: REQ-SDS-218
-func (c *Controller) stackProgress(f *engine.Frame) bool {
+func (c *Controller) stackProgress(f *sample.Frame) bool {
 	st := c.eng.Snapshot()
 	c.mu.Lock()
 	sk := c.stack
@@ -377,7 +378,7 @@ func (c *Controller) stackStatus() (n, of, src int, ok bool) {
 // sample flattens a probe's few-nanosecond ringing, and every raw capture
 // would ring outside a mask drawn around it.
 // TRLC-LINKS: REQ-SDS-218
-func (c *Controller) stackFinish(f *engine.Frame) {
+func (c *Controller) stackFinish(f *sample.Frame) {
 	c.mu.Lock()
 	st := c.stack
 	c.stack = nil

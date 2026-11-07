@@ -7,9 +7,10 @@ import (
 	"strings"
 	"time"
 
+	"github.com/labeth/open-dso-core/engine/fanout"
+	"github.com/labeth/open-dso-core/sample"
 	"github.com/labeth/open-dso-core/webserver/wire"
 	"github.com/labeth/open-sds1000cml/app/internal/engine"
-	"github.com/labeth/open-sds1000cml/app/internal/frames"
 	"github.com/labeth/open-sds1000cml/app/internal/panel"
 )
 
@@ -18,11 +19,11 @@ import (
 // TRLC-LINKS: REQ-SDS-167
 type scopeSource struct {
 	*engine.Engine
-	fo *frames.Fanout
+	fo *fanout.Fanout[sample.Frame]
 }
 
 // TRLC-LINKS: REQ-SDS-167
-func (s scopeSource) WithFrame(fn func(*engine.Frame)) { s.fo.WithFrame(fn) }
+func (s scopeSource) WithFrame(fn func(*sample.Frame)) { s.fo.WithFrame(fn) }
 
 // WaitNextFrame lets the web layer park a long-poll until the fan-out
 // snapshots a frame newer than last (webscope type-asserts for this method, so

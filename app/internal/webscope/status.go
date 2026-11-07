@@ -7,6 +7,7 @@ import (
 	"slices"
 	"time"
 
+	"github.com/labeth/open-dso-core/sample"
 	"github.com/labeth/open-sds1000cml/app/internal/analog"
 	"github.com/labeth/open-sds1000cml/app/internal/buildinfo"
 	"github.com/labeth/open-sds1000cml/app/internal/engine"
@@ -153,19 +154,19 @@ func (s *Scope) Status() any {
 		// GAIN/110 mapping is for the deep 50-codes/div scale; roll codes are
 		// half-scale, so skip the diagnostic on a roll frame rather than
 		// report double the true voltage.
-		s.sc.WithFrame(func(f *engine.Frame) {
-			if f == nil || f.Valid == 0 || f.IsEnv || f.RollCodes {
+		s.sc.WithFrame(func(f *sample.Frame) {
+			if f == nil || f.Len() == 0 || f.Flags.Has(sample.Envelope) || engine.HalfScale(f) {
 				return
 			}
 			mean := func(sig []uint8) float64 {
 				sum := 0
-				for _, v := range sig[:f.Valid] {
+				for _, v := range sig[:f.Len()] {
 					sum += int(v)
 				}
-				return float64(sum) / float64(f.Valid)
+				return float64(sum) / float64(f.Len())
 			}
-			rep.DC1V = s.fe.DCVolts(0, mean(f.C1))
-			rep.DC2V = s.fe.DCVolts(1, mean(f.C2))
+			rep.DC1V = s.fe.DCVolts(0, mean(f.Codes8(0)))
+			rep.DC2V = s.fe.DCVolts(1, mean(f.Codes8(1)))
 		})
 	}
 	if st.OffC1 != 0 {

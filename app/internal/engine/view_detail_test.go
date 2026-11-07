@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/labeth/open-dso-core/sample"
 	"github.com/labeth/open-sds1000cml/app/internal/sramcapture"
 )
 
@@ -160,7 +161,7 @@ func TestViewsReadWithTheScreen(t *testing.T) {
 	m := sramcapture.Metadata{Length: sramcapture.Words, SamplesPerWord: 2, TriggerIndex: 262144, SampleRateHz: 500e6}
 	const screen = 1000000
 	bucket, offset, words := envelopeWindow(262144-screen/4, screen/2, sramcapture.EnvelopeBuckets, m.Length, 0)
-	f := &Frame{EdgeX: float64(m.TriggerIndex-offset) * 2 / float64(bucket)}
+	f := &sample.Frame{TriggerAt: float64(m.TriggerIndex-offset) * 2 / float64(bucket), Traces: []sample.Trace{{}, {Ch: 1}}}
 	plan := func() (viewReads, []sramcapture.RecordRead) {
 		v := e.planViews(f, m, screen, offset, words, bucket, sramcapture.EnvelopeBuckets)
 		screenRead := sramcapture.RecordRead{Offset: offset, Bucket: bucket, Count: sramcapture.EnvelopeBuckets}
@@ -190,10 +191,10 @@ func TestViewsReadWithTheScreen(t *testing.T) {
 		t.Fatal(err)
 	}
 	e.windows(f, &v, m, offset, bucket, [2]chScale{})
-	if w := f.Views[ViewScope]; w == nil || !w.PeakDetect || w.Valid != r.p.n || !(w.To > w.From) {
+	if w := ViewDetail(f, ViewScope); w == nil || w.Frame.Content != sample.PeakPairs || w.Frame.Len() != r.p.n || !(w.To > w.From) {
 		t.Fatalf("scope window %+v", w)
 	}
-	if f.Views[ViewWeb] != nil {
+	if ViewDetail(f, ViewWeb) != nil {
 		t.Fatal("a view the read left empty reached the frame")
 	}
 }

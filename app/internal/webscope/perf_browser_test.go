@@ -9,6 +9,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/labeth/open-dso-core/sample"
 	"github.com/labeth/open-dso-core/testenv"
 	"github.com/labeth/open-sds1000cml/app/internal/engine"
 )
@@ -25,7 +26,7 @@ func TestStackPerfBrowser(t *testing.T) {
 	testenv.NeedNode(t)
 	const N = 2048
 	n := uint64(0)
-	gen := func() *engine.Frame {
+	gen := func() *sample.Frame {
 		n++
 		c1 := make([]uint8, N)
 		c2 := make([]uint8, N)
@@ -33,9 +34,14 @@ func TestStackPerfBrowser(t *testing.T) {
 			c1[i] = uint8(128 + 50*math.Sin(2*math.Pi*float64(i)/256))
 			c2[i] = uint8(128 + 30*math.Sin(2*math.Pi*float64(i)/512))
 		}
-		return &engine.Frame{
-			C1: c1, C2: c2, Seq: n, Valid: N, WinCols: N, EdgeX: N / 2,
-			TdivS: 5e-9, DisplayedS: 5e-9, SampleS: 2e-9, Trigd: true,
+		return &sample.Frame{
+			Seq:       n,
+			WinPoints: N,
+			TriggerAt: N / 2,
+			SampleS:   2e-9,
+			Snapshot:  sample.Settings{TdivS: 5e-9, DisplayedS: 5e-9},
+			Status:    sample.Status{Triggered: true},
+			Traces:    []sample.Trace{{Codes8: c1, Valid: N}, {Ch: 1, Codes8: c2, Valid: N}},
 		}
 	}
 	fs := &fakeScope{frameGen: gen, stats: engine.Stats{Running: true, TrigPosFrac: 0.5, BandKind: "native-fast"}}

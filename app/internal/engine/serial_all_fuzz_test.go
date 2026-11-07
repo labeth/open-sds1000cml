@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/labeth/open-dso-core/sample"
 	"github.com/labeth/open-sds1000cml/app/internal/sramcapture"
 )
 
@@ -145,9 +146,9 @@ func FuzzSerialAllProtocols(f *testing.F) {
 		}
 		e := &Engine{}
 		e.SetSerialParams(p)
-		f := &Frame{C1: a, C2: b}
+		f := &sample.Frame{Traces: []sample.Trace{{Codes8: a}, {Ch: 1, Codes8: b}}}
 		if p.ChA == 1 {
-			f.C1, f.C2 = b, a
+			f.Traces[0].Codes8, f.Traces[1].Codes8 = b, a
 		}
 		_, _ = e.serialQualify(f, len(a), sampleS)
 		if el := time.Since(t0); el > 5*time.Second {

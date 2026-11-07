@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"sync"
 
+	"github.com/labeth/open-dso-core/sample"
 	"github.com/labeth/open-sds1000cml/app/internal/analog"
 	"github.com/labeth/open-sds1000cml/app/internal/engine"
 	"github.com/labeth/open-sds1000cml/app/internal/panel/wsview"
@@ -690,8 +691,8 @@ func drawEnvelope(sf Surface, p plotArea, mn, mx []uint8, cols int, col uint16, 
 // frameValid clamps a frame's valid-sample count into range (shared by the
 // alternate-view renderers below).
 // TRLC-LINKS: REQ-SDS-021
-func frameValid(f *engine.Frame) int {
-	valid := min(max(f.Valid, 1), len(f.C1))
+func frameValid(f *sample.Frame) int {
+	valid := min(max(f.Len(), 1), len(f.Codes8(0)))
 	return valid
 }
 
@@ -766,7 +767,7 @@ func strokeRect(sf Surface, x, y, w, h int, c uint16) {
 // workspace UI (the pane, the rail, a sheet or the picker). Never blanks on
 // a held frame; the strip goes red instead.
 // TRLC-LINKS: REQ-SDS-021, REQ-SDS-211
-func Render(sf Surface, f *engine.Frame, hud HUD, live bool, persist ...*MemSurface) {
+func Render(sf Surface, f *sample.Frame, hud HUD, live bool, persist ...*MemSurface) {
 	sf.Fill(colBG)
 	ui := &hud.UI
 	sheet := ui.Sheet != nil
@@ -782,8 +783,8 @@ func Render(sf Surface, f *engine.Frame, hud HUD, live bool, persist ...*MemSurf
 	// under the new label it misreads by the ratio, and at 10 s/div the next
 	// frame takes minutes to fill. Show the graticule and
 	// say a record is filling instead, as a scope clears on a timebase change.
-	acquiring := hud.Running && f != nil && f.TdivS > 0 && hud.TdivS > 0 &&
-		math.Abs(f.TdivS-hud.TdivS) > 1e-9*hud.TdivS
+	acquiring := hud.Running && f != nil && f.Snapshot.TdivS > 0 && hud.TdivS > 0 &&
+		math.Abs(f.Snapshot.TdivS-hud.TdivS) > 1e-9*hud.TdivS
 	if acquiring {
 		f = nil
 		if traces {
@@ -799,7 +800,7 @@ func Render(sf Surface, f *engine.Frame, hud HUD, live bool, persist ...*MemSurf
 	if len(persist) > 0 {
 		pb = persist[0]
 	}
-	persisting := traces && pb != nil && hud.Persist && hud.ViewMode == 0 && f != nil && !f.IsEnv && len(f.C1) > 0
+	persisting := traces && pb != nil && hud.Persist && hud.ViewMode == 0 && f != nil && !f.Flags.Has(sample.Envelope) && len(f.Codes8(0)) > 0
 	traceTarget := sf
 	if persisting {
 		pb.FadeToBlack()
@@ -816,7 +817,7 @@ func Render(sf Surface, f *engine.Frame, hud HUD, live bool, persist ...*MemSurf
 
 	// Liveness strip: green only for a fresh frame with real signal.
 	strip := colStale
-	if live && f != nil && f.Ptp >= 8 {
+	if live && f != nil && f.SourcePtp >= 8 {
 		strip = colOK
 	}
 	hline(sf, 0, W-1, 0, strip)
@@ -857,7 +858,7 @@ func Render(sf Surface, f *engine.Frame, hud HUD, live bool, persist ...*MemSurf
 // super-res review, X-Y, FFT, Bode, spectrogram, or the Y-T traces with
 // their overlays.
 // TRLC-LINKS: REQ-SDS-021
-func drawViews(sf, traceTarget Surface, p plotArea, f *engine.Frame, hud HUD) {
+func drawViews(sf, traceTarget Surface, p plotArea, f *sample.Frame, hud HUD) {
 	sc1, sc2 := hud.shownChans()
 	// X-Y / FFT only make sense on per-sample (native/decimated) frames — an
 	// envelope/roll frame has no paired samples or usable spectrum, so fall
@@ -879,9 +880,9 @@ func drawViews(sf, traceTarget Surface, p plotArea, f *engine.Frame, hud HUD) {
 		default:
 			drawSuperresTrace(traceTarget, p, hud)
 		}
-	case hud.ViewMode == 1 && f != nil && !f.IsEnv && len(f.C1) > 0:
+	case hud.ViewMode == 1 && f != nil && !f.Flags.Has(sample.Envelope) && len(f.Codes8(0)) > 0:
 		drawXY(sf, p, f, hud)
-	case hud.ViewMode == 2 && f != nil && !f.IsEnv && len(f.C1) > 0:
+	case hud.ViewMode == 2 && f != nil && !f.Flags.Has(sample.Envelope) && len(f.Codes8(0)) > 0:
 		drawFFT(sf, p, f, hud)
 	case hud.ViewMode == 3:
 		drawBode(sf, p, hud)
@@ -889,7 +890,7 @@ func drawViews(sf, traceTarget Surface, p plotArea, f *engine.Frame, hud HUD) {
 		drawSoundTrace(sf, p, hud.UI.Sound)
 	case hud.ViewMode == 4:
 		drawSpectrogramMark(sf, p, hud.Spect, hud.UI.Layout.HideViewCaptions, hud.UI.Spec)
-	case f != nil && len(f.C1) > 0:
+	case f != nil && len(f.Codes8(0)) > 0:
 		drawYT(sf, traceTarget, p, f, hud, sc1, sc2)
 	}
 	if hud.StreamOn && !streamFullScreen(hud) && hud.Stream.State != streamview.Idle {
@@ -900,14 +901,14 @@ func drawViews(sf, traceTarget Surface, p plotArea, f *engine.Frame, hud HUD) {
 // drawYT draws the Y-T view: the traces (or a live envelope's bands) and
 // their overlays.
 // TRLC-LINKS: REQ-SDS-021
-func drawYT(sf, traceTarget Surface, p plotArea, f *engine.Frame, hud HUD, sc1, sc2 bool) {
+func drawYT(sf, traceTarget Surface, p plotArea, f *sample.Frame, hud HUD, sc1, sc2 bool) {
 	valid := frameValid(f)
-	if f.IsEnv && f.EnvCols > 0 {
+	if f.Flags.Has(sample.Envelope) && len(f.Min8(0)) > 0 {
 		drawEnvelopes(sf, p, f, hud, sc1, sc2)
 		return
 	}
 	win, xc, posFrac := traceWindow(f, hud, valid)
-	c1 := f.C1[:valid]
+	c1 := f.Codes8(0)[:valid]
 	if hud.Cpl1 != analog.CplDC { // software coupling: AC removes DC, GND grounds
 		c1 = analog.CoupleDisplay(c1, hud.Cpl1)
 	}
@@ -918,18 +919,18 @@ func drawYT(sf, traceTarget Surface, p plotArea, f *engine.Frame, hud HUD, sc1, 
 	// Zoomed into a live envelope: the frame's view window holds the
 	// zoomed part at full detail, where the screen's buckets are too coarse.
 	view, vwin, vxc, zoomed := zoomView(f, hud, valid)
-	if hud.TwoChan && sc2 && len(f.C2) >= valid {
+	if hud.TwoChan && sc2 && len(f.Codes8(1)) >= valid {
 		drawC2(traceTarget, p, f, hud, valid, ytWindow{win, xc, posFrac}, ytWindow{vwin, vxc, 0.5}, view, zoomed)
 	}
 	if sc1 {
 		if zoomed {
-			v1 := analog.CoupleDisplayBy(view.C1[:view.Valid], f.C1[:valid], hud.Cpl1)
+			v1 := analog.CoupleDisplayBy(view.Codes8(0)[:view.Len()], f.Codes8(0)[:valid], hud.Cpl1)
 			if hud.Inv1 {
 				v1 = invertCodes(v1)
 			}
 			drawTraceID(traceTarget, p, traceID{f.Seq, 3, hud.Cpl1, hud.Inv1}, v1, vwin, vxc, false, colC1, 0.5, hud.Zoom1)
 		} else {
-			drawTraceHeld(traceTarget, p, traceID{f.Seq, 1, hud.Cpl1, hud.Inv1}, c1, heldOf(f, valid), win, xc, f.Interp, colC1, posFrac, hud.Zoom1)
+			drawTraceHeld(traceTarget, p, traceID{f.Seq, 1, hud.Cpl1, hud.Inv1}, c1, heldOf(f, valid), win, xc, f.Flags.Has(sample.Interp), colC1, posFrac, hud.Zoom1)
 		}
 	}
 	if hud.MathMode != 0 {
@@ -943,20 +944,20 @@ func drawYT(sf, traceTarget Surface, p plotArea, f *engine.Frame, hud HUD, sc1, 
 
 // drawEnvelopes draws a live envelope frame's bands, C2 under C1.
 // TRLC-LINKS: REQ-SDS-021
-func drawEnvelopes(sf Surface, p plotArea, f *engine.Frame, hud HUD, sc1, sc2 bool) {
+func drawEnvelopes(sf Surface, p plotArea, f *sample.Frame, hud HUD, sc1, sc2 bool) {
 	if hud.TwoChan && sc2 {
-		mn2, mx2 := f.EnvMin2, f.EnvMax2
+		mn2, mx2 := f.Min8(1), f.Max8(1)
 		if hud.Inv2 { // INVS mirrors the band: min'=inv(max), max'=inv(min)
 			mn2, mx2 = invertCodes(mx2), invertCodes(mn2)
 		}
-		drawEnvelope(sf, p, mn2, mx2, f.EnvCols, colC2, hud.Zoom2)
+		drawEnvelope(sf, p, mn2, mx2, len(f.Min8(0)), colC2, hud.Zoom2)
 	}
 	if sc1 {
-		mn1, mx1 := f.EnvMin, f.EnvMax
+		mn1, mx1 := f.Min8(0), f.Max8(0)
 		if hud.Inv1 {
 			mn1, mx1 = invertCodes(mx1), invertCodes(mn1)
 		}
-		drawEnvelope(sf, p, mn1, mx1, f.EnvCols, colC1, hud.Zoom1)
+		drawEnvelope(sf, p, mn1, mx1, len(f.Min8(0)), colC1, hud.Zoom1)
 	}
 }
 
@@ -964,10 +965,10 @@ func drawEnvelopes(sf Surface, p plotArea, f *engine.Frame, hud HUD, sc1, sc2 bo
 // record window rec, or over zw from the view window when the screen is
 // zoomed into a live envelope.
 // TRLC-LINKS: REQ-SDS-021
-func drawC2(traceTarget Surface, p plotArea, f *engine.Frame, hud HUD, valid int, rec, zw ytWindow, view *engine.ViewWindow, zoomed bool) {
-	c2 := f.C2[:valid]
+func drawC2(traceTarget Surface, p plotArea, f *sample.Frame, hud HUD, valid int, rec, zw ytWindow, view *sample.Frame, zoomed bool) {
+	c2 := f.Codes8(1)[:valid]
 	if zoomed {
-		c2 = analog.CoupleDisplayBy(view.C2[:view.Valid], c2, hud.Cpl2)
+		c2 = analog.CoupleDisplayBy(view.Codes8(1)[:view.Len()], c2, hud.Cpl2)
 	} else if hud.Cpl2 != analog.CplDC {
 		c2 = analog.CoupleDisplay(c2, hud.Cpl2)
 	}
@@ -977,7 +978,7 @@ func drawC2(traceTarget Surface, p plotArea, f *engine.Frame, hud HUD, valid int
 	if zoomed {
 		drawTraceID(traceTarget, p, traceID{f.Seq, 4, hud.Cpl2, hud.Inv2}, c2, zw.win, zw.xc, false, colC2, zw.posFrac, hud.Zoom2)
 	} else {
-		drawTraceHeld(traceTarget, p, traceID{f.Seq, 2, hud.Cpl2, hud.Inv2}, c2, heldOf(f, valid), rec.win, rec.xc, f.Interp, colC2, rec.posFrac, hud.Zoom2)
+		drawTraceHeld(traceTarget, p, traceID{f.Seq, 2, hud.Cpl2, hud.Inv2}, c2, heldOf(f, valid), rec.win, rec.xc, f.Flags.Has(sample.Interp), colC2, rec.posFrac, hud.Zoom2)
 	}
 }
 
@@ -992,12 +993,12 @@ type ytWindow struct {
 // trigger crossing xc at posFrac of the screen; zoomed, win/zoom samples
 // centred on the panned crossing.
 // TRLC-LINKS: REQ-SDS-021
-func traceWindow(f *engine.Frame, hud HUD, valid int) (win int, xc, posFrac float64) {
-	win = f.WinCols
+func traceWindow(f *sample.Frame, hud HUD, valid int) (win int, xc, posFrac float64) {
+	win = f.WinPoints
 	if win <= 0 || win > valid {
 		win = valid
 	}
-	xc = f.EdgeX
+	xc = f.TriggerAt
 	if xc < 0 {
 		// Match web window(): an uncentred frame (EdgeX=-1: flat, or forced
 		// in AUTO) centres the screen on the record, the trigger point at its
@@ -1042,20 +1043,20 @@ func (h HUD) shownChans() (bool, bool) {
 
 // heldOf is a roll frame's held samples over its valid prefix; nil otherwise.
 // TRLC-LINKS: REQ-SDS-021
-func heldOf(f *engine.Frame, valid int) []bool {
-	if len(f.Held) < valid {
+func heldOf(f *sample.Frame, valid int) []bool {
+	if len(f.Held(0)) < valid {
 		return nil
 	}
-	return f.Held[:valid]
+	return f.Held(0)[:valid]
 }
 
 // zoomView is the frame's view window when it covers the zoomed part of a live
 // envelope frame, and where it lies: vwin of its values span the plot, the
 // zoom's centre at vxc.
 // TRLC-LINKS: REQ-SDS-021
-func zoomView(f *engine.Frame, hud HUD, valid int) (v *engine.ViewWindow, vwin int, vxc float64, ok bool) {
-	v = f.Views[engine.ViewScope]
-	if hud.Zoom <= 1 || v == nil || !f.PeakDetect || v.Valid < 2 || !(v.To > v.From) {
+func zoomView(f *sample.Frame, hud HUD, valid int) (view *sample.Frame, vwin int, vxc float64, ok bool) {
+	v := engine.ViewDetail(f, engine.ViewScope)
+	if hud.Zoom <= 1 || v == nil || f.Content != sample.PeakPairs || v.Frame.Len() < 2 || !(v.To > v.From) {
 		return nil, 0, 0, false
 	}
 	win, xc, _ := traceWindow(f, hud, valid)
@@ -1063,7 +1064,7 @@ func zoomView(f *engine.Frame, hud HUD, valid int) (v *engine.ViewWindow, vwin i
 	if tol := float64(win) / 100; v.From > za+tol || v.To < zb-tol {
 		return nil, 0, 0, false // a view of another stretch (the zoom just moved)
 	}
-	per := float64(v.Valid) / (v.To - v.From) // its values per frame value
+	per := float64(v.Frame.Len()) / (v.To - v.From) // its values per frame value
 	vwin = int(math.Round(float64(win) * per))
-	return v, max(vwin, 2), (xc - v.From) * per, true
+	return v.Frame, max(vwin, 2), (xc - v.From) * per, true
 }

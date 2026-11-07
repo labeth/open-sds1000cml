@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/labeth/open-dso-core/sample"
 	"github.com/labeth/open-sds1000cml/app/internal/engine"
 )
 
@@ -79,7 +80,7 @@ func TestCompareMaskPushClears(t *testing.T) {
 func TestClearStopsAMaskBuild(t *testing.T) {
 	c, eng, _ := newC(t)
 	var seq uint64
-	c.SetFrameSource(func(fn func(*engine.Frame)) {
+	c.SetFrameSource(func(fn func(*sample.Frame)) {
 		seq++
 		n := 64
 		sig := make([]uint8, n)
@@ -89,7 +90,7 @@ func TestClearStopsAMaskBuild(t *testing.T) {
 				sig[i] = 180
 			}
 		}
-		fn(&engine.Frame{Seq: seq, C1: sig, C2: sig, Valid: n, WinCols: n, EdgeX: float64(n / 2), SampleS: 2e-9, TdivS: 1e-6})
+		fn(&sample.Frame{Seq: seq, WinPoints: n, TriggerAt: float64(n / 2), SampleS: 2e-9, Snapshot: sample.Settings{TdivS: 1e-6}, Traces: []sample.Trace{{Codes8: sig, Valid: n}, {Ch: 1, Codes8: sig, Valid: n}}})
 	})
 	c.mu.Lock()
 	gen := c.maskGen
@@ -157,20 +158,24 @@ func TestMasterMaskFromLiveCaptures(t *testing.T) {
 		}
 		return 200
 	}
-	frame := func(n, win int, edge, sampleS float64, peak bool, filter string) *engine.Frame {
+	frame := func(n, win int, edge, sampleS float64, peak bool, filter string) *sample.Frame {
 		sig := make([]uint8, n)
 		for i := range sig {
 			sig[i] = wave((float64(i) - edge) * sampleS)
 		}
-		return &engine.Frame{C1: sig, C2: sig, Valid: n, WinCols: win, EdgeX: edge, SampleS: sampleS, TdivS: 100e-6, PeakDetect: peak, Ordered: peak, Filter: filter}
+		f := &sample.Frame{WinPoints: win, TriggerAt: edge, SampleS: sampleS, Cond: sample.Conditioning{Filter: filter}, Snapshot: sample.Settings{TdivS: 100e-6}, Traces: []sample.Trace{{Codes8: sig, Valid: n}, {Ch: 1, Codes8: sig, Valid: n}}}
+		if peak {
+			f.Content, f.Flags = sample.PeakPairs, sample.Ordered
+		}
+		return f
 	}
 	master := frame(4721, 3906, 2408, 256e-9, false, "CIC3 + compensated FIR; block average 64/64 (waveform aligned)")
 	live := frame(4096, 2049, 1355, 488e-9, true, "peak-detect display readout")
-	start := func(prevMask int, feed func(seq uint64) *engine.Frame) (*Controller, *fakeEng) {
+	start := func(prevMask int, feed func(seq uint64) *sample.Frame) (*Controller, *fakeEng) {
 		c, eng, _ := newC(t)
 		var seq uint64
 		var mu sync.Mutex
-		c.SetFrameSource(func(fn func(*engine.Frame)) {
+		c.SetFrameSource(func(fn func(*sample.Frame)) {
 			mu.Lock()
 			seq++
 			f := *feed(seq)
@@ -196,7 +201,7 @@ func TestMasterMaskFromLiveCaptures(t *testing.T) {
 	}
 
 	// the averaged captures first, then the live ones
-	c, eng := start(2, func(seq uint64) *engine.Frame {
+	c, eng := start(2, func(seq uint64) *sample.Frame {
 		if seq <= 3 {
 			return master
 		}
@@ -209,9 +214,9 @@ func TestMasterMaskFromLiveCaptures(t *testing.T) {
 	if m == nil || !m.FrameIdent || m.WinCols != 2049 || m.SampleS != 488e-9 || !m.PeakDetect || m.TdivS != 100e-6 || eng.Snapshot().MaskMode != 2 {
 		t.Fatalf("the master's mask %+v, test mode %d: want the live geometry, stop on fail", m, eng.Snapshot().MaskMode)
 	}
-	left := int(math.Round(live.EdgeX - float64(m.WinCols)*0.5))
+	left := int(math.Round(live.TriggerAt - float64(m.WinCols)*0.5))
 	for j := range m.WinCols {
-		if v := live.C1[left+j]; v < m.Lo[j] || v > m.Hi[j] {
+		if v := live.Codes8(0)[left+j]; v < m.Lo[j] || v > m.Hi[j] {
 			t.Fatalf("column %d: the live sample %d is outside its master's mask [%d, %d]", j, v, m.Lo[j], m.Hi[j])
 		}
 	}
@@ -223,7 +228,7 @@ func TestMasterMaskFromLiveCaptures(t *testing.T) {
 	}
 
 	// Clear mask while it builds: nothing is installed
-	c, eng = start(0, func(uint64) *engine.Frame { return live })
+	c, eng = start(0, func(uint64) *sample.Frame { return live })
 	c.clearMask()
 	if built(eng) {
 		t.Fatal("Clear mask while the master's mask was built: installed anyway")
@@ -289,10 +294,10 @@ func TestMaskBuildSaysWhyItFailed(t *testing.T) {
 	defer func(w time.Duration) { maskNoLockWait = w }(maskNoLockWait)
 	maskNoLockWait = 300 * time.Millisecond
 	var seq uint64
-	c.SetFrameSource(func(fn func(*engine.Frame)) {
+	c.SetFrameSource(func(fn func(*sample.Frame)) {
 		seq++
 		f := smallFrame()
-		f.Seq, f.EdgeX, f.Trigd = seq, -1, false // free-running: no trigger located
+		f.Seq, f.TriggerAt, f.Status.Triggered = seq, -1, false // free-running: no trigger located
 		fn(f)
 	})
 	c.mu.Lock()

@@ -10,6 +10,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/labeth/open-dso-core/sample"
 	"github.com/labeth/open-sds1000cml/app/internal/engine"
 )
 
@@ -21,15 +22,21 @@ import (
 // TRLC-LINKS: REQ-SDS-161, REQ-SDS-162, REQ-SDS-163, REQ-SDS-164
 func TestAPIFuzz(t *testing.T) {
 	n := uint64(0)
-	gen := func() *engine.Frame {
+	gen := func() *sample.Frame {
 		n++
 		c1 := make([]uint8, 2048)
 		for i := range c1 {
 			c1[i] = uint8(128 + 60*math.Sin(float64(i)/32))
 		}
-		return &engine.Frame{
-			C1: c1, C2: c1, Seq: n, Valid: 2048, WinCols: 2048,
-			EdgeX: 1024, TdivS: 500e-6, SampleS: 800e-9, Trigd: true, Ptp: 120,
+		return &sample.Frame{
+			Seq:       n,
+			WinPoints: 2048,
+			TriggerAt: 1024,
+			SampleS:   800e-9,
+			SourcePtp: 120,
+			Snapshot:  sample.Settings{TdivS: 500e-6},
+			Status:    sample.Status{Triggered: true},
+			Traces:    []sample.Trace{{Codes8: c1, Valid: 2048}, {Ch: 1, Codes8: c1, Valid: 2048}},
 		}
 	}
 	fs := &fakeScope{frameGen: gen, stats: engine.Stats{Running: true, TrigPosFrac: 0.5, WinCols: 2048}}

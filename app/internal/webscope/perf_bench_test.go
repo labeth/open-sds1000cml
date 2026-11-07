@@ -10,6 +10,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/labeth/open-dso-core/sample"
 	"github.com/labeth/open-sds1000cml/app/internal/engine"
 )
 
@@ -17,14 +18,17 @@ import (
 // TRLC-LINKS: REQ-SDS-162
 func benchServer() *Server {
 	n := 5000
-	f := &engine.Frame{
-		C1: make([]uint8, n), C2: make([]uint8, n), Q1: make([]uint16, n), Q2: make([]uint16, n),
-		Valid: n, WinCols: n, Seq: 9, SampleS: 2e-9, EdgeX: 2500,
+	f := &sample.Frame{
+		WinPoints: n,
+		Seq:       9,
+		SampleS:   2e-9,
+		TriggerAt: 2500,
+		Traces:    []sample.Trace{{Codes8: make([]uint8, n), Precision: make([]uint16, n), Valid: n}, {Ch: 1, Codes8: make([]uint8, n), Precision: make([]uint16, n), Valid: n}},
 	}
-	for i := range f.C1 {
+	for i := range f.Codes8(0) {
 		v := uint8(60 + 130*(i/40%2))
-		f.C1[i], f.C2[i] = v, 255-v
-		f.Q1[i], f.Q2[i] = uint16(v)<<8|0x40, uint16(255-v)<<8
+		f.Codes8(0)[i], f.Codes8(1)[i] = v, 255-v
+		f.Precision(0)[i], f.Precision(1)[i] = uint16(v)<<8|0x40, uint16(255-v)<<8
 	}
 	fs := &fakeScope{stats: engine.Stats{Frames: 5, Running: true, TdivS: 1e-6, TrigCode: 31437}, frame: f}
 	return newServer(fs, nil, nil, nil)

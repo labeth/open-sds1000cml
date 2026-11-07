@@ -5,7 +5,7 @@ package lcd
 import (
 	"testing"
 
-	"github.com/labeth/open-sds1000cml/app/internal/engine"
+	"github.com/labeth/open-dso-core/sample"
 )
 
 // A newer frame with the same decoder settings is decoded afresh, or the
@@ -23,9 +23,9 @@ func TestDecodeFollowsNewFrame(t *testing.T) {
 	}
 	hud := HUD{DecProto: 2, DecBaud: 50000} // UART at 20 samples a bit of 1 us
 	decode := func(w []uint8, seq uint64) int {
-		f := &engine.Frame{C1: w, C2: make([]uint8, n), Valid: n, SampleS: 1e-6, Seq: seq}
-		for i := range f.C2 {
-			f.C2[i] = 128
+		f := &sample.Frame{SampleS: 1e-6, Seq: seq, Traces: []sample.Trace{{Codes8: w, Valid: n}, {Ch: 1, Codes8: make([]uint8, n), Valid: n}}}
+		for i := range f.Codes8(1) {
+			f.Codes8(1)[i] = 128
 		}
 		res := decodeFrame(f, hud)
 		for _, s := range res.Spans {

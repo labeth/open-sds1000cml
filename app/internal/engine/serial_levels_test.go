@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/labeth/open-dso-core/sample"
 	"github.com/labeth/open-sds1000cml/app/internal/sramcapture"
 )
 
@@ -41,7 +42,7 @@ func TestLearnedLevelPlansTheHardwareMatcher(t *testing.T) {
 		t.Fatalf("the reason: %q", why)
 	}
 	w := uartWave([]int{0x48, 0x69, 0x20}, 20) // rails 40 and 210: threshold 125
-	f := &Frame{C1: w, C2: w, Valid: len(w), SampleS: 1 / (115200.0 * 20)}
+	f := &sample.Frame{SampleS: 1 / (115200.0 * 20), Traces: []sample.Trace{{Codes8: w, Valid: len(w)}, {Ch: 1, Codes8: w, Valid: len(w)}}}
 	scale := [2]chScale{{1, 0}, {1, 0}}
 	e.learnSerialLevels(f, scale)
 	c, _, _, _, _ := e.sramConfig()
@@ -79,7 +80,7 @@ func TestSPIClockRateFromTheClockLine(t *testing.T) {
 		t.Fatalf("clock %v Hz, want 5 MHz", hz)
 	}
 	e := levelsEngine(SerialParams{Proto: serSPI, ChA: 0, ChB: 1, MSB: true, Bytes: []int{0x55}})
-	f := &Frame{C1: clk, C2: data, Valid: len(clk), SampleS: 1e-8}
+	f := &sample.Frame{SampleS: 1e-8, Traces: []sample.Trace{{Codes8: clk, Valid: len(clk)}, {Ch: 1, Codes8: data, Valid: len(clk)}}}
 	if _, why := e.serialPlanParams(e.ser.params); why == "" {
 		t.Fatal("an SPI plan before its clock was measured")
 	}
@@ -101,7 +102,7 @@ func TestHardwareMatchStartPlacesTheTrigger(t *testing.T) {
 	const spb = 20
 	e := levelsEngine(SerialParams{Proto: serUART, ChA: 0, ChB: 1, Baud: 115200, Bits: 8, Parity: "none", Bytes: []int{0x48, 0x69}})
 	w := uartWave([]int{0x10, 0x48, 0x69, 0x20}, spb)
-	f := &Frame{C1: w, C2: w, Valid: len(w), SampleS: 1 / (115200.0 * spb)}
+	f := &sample.Frame{SampleS: 1 / (115200.0 * spb), Traces: []sample.Trace{{Codes8: w, Valid: len(w)}, {Ch: 1, Codes8: w, Valid: len(w)}}}
 	start := 8*spb + 11*spb          // 0x48's start bit
 	end := 8*spb + 2*11*spb + 10*spb // the end of 0x69's stop bit
 	got := e.serialMatchStart(f, float64(end))
@@ -133,7 +134,7 @@ func TestUARTAutoBaudPlansTheHardwareMatcher(t *testing.T) {
 	if _, why := e.serialPlanParams(e.ser.params); why != "measuring the UART bit rate" {
 		t.Fatalf("before the rate was measured: %q", why)
 	}
-	e.learnSerialLevels(&Frame{C1: w, C2: w, Valid: len(w), SampleS: sampleS}, [2]chScale{{1, 0}, {1, 0}})
+	e.learnSerialLevels(&sample.Frame{SampleS: sampleS, Traces: []sample.Trace{{Codes8: w, Valid: len(w)}, {Ch: 1, Codes8: w, Valid: len(w)}}}, [2]chScale{{1, 0}, {1, 0}})
 	p, why := e.serialPlanParams(e.ser.params)
 	if why != "" || p.Baud != 115200 {
 		t.Fatalf("plan params %+v (%q)", p, why)
@@ -185,7 +186,7 @@ func TestEveryBusPlansFromTheScope(t *testing.T) {
 		t.Fatal("an image loaded before the line's levels are known")
 	}
 	w := uartWave([]int{0x55, 0xAA}, 20) // rails 40 and 210: threshold 125
-	e.learnSerialLevels(&Frame{C1: w, C2: w, Valid: len(w), SampleS: 1e-7}, [2]chScale{{1, 0}, {1, 0}})
+	e.learnSerialLevels(&sample.Frame{SampleS: 1e-7, Traces: []sample.Trace{{Codes8: w, Valid: len(w)}, {Ch: 1, Codes8: w, Valid: len(w)}}}, [2]chScale{{1, 0}, {1, 0}})
 	if !e.serviceImage() || b.image != "packet" {
 		t.Fatalf("CAN with learned levels: image %s", b.image)
 	}
@@ -199,7 +200,7 @@ func TestEveryBusPlansFromTheScope(t *testing.T) {
 	}
 	frame := []int{0, 1, 2, 5, 10, 3, 4, 1}
 	line := sentLine([][]int{frame, frame, frame, frame}, 30) // 3 us ticks at 100 ns
-	e.learnSerialLevels(&Frame{C1: line, C2: line, Valid: len(line), SampleS: 1e-7}, [2]chScale{{1, 0}, {1, 0}})
+	e.learnSerialLevels(&sample.Frame{SampleS: 1e-7, Traces: []sample.Trace{{Codes8: line, Valid: len(line)}, {Ch: 1, Codes8: line, Valid: len(line)}}}, [2]chScale{{1, 0}, {1, 0}})
 	// on the frame image (with MIL-1553), matching with the sequence trigger
 	if !e.serviceImage() || b.image != "frame" {
 		t.Fatalf("SENT with learned levels: image %s", b.image)
@@ -235,7 +236,7 @@ func TestEveryBusPlansFromTheScope(t *testing.T) {
 func TestSerialPreRoomHoldsTheMatchStart(t *testing.T) {
 	e := levelsEngine(SerialParams{Proto: serARINC, ChA: 0, Baud: 100000, Bytes: []int{0x00, 0xAB, 0xCD}})
 	w := uartWave([]int{0x55}, 20)
-	e.learnSerialLevels(&Frame{C1: w, C2: w, Valid: len(w), SampleS: 1e-7}, [2]chScale{{1, 0}, {1, 0}})
+	e.learnSerialLevels(&sample.Frame{SampleS: 1e-7, Traces: []sample.Trace{{Codes8: w, Valid: len(w)}, {Ch: 1, Codes8: w, Valid: len(w)}}}, [2]chScale{{1, 0}, {1, 0}})
 	const sampleS, screen = 2e-9, 1000000                            // 200 us/div
 	if room := e.serialPreRoom(sampleS, screen); room != 3*36*5000 { // one field and two words of 36 bits, 5000 samples a bit
 		t.Fatalf("ARINC room %d samples, want %d", room, 3*36*5000)
@@ -349,7 +350,7 @@ func TestSPIClockMeasuredAgainWhenQuiet(t *testing.T) {
 	e.hardwareSampleSPI = true
 	sc := [2]chScale{{1, 0}, {1, 0}}
 	fast := square(4000, 4.8)
-	e.learnSerialLevels(&Frame{C1: fast, C2: fast, Valid: len(fast), SampleS: 2e-9}, sc)
+	e.learnSerialLevels(&sample.Frame{SampleS: 2e-9, Traces: []sample.Trace{{Codes8: fast, Valid: len(fast)}, {Ch: 1, Codes8: fast, Valid: len(fast)}}}, sc)
 	c, _, _, _, _ := e.sramConfig()
 	if !c.SPI.Enabled || c.SPI.GapTicks != 4 {
 		t.Fatalf("104 MHz: %+v", c.SPI)
@@ -362,7 +363,7 @@ func TestSPIClockMeasuredAgainWhenQuiet(t *testing.T) {
 		t.Fatalf("plan while measuring again: %q", why)
 	}
 	slow := square(4000, 25) // 10 MHz at 4 ns
-	e.learnSerialLevels(&Frame{C1: slow, C2: slow, Valid: len(slow), SampleS: 4e-9}, sc)
+	e.learnSerialLevels(&sample.Frame{SampleS: 4e-9, Traces: []sample.Trace{{Codes8: slow, Valid: len(slow)}, {Ch: 1, Codes8: slow, Valid: len(slow)}}}, sc)
 	if c, _, _, _, _ = e.sramConfig(); !c.SPI.Enabled || c.SPI.GapTicks != 19 {
 		t.Fatalf("10 MHz after measuring again: %+v", c.SPI)
 	}
@@ -378,7 +379,7 @@ func TestTwoLineBusPlansEachLineLevel(t *testing.T) {
 		e := levelsEngine(SerialParams{Proto: proto, ChA: 1, ChB: 0, MSB: true, SPIClockHz: 5000000, Addr: -1, RW: 2, Bytes: []int{0x55}})
 		e.hardwareI2C = true
 		clk, data := spiWave([]int{0x55, 0xaa, 0x0f}, 10) // rails 40 and 210: threshold 125 on each
-		f := &Frame{C1: data, C2: clk, Valid: len(clk), SampleS: 1e-8}
+		f := &sample.Frame{SampleS: 1e-8, Traces: []sample.Trace{{Codes8: data, Valid: len(clk)}, {Ch: 1, Codes8: clk, Valid: len(clk)}}}
 		e.learnSerialLevels(f, [2]chScale{{1, 0}, {1, 0}})
 		c, _, _, _, _ := e.sramConfig()
 		if c.TriggerChannel != 1 || c.TriggerLevel != 125 || c.SecondLevel != 125 {
@@ -412,13 +413,13 @@ func TestTwoLineBusPlansEachLineLevel(t *testing.T) {
 // keeps the 10 MHz; the full rate's samples measure a bus that slowed.
 // TRLC-LINKS: REQ-SDS-013, REQ-SDS-229
 func TestDecimatedAliasKeepsTheLearnedClock(t *testing.T) {
-	if resolvesClock(10e6, &Frame{SampleS: 32e-9, Decimation: 16}) {
+	if resolvesClock(10e6, &sample.Frame{SampleS: 32e-9, AcqDecim: int(16), Traces: []sample.Trace{{}, {Ch: 1}}}) {
 		t.Fatal("3.1 samples a 10 MHz period replaced it")
 	}
-	if !resolvesClock(10e6, &Frame{SampleS: 2e-9, Decimation: 1}) || !resolvesClock(1e6, &Frame{SampleS: 32e-9, Decimation: 16}) {
+	if !resolvesClock(10e6, &sample.Frame{SampleS: 2e-9, AcqDecim: int(1), Traces: []sample.Trace{{}, {Ch: 1}}}) || !resolvesClock(1e6, &sample.Frame{SampleS: 32e-9, AcqDecim: int(16), Traces: []sample.Trace{{}, {Ch: 1}}}) {
 		t.Fatal("a frame that resolves the clock kept the old")
 	}
-	if !resolvesClock(0, &Frame{SampleS: 1e-6, Decimation: 512}) {
+	if !resolvesClock(0, &sample.Frame{SampleS: 1e-6, AcqDecim: int(512), Traces: []sample.Trace{{}, {Ch: 1}}}) {
 		t.Fatal("no clock learned: the first measurement refused")
 	}
 }

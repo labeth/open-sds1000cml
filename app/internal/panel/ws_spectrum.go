@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/labeth/open-dso-core/sample"
 	"github.com/labeth/open-sds1000cml/app/internal/engine"
 	"github.com/labeth/open-sds1000cml/app/internal/panel/framecalc"
 	"github.com/labeth/open-sds1000cml/app/internal/panel/wsview"
@@ -25,7 +26,7 @@ const maxPeaks = 8
 
 // specFrame computes the FFT source's spectrum in dBV and its peaks.
 // TRLC-LINKS: REQ-SDS-216
-func (c *Controller) specFrame(a *anaState, s *sv, f *engine.Frame) {
+func (c *Controller) specFrame(a *anaState, s *sv, f *sample.Frame) {
 	if (s.viewMode == viewFFT || s.viewMode == viewSpectrogram) && !s.autoBusy {
 		// the frames a spectrum can be taken of, as the web's FFT asks for: the
 		// full-rate record on short screens, else the filtered decimated one,

@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/labeth/open-dso-core/analysis"
-	"github.com/labeth/open-sds1000cml/app/internal/engine"
+	"github.com/labeth/open-dso-core/sample"
 	"github.com/labeth/open-sds1000cml/app/internal/panel/framecalc"
 	"github.com/labeth/open-sds1000cml/app/internal/panel/wsview"
 )
@@ -18,12 +18,17 @@ import (
 // TRLC-LINKS: REQ-SDS-021, REQ-SDS-214
 func TestDecodeStripClearsTrace(t *testing.T) {
 	const n = 1024
-	f := &engine.Frame{
-		C1: make([]uint8, n), C2: make([]uint8, n), Valid: n, WinCols: n, EdgeX: n / 2,
-		Ptp: 0, TdivS: 100e-6, SampleS: 1e-6, Trigd: true,
+	f := &sample.Frame{
+		WinPoints: n,
+		TriggerAt: n / 2,
+		SourcePtp: 0,
+		SampleS:   1e-6,
+		Snapshot:  sample.Settings{TdivS: 100e-6},
+		Status:    sample.Status{Triggered: true},
+		Traces:    []sample.Trace{{Codes8: make([]uint8, n), Valid: n}, {Ch: 1, Codes8: make([]uint8, n), Valid: n}},
 	}
-	for i := range f.C1 {
-		f.C1[i] = 128 - 88 // -3.52 div
+	for i := range f.Codes8(0) {
+		f.Codes8(0)[i] = 128 - 88 // -3.52 div
 	}
 	for _, top := range []int{0, 104, 136, 142} {
 		h := defaultHUD()
@@ -122,7 +127,7 @@ func TestDecodeStripReadsTheListsBytes(t *testing.T) {
 	msg := append([]byte{0x0B, 0x00, 0x10, 0x00, 0xFF}, "SPI FLASH 104MHZ OPEN-SDS 0123  "...)
 	const n, win, delayNs = 5000, 500, 7.5
 	c1, c2 := lateSPIFlash(msg, 7e-9, 1.5e-6, 2e-6, n)
-	f := &engine.Frame{C1: c1, C2: c2, Valid: n, WinCols: win, EdgeX: 2600, SampleS: 2e-9, TdivS: 100e-9, Trigd: true, Seq: 7}
+	f := &sample.Frame{WinPoints: win, TriggerAt: 2600, SampleS: 2e-9, Seq: 7, Snapshot: sample.Settings{TdivS: 100e-9}, Status: sample.Status{Triggered: true}, Traces: []sample.Trace{{Codes8: c1, Valid: n}, {Ch: 1, Codes8: c2, Valid: n}}}
 	h := defaultHUD()
 	h.DecProto, h.DecChA, h.DecChB, h.DecDelayNs = 4, 1, 0, delayNs
 	strip := decodeFrame(f, h)

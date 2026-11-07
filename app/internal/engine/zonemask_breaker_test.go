@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"math"
 	"testing"
+
+	"github.com/labeth/open-dso-core/sample"
 )
 
 // Zone/mask breaker: 50 waveform families, each with GROUND TRUTH — a golden
@@ -125,9 +127,9 @@ func zmFamilies() []zmFamily {
 // first rising mid-crossing after sample 600 (mimicking the trigger anchor).
 // violAt >= 0 injects the family's violation at edge-relative sample violAt.
 // TRLC-LINKS: REQ-SDS-014
-func zmGen(fam zmFamily, _, violAt int, rng func() float64) (*Frame, float64, int, []float64) {
+func zmGen(fam zmFamily, _, violAt int, rng func() float64) (*sample.Frame, float64, int, []float64) {
 	const n = 4096
-	f := &Frame{C1: make([]uint8, n), C2: make([]uint8, n), Valid: n}
+	f := &sample.Frame{Traces: []sample.Trace{{Codes8: make([]uint8, n), Valid: n}, {Ch: 1, Codes8: make([]uint8, n), Valid: n}}}
 	ph := rng() * fam.period
 	vals := make([]float64, n)
 	for i := range n {
@@ -194,8 +196,8 @@ func zmGen(fam zmFamily, _, violAt int, rng func() float64) (*Frame, float64, in
 		if v > 255 {
 			v = 255
 		}
-		f.C1[i] = uint8(v)
-		f.C2[i] = f.C1[i]
+		f.Codes8(0)[i] = uint8(v)
+		f.Codes8(1)[i] = f.Codes8(0)[i]
 	}
 	return f, edgeX, violSample, vals
 }
@@ -239,10 +241,10 @@ func TestZoneMaskBreaker(t *testing.T) {
 			left := int(math.Round(edgeX - float64(win)*posFrac))
 			for j := range win {
 				s := left + j
-				if s < 0 || s >= f.Valid {
+				if s < 0 || s >= f.Len() {
 					continue
 				}
-				v := f.C1[s]
+				v := f.Codes8(0)[s]
 				if v < lo[j] {
 					lo[j] = v
 				}
@@ -262,7 +264,7 @@ func TestZoneMaskBreaker(t *testing.T) {
 		// ---- clean frames must all pass ----
 		for k := range 16 {
 			f, edgeX, _, _ := zmGen(fam, 100+k, -1, rng)
-			if fail, _ := e.maskEval(f, f.Valid, 0, edgeX, sampleS, posFrac); fail {
+			if fail, _ := e.maskEval(f, f.Len(), 0, edgeX, sampleS, posFrac); fail {
 				mf := e.MaskFails()
 				t.Fatalf("fam %s: CLEAN frame %d failed the mask at col %d (false positive)", fam.name, k, mf[len(mf)-1].FailCol)
 			}
@@ -292,7 +294,7 @@ func TestZoneMaskBreaker(t *testing.T) {
 			if !det {
 				continue // physically undetectable — no assert either way
 			}
-			fail, _ := e.maskEval(f, f.Valid, 0, edgeX, sampleS, posFrac)
+			fail, _ := e.maskEval(f, f.Len(), 0, edgeX, sampleS, posFrac)
 			if !fail {
 				t.Fatalf("fam %s: VIOLATED frame %d passed the mask (missed %s at %d)", fam.name, k, fam.violate, violSample)
 			}
@@ -310,13 +312,13 @@ func TestZoneMaskBreaker(t *testing.T) {
 		lvl := int(128 + fam.off + fam.amp*0.5)
 		hit := Zone{DtLoS: 0, DtHiS: float64(fam.period) * sampleS, CodeLo: lvl - int(fam.amp), CodeHi: lvl + int(fam.amp), Ch: 0}
 		e.SetZones([]Zone{hit})
-		if !e.zonesQualify(f, f.Valid, edgeX, sampleS) {
+		if !e.zonesQualify(f, f.Len(), edgeX, sampleS) {
 			t.Fatalf("fam %s: intersect zone on the live waveform must qualify", fam.name)
 		}
 		// empty: derive from the family's MEASURED maximum (ringing overshoots
 		// to ~2.8x amp — assuming max=amp made the "empty" zone non-empty)
 		maxCode := 0
-		for _, v := range f.C1 {
+		for _, v := range f.Codes8(0) {
 			if int(v) > maxCode {
 				maxCode = int(v)
 			}
@@ -325,13 +327,13 @@ func TestZoneMaskBreaker(t *testing.T) {
 		if top < 250 {
 			empty := Zone{DtLoS: 0, DtHiS: float64(fam.period) * sampleS, CodeLo: top, CodeHi: 255, Ch: 0, Avoid: true}
 			e.SetZones([]Zone{empty})
-			if !e.zonesQualify(f, f.Valid, edgeX, sampleS) {
+			if !e.zonesQualify(f, f.Len(), edgeX, sampleS) {
 				t.Fatalf("fam %s: avoid zone over empty space must qualify", fam.name)
 			}
 			// and as an intersect zone it must NOT qualify
 			empty.Avoid = false
 			e.SetZones([]Zone{empty})
-			if e.zonesQualify(f, f.Valid, edgeX, sampleS) {
+			if e.zonesQualify(f, f.Len(), edgeX, sampleS) {
 				t.Fatalf("fam %s: intersect zone over empty space must not qualify", fam.name)
 			}
 		}

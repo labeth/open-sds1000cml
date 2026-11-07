@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/labeth/open-dso-core/sample"
 	"github.com/labeth/open-sds1000cml/app/internal/engine"
 	"github.com/labeth/open-sds1000cml/app/internal/panel/wsview"
 )
@@ -15,12 +16,12 @@ import (
 // freeRunFrame is a capture that does not repeat: the tone as a free-running
 // trigger shows it, at another phase each capture.
 // TRLC-LINKS: REQ-SDS-218
-func freeRunFrame(rng *rand.Rand) *engine.Frame {
+func freeRunFrame(rng *rand.Rand) *sample.Frame {
 	f := toneFrame("")
 	k := 200 + rng.Intn(1600) // a 4000-sample period: 0.05 to 0.45 of it off
-	sig := append([]uint8(nil), f.C1...)
-	for i := range f.C1 {
-		f.C1[i] = sig[(i+k)%len(sig)]
+	sig := append([]uint8(nil), f.Codes8(0)...)
+	for i := range f.Codes8(0) {
+		f.Codes8(0)[i] = sig[(i+k)%len(sig)]
 	}
 	return f
 }
@@ -268,18 +269,18 @@ func TestCompareRefStoredWhileStopped(t *testing.T) {
 // whose falling edges sit jitter samples after a column boundary, each
 // followed 5 samples later by a probe's 2-sample undershoot to 0.
 // TRLC-LINKS: REQ-SDS-218
-func spikeFrame(jitter int) *engine.Frame {
+func spikeFrame(jitter int) *sample.Frame {
 	f := toneFrame("")
-	for i := range f.C1 {
+	for i := range f.Codes8(0) {
 		ph := (i - jitter) % 2000
 		v := uint8(60)
 		if ph >= 1000 {
 			v = 196
 		}
-		f.C1[i] = v
+		f.Codes8(0)[i] = v
 	}
-	for e := 2000 + jitter; e+7 < len(f.C1); e += 2000 { // a falling edge at e
-		f.C1[e+5], f.C1[e+6] = 0, 0
+	for e := 2000 + jitter; e+7 < len(f.Codes8(0)); e += 2000 { // a falling edge at e
+		f.Codes8(0)[e+5], f.Codes8(0)[e+6] = 0, 0
 	}
 	return f
 }

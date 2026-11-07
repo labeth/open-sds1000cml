@@ -6,6 +6,7 @@ import (
 	"math"
 	"math/bits"
 
+	"github.com/labeth/open-dso-core/sample"
 	"github.com/labeth/open-sds1000cml/app/internal/sramcapture"
 )
 
@@ -80,8 +81,8 @@ const averageLengthSlack = 8
 // frame as one raw capture, as noisy as Normal. It returns the records the
 // average holds (at most target).
 // TRLC-LINKS: REQ-SDS-012
-func (a *sramAverage) push(f *Frame, target int) int {
-	n := f.Valid
+func (a *sramAverage) push(f *sample.Frame, target int) int {
+	n := f.Len()
 	target = max(target, 1)
 	if d := n - len(a.sum1); a.count == 0 && d != 0 || d < -averageLengthSlack || d > averageLengthSlack {
 		a.sum1 = make([]uint32, n)
@@ -89,17 +90,17 @@ func (a *sramAverage) push(f *Frame, target int) int {
 		a.count = 0
 	}
 	m := min(n, len(a.sum1)) // the samples this record and the block both hold
-	f.Q1 = qBuffer(f.Q1, n)
-	f.Q2 = qBuffer(f.Q2, n)
+	f.Traces[0].Precision = qBuffer(f.Precision(0), n)
+	f.Traces[1].Precision = qBuffer(f.Precision(1), n)
 	if a.count == 0 {
-		a.anchor = f.EdgeX
+		a.anchor = f.TriggerAt
 		a.lo = 0
 		a.hi = n
 	}
 	// Align to the block's first edge to a fraction of a sample: a whole-sample
 	// shift left each record up to half a sample off, blurring the averaged
 	// edge and moving it between blocks (0.87 ns peak to peak at 10 ns/div).
-	delta := f.EdgeX - a.anchor
+	delta := f.TriggerAt - a.anchor
 	shift := int(math.Floor(delta))
 	frac := delta - float64(shift)
 	if frac < 1e-6 {
@@ -138,10 +139,10 @@ func (a *sramAverage) push(f *Frame, target int) int {
 		if j < 0 || j >= n {
 			continue
 		}
-		x1, x2 := uint32(f.Q1[j]), uint32(f.Q2[j])
+		x1, x2 := uint32(f.Precision(0)[j]), uint32(f.Precision(1)[j])
 		if frac != 0 && j+1 < n {
-			x1 = uint32(math.Round(float64(f.Q1[j])*(1-frac) + float64(f.Q1[j+1])*frac))
-			x2 = uint32(math.Round(float64(f.Q2[j])*(1-frac) + float64(f.Q2[j+1])*frac))
+			x1 = uint32(math.Round(float64(f.Precision(0)[j])*(1-frac) + float64(f.Precision(0)[j+1])*frac))
+			x2 = uint32(math.Round(float64(f.Precision(1)[j])*(1-frac) + float64(f.Precision(1)[j+1])*frac))
 		}
 		if running {
 			a.sum1[i] -= byT.div(a.sum1[i])
@@ -154,17 +155,17 @@ func (a *sramAverage) push(f *Frame, target int) int {
 	byC := newRecip(count)
 	for i := a.lo; i < a.hi; i++ {
 		out := i - a.lo
-		f.Q1[out] = uint16(byC.div(a.sum1[i] + count/2)) //nolint:gosec // G115: a mean of Q8.8 codes
-		f.Q2[out] = uint16(byC.div(a.sum2[i] + count/2)) //nolint:gosec // G115: a mean of Q8.8 codes
-		f.C1[out] = roundQ8(f.Q1[out])
-		f.C2[out] = roundQ8(f.Q2[out])
+		f.Precision(0)[out] = uint16(byC.div(a.sum1[i] + count/2)) //nolint:gosec // G115: a mean of Q8.8 codes
+		f.Precision(1)[out] = uint16(byC.div(a.sum2[i] + count/2)) //nolint:gosec // G115: a mean of Q8.8 codes
+		f.Codes8(0)[out] = roundQ8(f.Precision(0)[out])
+		f.Codes8(1)[out] = roundQ8(f.Precision(1)[out])
 	}
-	f.Valid = a.hi - a.lo
-	f.Q1 = f.Q1[:f.Valid]
-	f.Q2 = f.Q2[:f.Valid]
-	f.EdgeX = a.anchor - float64(a.lo)
-	if f.WinCols > f.Valid {
-		f.WinCols = f.Valid
+	f.SetLen(a.hi - a.lo)
+	f.Traces[0].Precision = f.Precision(0)[:f.Len()]
+	f.Traces[1].Precision = f.Precision(1)[:f.Len()]
+	f.TriggerAt = a.anchor - float64(a.lo)
+	if f.WinPoints > f.Len() {
+		f.WinPoints = f.Len()
 	}
 
 	a.count = int(count)

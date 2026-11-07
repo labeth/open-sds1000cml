@@ -7,6 +7,7 @@ import (
 	"math"
 	"testing"
 
+	"github.com/labeth/open-dso-core/sample"
 	"github.com/labeth/open-sds1000cml/app/internal/sramcapture"
 )
 
@@ -31,7 +32,7 @@ func TestSRAMPlannerCoversEveryTimebase(t *testing.T) {
 
 // TRLC-LINKS: REQ-SDS-040
 func TestSRAMFrameWriterPreservesChannelsAndFractions(t *testing.T) {
-	f := &Frame{Valid: 2, C1: make([]uint8, 2), C2: make([]uint8, 2), Q1: make([]uint16, 2), Q2: make([]uint16, 2)}
+	f := &sample.Frame{Traces: []sample.Trace{{Valid: 2, Codes8: make([]uint8, 2), Precision: make([]uint16, 2)}, {Ch: 1, Valid: 2, Codes8: make([]uint8, 2), Precision: make([]uint16, 2)}}}
 	w := sramFrameWriter{f: f, m: sramcapture.Metadata{SamplesPerWord: 1, FractionBits: 8}}
 	b := make([]byte, 8)
 	for i, v := range []uint16{25601, 32768, 65535, 1} {
@@ -40,10 +41,10 @@ func TestSRAMFrameWriterPreservesChannelsAndFractions(t *testing.T) {
 	if _, err := w.Write(b); err != nil {
 		t.Fatal(err)
 	}
-	if f.Q1[0] != 25601 || f.Q2[0] != 32768 || f.Q1[1] != 65535 || f.Q2[1] != 1 {
+	if f.Precision(0)[0] != 25601 || f.Precision(1)[0] != 32768 || f.Precision(0)[1] != 65535 || f.Precision(1)[1] != 1 {
 		t.Fatal(f)
 	}
-	if f.C1[1] != 255 || f.C2[1] != 0 {
+	if f.Codes8(0)[1] != 255 || f.Codes8(1)[1] != 0 {
 		t.Fatal("rounded preview overflow")
 	}
 	if _, err := w.Write(b); err == nil {
@@ -53,12 +54,12 @@ func TestSRAMFrameWriterPreservesChannelsAndFractions(t *testing.T) {
 
 // TRLC-LINKS: REQ-SDS-040
 func TestSRAMFrameWriterRawOrder(t *testing.T) {
-	f := &Frame{Valid: 2, C1: make([]uint8, 2), C2: make([]uint8, 2)}
+	f := &sample.Frame{Traces: []sample.Trace{{Valid: 2, Codes8: make([]uint8, 2)}, {Ch: 1, Valid: 2, Codes8: make([]uint8, 2)}}}
 	w := sramFrameWriter{f: f, m: sramcapture.Metadata{SamplesPerWord: 2}}
 	if _, err := w.Write([]byte{1, 2, 3, 4}); err != nil {
 		t.Fatal(err)
 	}
-	if f.C1[0] != 1 || f.C1[1] != 3 || f.C2[0] != 2 || f.C2[1] != 4 {
+	if f.Codes8(0)[0] != 1 || f.Codes8(0)[1] != 3 || f.Codes8(1)[0] != 2 || f.Codes8(1)[1] != 4 {
 		t.Fatal(f)
 	}
 }

@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/labeth/open-dso-core/decode"
+	"github.com/labeth/open-dso-core/sample"
 	"github.com/labeth/open-sds1000cml/app/internal/analog"
 	"github.com/labeth/open-sds1000cml/app/internal/engine"
 	"github.com/labeth/open-sds1000cml/app/internal/panel/framecalc"
@@ -73,9 +74,9 @@ func BenchmarkStepNs(b *testing.B) {
 // TRLC-LINKS: REQ-SDS-215
 func BenchmarkCodesOf(b *testing.B) {
 	const n = 20000
-	f := &engine.Frame{C1: make([]uint8, n), C2: make([]uint8, n), Q1: make([]uint16, n), Valid: n}
-	for i := range f.C1 {
-		f.C1[i], f.Q1[i] = uint8(i), uint16(i*37)
+	f := &sample.Frame{Traces: []sample.Trace{{Codes8: make([]uint8, n), Precision: make([]uint16, n), Valid: n}, {Ch: 1, Codes8: make([]uint8, n), Valid: n}}}
+	for i := range f.Codes8(0) {
+		f.Codes8(0)[i], f.Precision(0)[i] = uint8(i), uint16(i*37)
 	}
 	for b.Loop() {
 		codesOf(f, 0, 0, n, analog.CplDC) // Q8.8
@@ -769,7 +770,7 @@ func BenchmarkSetupSummary(b *testing.B) {
 // TRLC-LINKS: REQ-SDS-140
 func BenchmarkSRFrameCopy(b *testing.B) {
 	const n = 500000
-	f := &engine.Frame{C1: make([]uint8, n), C2: make([]uint8, n), Valid: n}
+	f := &sample.Frame{Traces: []sample.Trace{{Codes8: make([]uint8, n), Valid: n}, {Ch: 1, Codes8: make([]uint8, n), Valid: n}}}
 	var b1, b2 []uint8
 	for b.Loop() {
 		c1, c2 := srFrameCopy(f, n, b1, b2)
@@ -780,7 +781,7 @@ func BenchmarkSRFrameCopy(b *testing.B) {
 // TRLC-LINKS: REQ-SDS-140
 func BenchmarkSRFrameCopyRef(b *testing.B) {
 	const n = 500000
-	f := &engine.Frame{C1: make([]uint8, n), C2: make([]uint8, n), Valid: n}
+	f := &sample.Frame{Traces: []sample.Trace{{Codes8: make([]uint8, n), Valid: n}, {Ch: 1, Codes8: make([]uint8, n), Valid: n}}}
 	for b.Loop() {
 		srFrameCopy(f, n, nil, nil) // a fresh copy each frame, as before
 	}
@@ -789,10 +790,10 @@ func BenchmarkSRFrameCopyRef(b *testing.B) {
 // The COMPARE repeat test maps both channels onto 400 columns a frame.
 // TRLC-LINKS: REQ-SDS-218
 func BenchmarkScreenExtremes(b *testing.B) {
-	f := &engine.Frame{C1: make([]uint8, 14000), C2: make([]uint8, 14000), Valid: 14000, WinCols: 1400, SampleS: 2e-9}
-	for i := range f.C1 {
-		f.C1[i] = uint8(128 + 60*((i/90)%2*2-1) + i%5)
-		f.C2[i] = f.C1[i]
+	f := &sample.Frame{WinPoints: 1400, SampleS: 2e-9, Traces: []sample.Trace{{Codes8: make([]uint8, 14000), Valid: 14000}, {Ch: 1, Codes8: make([]uint8, 14000), Valid: 14000}}}
+	for i := range f.Codes8(0) {
+		f.Codes8(0)[i] = uint8(128 + 60*((i/90)%2*2-1) + i%5)
+		f.Codes8(1)[i] = f.Codes8(0)[i]
 	}
 	s := &sv{probe: [2]float64{1, 1}, vidx: [2]int{10, 10}}
 	for b.Loop() {

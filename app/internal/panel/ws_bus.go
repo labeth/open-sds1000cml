@@ -13,9 +13,9 @@ import (
 
 	"github.com/labeth/open-dso-core/analysis"
 	"github.com/labeth/open-dso-core/decode"
+	"github.com/labeth/open-dso-core/sample"
 	"github.com/labeth/open-sds1000cml/app/internal/analog"
 	"github.com/labeth/open-sds1000cml/app/internal/engine"
-	"github.com/labeth/open-sds1000cml/app/internal/frames"
 	"github.com/labeth/open-sds1000cml/app/internal/panel/framecalc"
 	"github.com/labeth/open-sds1000cml/app/internal/panel/wsview"
 	"github.com/labeth/open-sds1000cml/app/internal/sramcapture"
@@ -67,7 +67,7 @@ func busListKey(s *sv) string {
 
 // busFrame decodes the frame and offers its packets to the held list.
 // TRLC-LINKS: REQ-SDS-214
-func (c *Controller) busFrame(a *anaState, s *sv, f *engine.Frame) {
+func (c *Controller) busFrame(a *anaState, s *sv, f *sample.Frame) {
 	if s.decProto == framecalc.ProtoOff {
 		a.res, a.resOK, a.live, a.rawKey = decode.Result{}, false, nil, ""
 		c.endBusRaw()
@@ -519,8 +519,8 @@ func (c *Controller) detectOnScreen() (decode.Result, float64, bool) {
 // searchable reports a frame a bus search or a decode can read: samples in
 // time order, enough of them.
 // TRLC-LINKS: REQ-SDS-214
-func searchable(f *engine.Frame) bool {
-	return f != nil && !f.IsEnv && (!f.PeakDetect || f.Ordered) && len(f.C1) >= 32
+func searchable(f *sample.Frame) bool {
+	return f != nil && !f.Flags.Has(sample.Envelope) && (f.Content != sample.PeakPairs || f.Flags.Has(sample.Ordered)) && len(f.Codes8(0)) >= 32
 }
 
 // frameCopy is a copy of the frame on screen when ok accepts it (nil
@@ -530,12 +530,12 @@ func searchable(f *engine.Frame) bool {
 // status) froze for as long as the search took (over a minute on a busy line
 // on the scope's ARM). Not for use inside OnFrame.
 // TRLC-LINKS: REQ-SDS-020, REQ-SDS-214
-func (c *Controller) frameCopy(ok func(*engine.Frame) bool) *engine.Frame {
-	var cp *engine.Frame
-	c.frameFn(func(f *engine.Frame) {
+func (c *Controller) frameCopy(ok func(*sample.Frame) bool) *sample.Frame {
+	var cp *sample.Frame
+	c.frameFn(func(f *sample.Frame) {
 		if ok(f) {
-			cp = new(engine.Frame)
-			frames.CopyFrame(cp, f)
+			cp = new(sample.Frame)
+			cp.CopyFrom(f)
 		}
 	})
 	return cp
@@ -648,8 +648,8 @@ func (c *Controller) detectOn(auto AutoSource) (decode.Result, float64, bool, lo
 	// weighed an I2C bus's "SPI" reading against the entry's 50ms/div
 	// envelope and kept it, one search in three).
 	set := c.snap().st.TdivSet()
-	all := func(f *engine.Frame, _ bool) bool {
-		return set <= 0 || !(f.SampleS > 0) || float64(f.Valid)*f.SampleS >= 5*set && (f.TdivS == 0 || f.TdivS <= slowerFrame*set)
+	all := func(f *sample.Frame, _ bool) bool {
+		return set <= 0 || !(f.SampleS > 0) || float64(f.Len())*f.SampleS >= 5*set && (f.Snapshot.TdivS == 0 || f.Snapshot.TdivS <= slowerFrame*set)
 	}
 	dec := c.detectWith(true, false, all, auto, decimatedWait)
 	res, sampleS, found := dec.res, dec.sampleS, dec.found
@@ -669,7 +669,7 @@ func (c *Controller) detectOn(auto AutoSource) (decode.Result, float64, bool, lo
 	}
 	// the full-rate record, not a decimated one still in flight
 	full := c.fullRateS()
-	raw := func(f *engine.Frame, decimated bool) bool { return decimated || full <= 0 || f.SampleS <= 1.25*full }
+	raw := func(f *sample.Frame, decimated bool) bool { return decimated || full <= 0 || f.SampleS <= 1.25*full }
 	l := c.detectWith(false, false, raw, auto, detectWait)
 	return l.res, l.sampleS, l.found, dec
 }
@@ -740,7 +740,7 @@ func checkedFind(res decode.Result) bool {
 // only frames of a timebase the search stepped to, captured after it: no
 // frame in flight need be waited out.
 // TRLC-LINKS: REQ-SDS-214
-func (c *Controller) detectWith(decimated, stepped bool, accept func(*engine.Frame, bool) bool, auto AutoSource, wait time.Duration) look {
+func (c *Controller) detectWith(decimated, stepped bool, accept func(*sample.Frame, bool) bool, auto AutoSource, wait time.Duration) look {
 	t0 := c.now()
 	kind := "full-rate"
 	if decimated {
@@ -753,13 +753,13 @@ func (c *Controller) detectWith(decimated, stepped bool, accept func(*engine.Fra
 	// bus is not found in a frame from before its bandwidth limit).
 	var start uint64
 	if c.frameFn != nil && c.snap().st.Running {
-		c.frameFn(func(f *engine.Frame) {
+		c.frameFn(func(f *sample.Frame) {
 			if f != nil {
 				start = f.Seq
 			}
 		})
 	}
-	fresh := func(f *engine.Frame) bool { return stepped || start == 0 || f.Seq >= start+2 }
+	fresh := func(f *sample.Frame) bool { return stepped || start == 0 || f.Seq >= start+2 }
 	lease := func(d time.Duration) {
 		if decimated {
 			if e, ok := c.eng.(sampleViewLeaser); ok {
@@ -780,11 +780,11 @@ func (c *Controller) detectWith(decimated, stepped bool, accept func(*engine.Fra
 		got, usable, resolved := false, false, false
 		var runs [2]int
 		if c.frameFn != nil {
-			c.frameFn(func(f *engine.Frame) {
-				usable = f != nil && !f.IsEnv && (!f.PeakDetect || f.Ordered) && f.Valid >= 32 && len(f.C1) >= f.Valid
-				got = usable && !f.PeakDetect && accept(f, decimated) && fresh(f)
-				if got && decimated && len(f.C2) >= f.Valid {
-					runs = [2]int{decode.ShortestRun(f.C1[:f.Valid]), decode.ShortestRun(f.C2[:f.Valid])}
+			c.frameFn(func(f *sample.Frame) {
+				usable = f != nil && !f.Flags.Has(sample.Envelope) && (f.Content != sample.PeakPairs || f.Flags.Has(sample.Ordered)) && f.Len() >= 32 && len(f.Codes8(0)) >= f.Len()
+				got = usable && f.Content != sample.PeakPairs && accept(f, decimated) && fresh(f)
+				if got && decimated && len(f.Codes8(1)) >= f.Len() {
+					runs = [2]int{decode.ShortestRun(f.Codes8(0)[:f.Len()]), decode.ShortestRun(f.Codes8(1)[:f.Len()])}
 					resolved = runsResolved(runs[0]) && runsResolved(runs[1])
 				}
 			})
@@ -830,18 +830,18 @@ const envWait = 400 * time.Millisecond
 // lease; else only the frame on screen is looked at. seen is false (and the
 // figures zeros) when none is seen.
 // TRLC-LINKS: REQ-SDS-214
-func (c *Controller) envelopeRuns(wait bool, accept func(*engine.Frame, bool) bool, deadline time.Time) (runs, busy [2]float64, seen bool) {
+func (c *Controller) envelopeRuns(wait bool, accept func(*sample.Frame, bool) bool, deadline time.Time) (runs, busy [2]float64, seen bool) {
 	if c.frameFn == nil {
 		return runs, busy, false
 	}
 	end := minTime(deadline, c.now().Add(envWait))
 	for {
-		c.frameFn(func(f *engine.Frame) {
-			if f == nil || !f.PeakDetect || !f.Ordered || f.Valid < 64 || len(f.C1) < f.Valid || len(f.C2) < f.Valid || !accept(f, true) {
+		c.frameFn(func(f *sample.Frame) {
+			if f == nil || f.Content != sample.PeakPairs || !f.Flags.Has(sample.Ordered) || f.Len() < 64 || len(f.Codes8(0)) < f.Len() || len(f.Codes8(1)) < f.Len() || !accept(f, true) {
 				return
 			}
 			seen = true
-			for ch, codes := range [2][]uint8{f.C1[:f.Valid], f.C2[:f.Valid]} {
+			for ch, codes := range [2][]uint8{f.Codes8(0)[:f.Len()], f.Codes8(1)[:f.Len()]} {
 				runs[ch], busy[ch] = decode.EnvelopeRun(codes, f.SampleS)
 			}
 		})
@@ -918,7 +918,7 @@ func busLines(res decode.Result) []int {
 // or two under the feature now and then, went on to a full-rate record
 // read as Manchester.
 // TRLC-LINKS: REQ-SDS-214
-func (c *Controller) weighEnvelope(l *look, accept func(*engine.Frame, bool) bool) bool {
+func (c *Controller) weighEnvelope(l *look, accept func(*sample.Frame, bool) bool) bool {
 	short := shortRuns(*l)
 	if !stands(*l) || checkedFind(l.res) || (!short && !clockFromRecord(l.res)) {
 		return stands(*l)
@@ -1036,7 +1036,7 @@ func (c *Controller) findBus(auto AutoSource, wanted func() bool) (decode.Result
 	scant := found && (scantFind(res) || clockFromRecord(res) && full > 0 && sampleS > 1.25*full)
 	// a record resolving its edges is weighed against the live envelope (slowFirst)
 	if !found && dec.resolved && !dec.envSeen {
-		dec.envRun, dec.envBusy, dec.envSeen = c.envelopeRuns(true, func(*engine.Frame, bool) bool { return true }, c.now().Add(envWait))
+		dec.envRun, dec.envBusy, dec.envSeen = c.envelopeRuns(true, func(*sample.Frame, bool) bool { return true }, c.now().Add(envWait))
 	}
 	// A record of the timebase on screen with no edges on either line (an IR
 	// remote's 67 ms frame among its idle, at 500us/div), or one resolving
@@ -1188,8 +1188,8 @@ func (c *Controller) findSlowBus(auto AutoSource, wanted func() bool, prior stri
 			// a frame of the search's own screen, not one the live view or
 			// the look on screen read at the timebase (four times coarser),
 			// and newer than the look before read
-			accept := func(f *engine.Frame, _ bool) bool {
-				ok := (f.TdivS == 0 || math.Abs(f.TdivS-at) <= 1e-3*at) && (after == 0 || f.Seq > after) &&
+			accept := func(f *sample.Frame, _ bool) bool {
+				ok := (f.Snapshot.TdivS == 0 || math.Abs(f.Snapshot.TdivS-at) <= 1e-3*at) && (after == 0 || f.Seq > after) &&
 					(!searching || f.SampleS <= 2*10*at/engine.SearchLiveSamples)
 				if ok {
 					seen = max(seen, f.Seq)
@@ -1264,9 +1264,9 @@ func slowLooks(i int) int {
 // TRLC-LINKS: REQ-SDS-214
 func (c *Controller) findAtFullRate(full, t float64, first *look, auto AutoSource, wanted func() bool) (decode.Result, float64, bool, float64) {
 	prev := c.snap().st.TdivSet()
-	at := func(t float64) func(*engine.Frame, bool) bool {
-		return func(f *engine.Frame, decimated bool) bool {
-			return (decimated || f.SampleS <= 1.25*full) && (f.TdivS == 0 || math.Abs(f.TdivS-t) <= 1e-3*t)
+	at := func(t float64) func(*sample.Frame, bool) bool {
+		return func(f *sample.Frame, decimated bool) bool {
+			return (decimated || f.SampleS <= 1.25*full) && (f.Snapshot.TdivS == 0 || math.Abs(f.Snapshot.TdivS-t) <= 1e-3*t)
 		}
 	}
 	keep := func(res decode.Result, sampleS, stepped float64) (decode.Result, float64, bool, float64) {
@@ -1497,12 +1497,12 @@ func (c *Controller) smallSwing(auto bool) string {
 		return ""
 	}
 	note := ""
-	c.frameFn(func(f *engine.Frame) {
-		if f == nil || f.Valid <= 0 {
+	c.frameFn(func(f *sample.Frame) {
+		if f == nil || f.Len() <= 0 {
 			return
 		}
-		for ch, codes := range [2][]uint8{f.C1, f.C2} {
-			n := min(f.Valid, len(codes))
+		for ch, codes := range [2][]uint8{f.Codes8(0), f.Codes8(1)} {
+			n := min(f.Len(), len(codes))
 			if n == 0 {
 				continue
 			}
@@ -1782,7 +1782,7 @@ func (c *Controller) openPickSub() error {
 	}
 	var valid int
 	if c.frameFn != nil {
-		if f := c.frameCopy(func(f *engine.Frame) bool { return f != nil && len(f.C1) > 0 }); f != nil {
+		if f := c.frameCopy(func(f *sample.Frame) bool { return f != nil && len(f.Codes8(0)) > 0 }); f != nil {
 			res = framecalc.Decode(f, decodeParamsOf(s))
 			valid = framecalc.Valid(f)
 		}
@@ -1887,8 +1887,8 @@ func eyeWhyText(err string, ch int) string {
 // each change. Any other frame leaves the eye as it is: it holds what it
 // folded.
 // TRLC-LINKS: REQ-SDS-215
-func (c *Controller) eyeFrame(a *anaState, s *sv, f *engine.Frame) {
-	if !f.FullRate {
+func (c *Controller) eyeFrame(a *anaState, s *sv, f *sample.Frame) {
+	if f.Content != sample.RawFullRate {
 		// Not even its decode counts: the bit time of an envelope too coarse to
 		// decode would take the eye away.
 		switch {
@@ -1988,7 +1988,7 @@ const (
 // full-rate record too coarse as well ends it for those settings, and the
 // faster timebase is hinted.
 // TRLC-LINKS: REQ-SDS-214
-func (c *Controller) busRawFrames(a *anaState, s *sv, f *engine.Frame) {
+func (c *Controller) busRawFrames(a *anaState, s *sv, f *sample.Frame) {
 	key, bus := busListKey(s), busFeatureKey(s)
 	// The bus's feature as a decode measures it on a frame that resolves it
 	// (readableFeature samples, as an envelope holds the feature on one), the
@@ -1996,7 +1996,7 @@ func (c *Controller) busRawFrames(a *anaState, s *sv, f *engine.Frame) {
 	// never faster - a coarse envelope's decode of a 10 MHz SPI bus held 'OK'
 	// a feature microseconds long, and BUS sampled its records 4 us apart.
 	resolved := decode.FeatureSamples(a.res)
-	if f.PeakDetect {
+	if f.Content == sample.PeakPairs {
 		resolved = decode.EnvelopeFeatureSamples(a.res) // a Wiegand pulse: its bit interval
 	}
 	if a.res.OK && f.SampleS > 0 && resolved >= readableFeature {
@@ -2012,7 +2012,7 @@ func (c *Controller) busRawFrames(a *anaState, s *sv, f *engine.Frame) {
 	if aliasedClock(a, bus, f) {
 		a.res = decode.Result{Proto: a.res.Proto, Error: fmt.Sprintf("%.1f cols/clock; too few samples/bit", 2*a.featS/f.SampleS)}
 	}
-	live := f.PeakDetect || s.st.Roll // a view the engine reads coarser than its record
+	live := f.Content == sample.PeakPairs || s.st.Roll // a view the engine reads coarser than its record
 	// Records sampled at a quarter of the feature, where the capture can
 	// decimate that finely (busFinestDecimated); else the full rate.
 	want := 0.0
@@ -2029,7 +2029,7 @@ func (c *Controller) busRawFrames(a *anaState, s *sv, f *engine.Frame) {
 		// BUS's lease decisions in the log, as they change
 		if now := [3]string{a.rawKey, a.rawFull, a.rawNo}; now != before {
 			c.logf("panel: bus lease: sampled %v full-rate %v refused %v (frame %s a sample, decimation %d, live %v: %s) key %q was %q",
-				a.rawKey == key, a.rawFull == key, a.rawNo == key, si(f.SampleS, "s"), f.Decimation, live, a.res.Error, key, before[0])
+				a.rawKey == key, a.rawFull == key, a.rawNo == key, si(f.SampleS, "s"), uint32(f.AcqDecim), live, a.res.Error, key, before[0])
 		}
 	}()
 	switch {
@@ -2038,7 +2038,7 @@ func (c *Controller) busRawFrames(a *anaState, s *sv, f *engine.Frame) {
 	case live && (framecalc.Unresolved(a.res) || tooFewSamples(a.res) || coarseFor(a, bus, f)):
 		a.rawKey = key
 		a.res.Error = decode.Names[a.res.Proto] + ": the live view is too coarse - reading sampled records (slower frames)"
-	case !live && a.rawKey == key && tooFewSamples(a.res) && f.Decimation > own:
+	case !live && a.rawKey == key && tooFewSamples(a.res) && uint32(f.AcqDecim) > own:
 		a.rawFull, want = key, 0 // sampled too coarsely: the full rate
 	case !live && a.rawKey == key && tooFewSamples(a.res):
 		a.rawKey, a.rawNo = "", key
@@ -2063,7 +2063,7 @@ func (c *Controller) busRawFrames(a *anaState, s *sv, f *engine.Frame) {
 // take the clock from the record) whose clock is over twice as slow as the
 // shortest this bus's settings measured: the record aliases it.
 // TRLC-LINKS: REQ-SDS-214
-func aliasedClock(a *anaState, bus string, f *engine.Frame) bool {
+func aliasedClock(a *anaState, bus string, f *sample.Frame) bool {
 	return a.res.OK && (a.res.Proto == "spi" || a.res.Proto == "i2c") && a.featKey == bus && a.featS > 0 && f.SampleS > 0 &&
 		decode.FeatureSamples(a.res)*f.SampleS > 2*a.featS
 }
@@ -2112,7 +2112,7 @@ func (c *Controller) holdBusLease(sampleS float64) {
 // featEnv), whatever the decoder said: a SENT frame at 2ms/div read "no
 // SENT frame", not its resolution.
 // TRLC-LINKS: REQ-SDS-214
-func coarseFor(a *anaState, bus string, f *engine.Frame) bool {
+func coarseFor(a *anaState, bus string, f *sample.Frame) bool {
 	return !a.res.OK && a.featKey == bus && a.featEnv > 0 && f.SampleS > 0 && a.featEnv/f.SampleS < coarseFeature
 }
 
@@ -2213,9 +2213,9 @@ func (c *Controller) eyeRawFix(s *sv) string {
 // LCD draws them: the display coupling, the invert and the 2 and 5 mV
 // detents' magnification (Q8.8 where the frame carries it).
 // TRLC-LINKS: REQ-SDS-215
-func displayCodes(f *engine.Frame, s *sv, ch, lo, n, stride int) []float64 {
+func displayCodes(f *sample.Frame, s *sv, ch, lo, n, stride int) []float64 {
 	valid := framecalc.Valid(f)
-	if ch == 1 && len(f.C2) < valid || n <= 0 {
+	if ch == 1 && len(f.Codes8(1)) < valid || n <= 0 {
 		return nil
 	}
 	sig := framecalc.Channel(f, ch, valid)
@@ -2223,9 +2223,9 @@ func displayCodes(f *engine.Frame, s *sv, ch, lo, n, stride int) []float64 {
 	if cpl != analog.CplDC {
 		sig = analog.CoupleDisplay(sig, cpl)
 	}
-	q := f.Q1
+	q := f.Precision(0)
 	if ch == 1 {
-		q = f.Q2
+		q = f.Precision(1)
 	}
 	fine := cpl == analog.CplDC && len(q) >= valid
 	z := float64(max(analog.Detents[s.vidx[ch]].Zoom, 1))

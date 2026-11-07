@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/labeth/open-dso-core/decode"
+	"github.com/labeth/open-dso-core/sample"
 )
 
 // The serial trigger is the FPGA's (ADR-SERIAL-HARDWARE-TRIGGER): its
@@ -59,25 +60,25 @@ func (lv *frameLevels) of(ch int, codes []uint8) {
 // learnSerialLevelsOf is learnSerialLevels with the channels' thresholds
 // taken from lv when it is given.
 // TRLC-LINKS: REQ-SDS-013
-func (e *Engine) learnSerialLevelsOf(f *Frame, sc [2]chScale, lv *frameLevels) {
-	if f == nil || f.Valid < 64 {
+func (e *Engine) learnSerialLevelsOf(f *sample.Frame, sc [2]chScale, lv *frameLevels) {
+	if f == nil || f.Len() < 64 {
 		return
 	}
 	for ch := range 2 {
-		codes := f.C1
+		codes := f.Codes8(0)
 		if ch == 1 {
-			codes = f.C2
+			codes = f.Codes8(1)
 		}
-		if len(codes) < f.Valid || !(sc[ch].vdiv > 0) {
+		if len(codes) < f.Len() || !(sc[ch].vdiv > 0) {
 			continue
 		}
 		var thr float64
 		var ok bool
 		if lv != nil {
-			lv.of(ch, codes[:f.Valid])
+			lv.of(ch, codes[:f.Len()])
 			thr, ok = lv.thr[ch], lv.thrOK[ch]
 		} else {
-			thr, ok = decode.AutoThreshold(codes[:f.Valid])
+			thr, ok = decode.AutoThreshold(codes[:f.Len()])
 		}
 		if !ok {
 			continue
@@ -98,21 +99,21 @@ func (e *Engine) learnSerialLevelsOf(f *Frame, sc [2]chScale, lv *frameLevels) {
 	e.ser.mu.Lock()
 	p := e.ser.params
 	e.ser.mu.Unlock()
-	line := f.C1
+	line := f.Codes8(0)
 	if p.ChA == 1 {
-		line = f.C2
+		line = f.Codes8(1)
 	}
-	line = line[:min(f.Valid, len(line))]
+	line = line[:min(f.Len(), len(line))]
 	switch {
 	case p.Proto == serSPI && p.SPIClockHz <= 0:
-		if hz := clockRate(line, f.SampleS, f.PeakDetect); hz > 0 && resolvesClock(math.Float64frombits(e.serLv.spiHz.Load()), f) {
+		if hz := clockRate(line, f.SampleS, f.Content == sample.PeakPairs); hz > 0 && resolvesClock(math.Float64frombits(e.serLv.spiHz.Load()), f) {
 			e.serLv.spiHz.Store(math.Float64bits(hz))
 		}
 		if e.serLv.spiProbe.Swap(false) && e.clk.Now != nil {
 			e.serLv.spiQuiet.Store(e.clk.Now().UnixNano())
 		}
 	case p.Proto == serI2C && p.I2CClockHz <= 0:
-		if hz := clockRate(line, f.SampleS, f.PeakDetect); hz > 0 && resolvesClock(math.Float64frombits(e.serLv.sclHz.Load()), f) {
+		if hz := clockRate(line, f.SampleS, f.Content == sample.PeakPairs); hz > 0 && resolvesClock(math.Float64frombits(e.serLv.sclHz.Load()), f) {
 			e.serLv.sclHz.Store(math.Float64bits(hz))
 		}
 	case p.Proto == serUART && p.Baud <= 0:
@@ -321,8 +322,8 @@ func (e *Engine) spiQuietCheck(p SerialParams) {
 // gap planned for that split nothing, and no capture triggered again (the
 // quiet check measuring again on the same records).
 // TRLC-LINKS: REQ-SDS-013, REQ-SDS-229
-func resolvesClock(hz float64, f *Frame) bool {
-	return !(hz > 0) || f.Decimation <= 1 || (f.SampleS > 0 && 1/(hz*f.SampleS) >= minClockSamples)
+func resolvesClock(hz float64, f *sample.Frame) bool {
+	return !(hz > 0) || uint32(f.AcqDecim) <= 1 || (f.SampleS > 0 && 1/(hz*f.SampleS) >= minClockSamples)
 }
 
 // minClockSamples is the samples a clock period spans on a frame that
@@ -536,8 +537,8 @@ func joinBytes(bytes []int, limit int) []int {
 // when the decode does not find one there; the trigger point then stays the
 // hardware's.
 // TRLC-LINKS: REQ-SDS-013
-func (e *Engine) serialMatchStart(f *Frame, hw float64) float64 {
-	if !(hw >= 0) || hw >= float64(f.Valid) || !(f.SampleS > 0) || (f.PeakDetect && !f.Ordered) {
+func (e *Engine) serialMatchStart(f *sample.Frame, hw float64) float64 {
+	if !(hw >= 0) || hw >= float64(f.Len()) || !(f.SampleS > 0) || (f.Content == sample.PeakPairs && !f.Flags.Has(sample.Ordered)) {
 		return -1
 	}
 	e.ser.mu.Lock()
@@ -549,31 +550,31 @@ func (e *Engine) serialMatchStart(f *Frame, hw float64) float64 {
 	if planned, why := e.serialPlanParams(p); why == "" {
 		p.Bytes, p.Pattern, p.Baud, p.TickNs = planned.Bytes, planned.Pattern, planned.Baud, planned.TickNs
 	}
-	a, b := f.C1, f.C1
+	a, b := f.Codes8(0), f.Codes8(0)
 	if p.ChA == 1 {
-		a = f.C2
+		a = f.Codes8(1)
 	}
 	if p.ChB == 1 {
-		b = f.C2
+		b = f.Codes8(1)
 	}
-	if len(a) < f.Valid || len(b) < f.Valid {
+	if len(a) < f.Len() || len(b) < f.Len() {
 		return -1
 	}
 	at := int(hw)
-	lo, hi := 0, f.Valid
+	lo, hi := 0, f.Len()
 	// A unit is at most the record: a slow bus's unit on a full-rate record
 	// (an HDMI-CEC block of 24 ms is 12 M samples at 2 ns) times the frame's
 	// units overflows a 32-bit int.
-	if unit := min(serialUnitSamples(p, f.SampleS, math.Float64frombits(e.serLv.spiHz.Load())), f.Valid); unit > 0 {
+	if unit := min(serialUnitSamples(p, f.SampleS, math.Float64frombits(e.serLv.spiHz.Load())), f.Len()); unit > 0 {
 		n := max(1, len(patternOf(p)))
 		lo = max(0, at-(n+2)*unit)
-		hi = min(f.Valid, at+2*unit)
+		hi = min(f.Len(), at+2*unit)
 	}
 	if pat := patternOf(p); len(pat) == 2 && pat[0].Kind == patternStart && pat[1].Kind == patternData && pat[1].Mask == 0 {
 		// the whole frame around it: a decoder drops a frame cut short (a CAN
 		// frame read to its first data byte fails its CRC)
-		if unit := min(serialUnitSamples(p, f.SampleS, math.Float64frombits(e.serLv.spiHz.Load())), f.Valid); unit > 0 {
-			lo, hi = max(0, at-frameUnitsBefore*unit), min(f.Valid, at+frameUnitsAfter*unit)
+		if unit := min(serialUnitSamples(p, f.SampleS, math.Float64frombits(e.serLv.spiHz.Load())), f.Len()); unit > 0 {
+			lo, hi = max(0, at-frameUnitsBefore*unit), min(f.Len(), at+frameUnitsAfter*unit)
 		}
 		return frameUnitStart(a[lo:hi], b[lo:hi], f.SampleS, p, at-lo, lo)
 	}

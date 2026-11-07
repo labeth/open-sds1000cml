@@ -2,7 +2,10 @@
 
 package engine
 
-import "testing"
+import (
+	"math"
+	"testing"
+)
 
 // TRLC-LINKS: REQ-SDS-008, REQ-SDS-009
 func TestMemDepth(t *testing.T) {
@@ -16,8 +19,8 @@ func TestMemDepth(t *testing.T) {
 	}
 	e.bringUp()
 	e.oneFrame(false)
-	if f, _ := e.Consume(); f.Valid != 14336 {
-		t.Fatalf("deep drain: Valid=%d, want 14336", f.Valid)
+	if f, _ := e.Consume(); f.Len() != 14336 {
+		t.Fatalf("deep drain: Valid=%d, want 14336", f.Len())
 	}
 	if got := e.SetMemDepth(999999); got != maxRecordCols {
 		t.Fatalf("clamp high = %d, want %d", got, maxRecordCols)
@@ -38,8 +41,8 @@ func TestSingleForcesFullDepth(t *testing.T) {
 	e.SetSingle()
 	e.bringUp()
 	e.oneFrame(false)
-	if f, _ := e.Consume(); f.Valid != maxRecordCols || !f.Coherent {
-		t.Fatalf("SINGLE drain: Valid=%d coherent=%v, want %d/true", f.Valid, f.Coherent, maxRecordCols)
+	if f, _ := e.Consume(); f.Len() != maxRecordCols || !f.Status.Coherent {
+		t.Fatalf("SINGLE drain: Valid=%d coherent=%v, want %d/true", f.Len(), f.Status.Coherent, maxRecordCols)
 	}
 	if s := e.Snapshot(); s.ShortDrains != 0 {
 		t.Fatalf("SINGLE drain asked the fabric for more than it finalizes: %d short drains (pre=%d post=%d)",
@@ -69,14 +72,14 @@ func TestStreamMode(t *testing.T) {
 	if !fresh {
 		t.Fatal("stream frame never reached the arena")
 	}
-	if f.StreamSeq == 0 || f.WindowNs == 0 {
-		t.Fatalf("stream continuity metadata: seq=%d window_ns=%d", f.StreamSeq, f.WindowNs)
+	if f.Stream.Seq == 0 || int64(math.Round(f.Stream.WindowS*1e9)) == 0 {
+		t.Fatalf("stream continuity metadata: seq=%d window_ns=%d", f.Stream.Seq, int64(math.Round(f.Stream.WindowS*1e9)))
 	}
-	if f.Valid != maxRecordCols {
-		t.Fatalf("stream drains the full record: Valid=%d, want %d", f.Valid, maxRecordCols)
+	if f.Len() != maxRecordCols {
+		t.Fatalf("stream drains the full record: Valid=%d, want %d", f.Len(), maxRecordCols)
 	}
-	if f.EdgeX >= 0 {
-		t.Fatalf("stream window must be edge-agnostic (raw contiguous), EdgeX=%v", f.EdgeX)
+	if f.TriggerAt >= 0 {
+		t.Fatalf("stream window must be edge-agnostic (raw contiguous), EdgeX=%v", f.TriggerAt)
 	}
 	e.SetStreamMode(false)
 }

@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/labeth/open-dso-core/sample"
 	"github.com/labeth/open-sds1000cml/app/internal/analog"
 	"github.com/labeth/open-sds1000cml/app/internal/engine"
 )
@@ -421,7 +422,7 @@ func (h *Handler) execGlobal(head, arg string) []byte { //nolint:gocyclo,funlen 
 		return h.reply("AVGA", strconv.Itoa(st.AvgCount))
 	case "SARA?":
 		var rate float64
-		h.sc.WithFrame(func(f *engine.Frame) {
+		h.sc.WithFrame(func(f *sample.Frame) {
 			if f != nil && f.SampleS > 0 {
 				rate = 1 / f.SampleS
 			}
@@ -440,9 +441,9 @@ func (h *Handler) execGlobal(head, arg string) []byte { //nolint:gocyclo,funlen 
 		return h.reply("SAST", s)
 	case "SANU?":
 		n := 0
-		h.sc.WithFrame(func(f *engine.Frame) {
+		h.sc.WithFrame(func(f *sample.Frame) {
 			if f != nil {
-				n = f.Valid
+				n = f.Len()
 			}
 		})
 		return h.reply("SANU", strconv.Itoa(n))

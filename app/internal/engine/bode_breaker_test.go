@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"math"
 	"testing"
+
+	"github.com/labeth/open-dso-core/sample"
 )
 
 // 50-waveform adversarial breaker for the Bode / FRA measurement. Every family
@@ -257,7 +259,7 @@ func TestBodeBreaker50(t *testing.T) {
 						t.Fatalf("fam %s / %s: bodeEval PANIC: %v", fam.name, rel.name, r)
 					}
 				}()
-				e.bodeEval(&Frame{C1: c1, C2: c2, Valid: n, SampleS: dt}, n, dt)
+				e.bodeEval(&sample.Frame{SampleS: dt, Traces: []sample.Trace{{Codes8: c1, Valid: n}, {Ch: 1, Codes8: c2, Valid: n}}}, n, dt)
 			}()
 			for _, p := range e.BodePoints() {
 				if math.IsNaN(p.FreqHz) || math.IsInf(p.FreqHz, 0) || p.FreqHz <= 0 || p.FreqHz >= nyq {

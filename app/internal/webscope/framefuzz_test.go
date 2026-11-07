@@ -10,6 +10,7 @@ import (
 	"sync/atomic"
 	"testing"
 
+	"github.com/labeth/open-dso-core/sample"
 	"github.com/labeth/open-sds1000cml/app/internal/engine"
 )
 
@@ -20,18 +21,22 @@ import (
 // TRLC-LINKS: REQ-SDS-163
 func TestFrameServeFuzz(t *testing.T) {
 	rng := rand.New(rand.NewSource(0xF00D))
-	var cur atomic.Pointer[engine.Frame]
+	var cur atomic.Pointer[sample.Frame]
 
-	mkFrame := func(seq uint64) *engine.Frame {
+	mkFrame := func(seq uint64) *sample.Frame {
 		n := rng.Intn(6000)
-		f := &engine.Frame{
-			Seq: seq, Valid: n, SampleS: []float64{0, 800e-9, 2e-9, 1e-12}[rng.Intn(4)],
-			WinCols: []int{0, 1, 2048, 4096, 100000, -5}[rng.Intn(6)],
-			EdgeX:   []float64{-1, 0, float64(n) / 2, float64(n) * 2, math.NaN(), -1e9, 1e9}[rng.Intn(7)],
-			TdivS:   500e-6, DisplayedS: 500e-6, Trigd: rng.Intn(2) == 0, Coherent: rng.Intn(2) == 0,
-			Ptp: rng.Intn(300), Interp: rng.Intn(2) == 0,
-			IsEnv: rng.Intn(4) == 0, EnvCols: rng.Intn(900),
+		f := &sample.Frame{
+			Seq: seq, Traces: []sample.Trace{{Valid: n}, {Ch: 1, Valid: n}},
+			SampleS:   []float64{0, 800e-9, 2e-9, 1e-12}[rng.Intn(4)],
+			WinPoints: []int{0, 1, 2048, 4096, 100000, -5}[rng.Intn(6)],
+			TriggerAt: []float64{-1, 0, float64(n) / 2, float64(n) * 2, math.NaN(), -1e9, 1e9}[rng.Intn(7)],
+			Snapshot:  sample.Settings{TdivS: 500e-6, DisplayedS: 500e-6},
+			Status:    sample.Status{Triggered: rng.Intn(2) == 0, Coherent: rng.Intn(2) == 0},
 		}
+		f.SourcePtp = rng.Intn(300)
+		f.Flags.Set(sample.Interp, rng.Intn(2) == 0)
+		env, envCols := rng.Intn(4) == 0, rng.Intn(900)
+		f.Flags.Set(sample.Envelope, env)
 		clen := n
 		if rng.Intn(5) == 0 { // sometimes claim more valid than we allocate
 			clen = n / 2
@@ -39,26 +44,26 @@ func TestFrameServeFuzz(t *testing.T) {
 		if clen < 0 {
 			clen = 0
 		}
-		f.C1 = make([]uint8, clen)
-		f.C2 = make([]uint8, clen)
-		for i := range f.C1 {
-			f.C1[i] = uint8(rng.Intn(256))
-			f.C2[i] = uint8(rng.Intn(256))
+		f.Traces[0].Codes8 = make([]uint8, clen)
+		f.Traces[1].Codes8 = make([]uint8, clen)
+		for i := range f.Codes8(0) {
+			f.Codes8(0)[i] = uint8(rng.Intn(256))
+			f.Codes8(1)[i] = uint8(rng.Intn(256))
 		}
-		if f.IsEnv {
-			ec := f.EnvCols
+		if env {
+			ec := envCols
 			if rng.Intn(3) == 0 {
 				ec = 0 // env metadata lies: cols>0 but arrays nil/short
 			}
-			f.EnvMin = make([]uint8, ec)
-			f.EnvMax = make([]uint8, ec)
-			f.EnvMin2 = make([]uint8, ec)
-			f.EnvMax2 = make([]uint8, ec)
+			f.Traces[0].Min8 = make([]uint8, ec)
+			f.Traces[0].Max8 = make([]uint8, ec)
+			f.Traces[1].Min8 = make([]uint8, ec)
+			f.Traces[1].Max8 = make([]uint8, ec)
 		}
 		// keep Valid within C1 for the copy-heavy paths half the time, to
 		// exercise both the guarded and the invariant-violating branches
-		if rng.Intn(2) == 0 && f.Valid > len(f.C1) {
-			f.Valid = len(f.C1)
+		if rng.Intn(2) == 0 && f.Len() > len(f.Codes8(0)) {
+			f.SetLen(len(f.Codes8(0)))
 		}
 		return f
 	}

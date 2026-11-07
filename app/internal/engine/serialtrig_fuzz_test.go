@@ -5,6 +5,8 @@ package engine
 import (
 	"math"
 	"testing"
+
+	"github.com/labeth/open-dso-core/sample"
 )
 
 // TestSerialQualifyFuzz hammers serialQualify with hostile SerialParams + frames
@@ -60,7 +62,8 @@ func TestSerialQualifyFuzz(t *testing.T) {
 				c2[i] = uint8(next())
 			}
 		}
-		f := &Frame{C1: c1, C2: c2, IsEnv: next()&15 == 0}
+		f := &sample.Frame{Traces: []sample.Trace{{Codes8: c1}, {Ch: 1, Codes8: c2}}}
+		f.Flags.Set(sample.Envelope, next()&15 == 0)
 		valid := ni(5000) - 200 // includes negative + > len
 		sampleS := sampleSs[ni(len(sampleSs))]
 

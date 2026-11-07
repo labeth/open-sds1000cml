@@ -6,8 +6,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/labeth/open-dso-core/sample"
 	"github.com/labeth/open-sds1000cml/app/internal/buildinfo"
-	"github.com/labeth/open-sds1000cml/app/internal/engine"
 )
 
 // The SYS tab (Help key) names the firmware and its version, so an owner can
@@ -19,7 +19,7 @@ func TestSysTabNamesTheVersion(t *testing.T) {
 	defer func() { buildinfo.Version = old }()
 	c, _, _ := newC(t)
 	sig := make([]uint8, 4096)
-	c.OnFrame(&engine.Frame{Seq: 1, C1: sig, C2: sig, Valid: 4096, WinCols: 2049, SampleS: 2e-9, TdivS: 1e-6})
+	c.OnFrame(&sample.Frame{Seq: 1, WinPoints: 2049, SampleS: 2e-9, Snapshot: sample.Settings{TdivS: 1e-6}, Traces: []sample.Trace{{Codes8: sig, Valid: 4096}, {Ch: 1, Codes8: sig, Valid: 4096}}})
 	press(t, c, "help")
 	var text []string
 	for _, sp := range c.View().Sheet.Status {

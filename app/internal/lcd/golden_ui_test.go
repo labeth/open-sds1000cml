@@ -7,7 +7,7 @@ import (
 	"math"
 	"testing"
 
-	"github.com/labeth/open-sds1000cml/app/internal/engine"
+	"github.com/labeth/open-dso-core/sample"
 	"github.com/labeth/open-sds1000cml/app/internal/panel/wsview"
 	"github.com/labeth/open-sds1000cml/app/internal/streamview"
 )
@@ -20,7 +20,7 @@ import (
 
 // goldenBusFrame is a UART capture: two messages repeating on C1, C2 idle.
 // TRLC-LINKS: REQ-SDS-214
-func goldenBusFrame() *engine.Frame {
+func goldenBusFrame() *sample.Frame {
 	const n, spb = 4096, 8
 	var bytes []int
 	for range 6 {
@@ -28,12 +28,17 @@ func goldenBusFrame() *engine.Frame {
 			bytes = append(bytes, int(b))
 		}
 	}
-	f := &engine.Frame{
-		C1: goldenUARTWave(bytes, spb, n), C2: make([]uint8, n), Valid: n, WinCols: n, EdgeX: n / 2,
-		Ptp: 170, TdivS: 100e-6, SampleS: 1e-6 / spb * 4, Trigd: true,
+	f := &sample.Frame{
+		WinPoints: n,
+		TriggerAt: n / 2,
+		SourcePtp: 170,
+		SampleS:   1e-6 / spb * 4,
+		Snapshot:  sample.Settings{TdivS: 100e-6},
+		Status:    sample.Status{Triggered: true},
+		Traces:    []sample.Trace{{Codes8: goldenUARTWave(bytes, spb, n), Valid: n}, {Ch: 1, Codes8: make([]uint8, n), Valid: n}},
 	}
-	for i := range f.C2 {
-		f.C2[i] = 210
+	for i := range f.Codes8(1) {
+		f.Codes8(1)[i] = 210
 	}
 	return f
 }
@@ -49,7 +54,7 @@ func goldenUIHUD(v wsview.View) HUD {
 
 // goldenRender renders f with view v and compares the golden name.
 // TRLC-LINKS: REQ-SDS-211
-func goldenRender(t *testing.T, name string, f *engine.Frame, h HUD) {
+func goldenRender(t *testing.T, name string, f *sample.Frame, h HUD) {
 	t.Helper()
 	sf := NewMemSurface()
 	// The LCD's back buffer holds the last frame: Render must paint every

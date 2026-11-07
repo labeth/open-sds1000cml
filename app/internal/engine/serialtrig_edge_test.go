@@ -69,7 +69,7 @@ func TestSerialTriggerComposesWithMask(t *testing.T) {
 	e, _ := newTestEngine(t, fb)
 	e.bringUp()
 	e.oneFrame(false)
-	if f, fresh := e.Consume(); !fresh || f.EdgeX < 0 {
+	if f, fresh := e.Consume(); !fresh || f.TriggerAt < 0 {
 		t.Fatalf("no lock baseline (fresh=%v)", fresh)
 	}
 	// a tight mask the square wave violates immediately

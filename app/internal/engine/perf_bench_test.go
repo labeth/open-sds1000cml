@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/labeth/open-dso-core/decode"
+	"github.com/labeth/open-dso-core/sample"
 	"github.com/labeth/open-sds1000cml/app/internal/sramcapture"
 )
 
@@ -276,15 +277,17 @@ func BenchmarkEresQ8(b *testing.B) {
 // TRLC-LINKS: REQ-SDS-012
 func BenchmarkSramAverage(b *testing.B) {
 	const n = 20000
-	f := &Frame{C1: make([]uint8, n), C2: make([]uint8, n), Valid: n, EdgeX: 9000.25, WinCols: n}
+	f := &sample.Frame{TriggerAt: 9000.25, WinPoints: n, Traces: []sample.Trace{{Codes8: make([]uint8, n), Valid: n}, {Ch: 1, Codes8: make([]uint8, n), Valid: n}}}
 	var a sramAverage
 	for b.Loop() {
-		f.Valid, f.EdgeX, f.WinCols = n, 9000.25, n
-		f.Q1, f.Q2 = qBuffer(f.Q1, n), qBuffer(f.Q2, n)
-		for i := range f.Q1[:n] {
-			f.Q1[i], f.Q2[i] = uint16(32768+i), uint16(30000+i)
+		f.SetLen(n)
+		f.TriggerAt = 9000.25
+		f.WinPoints = n
+		f.Traces[0].Precision, f.Traces[1].Precision = qBuffer(f.Precision(0), n), qBuffer(f.Precision(1), n)
+		for i := range f.Precision(0)[:n] {
+			f.Precision(0)[i], f.Precision(1)[i] = uint16(32768+i), uint16(30000+i)
 		}
-		f.C1, f.C2 = f.C1[:n], f.C2[:n]
+		f.Traces[0].Codes8, f.Traces[1].Codes8 = f.Codes8(0)[:n], f.Codes8(1)[:n]
 		a.push(f, 16)
 	}
 }
@@ -305,13 +308,12 @@ func BenchmarkRollPush(b *testing.B) {
 // TRLC-LINKS: REQ-SDS-012
 func BenchmarkEnvReduce(b *testing.B) {
 	e, _ := newTestEngine(&testing.T{}, newFakeBus())
-	f := &Frame{
-		C1: make([]uint8, 3000), C2: make([]uint8, 3000), EnvMin: make([]uint8, envDisplayCols), EnvMax: make([]uint8, envDisplayCols),
-		EnvMin2: make([]uint8, envDisplayCols), EnvMax2: make([]uint8, envDisplayCols),
+	f := &sample.Frame{
+		Traces: []sample.Trace{{Codes8: make([]uint8, 3000), Min8: make([]uint8, envDisplayCols)[:0], Max8: make([]uint8, envDisplayCols)[:0]}, {Ch: 1, Codes8: make([]uint8, 3000), Min8: make([]uint8, envDisplayCols)[:0], Max8: make([]uint8, envDisplayCols)[:0]}},
 	}
 	for k := range envRingN {
-		for i := range f.C1 {
-			f.C1[i], f.C2[i] = uint8(i*7+k), uint8(i*3)
+		for i := range f.Codes8(0) {
+			f.Codes8(0)[i], f.Codes8(1)[i] = uint8(i*7+k), uint8(i*3)
 		}
 		e.envPush(f, 0, 2900+k)
 	}
@@ -450,13 +452,13 @@ func BenchmarkRefineTriggerEdge(b *testing.B) {
 
 // TRLC-LINKS: REQ-SDS-021
 func BenchmarkEdgeWindows(b *testing.B) {
-	f := &Frame{
-		Edge:    &EdgeWindow{C1: make([]uint8, 1024), C2: make([]uint8, 1024), SampleS: 2e-9},
-		EdgeOpp: &EdgeWindow{C1: make([]uint8, 1024), C2: make([]uint8, 1024), SampleS: 2e-9},
+	w := func() *sample.Frame {
+		return &sample.Frame{SampleS: 2e-9, Traces: []sample.Trace{{Codes8: make([]uint8, 1024)}, {Ch: 1, Codes8: make([]uint8, 1024)}}}
 	}
+	f := &sample.Frame{Details: []sample.Detail{{Role: sample.Edge, Frame: w()}, {Role: sample.EdgeOpp, Frame: w()}}}
 	for b.Loop() {
-		f.EdgeWindows(0)
-		f.EdgeWindows(1)
+		EdgeWindows(f, 0)
+		EdgeWindows(f, 1)
 	}
 }
 
@@ -486,12 +488,12 @@ func BenchmarkViewWindow(b *testing.B) {
 	m := sramcapture.Metadata{SampleRateHz: 500e6, SamplesPerWord: 2, Decimation: 1}
 	const n = 2048
 	src := discernSig(n)
-	f := &Frame{C1: make([]uint8, n), C2: make([]uint8, n), Valid: n}
+	f := &sample.Frame{Traces: []sample.Trace{{Codes8: make([]uint8, n), Valid: n}, {Ch: 1, Codes8: make([]uint8, n), Valid: n}}}
 	r := &viewRead{p: viewPlan{bucket: 4, buckets: n / 2, length: 2 * n, n: n}, f: f}
 	r.w.n = n
 	for b.Loop() {
-		copy(f.C1, src)
-		copy(f.C2, src)
+		copy(f.Codes8(0), src)
+		copy(f.Codes8(1), src)
 		e.window(m, r, [2]chScale{{vdiv: 1}, {vdiv: 1}}, envelopeValue(0, 4))
 	}
 }
@@ -711,7 +713,7 @@ func BenchmarkSRAMFrameWrite(b *testing.B) {
 			spw = 1
 		}
 		n := words * int(spw)
-		f := &Frame{C1: make([]uint8, n), C2: make([]uint8, n), Q1: make([]uint16, n), Q2: make([]uint16, n), Valid: n}
+		f := &sample.Frame{Traces: []sample.Trace{{Codes8: make([]uint8, n), Precision: make([]uint16, n), Valid: n}, {Ch: 1, Codes8: make([]uint8, n), Precision: make([]uint16, n), Valid: n}}}
 		b.Run(map[uint8]string{0: "codes", 8: "q8"}[fb], func(b *testing.B) {
 			for b.Loop() {
 				w := sramFrameWriter{f: f, m: sramcapture.Metadata{SamplesPerWord: spw, FractionBits: fb}}

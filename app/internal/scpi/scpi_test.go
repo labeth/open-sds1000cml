@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/labeth/open-dso-core/sample"
 	"github.com/labeth/open-sds1000cml/app/internal/analog"
 	"github.com/labeth/open-sds1000cml/app/internal/engine"
 )
@@ -20,7 +21,7 @@ import (
 // TRLC-LINKS: REQ-SDS-024
 type fakeScope struct {
 	stats engine.Stats
-	frame *engine.Frame
+	frame *sample.Frame
 	calls []string
 }
 
@@ -28,7 +29,7 @@ type fakeScope struct {
 func (f *fakeScope) Snapshot() engine.Stats { return f.stats }
 
 // TRLC-LINKS: REQ-SDS-024
-func (f *fakeScope) WithFrame(fn func(*engine.Frame)) { fn(f.frame) }
+func (f *fakeScope) WithFrame(fn func(*sample.Frame)) { fn(f.frame) }
 
 // TRLC-LINKS: REQ-SDS-024
 func (f *fakeScope) SetRunning(on bool) {
@@ -179,12 +180,15 @@ func (d *fakeDisplay) SetMenuOpen(on bool) { d.menu = on }
 // TRLC-LINKS: REQ-SDS-024
 func newH(tb testing.TB) (*Handler, *fakeScope) {
 	tb.Helper()
-	f := &engine.Frame{
-		C1: make([]uint8, 2048), C2: make([]uint8, 2048),
-		Valid: 2048, WinCols: 2048, Seq: 3, SampleS: 800e-9, EdgeX: -1,
+	f := &sample.Frame{
+		WinPoints: 2048,
+		Seq:       3,
+		SampleS:   800e-9,
+		TriggerAt: -1,
+		Traces:    []sample.Trace{{Codes8: make([]uint8, 2048), Valid: 2048}, {Ch: 1, Codes8: make([]uint8, 2048), Valid: 2048}},
 	}
-	for i := range f.C1 {
-		f.C1[i] = uint8(i % 200)
+	for i := range f.Codes8(0) {
+		f.Codes8(0)[i] = uint8(i % 200)
 	}
 	fs := &fakeScope{
 		stats: engine.Stats{Running: true, TdivS: 500e-6, AvgCount: 16, TrigRising: true, TrigPosFrac: .5},
@@ -344,7 +348,7 @@ func TestWavedesc(t *testing.T) {
 		t.Fatalf("HORIZ_OFFSET = %v", ho)
 	}
 	// A triggered frame places t=0 at its exact trigger sample.
-	fs.frame.EdgeX = 500.25
+	fs.frame.TriggerAt = 500.25
 	out = h.HandleLine([]byte("C1:WF? DESC\n"))
 	d = out[len(head) : len(head)+346]
 	if ho := math.Float64frombits(binary.LittleEndian.Uint64(d[180:])); math.Abs(ho-(-500.25*800e-9)) > 1e-12 {
@@ -557,10 +561,10 @@ func TestInvertedSnapshot(t *testing.T) {
 // TRLC-LINKS: REQ-SDS-024
 func TestRollRescale(t *testing.T) {
 	h, fs := newH(t)
-	fs.frame.RollCodes = true
+	fs.frame.Traces[0].CodesPerDiv, fs.frame.Traces[1].CodesPerDiv = engine.RollCodesPerDiv, engine.RollCodesPerDiv
 	// Roll codes are HALF-scale: a +25 roll deviation is +50 deep codes.
-	for i := range fs.frame.C1 {
-		fs.frame.C1[i] = 153 // +25 from centre → deep +50 → 178
+	for i := range fs.frame.Codes8(0) {
+		fs.frame.Codes8(0)[i] = 153 // +25 from centre → deep +50 → 178
 	}
 	do(t, h, "WFSU SP,1,NP,4,FP,0")
 	out := h.HandleLine([]byte("C1:WF? DAT2\n"))
@@ -570,8 +574,8 @@ func TestRollRescale(t *testing.T) {
 		t.Fatalf("roll rescale: %d, want +50 (deviation doubled)", int8(payload[0]))
 	}
 	// Clamp: a +100 roll deviation would be +200 deep → clamp to 255.
-	for i := range fs.frame.C1 {
-		fs.frame.C1[i] = 228
+	for i := range fs.frame.Codes8(0) {
+		fs.frame.Codes8(0)[i] = 228
 	}
 	out = h.HandleLine([]byte("C1:WF? DAT2\n"))
 	if int8(out[len(head)]) != 127 {
@@ -610,7 +614,7 @@ func TestPAVAMeasuresPublishedFrame(t *testing.T) {
 			c[i] = 153
 		}
 	}
-	fs.frame = &engine.Frame{Seq: 1, Valid: n, C1: c, C2: c, SampleS: 2e-9}
+	fs.frame = &sample.Frame{Seq: 1, SampleS: 2e-9, Traces: []sample.Trace{{Valid: n, Codes8: c}, {Ch: 1, Valid: n, Codes8: c}}}
 	if got := do(t, h, "C1:PAVA? AMPL"); got != "C1:PAVA AMPL,2.000000E+00V\n" {
 		t.Fatalf("AMPL = %q", got)
 	}
@@ -620,7 +624,7 @@ func TestPAVAMeasuresPublishedFrame(t *testing.T) {
 	if got := do(t, h, "C1:PAVA? NOPE"); got != "Command header error\n" {
 		t.Fatalf("unknown parameter = %q", got)
 	}
-	fs.frame.PeakDetect = true // timing at bucket resolution; edges inside a bucket are unknown
+	fs.frame.Content = sample.PeakPairs // timing at bucket resolution; edges inside a bucket are unknown
 	if got := do(t, h, "C1:PAVA? FREQ"); got != "C1:PAVA FREQ,1.000000E+06Hz\n" {
 		t.Fatalf("peak-detect FREQ = %q", got)
 	}
@@ -646,7 +650,7 @@ func TestPAVAZoomedDetentUsesAnalogRange(t *testing.T) {
 			c[i] = 153
 		}
 	}
-	fs.frame = &engine.Frame{Seq: 1, Valid: n, C1: c, C2: c, SampleS: 2e-9}
+	fs.frame = &sample.Frame{Seq: 1, SampleS: 2e-9, Traces: []sample.Trace{{Valid: n, Codes8: c}, {Ch: 1, Valid: n, Codes8: c}}}
 	if got := do(t, h, "C1:PAVA? AMPL"); got != "C1:PAVA AMPL,2.000000E-02V\n" {
 		t.Fatalf("AMPL at 2 mV/div = %q, want 20 mV", got)
 	}
@@ -801,7 +805,7 @@ func TestPAVAAll(t *testing.T) {
 			c[i] = 153
 		}
 	}
-	fs.frame = &engine.Frame{Seq: 1, Valid: n, C1: c, C2: c, SampleS: 2e-9}
+	fs.frame = &sample.Frame{Seq: 1, SampleS: 2e-9, Traces: []sample.Trace{{Valid: n, Codes8: c}, {Ch: 1, Valid: n, Codes8: c}}}
 	all := strings.TrimSuffix(do(t, h, "C1:PAVA? ALL"), "\n")
 	parts := strings.Split(strings.TrimPrefix(all, "C1:PAVA ALL,"), ",")
 	if len(parts) != 2*len(pavaOrder) {

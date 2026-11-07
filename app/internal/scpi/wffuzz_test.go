@@ -6,6 +6,7 @@ import (
 	"math/rand"
 	"testing"
 
+	"github.com/labeth/open-dso-core/sample"
 	"github.com/labeth/open-sds1000cml/app/internal/engine"
 )
 
@@ -29,13 +30,17 @@ func TestWaveformReadoutFuzz(t *testing.T) {
 		if rng.Intn(4) == 0 {
 			clen = n / 3 // Valid > len(C1)
 		}
-		f := &engine.Frame{
-			C1: make([]uint8, clen), C2: make([]uint8, clen), Valid: n,
-			WinCols: n, SampleS: 800e-9, RollCodes: rng.Intn(2) == 0,
+		f := &sample.Frame{
+			WinPoints: n,
+			SampleS:   800e-9,
+			Traces:    []sample.Trace{{Codes8: make([]uint8, clen), Valid: n}, {Ch: 1, Codes8: make([]uint8, clen), Valid: n}},
 		}
-		for j := range f.C1 {
-			f.C1[j] = uint8(rng.Intn(256))
-			f.C2[j] = uint8(rng.Intn(256))
+		if rng.Intn(2) == 0 {
+			f.Traces[0].CodesPerDiv, f.Traces[1].CodesPerDiv = engine.RollCodesPerDiv, engine.RollCodesPerDiv
+		}
+		for j := range f.Codes8(0) {
+			f.Codes8(0)[j] = uint8(rng.Intn(256))
+			f.Codes8(1)[j] = uint8(rng.Intn(256))
 		}
 		fs.frame = f
 		func() {

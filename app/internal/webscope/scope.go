@@ -10,6 +10,7 @@ package webscope
 import (
 	"time"
 
+	"github.com/labeth/open-dso-core/sample"
 	"github.com/labeth/open-dso-core/webserver"
 	"github.com/labeth/open-dso-core/webserver/shape"
 	"github.com/labeth/open-dso-core/webserver/wire"
@@ -23,7 +24,7 @@ import (
 // TRLC-LINKS: REQ-SDS-161, REQ-SDS-162, REQ-SDS-163, REQ-SDS-164
 type Engine interface {
 	Snapshot() engine.Stats
-	WithFrame(fn func(*engine.Frame))
+	WithFrame(fn func(*sample.Frame))
 	QuietRLock()   // block during the engine's load-sensitive windows (settle+drain)
 	QuietRUnlock() // release
 	SetRunning(bool)
@@ -235,7 +236,7 @@ func (s *Scope) waitFrame(since uint64, timeout time.Duration) {
 	// test doubles: degrade to a short seq poll
 	for deadline := time.Now().Add(timeout); time.Now().Before(deadline); {
 		var seq uint64
-		s.sc.WithFrame(func(f *engine.Frame) {
+		s.sc.WithFrame(func(f *sample.Frame) {
 			if f != nil {
 				seq = f.Seq
 			}

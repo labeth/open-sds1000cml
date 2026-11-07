@@ -16,6 +16,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/labeth/open-dso-core/sample"
 	"github.com/labeth/open-sds1000cml/app/internal/engine"
 )
 
@@ -23,7 +24,7 @@ import (
 // TRLC-LINKS: REQ-SDS-024
 type Scope interface {
 	Snapshot() engine.Stats
-	WithFrame(fn func(*engine.Frame))
+	WithFrame(fn func(*sample.Frame))
 	SetRunning(on bool)
 	SetNorm(on bool)
 	SetSingle()

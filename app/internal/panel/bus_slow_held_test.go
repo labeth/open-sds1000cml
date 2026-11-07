@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	"github.com/labeth/open-dso-core/decode"
-	"github.com/labeth/open-sds1000cml/app/internal/engine"
+	"github.com/labeth/open-dso-core/sample"
 )
 
 // An Oregon sensor's burst cut by a 5 ms/div record reads as a Manchester
@@ -27,20 +27,20 @@ func TestSlowSearchLooksOnPastTheHeldFindAgain(t *testing.T) {
 	}
 	var seq uint64
 	looks20 := 0
-	c.SetFrameSource(func(fn func(*engine.Frame)) {
+	c.SetFrameSource(func(fn func(*sample.Frame)) {
 		tdiv := eng.Snapshot().TdivSet()
 		seq++
-		f := &engine.Frame{Seq: seq, TdivS: tdiv}
+		f := &sample.Frame{Seq: seq, Snapshot: sample.Settings{TdivS: tdiv}, Traces: []sample.Trace{{}, {Ch: 1}}}
 		switch {
 		case math.Abs(tdiv-20e-3) < 1e-6 && looks20 == 0:
 			// the first 20 ms/div record cuts the burst too
-			f.C1, f.C2, f.SampleS = cut1, cut2, cutS
+			f.Traces[0].Codes8, f.Traces[1].Codes8, f.SampleS = cut1, cut2, cutS
 		case tdiv >= 20e-3*0.999:
-			f.C1, f.C2, f.SampleS = whole1, whole2, wholeS
+			f.Traces[0].Codes8, f.Traces[1].Codes8, f.SampleS = whole1, whole2, wholeS
 		default:
-			f.C1, f.C2, f.SampleS = cut1, cut2, cutS
+			f.Traces[0].Codes8, f.Traces[1].Codes8, f.SampleS = cut1, cut2, cutS
 		}
-		f.Valid = len(f.C1)
+		f.SetLen(len(f.Codes8(0)))
 		fn(f)
 	})
 	// a look's detection reads the record on screen; the first at 20 ms/div

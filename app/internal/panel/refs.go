@@ -7,9 +7,9 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/labeth/open-dso-core/sample"
 	"github.com/labeth/open-dso-core/uimodel"
 	"github.com/labeth/open-sds1000cml/app/internal/analog"
-	"github.com/labeth/open-sds1000cml/app/internal/engine"
 )
 
 // RefCols is a reference's width: one point per screen column.
@@ -62,13 +62,13 @@ func (c *Controller) captureRef(slot int) {
 	if c.frameFn == nil || slot < 0 || slot > 1 {
 		return
 	}
-	c.frameFn(func(f *engine.Frame) { c.captureRefFrom(f, slot) })
+	c.frameFn(func(f *sample.Frame) { c.captureRefFrom(f, slot) })
 }
 
 // captureRefFrom stores frame f's screen into reference slot (0=A, 1=B); the
 // master stores the averaged frame it is handed, inside the frame lock.
 // TRLC-LINKS: REQ-SDS-138, REQ-SDS-218
-func (c *Controller) captureRefFrom(f *engine.Frame, slot int) {
+func (c *Controller) captureRefFrom(f *sample.Frame, slot int) {
 	if slot < 0 || slot > 1 {
 		return
 	}
@@ -90,23 +90,23 @@ func (c *Controller) captureRefFrom(f *engine.Frame, slot int) {
 	if !(posFrac > 0 && posFrac <= 1) {
 		posFrac = .5
 	}
-	if f == nil || len(f.C1) == 0 || f.IsEnv {
+	if f == nil || len(f.Codes8(0)) == 0 || f.Flags.Has(sample.Envelope) {
 		return
 	}
-	valid := min(max(f.Valid, 1), len(f.C1))
-	win := f.WinCols
+	valid := min(max(f.Len(), 1), len(f.Codes8(0)))
+	win := f.WinPoints
 	if win <= 0 || win > valid {
 		win = valid
 	}
-	xc := f.EdgeX
+	xc := f.TriggerAt
 	if xc < 0 {
 		xc = float64(valid) / 2
 	}
 	left := xc - float64(win)*posFrac
 	r.posFrac = posFrac
-	r.c1 = screenColumns(analog.CoupleDisplay(f.C1[:valid], cpl[0]), left, win, f.Interp)
-	if len(f.C2) >= valid {
-		r.c2 = screenColumns(analog.CoupleDisplay(f.C2[:valid], cpl[1]), left, win, f.Interp)
+	r.c1 = screenColumns(analog.CoupleDisplay(f.Codes8(0)[:valid], cpl[0]), left, win, f.Flags.Has(sample.Interp))
+	if len(f.Codes8(1)) >= valid {
+		r.c2 = screenColumns(analog.CoupleDisplay(f.Codes8(1)[:valid], cpl[1]), left, win, f.Flags.Has(sample.Interp))
 	}
 	r.setup = c.takeSetup()
 	r.at = c.now()

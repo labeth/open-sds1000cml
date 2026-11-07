@@ -16,6 +16,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/labeth/open-dso-core/sample"
 	"github.com/labeth/open-dso-core/testenv"
 	"github.com/labeth/open-dso-core/webserver/wire"
 	"github.com/labeth/open-sds1000cml/app/internal/engine"
@@ -74,7 +75,7 @@ func (o *ownerScope) SoundWait(after uint64, timeout time.Duration) uint64 {
 // TRLC-LINKS: REQ-SDS-277
 func newOwnerScope(t *testing.T) (*ownerScope, *panel.Controller, *Server, func()) {
 	t.Helper()
-	gen := func() *engine.Frame {
+	gen := func() *sample.Frame {
 		const N = 1024
 		c1 := make([]uint8, N)
 		c2 := make([]uint8, N)
@@ -82,7 +83,7 @@ func newOwnerScope(t *testing.T) (*ownerScope, *panel.Controller, *Server, func(
 			c1[i] = uint8(128 + 60*math.Sin(2*math.Pi*8*float64(i)/N))
 			c2[i] = 128
 		}
-		return &engine.Frame{C1: c1, C2: c2, Seq: 1, Valid: N, WinCols: N, EdgeX: -1, TdivS: 1e-3, DisplayedS: 1e-3, SampleS: 1e-5, Trigd: true}
+		return &sample.Frame{Seq: 1, WinPoints: N, TriggerAt: -1, SampleS: 1e-5, Snapshot: sample.Settings{TdivS: 1e-3, DisplayedS: 1e-3}, Status: sample.Status{Triggered: true}, Traces: []sample.Trace{{Codes8: c1, Valid: N}, {Ch: 1, Codes8: c2, Valid: N}}}
 	}
 	fs := &fakeScope{frameGen: gen, stats: engine.Stats{Running: true, TdivS: 500e-6, TrigCode: 31437, TrigPosFrac: 0.5}}
 	o := &ownerScope{panelScope: &panelScope{fakeScope: fs}, snd: &soundScope{fakeScope: fs, t0: time.Now(), fs: 500e6 / 8192}}

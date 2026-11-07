@@ -5,6 +5,7 @@ package panel
 import (
 	"testing"
 
+	"github.com/labeth/open-dso-core/sample"
 	"github.com/labeth/open-sds1000cml/app/internal/analog"
 	"github.com/labeth/open-sds1000cml/app/internal/engine"
 )
@@ -17,14 +18,14 @@ func TestRefSavesTheScreenWindow(t *testing.T) {
 	c, eng, fe := newC(t)
 	eng.stats.TrigPosFrac = .25
 	n := 1 << 20
-	f := &engine.Frame{C1: make([]uint8, n), C2: make([]uint8, n), Valid: n, WinCols: 8000, EdgeX: 700000}
-	for i := range f.C1 {
-		f.C1[i], f.C2[i] = 128, 128
+	f := &sample.Frame{WinPoints: 8000, TriggerAt: 700000, Traces: []sample.Trace{{Codes8: make([]uint8, n), Valid: n}, {Ch: 1, Codes8: make([]uint8, n), Valid: n}}}
+	for i := range f.Codes8(0) {
+		f.Codes8(0)[i], f.Codes8(1)[i] = 128, 128
 		if i >= 700000 {
-			f.C1[i] = 200
+			f.Codes8(0)[i] = 200
 		}
 	}
-	c.SetFrameSource(func(fn func(*engine.Frame)) { fn(f) })
+	c.SetFrameSource(func(fn func(*sample.Frame)) { fn(f) })
 	c.captureRef(0)
 	r := c.RefView()[0]
 	if len(r.C1) != RefCols || !r.Show {
@@ -111,11 +112,11 @@ func TestRefsExportForTheWeb(t *testing.T) {
 	eng.stats.TrigPosFrac, eng.stats.TdivS = .25, 100e-6
 	fe.SetProbe(0, 10)
 	n := 4096
-	f := &engine.Frame{C1: make([]uint8, n), C2: make([]uint8, n), Valid: n, WinCols: 2048, EdgeX: 2048}
-	for i := range f.C1 {
-		f.C1[i], f.C2[i] = 128, 60
+	f := &sample.Frame{WinPoints: 2048, TriggerAt: 2048, Traces: []sample.Trace{{Codes8: make([]uint8, n), Valid: n}, {Ch: 1, Codes8: make([]uint8, n), Valid: n}}}
+	for i := range f.Codes8(0) {
+		f.Codes8(0)[i], f.Codes8(1)[i] = 128, 60
 	}
-	c.SetFrameSource(func(fn func(*engine.Frame)) { fn(f) })
+	c.SetFrameSource(func(fn func(*sample.Frame)) { fn(f) })
 	c.captureRef(0)
 	e := c.RefsExport()
 	a := e[0]
@@ -138,8 +139,8 @@ func TestWebRefActionsAreTheScopes(t *testing.T) {
 	eng.stats.TdivS = 100e-6
 	fe.SetProbe(1, 10)
 	n := 4096
-	f := &engine.Frame{C1: make([]uint8, n), C2: make([]uint8, n), Valid: n, WinCols: 2048, EdgeX: 2048}
-	c.SetFrameSource(func(fn func(*engine.Frame)) { fn(f) })
+	f := &sample.Frame{WinPoints: 2048, TriggerAt: 2048, Traces: []sample.Trace{{Codes8: make([]uint8, n), Valid: n}, {Ch: 1, Codes8: make([]uint8, n), Valid: n}}}
+	c.SetFrameSource(func(fn func(*sample.Frame)) { fn(f) })
 	if r := c.RefAction(1, "store"); !r.OK {
 		t.Fatalf("store B: %+v", r)
 	}

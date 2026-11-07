@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"math"
 
+	"github.com/labeth/open-dso-core/sample"
 	"github.com/labeth/open-sds1000cml/app/internal/analog"
-	"github.com/labeth/open-sds1000cml/app/internal/engine"
 )
 
 // edges holds a channel's interpolated 50 % crossings (sample positions).
@@ -84,11 +84,11 @@ func (h *Handler) mead(a, b int, arg string) []byte {
 		return errTok(errHeader)
 	}
 	value, unit := math.NaN(), "S"
-	h.sc.WithFrame(func(f *engine.Frame) {
-		if f == nil || f.Valid < 4 || len(f.C1) < f.Valid || len(f.C2) < f.Valid || !(f.SampleS > 0) {
+	h.sc.WithFrame(func(f *sample.Frame) {
+		if f == nil || f.Len() < 4 || len(f.Codes8(0)) < f.Len() || len(f.Codes8(1)) < f.Len() || !(f.SampleS > 0) {
 			return
 		}
-		ch := [2][]uint8{f.C1[:f.Valid], f.C2[:f.Valid]}
+		ch := [2][]uint8{f.Codes8(0)[:f.Len()], f.Codes8(1)[:f.Len()]}
 		ea, eb := findEdges(ch[a]), findEdges(ch[b])
 		if ea == nil || eb == nil {
 			return
@@ -123,9 +123,9 @@ func (h *Handler) mead(a, b int, arg string) []byte {
 				}
 			}
 		case "SKEW":
-			centre := f.EdgeX
+			centre := f.TriggerAt
 			if centre < 0 {
-				centre = float64(f.Valid) / 2
+				centre = float64(f.Len()) / 2
 			}
 			nearest := func(xs []float64) (float64, bool) {
 				best, ok := 0.0, false
@@ -216,24 +216,24 @@ func (h *Handler) crva(ch int, arg string) []byte {
 	}
 	dt := (x[1] - x[0]) * 10 * tdiv
 	val := [2]string{noReading, noReading}
-	h.sc.WithFrame(func(f *engine.Frame) {
-		if f == nil || f.Valid < 2 || f.WinCols < 2 {
+	h.sc.WithFrame(func(f *sample.Frame) {
+		if f == nil || f.Len() < 2 || f.WinPoints < 2 {
 			return
 		}
-		sig := f.C1
+		sig := f.Codes8(0)
 		if ch == 1 {
-			sig = f.C2
+			sig = f.Codes8(1)
 		}
-		if len(sig) < f.Valid {
+		if len(sig) < f.Len() {
 			return
 		}
-		centre := f.EdgeX
+		centre := f.TriggerAt
 		if centre < 0 {
-			centre = float64(f.Valid) * posFrac
+			centre = float64(f.Len()) * posFrac
 		}
 		for k := range val {
-			i := int(math.Round(centre + (x[k]-posFrac)*float64(f.WinCols)))
-			if i >= 0 && i < f.Valid {
+			i := int(math.Round(centre + (x[k]-posFrac)*float64(f.WinPoints)))
+			if i >= 0 && i < f.Len() {
 				val[k] = sciV((float64(sig[i])-128)*vdiv/25*probe - offV*probe)
 			}
 		}

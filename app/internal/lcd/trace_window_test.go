@@ -5,7 +5,7 @@ package lcd
 import (
 	"testing"
 
-	"github.com/labeth/open-sds1000cml/app/internal/engine"
+	"github.com/labeth/open-dso-core/sample"
 )
 
 // A frame with no crossing (forced in AUTO) shows the screen centred on the
@@ -13,7 +13,7 @@ import (
 // record at 10 % kept 60 % of the screen.
 // TRLC-LINKS: REQ-SDS-021
 func TestTraceWindowWithoutAnEdge(t *testing.T) {
-	f := &engine.Frame{Valid: 1000, WinCols: 1000, EdgeX: -1}
+	f := &sample.Frame{WinPoints: 1000, TriggerAt: -1, Traces: []sample.Trace{{Valid: 1000}, {Ch: 1, Valid: 1000}}}
 	for _, pos := range []float64{0.1, 0.5, 0.9} {
 		win, xc, pf := traceWindow(f, HUD{TrigPosFrac: pos}, 1000)
 		if left := xc - pf*float64(win); left != 0 || win != 1000 {

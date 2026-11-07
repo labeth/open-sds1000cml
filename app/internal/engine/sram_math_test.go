@@ -7,6 +7,7 @@ import (
 	"math"
 	"testing"
 
+	"github.com/labeth/open-dso-core/sample"
 	"github.com/labeth/open-sds1000cml/app/internal/sramcapture"
 )
 
@@ -49,23 +50,23 @@ func TestSRAMAverageFractionsRunningAndReset(t *testing.T) {
 	var a sramAverage
 	for i, want := range []uint16{25600, 25728, 25856, 26027} {
 		q := uint16(25600 + i*256)
-		f := Frame{Valid: 1, C1: make([]byte, 1), C2: make([]byte, 1), Q1: []uint16{q}, Q2: []uint16{65535}}
-		if got := a.push(&f, 3); got != min(i+1, 3) || f.Q1[0] != want || f.Q2[0] != 65535 {
-			t.Fatalf("step %d: holds %d, %v %v", i, got, f.Q1, f.Q2)
+		f := sample.Frame{Traces: []sample.Trace{{Valid: 1, Codes8: make([]byte, 1), Precision: []uint16{q}}, {Ch: 1, Valid: 1, Codes8: make([]byte, 1), Precision: []uint16{65535}}}}
+		if got := a.push(&f, 3); got != min(i+1, 3) || f.Precision(0)[0] != want || f.Precision(1)[0] != 65535 {
+			t.Fatalf("step %d: holds %d, %v %v", i, got, f.Precision(0), f.Precision(1))
 		}
 	}
 	a.reset()
-	f := Frame{Valid: 1, C1: make([]byte, 1), C2: make([]byte, 1), Q1: []uint16{1}, Q2: []uint16{2}}
-	if a.push(&f, 256) != 1 || f.Q1[0] != 1 {
+	f := sample.Frame{Traces: []sample.Trace{{Valid: 1, Codes8: make([]byte, 1), Precision: []uint16{1}}, {Ch: 1, Valid: 1, Codes8: make([]byte, 1), Precision: []uint16{2}}}}
+	if a.push(&f, 256) != 1 || f.Precision(0)[0] != 1 {
 		t.Fatal("reset retained prior capture")
 	}
 	for i := 1; i < 256; i++ {
-		f.Q1[0] = 65535
-		f.Q2[0] = 65535
+		f.Precision(0)[0] = 65535
+		f.Precision(1)[0] = 65535
 		a.push(&f, 256)
 	}
-	if f.Q1[0] != 65279 {
-		t.Fatalf("256-frame sum: %d", f.Q1[0])
+	if f.Precision(0)[0] != 65279 {
+		t.Fatalf("256-frame sum: %d", f.Precision(0)[0])
 	}
 }
 
@@ -73,33 +74,33 @@ func TestSRAMAverageFractionsRunningAndReset(t *testing.T) {
 func TestSRAMAverageAlignsShiftedRecordWithoutWrapping(t *testing.T) {
 	var a sramAverage
 	for k, shift := range []int{0, 3, -2} {
-		f := Frame{Valid: 100, EdgeX: float64(50 + shift), C1: make([]byte, 100), C2: make([]byte, 100), Q1: make([]uint16, 100), Q2: make([]uint16, 100)}
-		for i := range f.Q1 {
-			f.Q1[i] = uint16(10000 + (i-shift)*128)
-			f.Q2[i] = uint16(20000 - (i-shift)*64)
+		f := sample.Frame{TriggerAt: float64(50 + shift), Traces: []sample.Trace{{Valid: 100, Codes8: make([]byte, 100), Precision: make([]uint16, 100)}, {Ch: 1, Valid: 100, Codes8: make([]byte, 100), Precision: make([]uint16, 100)}}}
+		for i := range f.Precision(0) {
+			f.Precision(0)[i] = uint16(10000 + (i-shift)*128)
+			f.Precision(1)[i] = uint16(20000 - (i-shift)*64)
 		}
 		a.push(&f, 3)
-		for i := range f.Valid {
-			if f.Q1[i] != uint16(10000+(i+a.lo)*128) || f.Q2[i] != uint16(20000-(i+a.lo)*64) {
+		for i := range f.Len() {
+			if f.Precision(0)[i] != uint16(10000+(i+a.lo)*128) || f.Precision(1)[i] != uint16(20000-(i+a.lo)*64) {
 				t.Fatalf("frame %d sample %d alignment failed", k, i)
 			}
 		}
-		if k == 2 && (f.Valid != 95 || f.EdgeX != 48) {
-			t.Fatalf("invalid common region: %d %g", f.Valid, f.EdgeX)
+		if k == 2 && (f.Len() != 95 || f.TriggerAt != 48) {
+			t.Fatalf("invalid common region: %d %g", f.Len(), f.TriggerAt)
 		}
 	}
 }
 
 // TRLC-LINKS: REQ-SDS-012
 func TestAverageAlignsToFractionOfSample(t *testing.T) {
-	ramp := func(edge float64) Frame {
+	ramp := func(edge float64) sample.Frame {
 		n := 64
-		f := Frame{Valid: n, C1: make([]byte, n), C2: make([]byte, n), Q1: make([]uint16, n), Q2: make([]uint16, n), EdgeX: edge}
+		f := sample.Frame{TriggerAt: edge, Traces: []sample.Trace{{Valid: n, Codes8: make([]byte, n), Precision: make([]uint16, n)}, {Ch: 1, Valid: n, Codes8: make([]byte, n), Precision: make([]uint16, n)}}}
 		for i := range n {
 			v := 128 + 4*(float64(i)-edge)
-			f.Q1[i] = uint16(math.Round(v * 256))
-			f.Q2[i] = f.Q1[i]
-			f.C1[i], f.C2[i] = roundQ8(f.Q1[i]), roundQ8(f.Q2[i])
+			f.Precision(0)[i] = uint16(math.Round(v * 256))
+			f.Precision(1)[i] = f.Precision(0)[i]
+			f.Codes8(0)[i], f.Codes8(1)[i] = roundQ8(f.Precision(0)[i]), roundQ8(f.Precision(1)[i])
 		}
 		return f
 	}
@@ -112,9 +113,9 @@ func TestAverageAlignsToFractionOfSample(t *testing.T) {
 	}
 	// Both records were the same ramp, so the average is that ramp anchored at
 	// the first edge: code 128 exactly at EdgeX.
-	i := int(second.EdgeX)
-	if second.EdgeX != 30 || math.Abs(float64(second.Q1[i])/256-128) > 0.05 {
-		t.Fatalf("edge %.2f, value there %.3f, want 30 and 128", second.EdgeX, float64(second.Q1[i])/256)
+	i := int(second.TriggerAt)
+	if second.TriggerAt != 30 || math.Abs(float64(second.Precision(0)[i])/256-128) > 0.05 {
+		t.Fatalf("edge %.2f, value there %.3f, want 30 and 128", second.TriggerAt, float64(second.Precision(0)[i])/256)
 	}
 }
 
@@ -126,10 +127,10 @@ func TestAverageAlignsToFractionOfSample(t *testing.T) {
 // TRLC-LINKS: REQ-SDS-012
 func TestSRAMAverageKeepsItsBlockOverALengthWobble(t *testing.T) {
 	var a sramAverage
-	frame := func(n int) *Frame {
-		f := &Frame{Valid: n, C1: make([]byte, n), C2: make([]byte, n), Q1: make([]uint16, n), Q2: make([]uint16, n), EdgeX: 500}
-		for i := range f.Q1 {
-			f.Q1[i], f.Q2[i] = uint16(i%200)<<8, 128<<8
+	frame := func(n int) *sample.Frame {
+		f := &sample.Frame{TriggerAt: 500, Traces: []sample.Trace{{Valid: n, Codes8: make([]byte, n), Precision: make([]uint16, n)}, {Ch: 1, Valid: n, Codes8: make([]byte, n), Precision: make([]uint16, n)}}}
+		for i := range f.Precision(0) {
+			f.Precision(0)[i], f.Precision(1)[i] = uint16(i%200)<<8, 128<<8
 		}
 		return f
 	}
@@ -140,8 +141,8 @@ func TestSRAMAverageKeepsItsBlockOverALengthWobble(t *testing.T) {
 		if count != k+1 {
 			t.Fatalf("capture %d (%d samples): the block counts %d", k, n, count)
 		}
-		if f.Valid > n || f.Valid < 14515 || f.Q1[300] != 100<<8 {
-			t.Fatalf("capture %d: %d samples, Q1[300] %d", k, f.Valid, f.Q1[300])
+		if f.Len() > n || f.Len() < 14515 || f.Precision(0)[300] != 100<<8 {
+			t.Fatalf("capture %d: %d samples, Q1[300] %d", k, f.Len(), f.Precision(0)[300])
 		}
 	}
 	if count = a.push(frame(7258), 64); count != 1 {

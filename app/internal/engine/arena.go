@@ -2,104 +2,67 @@
 
 package engine
 
-import "sync"
+import (
+	"sync"
 
-// Frame is one drained capture plus everything a consumer needs to render it.
-// The three arena frames are reused in place: every producer path must set or
-// clear ALL metadata every frame (spec 01 §2 — a stale flag renders wrong
-// output from correct data).
+	"github.com/labeth/open-dso-core/sample"
+)
+
+// The engine publishes sample.Frame: two traces of 8-bit codes, with
+// optional Q8.8 precision words beside them. The three arena frames are
+// reused in place: every producer path must set or clear ALL metadata every
+// frame (spec 01 §2: a stale flag renders wrong output from correct data).
+
+// codeFormat is the converters' code format as the frames carry it: 8-bit
+// codes, the screen's centre line at 128.
+var codeFormat = sample.CodeFormat{Bits: 8, Storage: sample.U8, Max: 255, Mid: 128}
+
+// codesPerDiv is a record's codes per vertical division.
+const codesPerDiv = 25
+
+// RollCodesPerDiv is the codes per division of the factory roll FIFO's
+// half-scale codes, which a frame's traces say they hold by it.
+const RollCodesPerDiv = codesPerDiv / 2.0
+
+// HalfScale reports whether frame f holds the roll FIFO's half-scale codes
+// (RollCodesPerDiv), which an export must rescale.
+// TRLC-LINKS: REQ-SDS-024
+func HalfScale(f *sample.Frame) bool {
+	return len(f.Traces) > 0 && f.Traces[0].CodesPerDiv == RollCodesPerDiv
+}
+
+// precisionFrac is the fraction bits of the Q8.8 precision words.
+const precisionFrac = 8
+
+// resetFrame clears every field of arena frame f for a new record, keeping
+// its two traces' code buffers at their full capacity and its envelope and
+// detail storage emptied. The precision words are dropped: a producer keeps
+// their buffers itself (qBuffer).
 // TRLC-LINKS: REQ-SDS-007, REQ-SDS-009
-type Frame struct {
-	Q1, Q2         []uint16 // optional unsigned Q8.8 codes, same valid prefix
-	Decimation     uint32   // physical pre-storage reduction; 1 in raw mode
-	FilterGuard    int      // boundary samples excluded from conditioned measurements
-	BandwidthHz    float64  // qualified flat passband; 0 means no digital bandwidth limit
-	Filter         string
-	NoiseGainIdeal float64
-	PassbandHz     float64
-	CaptureDepth   int     // full record samples per channel
-	TriggerKind    string  // hardware-edge, software-window, or forced
-	C1, C2         []uint8 // full-capacity backing arrays; valid prefix is [:Valid]
+func resetFrame(f *sample.Frame) {
+	traces, details := f.Traces[:2], f.Details[:0]
+	*f = sample.Frame{Traces: traces, Details: details}
+	for ch := range traces {
+		t := &traces[ch]
+		*t = sample.Trace{
+			Ch: ch, Format: codeFormat, CodesPerDiv: codesPerDiv, PrecisionFrac: precisionFrac,
+			Codes8: t.Codes8, Min8: t.Min8[:0], Max8: t.Max8[:0],
+		}
+	}
+}
 
-	Seq uint64 // advances only on a real publish
-	// Content is the same for frames that show the same conditioned record
-	// (a stopped record re-shown at a new V/div, offset or timebase): their
-	// volts and decoded bytes agree, so displays may reuse results across
-	// them. 0 = unknown, never shared.
-	Content uint64
-	Valid   int     // drained sample count; the tail beyond it is stale
-	WinCols int     // samples spanning the 10-division screen
-	EdgeX   float64 // software crossing position, -1 = flat rail
-	// MatchEndS, with HasMatchEnd, is where the hardware UART matcher received
-	// the matched character's stop bit, in seconds after EdgeX (EdgeX moves to
-	// where the match began): a decode frames the characters back to back
-	// with it from there (decode.UARTCfg.Anchor).
-	MatchEndS   float64
-	HasMatchEnd bool
-	Interp      bool // native-fast: consumer should linearly interpolate
-	IsEnv       bool // envelope/roll band: render Env* instead of traces
-	// PeakDetect marks a record of bucket extremes (min, max pairs) read as a
-	// display envelope: amplitude is valid, timing is not.
-	PeakDetect bool
-	// Ordered: a PeakDetect frame whose pairs are in time order (orderEnvelope),
-	// so it may be decoded and qualified as samples at SampleS spacing.
-	Ordered bool
-	// FullRate: the values are the converters' own samples at the full rate,
-	// one each (no envelope, decimation, roll, average, ERES or precision
-	// filter): the only frames an eye diagram folds.
-	FullRate bool
-	// Edge and EdgeOpp are full-rate windows of a live envelope frame's record
-	// around the trigger edge and the first edge the other way after it
-	// (edge_detail.go): the edge shape for the measurements. nil otherwise.
-	Edge, EdgeOpp *EdgeWindow
-	// EdgeRead numbers the read Edge and EdgeOpp come from (0: none): they
-	// are carried to the frames between reads.
-	EdgeRead uint64
-	// Views are stretches of the screen read at full detail for the views
-	// that show them magnified (LeaseViewWindow, view_detail.go), by
-	// ViewSurface; nil otherwise.
-	Views [viewSurfaces]*ViewWindow
-	// Roll: a scrolling view stitched from back-to-back captures, newest sample
-	// last, untriggered (sram_roll.go).
-	Roll bool
-	// Held marks a roll view's samples no capture covered (the last value held
-	// between chunks): no signal, for the display to tell and measurements to
-	// skip. nil when every sample is captured.
-	Held     []bool
-	EnvCols  int  // envelope column count (800) when IsEnv, else 0
-	Ptp      int  // peak-to-peak of the discrimination channel
-	Trigd    bool // HW comparator fired (0x39 bit1)
-	TrigPos  int  // HW trigger-position latch (telemetry only)
-	Coherent bool
-	HaltOK   bool
-	Degraded bool // native-fast: a dead tail survived the re-capture retries — the
-	//               record is a half-capture; content beyond realDepth is not signal
-
-	// Per-column (min,max) envelope bands, valid [:EnvCols] when IsEnv.
-	// Every value is a real ADC min or max — nothing synthesized.
-	EnvMin, EnvMax   []uint8 // C1
-	EnvMin2, EnvMax2 []uint8 // C2
-
-	// RollCodes marks samples popped from the roll FIFO (~Vdiv/25 half
-	// scale) rather than the deep drain (Vdiv/50): WF? export must rescale.
-	RollCodes bool
-
-	// Config snapshot at drain time, so a mid-flight band change cannot tear
-	// the served frame.
-	TdivS      float64
-	DisplayedS float64
-	SampleS    float64 // per-sample capture interval in seconds
-	// CaptureSampleS is the converters' sample interval for this record. It
-	// equals SampleS except on a PeakDetect frame, whose values are bucket
-	// extremes SampleS apart while the capture ran this fast.
-	CaptureSampleS float64
-	Norm           bool
-
-	// Stream/stitch mode continuity metadata: the client places consecutive
-	// windows on one time axis and marks the blackout (GapNs) between them.
-	StreamSeq uint64 // monotonic stream window counter (0 = not a stream frame)
-	WindowNs  int64  // this window's captured duration (= Valid × SampleS)
-	GapNs     int64  // measured blackout (drain+re-arm) before this window
+// setEnvCols sizes frame f's display envelope to cols columns, keeping the
+// values of the columns it had.
+// TRLC-LINKS: REQ-SDS-009
+func setEnvCols(f *sample.Frame, cols int) {
+	for ch := range f.Traces {
+		t := &f.Traces[ch]
+		if cap(t.Min8) < cols || cap(t.Max8) < cols {
+			t.Min8 = append(make([]uint8, 0, cols), t.Min8...)
+			t.Max8 = append(make([]uint8, 0, cols), t.Max8...)
+		}
+		t.Min8, t.Max8 = t.Min8[:cols], t.Max8[:cols]
+	}
 }
 
 // arena is the triple buffer between the engine owner and consumers
@@ -109,27 +72,31 @@ type Frame struct {
 // TRLC-LINKS: REQ-SDS-007
 type arena struct {
 	mu    sync.Mutex
-	write *Frame
-	ready *Frame
-	read  *Frame
+	write *sample.Frame
+	ready *sample.Frame
+	read  *sample.Frame
 	dirty bool
 }
 
 // TRLC-LINKS: REQ-SDS-007
 func newArena(capacity int) *arena {
-	mk := func() *Frame {
-		return &Frame{
-			C1: make([]uint8, capacity), C2: make([]uint8, capacity),
-			EnvMin: make([]uint8, envDisplayCols), EnvMax: make([]uint8, envDisplayCols),
-			EnvMin2: make([]uint8, envDisplayCols), EnvMax2: make([]uint8, envDisplayCols),
+	mk := func() *sample.Frame {
+		f := &sample.Frame{Traces: make([]sample.Trace, 2)}
+		for ch := range f.Traces {
+			f.Traces[ch] = sample.Trace{
+				Codes8: make([]uint8, capacity),
+				Min8:   make([]uint8, 0, envDisplayCols), Max8: make([]uint8, 0, envDisplayCols),
+			}
 		}
+		resetFrame(f)
+		return f
 	}
 	return &arena{write: mk(), ready: mk(), read: mk()}
 }
 
 // Write returns the producer's private slot. Owner-only.
 // TRLC-LINKS: REQ-SDS-007
-func (a *arena) Write() *Frame { return a.write }
+func (a *arena) Write() *sample.Frame { return a.write }
 
 // Publish swaps the drained write slot into ready. The mutex guards only the
 // pointer swap — never held across bus access. If the consumer hasn't taken
@@ -146,7 +113,7 @@ func (a *arena) Publish() {
 // was published since the last call — the caller re-presents the held frame
 // (a quiet NORM display, not an error).
 // TRLC-LINKS: REQ-SDS-007
-func (a *arena) Consume() (f *Frame, fresh bool) {
+func (a *arena) Consume() (f *sample.Frame, fresh bool) {
 	a.mu.Lock()
 	fresh = a.dirty
 	if fresh {

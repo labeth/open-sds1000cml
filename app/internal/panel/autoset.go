@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/labeth/open-dso-core/measure"
+	"github.com/labeth/open-dso-core/sample"
 	"github.com/labeth/open-sds1000cml/app/internal/analog"
 	"github.com/labeth/open-sds1000cml/app/internal/engine"
 	"github.com/labeth/open-sds1000cml/app/internal/panel/framecalc"
@@ -34,7 +35,7 @@ const (
 // SetFrameSource wires the latest-frame accessor (fo.WithFrame) so autoset can
 // measure the live signal. Optional — without it, AUTO falls back to plain run.
 // TRLC-LINKS: REQ-SDS-137, REQ-SDS-138, REQ-SDS-139, REQ-SDS-140
-func (c *Controller) SetFrameSource(fn func(func(*engine.Frame))) { c.frameFn = fn }
+func (c *Controller) SetFrameSource(fn func(func(*sample.Frame))) { c.frameFn = fn }
 
 // autoset is the AUTO button: it starts a background sweep that fits the whole
 // scope to the live signal. A second AUTO press while it's running CANCELS it
@@ -405,7 +406,7 @@ func (c *Controller) spectrumAuto(stop chan struct{}, r *autoResult) {
 	if !c.waitFrames(stop, 2) || c.frameFn == nil {
 		return
 	}
-	c.frameFn(func(f *engine.Frame) {
+	c.frameFn(func(f *sample.Frame) {
 		if f == nil {
 			return
 		}
@@ -1183,7 +1184,7 @@ func (c *Controller) trigFiring() bool {
 	log, _ := c.eng.AcqLog(4)
 	if c.eng.Snapshot().BandKind == "sram" && c.frameFn != nil {
 		fired := false
-		c.frameFn(func(f *engine.Frame) { fired = f != nil && f.Coherent && f.Trigd })
+		c.frameFn(func(f *sample.Frame) { fired = f != nil && f.Status.Coherent && f.Status.Triggered })
 		return fired
 	}
 	n := 0
@@ -1277,7 +1278,7 @@ const freshWait = time.Second
 func (c *Controller) frameSeq() uint64 {
 	var seq uint64
 	if c.frameFn != nil {
-		c.frameFn(func(f *engine.Frame) {
+		c.frameFn(func(f *sample.Frame) {
 			if f != nil {
 				seq = f.Seq
 			}
@@ -1297,20 +1298,20 @@ func (c *Controller) measureChans() ([2]*measure.Result, bool) {
 	if c.frameFn == nil {
 		return m, false
 	}
-	c.frameFn(func(f *engine.Frame) {
-		if f == nil || len(f.C1) == 0 || f.IsEnv {
+	c.frameFn(func(f *sample.Frame) {
+		if f == nil || len(f.Codes8(0)) == 0 || f.Flags.Has(sample.Envelope) {
 			return
 		}
 		ok = true
-		valid := min(max(f.Valid, 1), len(f.C1))
+		valid := min(max(f.Len(), 1), len(f.Codes8(0)))
 		off := [2]uint16{st.OffC1, st.OffC2}
 		for ch := range 2 {
 			var sig []uint8
 			switch {
 			case ch == 0:
-				sig = f.C1[:valid]
-			case len(f.C2) >= valid:
-				sig = f.C2[:valid]
+				sig = f.Codes8(0)[:valid]
+			case len(f.Codes8(1)) >= valid:
+				sig = f.Codes8(1)[:valid]
 			default:
 				continue
 			}
@@ -1323,19 +1324,19 @@ func (c *Controller) measureChans() ([2]*measure.Result, bool) {
 				offV = c.fe.OffsetVolts(ch, off[ch]) // calibrated per-detent zero, not the fixed fallback
 			}
 			vdiv := analog.Vdiv(idx) // volts per code on the analog range
-			q := f.Q1
+			q := f.Precision(0)
 			if ch == 1 {
-				q = f.Q2
+				q = f.Precision(1)
 			}
 			if len(q) >= valid {
 				m[ch] = measure.ComputeQ8(q[:valid], vdiv/25*probe, offV*probe, f.SampleS)
 			} else {
 				m[ch] = measure.Compute(sig, vdiv/25*probe, offV*probe, f.SampleS)
 			}
-			if f.PeakDetect {
+			if f.Content == sample.PeakPairs {
 				m[ch] = m[ch].WithEnvelopeTiming(sig, vdiv/25*probe, offV*probe, f.SampleS)
 			}
-			if f.BandwidthHz > 0 {
+			if f.Cond.BandwidthHz > 0 {
 				m[ch] = ringFree(m[ch], sig, vdiv/25*probe, offV*probe)
 			}
 		}
@@ -1397,15 +1398,15 @@ const (
 // rawCentre is rawCenterErr and the trimmed span (codes) it was read over.
 // TRLC-LINKS: REQ-SDS-137
 func (c *Controller) rawCentre(ch int) (errDiv float64, span int) {
-	c.frameFn(func(f *engine.Frame) {
+	c.frameFn(func(f *sample.Frame) {
 		if f == nil {
 			return
 		}
-		sig := f.C1
+		sig := f.Codes8(0)
 		if ch == 1 {
-			sig = f.C2
+			sig = f.Codes8(1)
 		}
-		valid := f.Valid
+		valid := f.Len()
 		if valid < 1 || valid > len(sig) {
 			valid = len(sig)
 		}
@@ -1461,15 +1462,15 @@ func (c *Controller) centreErrOver(ch int, swing *measure.Result) (errDiv float6
 // TRLC-LINKS: REQ-SDS-137
 func (c *Controller) railing(ch int) bool {
 	railed := false
-	c.frameFn(func(f *engine.Frame) {
-		if f == nil || f.IsEnv {
+	c.frameFn(func(f *sample.Frame) {
+		if f == nil || f.Flags.Has(sample.Envelope) {
 			return // an envelope frame's min/max bands aren't per-sample rails
 		}
-		sig := f.C1
+		sig := f.Codes8(0)
 		if ch == 1 {
-			sig = f.C2
+			sig = f.Codes8(1)
 		}
-		valid := f.Valid
+		valid := f.Len()
 		if valid < 1 || valid > len(sig) {
 			valid = len(sig)
 		}
@@ -1504,19 +1505,19 @@ const (
 // TRLC-LINKS: REQ-SDS-225
 func (c *Controller) clipped(ch int) bool {
 	clip := false
-	c.frameFn(func(f *engine.Frame) {
-		if f == nil || f.IsEnv {
+	c.frameFn(func(f *sample.Frame) {
+		if f == nil || f.Flags.Has(sample.Envelope) {
 			return
 		}
-		sig := f.C1
+		sig := f.Codes8(0)
 		if ch == 1 {
-			sig = f.C2
+			sig = f.Codes8(1)
 		}
-		valid := f.Valid
+		valid := f.Len()
 		if valid < 1 || valid > len(sig) {
 			valid = len(sig)
 		}
-		if f.BandwidthHz > 0 {
+		if f.Cond.BandwidthHz > 0 {
 			clip = clipFiltered(sig[:valid])
 			return
 		}
@@ -1611,15 +1612,15 @@ func (c *Controller) smallActive() bool {
 		return false
 	}
 	small, wide := false, false
-	c.frameFn(func(f *engine.Frame) {
-		if f == nil || f.IsEnv || f.Valid < 64 {
+	c.frameFn(func(f *sample.Frame) {
+		if f == nil || f.Flags.Has(sample.Envelope) || f.Len() < 64 {
 			return
 		}
-		for _, codes := range [2][]uint8{f.C1, f.C2} {
-			if len(codes) < f.Valid {
+		for _, codes := range [2][]uint8{f.Codes8(0), f.Codes8(1)} {
+			if len(codes) < f.Len() {
 				continue
 			}
-			sw, x := codeSwing(codes[:f.Valid])
+			sw, x := codeSwing(codes[:f.Len()])
 			switch {
 			case sw > smallActiveMax:
 				wide = true
@@ -1792,8 +1793,8 @@ func (c *Controller) waitBandFrame(stop chan struct{}, wantSampleS float64) bool
 			return false // cancelled
 		}
 		matched := false
-		c.frameFn(func(f *engine.Frame) {
-			if f == nil || len(f.C1) == 0 || f.IsEnv {
+		c.frameFn(func(f *sample.Frame) {
+			if f == nil || len(f.Codes8(0)) == 0 || f.Flags.Has(sample.Envelope) {
 				return // an envelope/roll frame from the old band aliases the measurement
 			}
 			// A genuine band change moves SampleS by integer decimation factors,
@@ -1803,7 +1804,7 @@ func (c *Controller) waitBandFrame(stop chan struct{}, wantSampleS float64) bool
 				c.mu.Lock()
 				target := c.tdivs[c.tdivIdx]
 				c.mu.Unlock()
-				matched = f.TdivS > 0 && math.Abs(f.TdivS-target) <= target*0.01
+				matched = f.Snapshot.TdivS > 0 && math.Abs(f.Snapshot.TdivS-target) <= target*0.01
 				return
 			}
 			if f.SampleS > 0 && math.Abs(f.SampleS-wantSampleS) <= wantSampleS*0.01 {

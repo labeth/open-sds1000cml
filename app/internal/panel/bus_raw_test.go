@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/labeth/open-dso-core/decode"
+	"github.com/labeth/open-dso-core/sample"
 	"github.com/labeth/open-sds1000cml/app/internal/engine"
 	"github.com/labeth/open-sds1000cml/app/internal/panel/framecalc"
 	"github.com/labeth/open-sds1000cml/app/internal/panel/wsview"
@@ -29,8 +30,8 @@ func TestBusLeasesSampledFramesToDecode(t *testing.T) {
 	eng.take()
 	s := c.snap()
 	s.st.Running = true
-	env := &engine.Frame{PeakDetect: true, Ordered: true}
-	raw := &engine.Frame{}
+	env := &sample.Frame{Content: sample.PeakPairs, Flags: sample.Ordered, Traces: []sample.Trace{{}, {Ch: 1}}}
+	raw := &sample.Frame{Traces: []sample.Trace{{}, {Ch: 1}}}
 	a := &anaState{}
 	a.res = decode.Result{Proto: "uart", Error: "UART" + " not resolved at this timebase - S/DIV faster, or SINGLE"}
 	if !framecalc.Unresolved(a.res) {
@@ -115,29 +116,29 @@ func TestBusLeasesRecordsSampledForTheBus(t *testing.T) {
 	a := &anaState{}
 	// decoded at 200us/div: a bit of 8.7 us, 35 samples of 0.25 us
 	a.res = decode.Result{Proto: "uart", OK: true, SPB: 34.8}
-	c.busRawFrames(a, s, &engine.Frame{SampleS: 0.25e-6})
+	c.busRawFrames(a, s, &sample.Frame{SampleS: 0.25e-6, Traces: []sample.Trace{{}, {Ch: 1}}})
 	eng.take()
 	s.st.TdivS, s.st.Roll = 10e-3, true
 	a.res = decode.Result{Proto: "uart", Error: "0.3 samples/bit; need >= 3"}
-	c.busRawFrames(a, s, &engine.Frame{SampleS: 30e-6})
+	c.busRawFrames(a, s, &sample.Frame{SampleS: 30e-6, Traces: []sample.Trace{{}, {Ch: 1}}})
 	if got := eng.take(); len(got) != 1 || got[0] != "samples 2.175e-06 10s" {
 		t.Fatalf("coarse roll view: leases %v, want records every 8.7/4 us at the coarsest", got)
 	}
 	s.st.Roll = false
 	a.res = decode.Result{Proto: "uart", Error: "2.1 samples/bit; need >= 3"}
-	c.busRawFrames(a, s, &engine.Frame{SampleS: 4e-6, Decimation: 2048})
+	c.busRawFrames(a, s, &sample.Frame{SampleS: 4e-6, AcqDecim: int(2048), Traces: []sample.Trace{{}, {Ch: 1}}})
 	// the full rate is 10ms/div's own record (256 ns), as samples: a raw
 	// lease read it whole and bucketed
 	if got := eng.take(); len(got) != 1 || got[0] != "samples 2.56e-07 10s" {
 		t.Fatalf("decimated records too coarse: leases %v, want the timebase's own record", got)
 	}
 	// a decimated record read under the lease before: the own record stays
-	c.busRawFrames(a, s, &engine.Frame{SampleS: 4e-6, Decimation: 2048})
+	c.busRawFrames(a, s, &sample.Frame{SampleS: 4e-6, AcqDecim: int(2048), Traces: []sample.Trace{{}, {Ch: 1}}})
 	if got := eng.take(); len(got) != 1 || got[0] != "samples 2.56e-07 10s" {
 		t.Fatalf("a late decimated record: leases %v, want the own record kept", got)
 	}
 	// the timebase's own record (10ms/div: /128) too coarse ends it
-	c.busRawFrames(a, s, &engine.Frame{SampleS: 256e-9, Decimation: 128})
+	c.busRawFrames(a, s, &sample.Frame{SampleS: 256e-9, AcqDecim: int(128), Traces: []sample.Trace{{}, {Ch: 1}}})
 	if got := eng.take(); len(got) != 1 || got[0] != "samples 0 0s" {
 		t.Fatalf("the timebase's record too coarse: leases %v, want ended", got)
 	}
@@ -159,11 +160,11 @@ func TestBusLeasesTheFullRateForAFastBus(t *testing.T) {
 	s.st.Running = true
 	a := &anaState{}
 	a.res = decode.Result{Proto: "flexray", OK: true, SPB: 50}
-	c.busRawFrames(a, s, &engine.Frame{SampleS: 2e-9})
+	c.busRawFrames(a, s, &sample.Frame{SampleS: 2e-9, Traces: []sample.Trace{{}, {Ch: 1}}})
 	eng.take()
 	s.st.TdivS = 20e-6
 	a.res = decode.Result{Proto: "flexray", Error: "1.8 samples/bit; need >= 3"}
-	c.busRawFrames(a, s, &engine.Frame{SampleS: 61e-9, PeakDetect: true, Ordered: true})
+	c.busRawFrames(a, s, &sample.Frame{SampleS: 61e-9, Content: sample.PeakPairs, Flags: sample.Ordered, Traces: []sample.Trace{{}, {Ch: 1}}})
 	if got := eng.take(); len(got) != 1 || got[0] != rawForBus+" 10s" {
 		t.Fatalf("FlexRay at 20us/div: leases %v, want full-rate records", got)
 	}
@@ -187,18 +188,18 @@ func TestBusLeasesWhereTheViewIsTooCoarseForTheBus(t *testing.T) {
 	a := &anaState{}
 	// decoded at 200us/div: a 3 us tick, the feature four of them (12 us)
 	a.res = decode.Result{Proto: "sent", OK: true, SPB: 12}
-	c.busRawFrames(a, s, &engine.Frame{SampleS: 0.25e-6})
+	c.busRawFrames(a, s, &sample.Frame{SampleS: 0.25e-6, Traces: []sample.Trace{{}, {Ch: 1}}})
 	eng.take()
 	s.st.TdivS = 2e-3
 	a.res = decode.Result{Proto: "sent", Error: "no SENT frame"}
-	c.busRawFrames(a, s, &engine.Frame{SampleS: 12e-6, PeakDetect: true, Ordered: true})
+	c.busRawFrames(a, s, &sample.Frame{SampleS: 12e-6, Content: sample.PeakPairs, Flags: sample.Ordered, Traces: []sample.Trace{{}, {Ch: 1}}})
 	if got := eng.take(); len(got) != 1 || got[0] != "samples 3e-06 10s" {
 		t.Fatalf("SENT at 2ms/div: leases %v, want records every 3 us", got)
 	}
 	// a fine view that does not decode is no resolution matter
 	s.st.TdivS = 100e-6
 	a.res = decode.Result{Proto: "sent", Error: "no SENT frame"}
-	c.busRawFrames(a, s, &engine.Frame{SampleS: 0.6e-6, PeakDetect: true, Ordered: true})
+	c.busRawFrames(a, s, &sample.Frame{SampleS: 0.6e-6, Content: sample.PeakPairs, Flags: sample.Ordered, Traces: []sample.Trace{{}, {Ch: 1}}})
 	if got := eng.take(); len(got) != 0 && got[len(got)-1] != "samples 0 0s" {
 		t.Fatalf("a fine view: leases %v", got)
 	}
@@ -210,7 +211,7 @@ func TestBusLeasesWhereTheViewIsTooCoarseForTheBus(t *testing.T) {
 // for a bus never decoded at these settings.
 // TRLC-LINKS: REQ-SDS-214
 func TestCoarseEnvelopeFailureReadsSampledRecords(t *testing.T) {
-	f := &engine.Frame{SampleS: 107e-6}
+	f := &sample.Frame{SampleS: 107e-6, Traces: []sample.Trace{{}, {Ch: 1}}}
 	a := &anaState{featKey: "sirc", featEnv: 600e-6, res: decode.Result{Proto: "irsirc", Error: "no complete SIRC frame"}}
 	if !coarseFor(a, "sirc", f) {
 		t.Fatal("5.6 points a unit, failing: the live view")
@@ -266,7 +267,7 @@ func TestTooFewSamplesBothWordings(t *testing.T) {
 // is not clocked, the decode stands.
 // TRLC-LINKS: REQ-SDS-214
 func TestAliasedClockIsRefused(t *testing.T) {
-	f := &engine.Frame{SampleS: 32e-9}
+	f := &sample.Frame{SampleS: 32e-9, Traces: []sample.Trace{{}, {Ch: 1}}}
 	a := &anaState{featKey: "spi", featS: 50e-9, res: decode.Result{Proto: "spi", OK: true, SPB: 9}} // a 288 ns clock half
 	if !aliasedClock(a, "spi", f) {
 		t.Fatal("a clock 5.8 times slower than measured stood")

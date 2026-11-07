@@ -5,6 +5,8 @@ package engine
 import (
 	"math"
 	"testing"
+
+	"github.com/labeth/open-dso-core/sample"
 )
 
 // pulseTrain builds a record with pulses of given widths (samples) above a
@@ -249,28 +251,28 @@ func TestEresLenForBits(t *testing.T) {
 func TestAverageRing(t *testing.T) {
 	r := &avgRing{}
 	r.reset(4, 100)
-	f := &Frame{C1: make([]uint8, 1000), C2: make([]uint8, 1000), Valid: 1000}
+	f := &sample.Frame{Traces: []sample.Trace{{Codes8: make([]uint8, 1000), Valid: 1000}, {Ch: 1, Codes8: make([]uint8, 1000), Valid: 1000}}}
 	// Frames with an edge at varying positions; alignment centres them all.
 	for k := range 4 {
 		edge := 480 + k*10
-		for i := range f.C1 {
+		for i := range f.Codes8(0) {
 			if i < edge {
-				f.C1[i] = 60
+				f.Codes8(0)[i] = 60
 			} else {
-				f.C1[i] = 200
+				f.Codes8(0)[i] = 200
 			}
-			f.C2[i] = f.C1[i]
+			f.Codes8(1)[i] = f.Codes8(0)[i]
 		}
 		r.push(f, float64(edge))
 	}
 	r.meanInto(f)
-	if f.Valid != 100 || f.EdgeX != 50 {
-		t.Fatalf("mean frame: valid=%d edge=%v, want 100/50", f.Valid, f.EdgeX)
+	if f.Len() != 100 || f.TriggerAt != 50 {
+		t.Fatalf("mean frame: valid=%d edge=%v, want 100/50", f.Len(), f.TriggerAt)
 	}
 	// After alignment every ring entry has its edge at column 50: the mean
 	// must be a sharp edge (low before, high after), not a smear.
-	if f.C1[40] != 60 || f.C1[60] != 200 {
-		t.Fatalf("aligned mean: c1[40]=%d c1[60]=%d, want 60/200", f.C1[40], f.C1[60])
+	if f.Codes8(0)[40] != 60 || f.Codes8(0)[60] != 200 {
+		t.Fatalf("aligned mean: c1[40]=%d c1[60]=%d, want 60/200", f.Codes8(0)[40], f.Codes8(0)[60])
 	}
 }
 
@@ -281,23 +283,23 @@ func TestAverageRingNoOffRecordBias(t *testing.T) {
 	// otherwise the window edge is pulled toward mid-scale.
 	r := &avgRing{}
 	r.reset(4, 200)
-	f := &Frame{C1: make([]uint8, 400), C2: make([]uint8, 400), Valid: 400}
+	f := &sample.Frame{Traces: []sample.Trace{{Codes8: make([]uint8, 400), Valid: 400}, {Ch: 1, Codes8: make([]uint8, 400), Valid: 400}}}
 	for range 4 {
-		for i := range f.C1 {
-			f.C1[i], f.C2[i] = 40, 40 // a flat low rail, no 128 anywhere
+		for i := range f.Codes8(0) {
+			f.Codes8(0)[i], f.Codes8(1)[i] = 40, 40 // a flat low rail, no 128 anywhere
 		}
 		r.push(f, 350) // edge at 350 → shift 250; left columns fall off-record
 	}
 	r.meanInto(f)
 	// Every contributing column is 40; no column should read the 128 fill.
 	for i := range 200 {
-		if f.C1[i] != 40 && f.C1[i] != 128 {
-			t.Fatalf("col %d = %d, expected 40 (real) or 128 (no-contribution)", i, f.C1[i])
+		if f.Codes8(0)[i] != 40 && f.Codes8(0)[i] != 128 {
+			t.Fatalf("col %d = %d, expected 40 (real) or 128 (no-contribution)", i, f.Codes8(0)[i])
 		}
 		// Columns that DID have contributions must be the real 40, not a
 		// 40/128 blend (e.g. 84).
-		if f.C1[i] > 40 && f.C1[i] < 128 {
-			t.Fatalf("col %d = %d is a fabricated-fill blend", i, f.C1[i])
+		if f.Codes8(0)[i] > 40 && f.Codes8(0)[i] < 128 {
+			t.Fatalf("col %d = %d is a fabricated-fill blend", i, f.Codes8(0)[i])
 		}
 	}
 }
@@ -334,7 +336,7 @@ func TestQualifierPublishPolicy(t *testing.T) {
 		t.Fatalf("qualifying pulse frame not published: %+v", s)
 	}
 	f, _ := e.Consume()
-	if f.EdgeX < 0 {
+	if f.TriggerAt < 0 {
 		t.Fatal("published qualifier frame has no anchor")
 	}
 }
@@ -354,8 +356,8 @@ func TestAverageModeInEngine(t *testing.T) {
 		t.Fatal("no averaged frame published")
 	}
 	// The averaged frame is the WinCols window centred on the edge.
-	if f.Valid != e.band.WinCols() || math.Abs(f.EdgeX-float64(f.Valid)/2) > 1 {
-		t.Fatalf("averaged frame: valid=%d edge=%v", f.Valid, f.EdgeX)
+	if f.Len() != e.band.WinCols() || math.Abs(f.TriggerAt-float64(f.Len())/2) > 1 {
+		t.Fatalf("averaged frame: valid=%d edge=%v", f.Len(), f.TriggerAt)
 	}
 }
 
@@ -471,11 +473,11 @@ func TestACTriggerLevelFollowsMean(t *testing.T) {
 	e.trigCPV[0].Store(math.Float64bits(trigCPVDefault))
 	e.trigZero[0].Store(math.Float64bits(trigZeroDefault))
 	e.trigCode = uint16(math.Round(trigZeroDefault)) // 0 V
-	f := &Frame{C1: make([]uint8, 100), C2: make([]uint8, 100), Valid: 100}
-	for i := range f.C1 {
-		f.C1[i] = 128
+	f := &sample.Frame{Traces: []sample.Trace{{Codes8: make([]uint8, 100), Valid: 100}, {Ch: 1, Codes8: make([]uint8, 100), Valid: 100}}}
+	for i := range f.Codes8(0) {
+		f.Codes8(0)[i] = 128
 		if i%2 == 0 {
-			f.C1[i] = 210 // 0..3.3 V square: mean 169
+			f.Codes8(0)[i] = 210 // 0..3.3 V square: mean 169
 		}
 	}
 	e.noteChannelMeans(f)
@@ -552,9 +554,9 @@ func TestDecimatedRecordKeepsTheRawTrigger(t *testing.T) {
 		dec  uint32
 		want bool
 	}{{256, true}, {16, true}, {1, false}} {
-		f := &Frame{Valid: 200, EdgeX: 98, Decimation: c.dec}
-		if got := e.placeEdgeTrigger(f, mean, nil, 130, true); got != c.want || f.EdgeX != 98 {
-			t.Errorf("decimation %d: kept %v (want %v), at %g", c.dec, got, c.want, f.EdgeX)
+		f := &sample.Frame{TriggerAt: 98, AcqDecim: int(c.dec), Traces: []sample.Trace{{Valid: 200}, {Ch: 1, Valid: 200}}}
+		if got := e.placeEdgeTrigger(f, mean, nil, 130, true); got != c.want || f.TriggerAt != 98 {
+			t.Errorf("decimation %d: kept %v (want %v), at %g", c.dec, got, c.want, f.TriggerAt)
 		}
 	}
 }

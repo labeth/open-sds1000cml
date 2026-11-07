@@ -6,7 +6,6 @@ import (
 	"compress/gzip"
 	"encoding/json"
 	"fmt"
-	"github.com/labeth/open-dso-core/testenv"
 	"math"
 	"os"
 	"path/filepath"
@@ -14,6 +13,8 @@ import (
 	"testing"
 
 	"github.com/labeth/open-dso-core/decode"
+	"github.com/labeth/open-dso-core/sample"
+	"github.com/labeth/open-dso-core/testenv"
 	"github.com/labeth/open-sds1000cml/app/internal/engine"
 	"github.com/labeth/open-sds1000cml/app/internal/panel/framecalc"
 	"github.com/labeth/open-sds1000cml/app/internal/panel/wsview"
@@ -61,7 +62,7 @@ func TestSPIEyeAcrossShortRecords(t *testing.T) {
 	c.mu.Unlock()
 	c1, c2 := lateSPIRecord()
 	for start := 0; start+5000 <= len(c1); start += 5000 {
-		f := &engine.Frame{C1: c1[start : start+5000], C2: c2[start : start+5000], Valid: 5000, SampleS: 2e-9}
+		f := &sample.Frame{SampleS: 2e-9, Traces: []sample.Trace{{Codes8: c1[start : start+5000], Valid: 5000}, {Ch: 1, Codes8: c2[start : start+5000], Valid: 5000}}}
 		c.noteSPIEye(c.snap(), f)
 	}
 	s := c.snap()
@@ -142,7 +143,7 @@ func spiRecord(late float64) (c1, c2 []uint8) {
 // flashRecords are the decode package's records of the 104 MHz flash
 // look-alike (clock C2, data C1) at 100 ns/div and 1 us/div.
 // TRLC-LINKS: REQ-SDS-230
-func flashRecords(t *testing.T) (tdivs []float64, frames []*engine.Frame) {
+func flashRecords(t *testing.T) (tdivs []float64, frames []*sample.Frame) {
 	t.Helper()
 	f, err := os.Open(filepath.Join(testenv.CoreDir(), "decode", "testdata", "spi_flash104_records.json.gz"))
 	if err != nil {
@@ -164,7 +165,7 @@ func flashRecords(t *testing.T) (tdivs []float64, frames []*engine.Frame) {
 	}
 	for _, r := range v.Records {
 		tdivs = append(tdivs, r.TdivS)
-		frames = append(frames, &engine.Frame{C1: r.C1, C2: r.C2, Valid: len(r.C1), SampleS: 2e-9})
+		frames = append(frames, &sample.Frame{SampleS: 2e-9, Traces: []sample.Trace{{Codes8: r.C1, Valid: len(r.C1)}, {Ch: 1, Codes8: r.C2, Valid: len(r.C1)}}})
 	}
 	return tdivs, frames
 }
@@ -214,7 +215,7 @@ func TestSPIEyeChoiceFollowsBursts(t *testing.T) {
 	c.mu.Unlock()
 	feed := func(c1, c2 []uint8, records int) float64 {
 		for start := 0; start+5000 <= len(c1) && records > 0; start, records = start+5000, records-1 {
-			c.noteSPIEye(c.snap(), &engine.Frame{C1: c1[start : start+5000], C2: c2[start : start+5000], Valid: 5000, SampleS: 2e-9})
+			c.noteSPIEye(c.snap(), &sample.Frame{SampleS: 2e-9, Traces: []sample.Trace{{Codes8: c1[start : start+5000], Valid: 5000}, {Ch: 1, Codes8: c2[start : start+5000], Valid: 5000}}})
 		}
 		return c.snap().spiDelayNs()
 	}

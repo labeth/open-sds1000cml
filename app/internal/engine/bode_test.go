@@ -6,6 +6,8 @@ import (
 	"math"
 	"strings"
 	"testing"
+
+	"github.com/labeth/open-dso-core/sample"
 )
 
 // synthSine builds an n-sample record of a sine at freqHz with the given
@@ -60,10 +62,9 @@ func TestBodePointGainPhase(t *testing.T) {
 		{"+6dB and +120deg", 45, 90, 0, 2 * math.Pi / 3, 6.02, 120, 0.5, 2.5},
 	}
 	for _, c := range cases {
-		f1 := &Frame{
-			C1:    synthSine(n, f, dt, c.amp1, 128, c.ph1),
-			C2:    synthSine(n, f, dt, c.amp2, 128, c.ph2),
-			Valid: n, SampleS: dt,
+		f1 := &sample.Frame{
+			SampleS: dt,
+			Traces:  []sample.Trace{{Codes8: synthSine(n, f, dt, c.amp1, 128, c.ph1), Valid: n}, {Ch: 1, Codes8: synthSine(n, f, dt, c.amp2, 128, c.ph2), Valid: n}},
 		}
 		e.ClearBode()
 		e.SetBodeMode(true, 0, 1) // ref C1, DUT C2
@@ -100,7 +101,7 @@ func TestBodePureDelay(t *testing.T) {
 		e.ClearBode()
 		ref := synthSine(n, f, dt, 90, 128, 0)
 		dut := synthSine(n, f, dt, 90, 128, -2*math.Pi*f*tau) // delayed by tau
-		e.bodeEval(&Frame{C1: ref, C2: dut, Valid: n, SampleS: dt}, n, dt)
+		e.bodeEval(&sample.Frame{SampleS: dt, Traces: []sample.Trace{{Codes8: ref, Valid: n}, {Ch: 1, Codes8: dut, Valid: n}}}, n, dt)
 		pts := e.BodePoints()
 		if len(pts) != 1 {
 			t.Fatalf("f=%.0f: got %d points", f, len(pts))
@@ -132,7 +133,7 @@ func TestBodeRejectsFloorAndSubCycle(t *testing.T) {
 	for i := range flat {
 		flat[i] = 128
 	}
-	e.bodeEval(&Frame{C1: flat, C2: synthSine(n, 5e6, dt, 90, 128, 0), Valid: n, SampleS: dt}, n, dt)
+	e.bodeEval(&sample.Frame{SampleS: dt, Traces: []sample.Trace{{Codes8: flat, Valid: n}, {Ch: 1, Codes8: synthSine(n, 5e6, dt, 90, 128, 0), Valid: n}}}, n, dt)
 	if len(e.BodePoints()) != 0 || e.Snapshot().BodeValid {
 		t.Error("flat reference must not produce a Bode point")
 	}
@@ -144,16 +145,16 @@ func TestBodeRejectsFloorAndSubCycle(t *testing.T) {
 	// sub-cycle: only ~1 cycle in the record → rejected (needs >= bodeMinCycles)
 	e.ClearBode()
 	lowF := 1.0 / (float64(n) * dt) // exactly 1 cycle
-	e.bodeEval(&Frame{C1: synthSine(n, lowF, dt, 90, 128, 0), C2: synthSine(n, lowF, dt, 90, 128, 0), Valid: n, SampleS: dt}, n, dt)
+	e.bodeEval(&sample.Frame{SampleS: dt, Traces: []sample.Trace{{Codes8: synthSine(n, lowF, dt, 90, 128, 0), Valid: n}, {Ch: 1, Codes8: synthSine(n, lowF, dt, 90, 128, 0), Valid: n}}}, n, dt)
 	if len(e.BodePoints()) != 0 {
 		t.Error("a sub-bodeMinCycles record must be rejected")
 	}
 	threeF := 3.0 / (float64(n) * dt) // a tone, too few cycles of it
-	e.bodeEval(&Frame{C1: synthSine(n, threeF, dt, 90, 128, 0), C2: synthSine(n, threeF, dt, 90, 128, 0), Valid: n, SampleS: dt}, n, dt)
+	e.bodeEval(&sample.Frame{SampleS: dt, Traces: []sample.Trace{{Codes8: synthSine(n, threeF, dt, 90, 128, 0), Valid: n}, {Ch: 1, Codes8: synthSine(n, threeF, dt, 90, 128, 0), Valid: n}}}, n, dt)
 	if why := e.Snapshot().BodeWhy; !strings.Contains(why, "S/DIV slower") {
 		t.Errorf("three cycles: why %q", why)
 	}
-	e.bodeEval(&Frame{C1: synthSine(n, 5e6, dt, 90, 128, 0), C2: synthSine(n, 5e6, dt, 90, 128, 0), Valid: n, SampleS: dt}, n, dt)
+	e.bodeEval(&sample.Frame{SampleS: dt, Traces: []sample.Trace{{Codes8: synthSine(n, 5e6, dt, 90, 128, 0), Valid: n}, {Ch: 1, Codes8: synthSine(n, 5e6, dt, 90, 128, 0), Valid: n}}}, n, dt)
 	if why := e.Snapshot().BodeWhy; why != "" || !e.Snapshot().BodeValid {
 		t.Errorf("a good point: why %q", why)
 	}
@@ -169,7 +170,7 @@ func TestBodeAccumulationBinsByFrequency(t *testing.T) {
 	for _, f := range []float64{1e6, 2e6, 5e6, 10e6, 20e6} {
 		s1 := synthSine(n, f, dt, 90, 128, 0)
 		s2 := synthSine(n, f, dt, 45, 128, 0) // -6 dB DUT
-		e.bodeEval(&Frame{C1: s1, C2: s2, Valid: n, SampleS: dt}, n, dt)
+		e.bodeEval(&sample.Frame{SampleS: dt, Traces: []sample.Trace{{Codes8: s1, Valid: n}, {Ch: 1, Codes8: s2, Valid: n}}}, n, dt)
 	}
 	pts := e.BodePoints()
 	if len(pts) != 5 {
@@ -187,7 +188,7 @@ func TestBodeAccumulationBinsByFrequency(t *testing.T) {
 		}
 	}
 	// re-visiting a frequency updates its bin (no duplicate)
-	e.bodeEval(&Frame{C1: synthSine(n, 5e6, dt, 90, 128, 0), C2: synthSine(n, 5e6, dt, 90, 128, 0), Valid: n, SampleS: dt}, n, dt)
+	e.bodeEval(&sample.Frame{SampleS: dt, Traces: []sample.Trace{{Codes8: synthSine(n, 5e6, dt, 90, 128, 0), Valid: n}, {Ch: 1, Codes8: synthSine(n, 5e6, dt, 90, 128, 0), Valid: n}}}, n, dt)
 	if len(e.BodePoints()) != 5 {
 		t.Errorf("re-visiting 5 MHz should update, not add a bin (now %d)", len(e.BodePoints()))
 	}
@@ -197,7 +198,7 @@ func TestBodeAccumulationBinsByFrequency(t *testing.T) {
 func TestBodeUsesChannelAndProbeScales(t *testing.T) {
 	e, _ := newTestEngine(t, newFakeBus())
 	const n, dt = 4096, 2e-9
-	f := &Frame{C1: synthSine(n, 5e6, dt, 90, 128, 0), C2: synthSine(n, 5e6, dt, 45, 128, 0), Valid: n, SampleS: dt}
+	f := &sample.Frame{SampleS: dt, Traces: []sample.Trace{{Codes8: synthSine(n, 5e6, dt, 90, 128, 0), Valid: n}, {Ch: 1, Codes8: synthSine(n, 5e6, dt, 45, 128, 0), Valid: n}}}
 	e.SetChannelVdiv(0, 1, 0, 0)
 	e.SetChannelVdiv(1, 2, 0, 0)
 	e.SetBodeMode(true, 0, 1)

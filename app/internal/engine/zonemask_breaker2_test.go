@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"math"
 	"testing"
+
+	"github.com/labeth/open-dso-core/sample"
 )
 
 // Second zone/mask breaker: 50 NEW waveform families (disjoint from the
@@ -159,9 +161,9 @@ func zb2Families() []zb2Family {
 // zb2Frame renders a family into a frame; C2 is the inverted C1 so channel
 // mix-ups are caught, plus deterministic per-family phase.
 // TRLC-LINKS: REQ-SDS-014
-func zb2Frame(fam zb2Family, rng func() float64) *Frame {
+func zb2Frame(fam zb2Family, rng func() float64) *sample.Frame {
 	const n = 4096
-	f := &Frame{C1: make([]uint8, n), C2: make([]uint8, n), Valid: fam.valid}
+	f := &sample.Frame{Traces: []sample.Trace{{Codes8: make([]uint8, n), Valid: fam.valid}, {Ch: 1, Codes8: make([]uint8, n), Valid: fam.valid}}}
 	ph := int(rng() * 512)
 	for i := range n {
 		v := 128 + fam.c1(i+ph) + 2*(rng()*2-1)
@@ -171,8 +173,8 @@ func zb2Frame(fam zb2Family, rng func() float64) *Frame {
 		if v > 255 {
 			v = 255
 		}
-		f.C1[i] = uint8(v)
-		f.C2[i] = 255 - f.C1[i]
+		f.Codes8(0)[i] = uint8(v)
+		f.Codes8(1)[i] = 255 - f.Codes8(0)[i]
 	}
 	return f
 }
@@ -183,10 +185,10 @@ func zb2Frame(fam zb2Family, rng func() float64) *Frame {
 // -1 it MUST be violated, 0 tie (the verdict may go either way inside the
 // half-sample boundary tolerance of the engine's rounded column mapping).
 // TRLC-LINKS: REQ-SDS-014
-func zoneRefState(f *Frame, valid int, edgeX, sampleS float64, z Zone) int {
-	sig := f.C1
+func zoneRefState(f *sample.Frame, valid int, edgeX, sampleS float64, z Zone) int {
+	sig := f.Codes8(0)
 	if z.Ch == 1 {
-		sig = f.C2
+		sig = f.Codes8(1)
 	}
 	dtLo, dtHi := z.DtLoS, z.DtHiS
 	if dtLo > dtHi {

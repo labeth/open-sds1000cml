@@ -7,16 +7,16 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/labeth/open-sds1000cml/app/internal/engine"
+	"github.com/labeth/open-dso-core/sample"
 )
 
 // sineFrame is a frame of a sine of cycles periods over n samples.
 // TRLC-LINKS: REQ-SDS-216
-func sineFrame(n int, cycles, amp float64, seq uint64) *engine.Frame {
-	f := &engine.Frame{C1: make([]uint8, n), C2: make([]uint8, n), Valid: n, SampleS: 1e-6, Seq: seq}
-	for i := range f.C1 {
-		f.C1[i] = uint8(128 + amp*math.Sin(2*math.Pi*cycles*float64(i)/float64(n)))
-		f.C2[i] = 128
+func sineFrame(n int, cycles, amp float64, seq uint64) *sample.Frame {
+	f := &sample.Frame{SampleS: 1e-6, Seq: seq, Traces: []sample.Trace{{Codes8: make([]uint8, n), Valid: n}, {Ch: 1, Codes8: make([]uint8, n), Valid: n}}}
+	for i := range f.Codes8(0) {
+		f.Codes8(0)[i] = uint8(128 + amp*math.Sin(2*math.Pi*cycles*float64(i)/float64(n)))
+		f.Codes8(1)[i] = 128
 	}
 	return f
 }
@@ -44,7 +44,7 @@ func TestSpectrumPeakAndCache(t *testing.T) {
 	if &again.Mags[0] != &sp.Mags[0] {
 		t.Fatal("the same frame's spectrum was computed again")
 	}
-	if _, ok := Spectrum(&engine.Frame{C1: make([]uint8, 8), Valid: 8}, 0, 1e-6); ok {
+	if _, ok := Spectrum(&sample.Frame{Traces: []sample.Trace{{Codes8: make([]uint8, 8), Valid: 8}, {Ch: 1, Valid: 8}}}, 0, 1e-6); ok {
 		t.Fatal("8 samples made a spectrum")
 	}
 }
@@ -78,10 +78,10 @@ func TestSpectrumEndsAtTheFilterBand(t *testing.T) {
 		t.Fatalf("unfiltered: span %g of Nyquist %g, %d bins", full.SpanHz, full.EffNyq, len(full.Mags))
 	}
 	g := sineFrame(4096, 64, 80, 22)
-	g.SampleS, g.BandwidthHz = 32e-9, 0.1346/32e-9 // the precision filter's -3 dB: 4.2 MHz at 32 ns
+	g.SampleS, g.Cond.BandwidthHz = 32e-9, 0.1346/32e-9 // the precision filter's -3 dB: 4.2 MHz at 32 ns
 	sp, ok := Spectrum(g, 0, g.SampleS)
-	if !ok || math.Abs(sp.SpanHz-g.BandwidthHz) > sp.BinHz || len(sp.Mags) >= sp.N/2 {
-		t.Fatalf("filtered: span %g, want %g; %d of %d bins", sp.SpanHz, g.BandwidthHz, len(sp.Mags), sp.N/2)
+	if !ok || math.Abs(sp.SpanHz-g.Cond.BandwidthHz) > sp.BinHz || len(sp.Mags) >= sp.N/2 {
+		t.Fatalf("filtered: span %g, want %g; %d of %d bins", sp.SpanHz, g.Cond.BandwidthHz, len(sp.Mags), sp.N/2)
 	}
 	if sp.EffNyq != full.EffNyq || sp.PeakK != 64 {
 		t.Fatalf("Nyquist %g (want %g), peak bin %d", sp.EffNyq, full.EffNyq, sp.PeakK)
@@ -112,9 +112,12 @@ func TestDecodeFramesFromTheHardwareMatch(t *testing.T) {
 	cut := 2*10*spb + 3*spb // the record opens inside 20
 	rec := append([]uint8(nil), w[cut:]...)
 	aaStart := float64(4*10*spb - cut)
-	f := &engine.Frame{
-		C1: rec, C2: rec, Valid: len(rec), SampleS: 1 / (115200.0 * spb), Seq: 7,
-		EdgeX: aaStart, MatchEndS: 9.5 / 115200, HasMatchEnd: true,
+	f := &sample.Frame{
+		SampleS:   1 / (115200.0 * spb),
+		Seq:       7,
+		TriggerAt: aaStart,
+		Match:     &sample.Match{EndS: 9.5 / 115200},
+		Traces:    []sample.Trace{{Codes8: rec, Valid: len(rec)}, {Ch: 1, Codes8: rec, Valid: len(rec)}},
 	}
 	r := Decode(f, DecodeParams{Proto: ProtoUART, Baud: 115200, Format: "hex"})
 	if !strings.Contains(r.Text, "55 AA 0F F0") || strings.Contains(r.Text, "!") {

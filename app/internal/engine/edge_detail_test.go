@@ -5,6 +5,8 @@ package engine
 import (
 	"testing"
 	"time"
+
+	"github.com/labeth/open-dso-core/sample"
 )
 
 // The edge after the trigger edge, the other way: past the trigger edge's
@@ -55,7 +57,7 @@ func TestEdgeDetailRate(t *testing.T) {
 	if !d.due(k, t0) {
 		t.Fatal("nothing read yet: due")
 	}
-	w := &EdgeWindow{SampleS: 2e-9}
+	w := &sample.Frame{SampleS: 2e-9}
 	d.store(k, t0, w, nil)
 	if d.due(k, t0.Add(edgeDetailEvery/2)) || d.edge != w {
 		t.Fatal("read again within the interval, or the windows dropped")

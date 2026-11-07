@@ -100,7 +100,7 @@ func TestDegradedFlagAndStuckEscalation(t *testing.T) {
 	if s.StuckSuspect {
 		t.Fatal("stuck suspected after a single degraded capture")
 	}
-	if f, fresh := e.Consume(); fresh && !f.Degraded {
+	if f, fresh := e.Consume(); fresh && !f.Status.Degraded {
 		t.Fatal("published frame does not carry Degraded")
 	}
 

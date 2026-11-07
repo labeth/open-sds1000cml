@@ -9,6 +9,7 @@ import (
 	"sync/atomic"
 	"testing"
 
+	"github.com/labeth/open-dso-core/sample"
 	"github.com/labeth/open-dso-core/testenv"
 	"github.com/labeth/open-sds1000cml/app/internal/engine"
 )
@@ -67,15 +68,19 @@ func TestDecodeBrowser(t *testing.T) {
 	const N = 2048
 	scl, sda := i2cWave(N)
 	var seq atomic.Int64
-	gen := func() *engine.Frame {
+	gen := func() *sample.Frame {
 		n := seq.Add(1)
 		c1 := make([]uint8, N)
 		copy(c1, scl)
 		c2 := make([]uint8, N)
 		copy(c2, sda)
-		return &engine.Frame{
-			C1: c1, C2: c2, Seq: uint64(n), Valid: N, WinCols: N,
-			EdgeX: -1, TdivS: 100e-6, DisplayedS: 100e-6, SampleS: 100e-6 * 10 / N,
+		return &sample.Frame{
+			Seq:       uint64(n),
+			WinPoints: N,
+			TriggerAt: -1,
+			SampleS:   100e-6 * 10 / N,
+			Snapshot:  sample.Settings{TdivS: 100e-6, DisplayedS: 100e-6},
+			Traces:    []sample.Trace{{Codes8: c1, Valid: N}, {Ch: 1, Codes8: c2, Valid: N}},
 		}
 	}
 	fs := &fakeScope{frameGen: gen, stats: engine.Stats{Running: true, TrigPosFrac: 0.5}}

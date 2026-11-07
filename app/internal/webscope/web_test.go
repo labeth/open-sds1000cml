@@ -10,6 +10,7 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/labeth/open-dso-core/sample"
 	"github.com/labeth/open-sds1000cml/app/internal/engine"
 )
 
@@ -24,8 +25,8 @@ import (
 type fakeScope struct {
 	mu       sync.Mutex
 	stats    engine.Stats
-	frame    *engine.Frame
-	frameGen func() *engine.Frame // when set, WithFrame serves this instead
+	frame    *sample.Frame
+	frameGen func() *sample.Frame // when set, WithFrame serves this instead
 	fresh    bool
 
 	running  *bool
@@ -384,7 +385,7 @@ func (f *fakeScope) Snapshot() engine.Stats {
 }
 
 // TRLC-LINKS: REQ-SDS-163
-func (f *fakeScope) WithFrame(fn func(*engine.Frame)) {
+func (f *fakeScope) WithFrame(fn func(*sample.Frame)) {
 	f.mu.Lock()
 	fr := f.frame
 	if f.frameGen != nil {

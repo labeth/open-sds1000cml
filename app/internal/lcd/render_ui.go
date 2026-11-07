@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	"github.com/labeth/open-dso-core/dsp"
-	"github.com/labeth/open-sds1000cml/app/internal/engine"
+	"github.com/labeth/open-dso-core/sample"
 	"github.com/labeth/open-sds1000cml/app/internal/panel/framecalc"
 	"github.com/labeth/open-sds1000cml/app/internal/panel/wsview"
 )
@@ -26,7 +26,7 @@ const (
 
 // drawUI draws the UI over the base render.
 // TRLC-LINKS: REQ-SDS-211, REQ-SDS-212
-func drawUI(sf Surface, f *engine.Frame, hud HUD, p plotArea) {
+func drawUI(sf Surface, f *sample.Frame, hud HUD, p plotArea) {
 	ui := &hud.UI
 	if ui.Sheet != nil {
 		drawSheet(sf, f, hud)
@@ -249,7 +249,7 @@ func cutText(s string, n int) string {
 // drawScopeChrome draws SCOPE's name in the top bar (clear of the trigger
 // pointer) and the Adjust tag in the bottom row.
 // TRLC-LINKS: REQ-SDS-211, REQ-SDS-213
-func drawScopeChrome(sf Surface, p plotArea, f *engine.Frame, hud HUD) {
+func drawScopeChrome(sf Surface, p plotArea, f *sample.Frame, hud HUD) {
 	tx := trigX(p, f, hud)
 	x := 410
 	if tx > 398 && tx < 448 {
@@ -639,7 +639,7 @@ func dashRect(sf Surface, x, y, w, h int, c uint16) {
 
 // drawEyePane draws the eye's figures beside a live time trace.
 // TRLC-LINKS: REQ-SDS-215
-func drawEyePane(sf Surface, p plotArea, f *engine.Frame, hud HUD, e *wsview.EyePane) {
+func drawEyePane(sf Surface, p plotArea, f *sample.Frame, hud HUD, e *wsview.EyePane) {
 	drawPaneFrame(sf, p, &e.Pane)
 	drawMiniScope(sf, f, hud, 4, 27, 230, 96)
 	DrawText(sf, 8, 29, e.TimeLabel, colDim, 1)
@@ -666,7 +666,7 @@ func drawEyePane(sf Surface, p plotArea, f *engine.Frame, hud HUD, e *wsview.Eye
 
 // drawSpecPane draws the peak table beside a small time trace.
 // TRLC-LINKS: REQ-SDS-216
-func drawSpecPane(sf Surface, p plotArea, f *engine.Frame, hud HUD, s *wsview.SpecPane) {
+func drawSpecPane(sf Surface, p plotArea, f *sample.Frame, hud HUD, s *wsview.SpecPane) {
 	drawPaneFrame(sf, p, &s.Pane)
 	drawMiniScope(sf, f, hud, 4, 27, 230, p.y0-44)
 	DrawText(sf, 8, 29, s.TimeLabel, colDim, 1)
@@ -826,7 +826,7 @@ func drawCmpPane(sf Surface, p plotArea, c *wsview.CmpPane) {
 // drawMiniScope draws a small live view of the frame in a rectangle: its
 // graticule, the shown channels as column extremes, the trigger pointer.
 // TRLC-LINKS: REQ-SDS-211, REQ-SDS-212
-func drawMiniScope(sf Surface, f *engine.Frame, hud HUD, x0, y0, w, h int) {
+func drawMiniScope(sf Surface, f *sample.Frame, hud HUD, x0, y0, w, h int) {
 	fillRect(sf, x0, y0, w, h, colBG)
 	for c := range 11 {
 		col := colGrid
@@ -846,7 +846,7 @@ func drawMiniScope(sf Surface, f *engine.Frame, hud HUD, x0, y0, w, h int) {
 		y := y0 + h - 1 - int((float64(v)-28)/200*float64(h-1)+0.5)
 		return min(max(y, y0), y0+h-1)
 	}
-	if f != nil && len(f.C1) > 0 && (!f.IsEnv || f.EnvCols != 0) {
+	if f != nil && len(f.Codes8(0)) > 0 && (!f.Flags.Has(sample.Envelope) || len(f.Min8(0)) != 0) {
 		sc1, sc2 := hud.shownChans()
 		for _, ch := range []int{1, 0} {
 			if (ch == 0 && !sc1) || (ch == 1 && (!sc2 || !hud.TwoChan)) {
@@ -868,18 +868,18 @@ func drawMiniScope(sf Surface, f *engine.Frame, hud HUD, x0, y0, w, h int) {
 // columns x0..x0+w-1, yOf placing a code: an envelope's bands, else each
 // column's extremes joined to the previous column.
 // TRLC-LINKS: REQ-SDS-211, REQ-SDS-212
-func miniScopeChan(sf Surface, f *engine.Frame, hud HUD, ch, x0, w int, yOf func(uint8) int) {
+func miniScopeChan(sf Surface, f *sample.Frame, hud HUD, ch, x0, w int, yOf func(uint8) int) {
 	col := colC1
 	if ch == 1 {
 		col = colC2
 	}
-	if f.IsEnv {
-		mn, mx := f.EnvMin, f.EnvMax
+	if f.Flags.Has(sample.Envelope) {
+		mn, mx := f.Min8(0), f.Max8(0)
 		if ch == 1 {
-			mn, mx = f.EnvMin2, f.EnvMax2
+			mn, mx = f.Min8(1), f.Max8(1)
 		}
 		for x := range w {
-			c := x * f.EnvCols / w
+			c := x * len(f.Min8(0)) / w
 			if c < len(mn) && c < len(mx) {
 				vline(sf, x0+x, yOf(mx[c]), yOf(mn[c]), col)
 			}
@@ -887,12 +887,12 @@ func miniScopeChan(sf Surface, f *engine.Frame, hud HUD, ch, x0, w int, yOf func
 		return
 	}
 	valid := frameValid(f)
-	if ch == 1 && len(f.C2) < valid {
+	if ch == 1 && len(f.Codes8(1)) < valid {
 		return
 	}
-	sig := f.C1[:valid]
+	sig := f.Codes8(0)[:valid]
 	if ch == 1 {
-		sig = f.C2[:valid]
+		sig = f.Codes8(1)[:valid]
 	}
 	win, xc, posFrac := traceWindow(f, hud, valid)
 	left := xc - float64(win)*posFrac
@@ -933,7 +933,7 @@ const (
 
 // drawSheet draws a full-screen settings sheet.
 // TRLC-LINKS: REQ-SDS-212
-func drawSheet(sf Surface, f *engine.Frame, hud HUD) {
+func drawSheet(sf Surface, f *sample.Frame, hud HUD) {
 	sh := hud.UI.Sheet
 	fillRect(sf, 0, 12, W, H-12, colBG)
 	drawTabs(sf, sh)
@@ -1266,7 +1266,7 @@ func drawSide(sf Surface, sh *wsview.Sheet) {
 // or the FFT, X-Y, Bode or spectrogram being shown, tagged LIVE, WAIT or
 // STOP.
 // TRLC-LINKS: REQ-SDS-212
-func drawThumb(sf Surface, f *engine.Frame, hud HUD, sh *wsview.Sheet) {
+func drawThumb(sf Surface, f *sample.Frame, hud HUD, sh *wsview.Sheet) {
 	x0, y0, w, h := sideX, thumbY, sideW, thumbH
 	tag, tagCol := "LIVE", colOK
 	switch {
@@ -1340,19 +1340,19 @@ func drawThumb(sf Surface, f *engine.Frame, hud HUD, sh *wsview.Sheet) {
 
 // drawThumbXY is the X-Y mini view.
 // TRLC-LINKS: REQ-SDS-212
-func drawThumbXY(sf Surface, f *engine.Frame, x0, y0, w, h int) {
-	if f == nil || f.IsEnv || len(f.C1) == 0 {
+func drawThumbXY(sf Surface, f *sample.Frame, x0, y0, w, h int) {
+	if f == nil || f.Flags.Has(sample.Envelope) || len(f.Codes8(0)) == 0 {
 		return
 	}
 	valid := frameValid(f)
-	if len(f.C2) < valid {
+	if len(f.Codes8(1)) < valid {
 		return
 	}
 	step := max(1, valid/600)
 	px, py := -1, -1
 	for i := 0; i < valid; i += step {
-		x := x0 + 1 + int(float64(f.C1[i])*float64(w-3)/255)
-		y := y0 + h - 2 - int(float64(f.C2[i])*float64(h-3)/255)
+		x := x0 + 1 + int(float64(f.Codes8(0)[i])*float64(w-3)/255)
+		y := y0 + h - 2 - int(float64(f.Codes8(1)[i])*float64(h-3)/255)
 		if px >= 0 {
 			drawLine(sf, px, py, x, y, colMath)
 		}
@@ -1362,8 +1362,8 @@ func drawThumbXY(sf Surface, f *engine.Frame, x0, y0, w, h int) {
 
 // drawThumbFFT is the FFT mini view (column maxima, -80 dB at the bottom).
 // TRLC-LINKS: REQ-SDS-212
-func drawThumbFFT(sf Surface, f *engine.Frame, hud HUD, ch, x0, y0, w, h int) {
-	if f == nil || f.IsEnv || len(f.C1) == 0 {
+func drawThumbFFT(sf Surface, f *sample.Frame, hud HUD, ch, x0, y0, w, h int) {
+	if f == nil || f.Flags.Has(sample.Envelope) || len(f.Codes8(0)) == 0 {
 		return
 	}
 	spec, ok := framecalc.SpectrumHeld(f, ch, hud.SampleS)

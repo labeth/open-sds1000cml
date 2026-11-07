@@ -3,15 +3,15 @@
 package panel
 
 import (
+	"github.com/labeth/open-dso-core/sample"
 	"github.com/labeth/open-sds1000cml/app/internal/analog"
-	"github.com/labeth/open-sds1000cml/app/internal/engine"
 	"github.com/labeth/open-sds1000cml/app/internal/panel/framecalc"
 )
 
 // codesOf returns a channel's valid samples as codes (Q8.8 when the frame
 // carries them), with the display coupling applied.
 // TRLC-LINKS: REQ-SDS-215
-func codesOf(f *engine.Frame, ch, lo, hi, cpl int) []float64 {
+func codesOf(f *sample.Frame, ch, lo, hi, cpl int) []float64 {
 	valid := framecalc.Valid(f)
 	lo, hi = max(lo, 0), min(hi, valid)
 	if hi <= lo {
@@ -21,9 +21,9 @@ func codesOf(f *engine.Frame, ch, lo, hi, cpl int) []float64 {
 	if cpl != analog.CplDC {
 		sig = analog.CoupleDisplay(sig, cpl)
 	}
-	q := f.Q1
+	q := f.Precision(0)
 	if ch == 1 {
-		q = f.Q2
+		q = f.Precision(1)
 	}
 	out := make([]float64, hi-lo)
 	if cpl == analog.CplDC && len(q) >= valid {

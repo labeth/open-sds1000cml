@@ -8,6 +8,7 @@ import (
 	"testing/synctest"
 	"time"
 
+	"github.com/labeth/open-dso-core/sample"
 	"github.com/labeth/open-sds1000cml/app/internal/analog"
 	"github.com/labeth/open-sds1000cml/app/internal/engine"
 	"github.com/labeth/open-sds1000cml/app/internal/panel/framecalc"
@@ -46,7 +47,7 @@ func TestAutoInBusScansAndFramesTheBus(t *testing.T) {
 func TestAutoOutsideBusIsAutoset(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		c, _, _ := newC(t)
-		c.SetFrameSource(func(fn func(*engine.Frame)) { fn(fastUART()) })
+		c.SetFrameSource(func(fn func(*sample.Frame)) { fn(fastUART()) })
 		press(t, c, "auto")
 		c.mu.Lock()
 		msg := c.autosetMsg
@@ -314,10 +315,10 @@ func TestAutoMeasuresAMessageTheScreenCut(t *testing.T) {
 	set(t, c, "bus.baud", "9600")
 	// one 24-character message (27.5 ms) a second, from 1 ms into the screen
 	msg := []string{"0123456789abcdefghijklmn"}
-	c.SetFrameSource(func(fn func(*engine.Frame)) {
+	c.SetFrameSource(func(fn func(*sample.Frame)) {
 		td := eng.Snapshot().TdivS
 		f := uartFrame(msg, 9600, 1, 10*td/4000, 4000)
-		f.TdivS = td
+		f.Snapshot.TdivS = td
 		fn(f)
 	})
 	c.setTdivNearest(2e-3)

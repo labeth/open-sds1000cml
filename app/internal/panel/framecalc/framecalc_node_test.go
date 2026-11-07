@@ -4,15 +4,15 @@ package framecalc
 
 import (
 	"encoding/json"
-	"github.com/labeth/open-dso-core/webclient"
 	"math"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"testing"
 
+	"github.com/labeth/open-dso-core/sample"
 	"github.com/labeth/open-dso-core/testenv"
-	"github.com/labeth/open-sds1000cml/app/internal/engine"
+	"github.com/labeth/open-dso-core/webclient"
 )
 
 // TestSpectrumJSParity runs the LCD's spectrum (Spectrum) and the web's
@@ -31,7 +31,7 @@ func TestSpectrumJSParity(t *testing.T) {
 		Nyq     float64   `json:"nyq"`
 		Band    float64   `json:"band"`
 		MaxN    int       `json:"maxN"`
-		f       *engine.Frame
+		f       *sample.Frame
 	}
 	square := func(n int, period, phase float64) []uint8 {
 		s := make([]uint8, n)
@@ -46,7 +46,7 @@ func TestSpectrumJSParity(t *testing.T) {
 	}
 	var vs []vec
 	add := func(name string, c []uint8, sampleS, band float64) {
-		f := &engine.Frame{C1: c, C2: make([]uint8, len(c)), Valid: len(c), SampleS: sampleS, BandwidthHz: band, Seq: uint64(len(vs) + 1)}
+		f := &sample.Frame{SampleS: sampleS, Seq: uint64(len(vs) + 1), Cond: sample.Conditioning{BandwidthHz: band}, Traces: []sample.Trace{{Codes8: c, Valid: len(c)}, {Ch: 1, Codes8: make([]uint8, len(c)), Valid: len(c)}}}
 		g := make([]float64, len(c))
 		for i, v := range c {
 			g[i] = float64(v)

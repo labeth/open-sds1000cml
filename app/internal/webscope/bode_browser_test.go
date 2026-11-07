@@ -10,6 +10,7 @@ import (
 	"sync/atomic"
 	"testing"
 
+	"github.com/labeth/open-dso-core/sample"
 	"github.com/labeth/open-dso-core/testenv"
 	"github.com/labeth/open-sds1000cml/app/internal/engine"
 )
@@ -22,7 +23,7 @@ import (
 func TestBodeBrowser(t *testing.T) {
 	testenv.NeedNode(t)
 	var seq atomic.Int64
-	gen := func() *engine.Frame {
+	gen := func() *sample.Frame {
 		n := seq.Add(1)
 		const N = 2048
 		c1 := make([]uint8, N)
@@ -31,9 +32,14 @@ func TestBodeBrowser(t *testing.T) {
 			c1[i] = uint8(128 + 80*math.Sin(2*math.Pi*20*float64(i)/N))
 			c2[i] = uint8(128 + 40*math.Sin(2*math.Pi*20*float64(i)/N))
 		}
-		return &engine.Frame{
-			C1: c1, C2: c2, Seq: uint64(n), Valid: N, WinCols: N,
-			EdgeX: -1, TdivS: 500e-6, DisplayedS: 500e-6, SampleS: 800e-9, Trigd: true,
+		return &sample.Frame{
+			Seq:       uint64(n),
+			WinPoints: N,
+			TriggerAt: -1,
+			SampleS:   800e-9,
+			Snapshot:  sample.Settings{TdivS: 500e-6, DisplayedS: 500e-6},
+			Status:    sample.Status{Triggered: true},
+			Traces:    []sample.Trace{{Codes8: c1, Valid: N}, {Ch: 1, Codes8: c2, Valid: N}},
 		}
 	}
 	fs := &fakeScope{
