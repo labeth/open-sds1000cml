@@ -49,9 +49,9 @@ display:
 
 inputs:
   keys: [run, single, auto, f1, f2, f3, f4, f5, trigmenu, acquire, display, horizmenu,
-    menuonoff, measure, cursors, math, defaultsetup, ref, saverecall, print, help, utility,
+    menu, measure, cursors, math, defaultsetup, ref, saverecall, print, help, utility,
     ch1, ch2, set50, force, ch1pospush, ch2pospush, horizpospush, tdivpush, ch1vdivpush,
-    ch2vdivpush, triglevelpush, adjustpush]
+    ch2vdivpush, triglvlpush, adjustpush]
   knobs: [horizpos, ch2pos, tdiv, ch2vdiv, ch1vdiv, adjust, triglevel, ch1pos]
   lamps: [cursors, intensity, ch1, math, ch2, ref, measure, acquire, display, saverecall,
     utility, run, stop, single]
@@ -68,6 +68,9 @@ options: []
 absent:
   logic-probe: "the SDS1102CML+ has no digital probe input"
   generator: "the SDS1102CML+ has no signal source output"
+  stacker: "the SDS1102CML+ stacks records in an FPGA image (images), not in a stacker part"
+  segments: "the SDS1102CML+ record memory keeps one record"
+  counter: "the SDS1102CML+ has no hardware frequency counter"
 
 budget:
   cores: 1
