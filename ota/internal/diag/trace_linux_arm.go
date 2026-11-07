@@ -16,6 +16,8 @@ import (
 	"time"
 
 	"golang.org/x/sys/unix"
+
+	core "github.com/labeth/open-dso-core/supervisor/diag"
 )
 
 // ARM EABI syscall numbers the trace records.
@@ -95,7 +97,7 @@ func Trace(pid int, o TraceOpts) error {
 	if len(t.tids) == 0 {
 		return fmt.Errorf("trace: no thread of %d attached", pid)
 	}
-	_, _ = fmt.Fprintf(t.out, "# pid %d threads %d start %d\n", pid, len(t.tids), monoMicros())
+	_, _ = fmt.Fprintf(t.out, "# pid %d threads %d start %d\n", pid, len(t.tids), core.MonoMicros())
 	if o.Ready != nil {
 		_, _ = fmt.Fprintln(o.Ready, "ready")
 	}
@@ -176,7 +178,7 @@ func (t *tracer) exit(tid int, in, out syscall.PtraceRegs) {
 	nr := in.Uregs[7]
 	ret := int32(out.Uregs[0]) //nolint:gosec // G115: the syscall's signed return in r0
 	a0, a1, a2 := in.Uregs[0], in.Uregs[1], in.Uregs[2]
-	now := monoMicros()
+	now := core.MonoMicros()
 	switch nr {
 	case sysOpen, sysOpenat:
 		path, flags := t.cstring(tid, a0), a1

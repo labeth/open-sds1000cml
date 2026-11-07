@@ -1,6 +1,6 @@
 // ENGMODEL-OWNER-UNIT: FU-OTA-AGENT
 
-package agent
+package board
 
 // Takeover sequence tests (spec 01 §2.2 inherit-then-kill), off-device:
 //
@@ -35,10 +35,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/labeth/open-sds1000cml/ota/internal/config"
-	"github.com/labeth/open-sds1000cml/ota/internal/fdinherit"
+	"github.com/labeth/open-dso-core/supervisor/agent"
+	"github.com/labeth/open-dso-core/supervisor/config"
+	"github.com/labeth/open-dso-core/supervisor/fdinherit"
+	"github.com/labeth/open-dso-core/supervisor/vxi11"
+
 	"github.com/labeth/open-sds1000cml/ota/internal/gpmc"
-	"github.com/labeth/open-sds1000cml/ota/internal/vxi11"
 )
 
 // ---- fake gpmc reader (behind the gpmcReader seam) --------------------------
@@ -279,7 +281,7 @@ func captureReassert(t *testing.T) chan []string {
 	t.Helper()
 	ch := make(chan []string, 1)
 	old := reassertNetworkFn
-	reassertNetworkFn = func(_ *Agent, preIPs []string) { ch <- preIPs }
+	reassertNetworkFn = func(_ *Board, preIPs []string) { ch <- preIPs }
 	t.Cleanup(func() { reassertNetworkFn = old })
 	return ch
 }
@@ -290,7 +292,7 @@ func captureReassert(t *testing.T) chan []string {
 // has open (so New discovers a genuinely inherited fd) and whose watchdog is
 // a plain writable temp file (Acquire arms instantly).
 // TRLC-LINKS: REQ-SDS-027
-func takeoverAgent(t *testing.T, g *fakeGpmc) (*Agent, string) {
+func takeoverAgent(t *testing.T, g *fakeGpmc) (*agent.Agent, *Board, string) {
 	t.Helper()
 	dir := t.TempDir()
 	gpmcPath := filepath.Join(dir, "gpmc.dev")
@@ -317,15 +319,16 @@ func takeoverAgent(t *testing.T, g *fakeGpmc) (*Agent, string) {
 	}
 	t.Cleanup(func() { _ = f.Close() })
 
-	a := New(config.Load())
-	if a.gpmcFD < 0 {
+	b := New(config.Load(), LoadConfig())
+	if b.gpmcFD < 0 {
 		// TempDir behind a symlink can defeat the /proc readlink match; the
 		// takeover gate only needs a valid fd number.
-		a.gpmcFD = int(f.Fd())
+		b.gpmcFD = int(f.Fd())
 	}
-	a.gpmc = g
-	t.Cleanup(a.wd.Disarm)
-	return a, gpmcPath
+	b.gpmc = g
+	a := agent.New(b.cfg, b, "test")
+	t.Cleanup(a.DisarmWatchdog)
+	return a, b, gpmcPath
 }
 
 // spawnGpmcHolder starts a process that (a) holds an open fd on the fake Gpmc
@@ -333,7 +336,7 @@ func takeoverAgent(t *testing.T, g *fakeGpmc) (*Agent, string) {
 // sh exits — exactly the shape factoryCandidates must pick up and killFactory
 // must kill. Returns once factoryCandidates actually reports it.
 // TRLC-LINKS: REQ-SDS-027
-func spawnGpmcHolder(t *testing.T, a *Agent, path string) int {
+func spawnGpmcHolder(t *testing.T, b *Board, path string) int {
 	t.Helper()
 	out, err := exec.CommandContext(t.Context(), "/bin/sh", "-c",
 		`sleep 30 < "$0" > /dev/null 2>&1 & echo $!`, path).Output()
@@ -348,7 +351,7 @@ func spawnGpmcHolder(t *testing.T, a *Agent, path string) int {
 
 	deadline := time.Now().Add(5 * time.Second)
 	for time.Now().Before(deadline) {
-		for _, h := range a.factoryCandidates() {
+		for _, h := range b.factoryCandidates() {
 			if h.PID == pid {
 				return pid
 			}
@@ -376,7 +379,7 @@ func stepIdx(steps []string, sub string) int {
 func TestTakeoverHappyPathOrderOfOperations(t *testing.T) {
 	var stopSeen atomic.Bool
 	g := &fakeGpmc{versionOK: true, idle: true, stopSeen: &stopSeen}
-	a, gpmcPath := takeoverAgent(t, g)
+	a, b, gpmcPath := takeoverAgent(t, g)
 	instr := newFakeInstr(t, "SAST STOP\n", func(cmd string) {
 		if strings.HasPrefix(cmd, "STOP") {
 			stopSeen.Store(true)
@@ -384,9 +387,9 @@ func TestTakeoverHappyPathOrderOfOperations(t *testing.T) {
 	})
 	dialFake(t, instr)
 	reassert := captureReassert(t)
-	pid := spawnGpmcHolder(t, a, gpmcPath)
+	pid := spawnGpmcHolder(t, b, gpmcPath)
 
-	res := a.Takeover(TakeoverOpts{})
+	res := a.Takeover(agent.TakeoverOpts{})
 	if !res.OK {
 		t.Fatalf("takeover failed: %s\nsteps: %s", res.Err, res.Summary())
 	}
@@ -431,7 +434,7 @@ func TestTakeoverHappyPathOrderOfOperations(t *testing.T) {
 
 	// Outcomes: persisted state, dead factory holder, armed watchdog, and the
 	// async network re-assert scheduled.
-	if !a.st.get().TakenOver {
+	if !a.TakenOver() {
 		t.Error("taken_over not persisted")
 	}
 	deadline := time.Now().Add(3 * time.Second)
@@ -441,7 +444,7 @@ func TestTakeoverHappyPathOrderOfOperations(t *testing.T) {
 	if fdinherit.Alive(pid) {
 		t.Errorf("factory holder pid=%d survived the kill", pid)
 	}
-	if !a.wd.Status().Armed {
+	if !a.Watchdog().Armed {
 		t.Error("watchdog not armed after takeover")
 	}
 	select {
@@ -451,7 +454,7 @@ func TestTakeoverHappyPathOrderOfOperations(t *testing.T) {
 	}
 
 	// Idempotency: a second takeover is a no-op success.
-	res2 := a.Takeover(TakeoverOpts{})
+	res2 := a.Takeover(agent.TakeoverOpts{})
 	if !res2.OK || stepIdx(res2.Steps, "already taken over") < 0 {
 		t.Errorf("second takeover not idempotent: %+v", res2)
 	}
@@ -464,14 +467,14 @@ func TestTakeoverRefusesWhenFactoryWontIdle(t *testing.T) {
 	// point of no return: nothing persisted, nothing killed, no watchdog, no
 	// network re-assert.
 	g := &fakeGpmc{versionOK: true, idle: false}
-	a, gpmcPath := takeoverAgent(t, g)
+	a, b, gpmcPath := takeoverAgent(t, g)
 	instr := newFakeInstr(t, "SAST TRIG\n", nil)
 	dialFake(t, instr)
 	swapIdleTimeout(t, 400*time.Millisecond)
 	reassert := captureReassert(t)
-	pid := spawnGpmcHolder(t, a, gpmcPath)
+	pid := spawnGpmcHolder(t, b, gpmcPath)
 
-	res := a.Takeover(TakeoverOpts{})
+	res := a.Takeover(agent.TakeoverOpts{})
 	if res.OK {
 		t.Fatalf("takeover must refuse when the engine won't idle; steps: %s", res.Summary())
 	}
@@ -481,13 +484,13 @@ func TestTakeoverRefusesWhenFactoryWontIdle(t *testing.T) {
 	if stepIdx(res.Steps, "factory STOP sent") < 0 {
 		t.Errorf("refusal should come at the idle gate, after STOP; steps: %s", res.Summary())
 	}
-	if a.st.get().TakenOver {
+	if a.TakenOver() {
 		t.Error("refusal must not persist taken_over")
 	}
 	if !fdinherit.Alive(pid) {
 		t.Error("refusal must not kill the factory app")
 	}
-	if a.wd.Status().Armed {
+	if a.Watchdog().Armed {
 		t.Error("refusal must not arm the watchdog")
 	}
 	select {
@@ -502,21 +505,21 @@ func TestTakeoverRefusesWhenFactoryStopUnreachable(t *testing.T) {
 	// The factory SCPI service can't be reached (dead portmapper). Without
 	// force this is a hard refusal at the STOP gate.
 	g := &fakeGpmc{versionOK: true, idle: true}
-	a, gpmcPath := takeoverAgent(t, g)
+	a, b, gpmcPath := takeoverAgent(t, g)
 	swapVxiDial(t, func(_ string, _ time.Duration) (*vxi11.Client, error) {
 		return nil, errors.New("vxi11: portmap dial: connection refused (test)")
 	})
 	reassert := captureReassert(t)
-	pid := spawnGpmcHolder(t, a, gpmcPath)
+	pid := spawnGpmcHolder(t, b, gpmcPath)
 
-	res := a.Takeover(TakeoverOpts{})
+	res := a.Takeover(agent.TakeoverOpts{})
 	if res.OK {
 		t.Fatalf("takeover must refuse when STOP cannot be commanded; steps: %s", res.Summary())
 	}
 	if !strings.Contains(res.Err, "could not command factory STOP") {
 		t.Errorf("err = %q, want STOP-gate refusal", res.Err)
 	}
-	if a.st.get().TakenOver || !fdinherit.Alive(pid) {
+	if a.TakenOver() || !fdinherit.Alive(pid) {
 		t.Error("STOP-gate refusal must leave the device untouched")
 	}
 	select {
@@ -533,15 +536,15 @@ func TestTakeoverForcePartialFailureStillReassertsNetwork(t *testing.T) {
 	// return — and the contract is that the post-kill network re-assert is
 	// scheduled regardless of those partial failures.
 	g := &fakeGpmc{versionOK: false, idle: false}
-	a, gpmcPath := takeoverAgent(t, g)
+	a, b, gpmcPath := takeoverAgent(t, g)
 	swapVxiDial(t, func(_ string, _ time.Duration) (*vxi11.Client, error) {
 		return nil, errors.New("vxi11: portmap dial: connection refused (test)")
 	})
 	swapIdleTimeout(t, 300*time.Millisecond)
 	reassert := captureReassert(t)
-	pid := spawnGpmcHolder(t, a, gpmcPath)
+	pid := spawnGpmcHolder(t, b, gpmcPath)
 
-	res := a.Takeover(TakeoverOpts{Force: true})
+	res := a.Takeover(agent.TakeoverOpts{Force: true})
 	if !res.OK {
 		t.Fatalf("forced takeover failed: %s\nsteps: %s", res.Err, res.Summary())
 	}
@@ -549,7 +552,7 @@ func TestTakeoverForcePartialFailureStillReassertsNetwork(t *testing.T) {
 		stepIdx(res.Steps, "force: continuing without idle confirm") < 0 {
 		t.Errorf("force fallthroughs missing; steps: %s", res.Summary())
 	}
-	if !a.st.get().TakenOver {
+	if !a.TakenOver() {
 		t.Error("forced takeover must persist taken_over")
 	}
 	deadline := time.Now().Add(3 * time.Second)
@@ -572,19 +575,21 @@ func TestTakeoverForcePartialFailureStillReassertsNetwork(t *testing.T) {
 // TRLC-LINKS: REQ-SDS-027, REQ-SDS-104
 func TestTakeoverPersistFailureLeavesStateUntaken(t *testing.T) {
 	g := &fakeGpmc{versionOK: true, idle: true}
-	a, _ := takeoverAgent(t, g)
+	a, _, _ := takeoverAgent(t, g)
+	if err := os.RemoveAll(os.Getenv("OTA_DIR")); err != nil { // the state file's directory is gone
+		t.Fatal(err)
+	}
 	swapIdleTimeout(t, 400*time.Millisecond)
 	captureReassert(t)
-	a.st.path = filepath.Join(t.TempDir(), "missing", "state.json") // its directory does not exist
 
-	res := a.Takeover(TakeoverOpts{})
+	res := a.Takeover(agent.TakeoverOpts{})
 	if res.OK || !strings.Contains(res.Err, "persist state") {
 		t.Fatalf("takeover with an unwritable state: ok=%v err=%q", res.OK, res.Err)
 	}
-	if a.st.get().TakenOver {
+	if a.TakenOver() {
 		t.Error("taken_over held in memory although the stick did not take it")
 	}
-	if a.wd.Status().Armed {
+	if a.Watchdog().Armed {
 		t.Error("a failed takeover armed the watchdog")
 	}
 }

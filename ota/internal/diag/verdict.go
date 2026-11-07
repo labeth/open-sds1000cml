@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"slices"
 	"strings"
+
+	core "github.com/labeth/open-dso-core/supervisor/diag"
 )
 
 // probeReferenceText is the SDS1102CML+'s static balls as the probe image saw
@@ -43,12 +45,12 @@ func staticClass(pull, open BallState) string {
 	return "low"
 }
 
-// Verdict is what the census says about one part of the board.
-type Verdict struct {
-	Part    string `json:"part"`
-	Verdict string `json:"verdict"` // present, absent, partial, other
-	Detail  string `json:"detail"`
-}
+// Verdict is what the census says about one part of the board, in the
+// archive's form.
+type Verdict = core.Verdict
+
+// Archive is the stick's archive.
+type Archive = core.Archive
 
 // The census's verdicts.
 const (
@@ -83,7 +85,7 @@ type judge struct {
 // add appends a verdict.
 // TRLC-LINKS: REQ-SDS-288
 func (j *judge) add(part, v, f string, args ...any) {
-	j.vs = append(j.vs, Verdict{part, v, fmt.Sprintf(f, args...)})
+	j.vs = append(j.vs, Verdict{Part: part, Verdict: v, Detail: fmt.Sprintf(f, args...)})
 }
 
 // lanesOf is the indexes of a converter core's lanes.

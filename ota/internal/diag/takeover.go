@@ -3,6 +3,7 @@
 package diag
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"os"
@@ -12,9 +13,13 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/labeth/open-sds1000cml/ota/internal/fdinherit"
+	"github.com/labeth/open-dso-core/hal"
+	core "github.com/labeth/open-dso-core/supervisor/diag"
+	"github.com/labeth/open-dso-core/supervisor/fdinherit"
+	"github.com/labeth/open-dso-core/supervisor/vxi11"
+	keep "github.com/labeth/open-dso-core/supervisor/watchdog"
+
 	"github.com/labeth/open-sds1000cml/ota/internal/gpmc"
-	"github.com/labeth/open-sds1000cml/ota/internal/vxi11"
 	"github.com/labeth/open-sds1000cml/ota/internal/watchdog"
 )
 
@@ -47,16 +52,16 @@ type takeoverInput struct {
 // (CS3 0x07, the fabric configured), the factory image is a bitstream for the
 // same FPGA, and the stick carries the probe images and the app.
 // TRLC-LINKS: REQ-SDS-288
-func TakeoverGate(in takeoverInput) []Check {
-	var cs []Check
+func TakeoverGate(in takeoverInput) []core.Check {
+	var cs []core.Check
 	add := func(name string, ok bool, f string, args ...any) {
-		cs = append(cs, Check{Name: name, OK: ok, Detail: fmt.Sprintf(f, args...)})
+		cs = append(cs, core.Check{Name: name, OK: ok, Detail: fmt.Sprintf(f, args...)})
 	}
 	add("active stage", in.sweepDone, "the factory app ran on through every step of the sweep and answered after its settings were put back")
 	add("factory app after", in.alive, "the factory app runs on after the sweep")
 	want := uint16(cfgNSTATUS | cfgCONFDONE)
 	add("configuration port", in.cfgErr == nil && in.cfg&want == want,
-		"CS3 0x07 reads nSTATUS and CONF_DONE high (the configured fabric): 0x%04x %s", in.cfg, errText(in.cfgErr))
+		"CS3 0x07 reads nSTATUS and CONF_DONE high (the configured fabric): 0x%04x %s", in.cfg, core.ErrText(in.cfgErr))
 	add("fpga part", slices.Contains(in.factoryRBF, factoryRBFLen),
 		"the factory FPGA image is %d bytes, an EP4CE10's: %v", factoryRBFLen, in.factoryRBF)
 	var missing []string
@@ -110,7 +115,7 @@ func kin(self, pid int) bool {
 // watchdog, which nothing else pets now. sdsdiag keeps the inherited
 // descriptor, so the chip select stays up. It returns the watchdog.
 // TRLC-LINKS: REQ-SDS-288
-func takeover(vx *vxi11.Client, fd int, log func(string, ...any)) (*watchdog.Device, error) {
+func takeover(vx *vxi11.Client, fd int, log func(string, ...any)) (*keep.Keeper, error) {
 	if err := vx.Send("STOP"); err != nil {
 		return nil, fmt.Errorf("STOP: %w", err)
 	}
@@ -155,7 +160,7 @@ func takeover(vx *vxi11.Client, fd int, log func(string, ...any)) (*watchdog.Dev
 	if killed == 0 {
 		return nil, errors.New("no factory process held /dev/Gpmc")
 	}
-	wd := watchdog.New("/dev/watchdog")
+	wd := keep.NewKeeper(watchdog.New("/dev/watchdog"))
 	if err := wd.Acquire(15*time.Second, 15*time.Second); err != nil {
 		return nil, fmt.Errorf("watchdog: %w", err)
 	}
@@ -163,82 +168,114 @@ func takeover(vx *vxi11.Client, fd int, log func(string, ...any)) (*watchdog.Dev
 	return wd, nil
 }
 
-// takeoverStage is the third stage, run in auto mode after the active stage:
-// when its gate passes, it takes the scope over, loads the probe image
-// without and with the pull-ups and takes the census of every ball, judges
-// the board's population from it, and runs this firmware's app on the board.
-// The scope then needs a power-cycle: the factory app is gone.
-// TRLC-LINKS: REQ-SDS-288, REQ-SDS-289
-func (c *collection) takeoverStage(a *Archive, vx *vxi11.Client, pid int) {
-	dir := filepath.Dir(c.self)
+// TakeoverGate is TakeoverGate on what the earlier stages found: the
+// configuration port read through the inherited /dev/Gpmc, the factory
+// images' lengths and the stick's own files.
+// TRLC-LINKS: REQ-SDS-288
+func (s *stick) TakeoverGate(c *core.Collection) []core.Check {
+	dir := filepath.Dir(c.Self)
 	fd := fdinherit.Find("/dev/Gpmc")
-	bus := devBus{fd: fd}
-	cfg, cfgErr := bus.Read(planeCS3, cs3Config)
+	cfg, cfgErr := devBus{fd: fd}.Read(planeCS3, cs3Config)
 	files := map[string]bool{}
-	images := map[string][]byte{}
 	for _, f := range []string{probeRBF, probePullRBF, stickApp} {
 		if b, err := os.ReadFile(filepath.Join(dir, f)); err == nil && len(b) > 0 { //nolint:gosec // G304: the stick's own files
 			files[f] = true
-			if f != stickApp {
-				images[f] = b
-			}
 		}
 	}
-	st := procState(pid)
-	checks := TakeoverGate(takeoverInput{
-		sweepDone: c.sweepDone, alive: st != "" && st != "T" && st != "t" && st != "Z",
+	st := core.ProcState(s.pid)
+	return TakeoverGate(takeoverInput{
+		sweepDone: s.sweepDone, alive: st != "" && st != "T" && st != "t" && st != "Z",
 		cfg: cfg, cfgErr: cfgErr, factoryRBF: factoryRBFs(firmwareRoots), files: files,
 	})
-	a.AddJSON("takeover/gate.json", checks)
-	if ok, why := passed(checks); !ok {
-		c.note("takeover gate: the takeover stage does not run (%s)", why)
-		c.say("no takeover: %s", why)
-		return
+}
+
+// probeCensus is the census of every FPGA ball through the probe image,
+// loaded without and with the pull-ups, as a hal.Census. It keeps both
+// censuses for the archive and the board tests.
+type probeCensus struct {
+	bus    regBus
+	dir    string // the stick's files
+	balls  []Ball
+	a      *Archive
+	say    func(string, ...any)
+	logf   func(string, ...any)
+	census [2]Census
+	vs     []Verdict
+}
+
+var _ hal.Census = (*probeCensus)(nil)
+
+// Run loads each probe image and takes its census. It writes the FPGA (a
+// volatile image), so it refuses the read-only first contact.
+// TRLC-LINKS: REQ-SDS-288
+func (p *probeCensus) Run(_ context.Context, writes bool) ([]hal.Verdict, error) {
+	if !writes {
+		return nil, errors.New("the probe census loads the probe images")
 	}
-	c.note("takeover gate: every check passed - the takeover stage runs")
-	c.say("takeover: the factory app stops now; switch the scope off and on when this says DONE")
+	for i, f := range []string{probeRBF, probePullRBF} {
+		p.say("takeover: the probe image %s", f)
+		image, _ := os.ReadFile(filepath.Join(p.dir, f)) //nolint:gosec // G304: the stick's own files
+		t := time.Now()
+		if err := configure(p.bus, image, time.Sleep); err != nil {
+			p.census[i].Error = "load: " + err.Error()
+			p.logf("%s: %v", f, err)
+			continue
+		}
+		p.logf("%s loaded in %v", f, time.Since(t).Round(time.Millisecond))
+		p.census[i] = runCensus(p.bus, len(p.balls), time.Sleep)
+		p.logf("%s census: %v %s", f, p.census[i].Steps, p.census[i].Error)
+		p.a.AddJSON("probe/census-"+strings.TrimSuffix(f, ".rbf")+".json", p.census[i])
+	}
+	p.vs = verdicts(p.balls, p.census[0], p.census[1])
+	out := make([]hal.Verdict, len(p.vs))
+	for i, v := range p.vs {
+		out[i] = hal.Verdict{Part: v.Part, Verdict: v.Verdict, Detail: v.Detail}
+	}
+	return out, nil
+}
+
+// Takeover is the third stage, run in auto mode after the active stage when
+// its gate passes: it takes the scope over, takes the census of every ball
+// with the probe images, judges the board's population from it, and runs
+// this firmware's app on the board. The scope then needs a power-cycle: the
+// factory app is gone.
+// TRLC-LINKS: REQ-SDS-288, REQ-SDS-289
+func (s *stick) Takeover(c *core.Collection, a *Archive) {
+	dir := filepath.Dir(c.Self)
+	fd := fdinherit.Find("/dev/Gpmc")
+	bus := devBus{fd: fd}
+	c.Say("takeover: the factory app stops now; switch the scope off and on when this says DONE")
 	var log strings.Builder
-	logf := func(f string, args ...any) { fmt.Fprintf(&log, "%d "+f+"\n", append([]any{monoMicros()}, args...)...) }
+	logf := func(f string, args ...any) {
+		fmt.Fprintf(&log, "%d "+f+"\n", append([]any{core.MonoMicros()}, args...)...)
+	}
 	defer func() { a.AddText("takeover/log.txt", log.String()) }()
-	wd, err := takeover(vx, fd, logf)
+	wd, err := takeover(s.vx, fd, logf)
 	if err != nil {
 		logf("takeover: %v", err)
-		c.note("takeover: %v", err)
+		c.Note("takeover: %v", err)
 		return
 	}
 	defer wd.Disarm()
-	c.tookOver = true
-	balls := probeBalls()
-	var census [2]Census
-	for i, f := range []string{probeRBF, probePullRBF} {
-		c.say("takeover: the probe image %s", f)
-		t := time.Now()
-		if err := configure(bus, images[f], time.Sleep); err != nil {
-			census[i].Error = "load: " + err.Error()
-			logf("%s: %v", f, err)
-			continue
-		}
-		logf("%s loaded in %v", f, time.Since(t).Round(time.Millisecond))
-		census[i] = runCensus(bus, len(balls), time.Sleep)
-		logf("%s census: %v %s", f, census[i].Steps, census[i].Error)
-		a.AddJSON("probe/census-"+strings.TrimSuffix(f, ".rbf")+".json", census[i])
-	}
-	vs := verdicts(balls, census[0], census[1])
+	c.TookOver = true
+	pc := &probeCensus{bus: bus, dir: dir, balls: probeBalls(), a: a, say: c.Say, logf: logf}
+	_, _ = pc.Run(context.Background(), true) // writes is set: it does not refuse
+	balls, census, vs := pc.balls, pc.census, pc.vs
 	if census[1].Error == "" && len(census[1].Off) == len(balls) {
-		c.say("takeover: the front end, trigger, SRAM and panel (the panel LEDs light one by one)")
-		t := c.boardTests(bus, balls, vs, logf)
+		c.Say("takeover: the front end, trigger, SRAM and panel (the panel LEDs light one by one)")
+		t := s.boardTests(bus, balls, vs, logf)
 		a.AddJSON("probe/board_tests.json", t)
-		vs = append(vs, boardVerdicts(t, c.inventory)...)
+		vs = append(vs, boardVerdicts(t, s.inventory)...)
 	}
 	a.AddJSON("probe/verdicts.json", vs)
 	a.AddJSON("probe/balls.json", balls)
 	a.AddText("probe/report.txt", verdictText(vs, balls, census[0], census[1]))
 	for _, v := range vs {
-		c.note("probe: %s: %s", v.Part, v.Verdict)
+		c.Note("probe: %s: %s", v.Part, v.Verdict)
 	}
-	c.say("takeover: this firmware's app on the board (%v)", appRun)
-	c.note("%s", c.runApp(a, filepath.Join(dir, stickApp)))
-	c.note("screen with the app: %s", collectScreen(a, "app"))
+	c.Say("takeover: this firmware's app on the board (%v)", core.AppRun)
+	c.Note("%s", c.RunApp(a, filepath.Join(dir, stickApp), []string{"SCOPE_GPMC=/dev/Gpmc"}))
+	c.Note("screen with the app: %s", core.CollectScreen(a, "app"))
 }
 
 // boardTests runs, on the pull-up probe image, the tests that drive the
@@ -247,7 +284,7 @@ func (c *collection) takeoverStage(a *Archive, vx *vxi11.Client, pid int) {
 // key interrupt, the ARM's outputs to the FPGA and the LED walk. vs names
 // the converter cores present.
 // TRLC-LINKS: REQ-SDS-290, REQ-SDS-291
-func (c *collection) boardTests(bus regBus, balls []Ball, vs []Verdict, logf func(string, ...any)) BoardTests {
+func (s *stick) boardTests(bus regBus, balls []Ball, vs []Verdict, logf func(string, ...any)) BoardTests {
 	var t BoardTests
 	p, _, err := openProbe(bus, len(balls), time.Sleep)
 	if err != nil {

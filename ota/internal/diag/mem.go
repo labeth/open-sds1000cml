@@ -12,6 +12,8 @@ import (
 	"unsafe"
 
 	"golang.org/x/sys/unix"
+
+	core "github.com/labeth/open-dso-core/supervisor/diag"
 )
 
 // MemRegion is a block of AM335x registers the active stage reads.
@@ -38,7 +40,7 @@ var memRegions = []MemRegion{
 // own (a bus error ends that child, not the collection) and stores the words.
 // TRLC-LINKS: REQ-SDS-285
 func collectMem(a *Archive, self string) {
-	if !strings.Contains(strings.ToLower(readStr("/proc/cpuinfo")), "am335") {
+	if !strings.Contains(strings.ToLower(core.ReadStr("/proc/cpuinfo")), "am335") {
 		a.Errorf("mem: not an AM335x: registers not read")
 		return
 	}

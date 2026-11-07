@@ -76,7 +76,7 @@ type verdictList []Verdict
 // add appends a verdict.
 // TRLC-LINKS: REQ-SDS-290, REQ-SDS-291
 func (l *verdictList) add(part, v, f string, args ...any) {
-	*l = append(*l, Verdict{part, v, fmt.Sprintf(f, args...)})
+	*l = append(*l, Verdict{Part: part, Verdict: v, Detail: fmt.Sprintf(f, args...)})
 }
 
 // boardVerdicts judges the front end of each channel (gain DAC, range relay,
@@ -343,7 +343,7 @@ func diffBits(a, b string) []int {
 // TRLC-LINKS: REQ-SDS-291
 func armVerdict(inv, ref []string) Verdict {
 	if len(ref) == 0 {
-		return Verdict{"ARM devices", vOther, fmt.Sprintf("%d devices (no SDS1102CML+ reference to compare)", len(inv))}
+		return Verdict{Part: "ARM devices", Verdict: vOther, Detail: fmt.Sprintf("%d devices (no SDS1102CML+ reference to compare)", len(inv))}
 	}
 	var missing, extra []string
 	for _, r := range ref {
@@ -357,7 +357,7 @@ func armVerdict(inv, ref []string) Verdict {
 		}
 	}
 	if len(missing) == 0 && len(extra) == 0 {
-		return Verdict{"ARM devices", vPresent, fmt.Sprintf("all %d as on the SDS1102CML+", len(ref))}
+		return Verdict{Part: "ARM devices", Verdict: vPresent, Detail: fmt.Sprintf("all %d as on the SDS1102CML+", len(ref))}
 	}
-	return Verdict{"ARM devices", vOther, fmt.Sprintf("missing: %s; extra: %s", strings.Join(missing, "; "), strings.Join(extra, "; "))}
+	return Verdict{Part: "ARM devices", Verdict: vOther, Detail: fmt.Sprintf("missing: %s; extra: %s", strings.Join(missing, "; "), strings.Join(extra, "; "))}
 }

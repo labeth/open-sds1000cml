@@ -11,9 +11,12 @@ import (
 	"time"
 
 	"golang.org/x/sys/unix"
+
+	keep "github.com/labeth/open-dso-core/supervisor/watchdog"
 )
 
-// The tests never open a real /dev node: a plain temp file stands in for the
+// The tests run the device under the core supervisor's keeper, as the agent
+// does, and never open a real /dev node: a plain temp file stands in for the
 // watchdog device. unix.Open/Write behave identically; the WDIOC_KEEPALIVE
 // ioctl fails with ENOTTY, which exercises the belt-and-suspenders contract
 // (pet is healthy as long as the write half succeeds).
@@ -31,7 +34,7 @@ func fakeDev(t *testing.T) string {
 // TRLC-LINKS: REQ-SDS-026, REQ-SDS-086
 func TestAcquirePetsImmediately(t *testing.T) {
 	dev := fakeDev(t)
-	w := New(dev)
+	w := keep.NewKeeper(New(dev))
 	if err := w.Acquire(time.Second, time.Hour); err != nil {
 		t.Fatalf("acquire: %v", err)
 	}
@@ -59,7 +62,7 @@ func TestAcquirePetsImmediately(t *testing.T) {
 // TRLC-LINKS: REQ-SDS-026, REQ-SDS-086
 func TestPetLoopFeedsOnInterval(t *testing.T) {
 	dev := fakeDev(t)
-	w := New(dev)
+	w := keep.NewKeeper(New(dev))
 	if err := w.Acquire(time.Second, 20*time.Millisecond); err != nil {
 		t.Fatalf("acquire: %v", err)
 	}
@@ -94,7 +97,7 @@ func TestPetLoopFeedsOnInterval(t *testing.T) {
 // TRLC-LINKS: REQ-SDS-026, REQ-SDS-086
 func TestPetLoopStopsAfterDisarm(t *testing.T) {
 	dev := fakeDev(t)
-	w := New(dev)
+	w := keep.NewKeeper(New(dev))
 	if err := w.Acquire(time.Second, 10*time.Millisecond); err != nil {
 		t.Fatalf("acquire: %v", err)
 	}
@@ -110,7 +113,7 @@ func TestPetLoopStopsAfterDisarm(t *testing.T) {
 // TRLC-LINKS: REQ-SDS-086
 func TestAcquireIdempotentWhileArmed(t *testing.T) {
 	dev := fakeDev(t)
-	w := New(dev)
+	w := keep.NewKeeper(New(dev))
 	if err := w.Acquire(time.Second, time.Hour); err != nil {
 		t.Fatalf("acquire: %v", err)
 	}
@@ -128,7 +131,7 @@ func TestAcquireIdempotentWhileArmed(t *testing.T) {
 // TRLC-LINKS: REQ-SDS-086
 func TestAcquireTimesOutWhenDeviceMissing(t *testing.T) {
 	missing := filepath.Join(t.TempDir(), "nope")
-	w := New(missing)
+	w := keep.NewKeeper(New(missing))
 	err := w.Acquire(300*time.Millisecond, time.Hour)
 	if err == nil {
 		t.Fatal("acquire of a missing device must fail")
@@ -150,7 +153,7 @@ func TestAcquireRetriesUntilDeviceAppears(t *testing.T) {
 		time.Sleep(300 * time.Millisecond)
 		_ = os.WriteFile(dev, nil, 0o644)
 	}()
-	w := New(dev)
+	w := keep.NewKeeper(New(dev))
 	if err := w.Acquire(3*time.Second, time.Hour); err != nil {
 		t.Fatalf("acquire should retry until the device appears: %v", err)
 	}
@@ -162,7 +165,7 @@ func TestAcquireRetriesUntilDeviceAppears(t *testing.T) {
 
 // TRLC-LINKS: REQ-SDS-086
 func TestDisarmWithoutAcquireIsNoop(t *testing.T) {
-	w := New(filepath.Join(t.TempDir(), "never-opened"))
+	w := keep.NewKeeper(New(filepath.Join(t.TempDir(), "never-opened")))
 	w.Disarm() // must not panic or create anything
 	w.Disarm() // idempotent
 	if w.Status().Armed {
@@ -175,7 +178,7 @@ func TestReacquireAfterDisarm(t *testing.T) {
 	// A respawned agent generation re-acquires; the fd/stop-channel cycle must
 	// survive disarm -> acquire.
 	dev := fakeDev(t)
-	w := New(dev)
+	w := keep.NewKeeper(New(dev))
 	if err := w.Acquire(time.Second, time.Hour); err != nil {
 		t.Fatal(err)
 	}
@@ -194,14 +197,15 @@ func TestReacquireAfterDisarm(t *testing.T) {
 // the watchdog after an agent self-update (EBUSY) while nobody pets it.
 // TRLC-LINKS: REQ-SDS-026, REQ-SDS-086
 func TestAcquiredFdClosesOnExec(t *testing.T) {
-	w := New(fakeDev(t))
+	d := New(fakeDev(t))
+	w := keep.NewKeeper(d)
 	if err := w.Acquire(time.Second, time.Hour); err != nil {
 		t.Fatalf("acquire: %v", err)
 	}
 	defer w.Disarm()
-	w.mu.Lock()
-	fd := w.fd
-	w.mu.Unlock()
+	d.mu.Lock()
+	fd := d.fd
+	d.mu.Unlock()
 	flags, err := unix.FcntlInt(uintptr(fd), unix.F_GETFD, 0)
 	if err != nil {
 		t.Fatal(err)
@@ -217,7 +221,7 @@ func TestAcquiredFdClosesOnExec(t *testing.T) {
 func TestConcurrentAcquireLeavesOneDescriptor(t *testing.T) {
 	dev := fakeDev(t)
 	for round := range 300 { // the race is a few microseconds wide: give it many tries
-		w := New(dev)
+		w := keep.NewKeeper(New(dev))
 		var wg sync.WaitGroup
 		start := make(chan struct{})
 		for range 16 {
