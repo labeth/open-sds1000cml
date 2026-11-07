@@ -15,16 +15,14 @@ import (
 	"github.com/labeth/open-sds1000cml/app/internal/sramcapture"
 )
 
-// StreamTrigger is what ends a scope-side decoded stream (ADR-PANEL-DECODED-STREAM).
-type StreamTrigger int
+// StreamTrigger is what ends a scope-side decoded stream: the core's.
+type StreamTrigger = core.StreamTrigger
 
+// The stream triggers.
 const (
-	// StreamManual streams until the operator stops it.
-	StreamManual StreamTrigger = iota
-	// StreamOnError triggers on any decode error the hardware decoder flags.
-	StreamOnError
-	// StreamOnValue triggers on one decoded unit equal to the chosen value.
-	StreamOnValue
+	StreamManual  = core.StreamManual
+	StreamOnError = core.StreamOnError
+	StreamOnValue = core.StreamOnValue
 )
 
 // streamNever is a data bit no decoder emits (units are at most 29 bits):
@@ -38,10 +36,9 @@ type adoptedRecord struct {
 	cfg sramcapture.Config
 }
 
-// ErrLevelsLearning is a stream refused while the ARINC 429 slicer levels
-// are still being learned from a sampled record (a moment after the decoder
-// settings name ARINC 429).
-var ErrLevelsLearning = errors.New("the ARINC 429 levels are not learned yet")
+// ErrLevelsLearning is a stream refused while the ARINC 429 levels are
+// learned: the core's.
+var ErrLevelsLearning = core.ErrLevelsLearning
 
 // BeginDecodedStream starts a decoded capture for the scope's own display: it
 // loads the image whose decoder serves p, builds a native full-depth

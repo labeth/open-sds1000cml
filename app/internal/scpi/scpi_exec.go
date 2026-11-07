@@ -256,9 +256,7 @@ func (h *Handler) reset(c *core.Call) {
 	h.sc.SetNorm(false)
 	h.sc.SetRunning(true)
 	h.sc.SetTdiv(500e-6)
-	if sc, ok := h.sc.(interface{ SetTrigPosFrac(float64) }); ok {
-		sc.SetTrigPosFrac(.5) // TRDL 0
-	}
+	h.sc.SetTrigPosFrac(.5) // TRDL 0
 	h.trmd = "AUTO"
 	c.SetHeaderMode(core.HeaderShort)
 	h.wfSP, h.wfNP, h.wfFP, h.wfSN = 1, 0, 0, 0
@@ -398,12 +396,11 @@ func (h *Handler) setTRDL(c *core.Call) error {
 	if err != nil {
 		return c.Error(core.ErrHeader)
 	}
-	sc, ok := h.sc.(interface{ SetTrigPosFrac(float64) })
 	frac := .5 + v/(10*h.sc.Snapshot().TdivS)
-	if !ok || !(frac >= -1e-9 && frac <= 1+1e-9) {
+	if !(frac >= -1e-9 && frac <= 1+1e-9) {
 		return c.Error(core.ErrDataOutOfRange)
 	}
-	sc.SetTrigPosFrac(math.Min(1, math.Max(0, frac)))
+	h.sc.SetTrigPosFrac(math.Min(1, math.Max(0, frac)))
 	return nil
 }
 

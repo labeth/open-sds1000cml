@@ -11,6 +11,7 @@ import (
 	"math"
 
 	"github.com/labeth/open-dso-core/hal"
+	"github.com/labeth/open-dso-core/instrument"
 	"github.com/labeth/open-sds1000cml/app/internal/analog"
 	"github.com/labeth/open-sds1000cml/app/internal/engine"
 )
@@ -149,10 +150,9 @@ func (l *Levels) TrigLevelGrid(src int) hal.Grid {
 // TRLC-LINKS: REQ-SDS-098, REQ-SDS-162
 func (l *Levels) SetTrigLevelCode(c uint16) uint16 { return l.eng.SetTrigLevelCode(c) }
 
-// TrigLevelSaved is a trigger level kept to put back exactly: a setting
-// undone or recalled returns to the same DAC step whatever the vertical
-// setting did meanwhile. The zero value is no level (the boot comparator).
-type TrigLevelSaved struct{ code uint16 }
+// TrigLevelSaved is a trigger level kept to put back exactly: here the
+// comparator's DAC code. The zero value is no level (the boot comparator).
+type TrigLevelSaved = instrument.TrigLevelSaved
 
 // SaveTrigLevel keeps the comparator's level.
 // TRLC-LINKS: REQ-SDS-098
@@ -160,19 +160,17 @@ func (l *Levels) SaveTrigLevel() TrigLevelSaved { return SaveTrigLevelIn(l.eng.S
 
 // SaveTrigLevelIn keeps the level in engine state st already read.
 // TRLC-LINKS: REQ-SDS-098
-func SaveTrigLevelIn(st engine.Stats) TrigLevelSaved { return TrigLevelSaved{st.TrigCode} }
+func SaveTrigLevelIn(st engine.Stats) TrigLevelSaved {
+	return TrigLevelSaved{Word: uint64(st.TrigCode)}
+}
 
 // RestoreTrigLevel puts a kept level back; the boot comparator's is left.
 // TRLC-LINKS: REQ-SDS-098
 func (l *Levels) RestoreTrigLevel(s TrigLevelSaved) {
-	if s.code != 0 {
-		l.eng.SetTrigLevelCode(s.code)
+	if s.Set() {
+		l.eng.SetTrigLevelCode(uint16(s.Word)) //nolint:gosec // G115: the word is the DAC code SaveTrigLevelIn kept
 	}
 }
-
-// Set reports whether a level was kept (not the boot comparator's).
-// TRLC-LINKS: REQ-SDS-098
-func (s TrigLevelSaved) Set() bool { return s.code != 0 }
 
 // ResetTrigLevel is the default setup's level: 0 V on C1's calibration, the
 // code truncated, not rounded.
@@ -235,4 +233,19 @@ func (l *Levels) offsetOf(ch int, st engine.Stats) float64 {
 		return l.fe.OffsetVolts(ch, code)
 	}
 	return analog.OffsetVolts(ch, code)
+}
+
+// SaveTrigLevelIn is the package's SaveTrigLevelIn as the UI model's levels.
+// TRLC-LINKS: REQ-SDS-098
+func (l *Levels) SaveTrigLevelIn(st engine.Stats) TrigLevelSaved { return SaveTrigLevelIn(st) }
+
+// TrigStepsV is the package's TrigStepsV as the UI model's levels.
+// TRLC-LINKS: REQ-SDS-098
+func (l *Levels) TrigStepsV(n int) float64 { return TrigStepsV(n) }
+
+// LevelWordV is the volts of a saved setup's level word (the comparator's
+// DAC code) on the global fit, as the setup's summary names it.
+// TRLC-LINKS: REQ-SDS-098, REQ-SDS-136
+func (l *Levels) LevelWordV(word int) float64 {
+	return engine.TrigLevelVolts(uint16(min(max(word, 1), 65535)))
 }

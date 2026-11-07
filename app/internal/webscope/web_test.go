@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"github.com/labeth/open-dso-core/hal"
+	"github.com/labeth/open-dso-core/instrument"
 	"github.com/labeth/open-dso-core/sample"
 	"github.com/labeth/open-sds1000cml/app/internal/analog"
 	"github.com/labeth/open-sds1000cml/app/internal/board"
@@ -442,7 +443,7 @@ func (f *fakeScope) SetTrigLevelCode(c uint16) uint16 {
 }
 
 // TRLC-LINKS: REQ-SDS-162
-func (f *fakeScope) SetTdiv(s float64) (engine.Band, bool) {
+func (f *fakeScope) SetTdiv(s float64) (instrument.Timebase, bool) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	b, ok := engine.PlanTdiv(s)
@@ -450,7 +451,7 @@ func (f *fakeScope) SetTdiv(s float64) (engine.Band, bool) {
 		f.tdiv = &s
 		f.stats.TdivS, f.stats.DisplayedS = b.TdivS, b.DisplayedSdivS()
 	}
-	return b, ok
+	return b.Timebase(), ok
 }
 
 // TRLC-LINKS: REQ-SDS-162

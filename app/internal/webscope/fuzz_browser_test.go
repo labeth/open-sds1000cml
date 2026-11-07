@@ -13,11 +13,12 @@ import (
 	"testing"
 
 	"github.com/labeth/open-dso-core/hal"
+	"github.com/labeth/open-dso-core/instrument"
 	"github.com/labeth/open-dso-core/sample"
 	"github.com/labeth/open-dso-core/testenv"
+	"github.com/labeth/open-dso-core/uimodel/panel"
 	"github.com/labeth/open-sds1000cml/app/internal/analog"
 	"github.com/labeth/open-sds1000cml/app/internal/engine"
-	"github.com/labeth/open-sds1000cml/app/internal/panel"
 )
 
 // ---------------------------------------------------------------------------
@@ -190,14 +191,14 @@ func (z *fuzzScope) SetSingle() {
 }
 
 // TRLC-LINKS: REQ-SDS-180
-func (z *fuzzScope) SetTdiv(s float64) (engine.Band, bool) {
+func (z *fuzzScope) SetTdiv(s float64) (instrument.Timebase, bool) {
 	b, ok := engine.PlanTdiv(s)
 	if ok {
 		z.mu.Lock()
 		z.tdiv = b.TdivS
 		z.mu.Unlock()
 	}
-	return b, ok
+	return b.Timebase(), ok
 }
 
 // TRLC-LINKS: REQ-SDS-180

@@ -13,9 +13,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/labeth/open-dso-core/uimodel/panel"
 	"github.com/labeth/open-dso-core/webserver/wire"
 	"github.com/labeth/open-sds1000cml/app/internal/engine"
-	"github.com/labeth/open-sds1000cml/app/internal/panel"
 )
 
 // soundFakeScope is a scope with an audio stream of n samples from 1000 on:

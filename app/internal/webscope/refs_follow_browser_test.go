@@ -8,7 +8,7 @@ import (
 
 	"github.com/labeth/open-dso-core/sample"
 	"github.com/labeth/open-dso-core/testenv"
-	"github.com/labeth/open-sds1000cml/app/internal/panel"
+	"github.com/labeth/open-dso-core/uimodel/panel"
 )
 
 // framedRig is the remote rig whose engine serves a square on C1 and a

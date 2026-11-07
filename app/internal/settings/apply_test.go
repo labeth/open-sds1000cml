@@ -7,10 +7,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/labeth/open-dso-core/uimodel/panel"
 	"github.com/labeth/open-sds1000cml/app/internal/analog"
 	"github.com/labeth/open-sds1000cml/app/internal/board"
 	"github.com/labeth/open-sds1000cml/app/internal/engine"
-	"github.com/labeth/open-sds1000cml/app/internal/panel"
+	cmlpanel "github.com/labeth/open-sds1000cml/app/internal/panel"
 	"github.com/labeth/open-sds1000cml/app/internal/settings"
 )
 
@@ -60,7 +61,7 @@ func rig(tb testing.TB) (*engine.Engine, *analog.FrontEnd, *panel.Controller, *n
 	fe := analog.New(spi, func(time.Duration) {}, nil)
 	fe.OnOffset(e.SetOffsetDAC)
 	fe.OnVdiv(e.SetChannelVdiv)
-	pc := panel.New(e, fe, board.New(e, fe), -1, engine.SupportedTdivs(), 500e-6, tb.Logf)
+	pc := panel.New(e, fe, board.New(e, fe), cmlpanel.Hardware{}, engine.SupportedTdivs(), 500e-6, tb.Logf)
 	return e, fe, pc, spi
 }
 

@@ -20,9 +20,12 @@ import (
 	"time"
 
 	"github.com/labeth/open-dso-core/engine/fanout"
+	"github.com/labeth/open-dso-core/hal"
 	"github.com/labeth/open-dso-core/render"
 	scpihost "github.com/labeth/open-dso-core/scpi/host"
+	"github.com/labeth/open-dso-core/uimodel/panel"
 	"github.com/labeth/open-dso-core/webserver"
+	scope "github.com/labeth/open-sds1000cml/app"
 	"github.com/labeth/open-sds1000cml/app/internal/analog"
 	"github.com/labeth/open-sds1000cml/app/internal/board"
 	"github.com/labeth/open-sds1000cml/app/internal/board/acq"
@@ -31,7 +34,7 @@ import (
 	"github.com/labeth/open-sds1000cml/app/internal/cal"
 	"github.com/labeth/open-sds1000cml/app/internal/engine"
 	"github.com/labeth/open-sds1000cml/app/internal/lcd"
-	"github.com/labeth/open-sds1000cml/app/internal/panel"
+	cmlpanel "github.com/labeth/open-sds1000cml/app/internal/panel"
 	"github.com/labeth/open-sds1000cml/app/internal/scpi"
 	"github.com/labeth/open-sds1000cml/app/internal/settings"
 	"github.com/labeth/open-sds1000cml/app/internal/sramcapture"
@@ -192,7 +195,7 @@ func Run() {
 		acqBoard.SetFrontEnd(fe)
 	}
 	acqBoard.SetLevelGrid(levels.TrigLevelGrid)
-	pc := panel.New(e, pfe, levels, keyFD, engine.SupportedTdivs(), 500e-6, logf)
+	pc := panel.New(e, pfe, levels, cmlpanel.Hardware{}, engine.SupportedTdivs(), 500e-6, logf)
 	pc.SetFrameSource(fo.WithFrame) // let the AUTO button measure the live signal
 	// Decoded stream (ADR-PANEL-DECODED-STREAM): the panel starts it from the
 	// BUS sheet's decoder settings (typed in, or filled in by Auto).
@@ -200,7 +203,11 @@ func Run() {
 	streamCtrl.Store(sv)
 	pc.SetDecodeStream(sv)
 	uiCtrl.Store(pc) // publish for the LCD render loop + SCDP screenshot
-	go pc.Run(stopFo)
+	// The front panel: the key matrix on SIGIO through the engine, the lamp
+	// latch; the UI model takes its events on its own goroutine.
+	keys := cmlpanel.NewInput(e, keyFD, logf)
+	go keys.Run(stopFo)
+	go pc.Run(stopFo, keys)
 	logf("panel controller up (fpga_key fd=%d)", keyFD)
 	startMark("panel up")
 
@@ -271,10 +278,10 @@ func Run() {
 	// kill every parked request. Slow-peer writes are bounded per-response
 	// inside the handler (SetWriteDeadline). Don't "harden" this without
 	// moving that contract.
-	sc := webscope.New(scopeSource{e, fo}, feIface, levels, pc, screenPNG)
+	sc := webscope.New(scopeSource{e, fo}, feIface, levels, pc, screenPNG, webCaps(acqBoard, logf)...)
 	sc.SetInvertSource(scpiH.Inverted)         // display-level INVS: SCPI shadow → /api/status
 	sc.SetSetupMemory(webSetups{sharedSetups}) // the web top bar's Setups: the same slots as *SAV/*RCL
-	ws := webserver.New(sc, webserver.WithPprof())
+	ws := webserver.New(sc.WithCaps(), webserver.WithPprof())
 	webSrv.Store(ws)
 	srv := newWebServer(listen, ws.Handler())
 	go func() {
@@ -397,4 +404,18 @@ func Worker() int {
 		return 1
 	}
 	return 0
+}
+
+// webCaps attaches the scope's profile to the board, from which the page
+// reads its capabilities (with the front end and the trigger); without the
+// profile the web serves none.
+// TRLC-LINKS: REQ-SDS-164
+func webCaps(b *acq.Board, logf func(string, ...any)) []webscope.Option {
+	prof, err := scope.Profile(hal.Identity{Model: "SDS1102CML+"})
+	if err != nil {
+		logf("profile: %v — the web serves no capabilities", err)
+		return nil
+	}
+	b.SetProfile(prof)
+	return []webscope.Option{webscope.WithBoard(b)}
 }

@@ -11,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	inst "github.com/labeth/open-dso-core/instrument"
 	"github.com/labeth/open-dso-core/sample"
 	"github.com/labeth/open-sds1000cml/app/internal/analog"
 	"github.com/labeth/open-sds1000cml/app/internal/board"
@@ -22,6 +23,7 @@ import (
 // round-trips can be asserted exactly.
 // TRLC-LINKS: REQ-SDS-024
 type fakeScope struct {
+	unusedControls
 	stats engine.Stats
 	frame *sample.Frame
 	calls []string
@@ -79,13 +81,13 @@ func (f *fakeScope) SetTrigPosFrac(v float64) {
 func (f *fakeScope) ForceTrigger() { f.calls = append(f.calls, "force") }
 
 // TRLC-LINKS: REQ-SDS-024
-func (f *fakeScope) SetTdiv(t float64) (engine.Band, bool) {
+func (f *fakeScope) SetTdiv(t float64) (inst.Timebase, bool) {
 	f.calls = append(f.calls, "tdiv")
 	b, ok := engine.PlanTdiv(t)
 	if ok {
 		f.stats.TdivS = b.TdivS
 	}
-	return b, ok
+	return b.Timebase(), ok
 }
 
 // TRLC-LINKS: REQ-SDS-024
@@ -892,3 +894,33 @@ func TestPAVAReadsTwelveBitTraces(t *testing.T) {
 		t.Fatalf("12-bit PAVA? ALL\n%q\nwant the 8-bit\n%q", got, want)
 	}
 }
+
+// unusedControls are the instrument's controls these commands never stage.
+type unusedControls struct{}
+
+// TRLC-LINKS: REQ-SDS-024
+func (unusedControls) SetTrigPosFrac(float64) {}
+
+// TRLC-LINKS: REQ-SDS-024
+func (unusedControls) SetMemDepth(n int) int { return n }
+
+// TRLC-LINKS: REQ-SDS-024
+func (unusedControls) SetTrigType(int) {}
+
+// TRLC-LINKS: REQ-SDS-024
+func (unusedControls) SetHoldoff(s float64) float64 { return s }
+
+// TRLC-LINKS: REQ-SDS-024
+func (unusedControls) SetPulseParams(_, _, _ float64, _ int) {}
+
+// TRLC-LINKS: REQ-SDS-024
+func (unusedControls) SetSlopeParams(_, _, _, _ float64, _ int) {}
+
+// TRLC-LINKS: REQ-SDS-024
+func (unusedControls) SetVideoParams(_, _ int, _ bool) {}
+
+// TRLC-LINKS: REQ-SDS-024
+func (unusedControls) SetEresLen(int) {}
+
+// TRLC-LINKS: REQ-SDS-024
+func (unusedControls) SetETS(bool) {}

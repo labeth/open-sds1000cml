@@ -4,6 +4,7 @@ package engine
 
 import (
 	core "github.com/labeth/open-dso-core/engine"
+	"github.com/labeth/open-dso-core/instrument"
 	"github.com/labeth/open-dso-core/measure"
 	"github.com/labeth/open-dso-core/sample"
 )
@@ -129,3 +130,7 @@ func SoundTakeTimes(pre, post float64) (float64, float64) {
 // ViewDetail is core.ViewDetail.
 // TRLC-LINKS: REQ-SDS-021
 func ViewDetail(f *sample.Frame, s core.ViewSurface) *sample.Detail { return core.ViewDetail(f, s) }
+
+// Stats is the instrument's snapshot the engine fills: its state and
+// counters, the status document's fields.
+type Stats = instrument.Stats

@@ -54,28 +54,9 @@ const (
 	stackOwned       = 32
 )
 
-// StackConfig selects edge-locked hits on one channel and the fine grid.
-// A hit is placed at the interpolated Level crossing; PreSamples puts the
-// window origin before it. Bins fine bins span Bins/Factor input samples.
-// TRLC-LINKS: REQ-SDS-141
-type StackConfig struct {
-	Channel       uint8  `json:"channel"`
-	Falling       bool   `json:"falling"`
-	Level         uint8  `json:"level"`
-	Hysteresis    uint8  `json:"hysteresis"`
-	PreSamples    uint32 `json:"pre_samples"`
-	MinSeparation uint32 `json:"min_separation"`
-	Bins          int    `json:"bins"`
-	Factor        int    `json:"factor"`
-	ChannelMask   uint8  `json:"channel_mask"`
-	// Template, when set, qualifies each hit: the sum of |align channel -
-	// Template[k]| at crossing-TemplatePre+k*TemplateStride must not exceed
-	// TemplateThreshold (ADR-STACKING-TEMPLATE-QUALIFIER).
-	Template          []int `json:"template,omitempty"`
-	TemplateStride    int   `json:"template_stride,omitempty"`
-	TemplatePre       int   `json:"template_pre,omitempty"`
-	TemplateThreshold int   `json:"template_threshold,omitempty"`
-}
+// StackConfig selects the hits and the fine grid of a stacking session:
+// the core's hardware stacking setup.
+type StackConfig = superres.StackConfig
 
 // TRLC-LINKS: REQ-SDS-141
 func (c *Capture) stackTileBins() (int, error) {
@@ -88,7 +69,7 @@ func (c *Capture) stackTileBins() (int, error) {
 }
 
 // TRLC-LINKS: REQ-SDS-141
-func (cfg StackConfig) validate(tile int, pow2 bool) error {
+func validateStack(cfg StackConfig, tile int, pow2 bool) error {
 	switch {
 	case tile == 0:
 		return errors.New("sramcapture: loaded image has no stacking port")
@@ -281,7 +262,7 @@ func (c *Capture) StackBegin(cfg StackConfig) (int, error) {
 	if err != nil {
 		return 0, err
 	}
-	if err := cfg.validate(tile, caps&1 != 0); err != nil {
+	if err := validateStack(cfg, tile, caps&1 != 0); err != nil {
 		return 0, err
 	}
 	flags := uint16(cfg.Channel) | uint16(cfg.ChannelMask)<<2
@@ -297,7 +278,7 @@ func (c *Capture) StackBegin(cfg StackConfig) (int, error) {
 		{selStackFlags, uint32(flags), false},
 		{selStackPre, cfg.PreSamples, true},
 		{selStackSep, cfg.MinSeparation, true},
-		{selStackFactor, uint32(cfg.Factor), false}, //nolint:gosec // G115: bounded by StackConfig.validate
+		{selStackFactor, uint32(cfg.Factor), false}, //nolint:gosec // G115: bounded by validateStack
 		{selStackFirst, 0, true},
 	} {
 		if w.two {
@@ -338,10 +319,10 @@ func (c *Capture) stackQualifier(cfg StackConfig) error {
 		v   uint32
 		two bool
 	}{
-		{selStackQualifyCount, uint32(len(cfg.Template)), false},     //nolint:gosec // G115: bounded by StackConfig.validate
-		{selStackQualifyStride, uint32(cfg.TemplateStride), false},   //nolint:gosec // G115: bounded by StackConfig.validate
-		{selStackQualifyPre, uint32(cfg.TemplatePre), true},          //nolint:gosec // G115: bounded by StackConfig.validate
-		{selStackQualifyThresh, uint32(cfg.TemplateThreshold), true}, //nolint:gosec // G115: bounded by StackConfig.validate
+		{selStackQualifyCount, uint32(len(cfg.Template)), false},     //nolint:gosec // G115: bounded by validateStack
+		{selStackQualifyStride, uint32(cfg.TemplateStride), false},   //nolint:gosec // G115: bounded by validateStack
+		{selStackQualifyPre, uint32(cfg.TemplatePre), true},          //nolint:gosec // G115: bounded by validateStack
+		{selStackQualifyThresh, uint32(cfg.TemplateThreshold), true}, //nolint:gosec // G115: bounded by validateStack
 		{selStackQualify, 1, false},
 	} {
 		var err error
@@ -384,7 +365,7 @@ func (c *Capture) StackScan(ctx context.Context, first, n int, initial uint32) (
 		sel uint16
 		v   uint32
 		two bool
-	}{{selStackBins, uint32(n), false}, {selStackFirstBin, uint32(first), true}, {selStackInitial, initial, true}} { //nolint:gosec // G115: bounded by StackConfig.validate
+	}{{selStackBins, uint32(n), false}, {selStackFirstBin, uint32(first), true}, {selStackInitial, initial, true}} { //nolint:gosec // G115: bounded by validateStack
 		if w.two {
 			err = c.write32(w.sel, w.v)
 		} else {

@@ -25,10 +25,15 @@ import (
 	"testing"
 	"time"
 
+	"github.com/labeth/open-dso-core/hal"
+	"github.com/labeth/open-dso-core/profile"
 	"github.com/labeth/open-dso-core/sample"
+	"github.com/labeth/open-dso-core/uimodel/panel"
+	"github.com/labeth/open-dso-core/webserver"
 	"github.com/labeth/open-dso-core/webserver/wire"
+	"github.com/labeth/open-sds1000cml/app/internal/analog"
+	"github.com/labeth/open-sds1000cml/app/internal/board/acq"
 	"github.com/labeth/open-sds1000cml/app/internal/engine"
-	"github.com/labeth/open-sds1000cml/app/internal/panel"
 	"github.com/labeth/open-sds1000cml/app/internal/sramcapture"
 	"github.com/labeth/open-sds1000cml/app/internal/streamview"
 )
@@ -624,6 +629,28 @@ func goldenFull(f *sample.Frame) (*Server, *goldenEngine, *goldenPanel) {
 	return s, g, p
 }
 
+// goldenCaps is the full fakes serving the capabilities document from the
+// scope's board (its profile and a front end), as the app serves them.
+// TRLC-LINKS: REQ-SDS-164
+func goldenCaps() *Server {
+	g := newGoldenEngine(goldenNative(31))
+	fe := &fakeAnalog{idx: 8, set: true, probe: [2]float64{10, 1}, cpl: [2]int{0, 1}}
+	data, err := os.ReadFile(filepath.Join(pkgDir, "..", "..", "profile.yaml"))
+	if err != nil {
+		panic(err)
+	}
+	p, err := profile.Load(data, hal.Identity{Model: "SDS1102CML+"})
+	if err != nil {
+		panic(err)
+	}
+	b := acq.New(acq.Config{})
+	b.SetProfile(p)
+	b.SetFrontEnd(analog.New(remoteSPI{}, func(time.Duration) {}, nil))
+	scope := New(g, fe, levelsFor(g, fe), newGoldenPanel(), nil, WithBoard(b))
+	scope.SetSetupMemory(&goldenSetups{})
+	return &Server{Scope: scope, Server: webserver.New(scope.WithCaps())}
+}
+
 // rget and rpost are golden requests.
 // TRLC-LINKS: REQ-SDS-161
 func rget(path string) routeReq { return routeReq{method: http.MethodGet, path: path} }
@@ -664,6 +691,9 @@ func routeCases() []routeCase {
 			rq.shown, rq.path = rq.path, strings.Replace(rq.path, "CLAIMED", strconv.FormatUint(c.Epoch, 10), 1)
 		}},
 		{name: "status_full", srv: full(goldenDeep), reqs: []routeReq{rget("/api/status")}},
+		{name: "caps", srv: goldenCaps, reqs: []routeReq{
+			rget("/api/caps"), rget("/api/status"), rget("/api/frame.bin?cols=64"), rget("/api/frame.bin?cols=64&v=2"),
+		}},
 		{name: "status_bare", srv: bare, reqs: []routeReq{rget("/api/status"), rpost("/api/status", "{}")}},
 		{name: "frame_native", srv: full(goldenNative), reqs: []routeReq{
 			rget("/api/frame.bin"), rget("/api/frame.bin?cols=10"), rget("/api/frame.bin?cols=99999&since=3&waitms=5"),

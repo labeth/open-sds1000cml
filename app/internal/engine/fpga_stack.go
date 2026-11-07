@@ -21,44 +21,12 @@ import (
 // acquisition board's loader).
 type ImageSwitcher = acq.ImageSwitcher
 
-// FPGAStackRequest stacks Records fresh captures at the current timebase, raw
-// samples only. RecordWords, when nonzero, bounds each record's depth (the
-// FPGA rescans the whole record once per 32-bin tile).
-// TRLC-LINKS: REQ-SDS-141
-type FPGAStackRequest struct {
-	Stack       sramcapture.StackConfig `json:"stack"`
-	Records     int                     `json:"records"`
-	RecordWords uint32                  `json:"record_words,omitempty"`
-	// Progress, when set, hears each finished record (on the engine's owner
-	// loop: it must not block).
-	Progress func(done, total int) `json:"-"`
-}
-
-// FPGAStackResult reports the stack and the bus traffic it needed. RawWords
-// is what recalling the same records would have moved; BusReads is what the
-// moments actually cost.
-// TRLC-LINKS: REQ-SDS-141
-type FPGAStackResult struct {
-	Result    superres.Result `json:"result"`
-	Hits      uint32          `json:"hits"`
-	Crossings uint64          `json:"crossings"`
-	// Rejected counts template-qualifier rejections over the whole session.
-	Rejected uint64  `json:"rejected"`
-	Records  int     `json:"records"`
-	SampleS  float64 `json:"sample_s"`
-	Factor   int     `json:"factor"`
-	BusReads uint64  `json:"bus_reads"`
-	RawWords uint64  `json:"raw_words"`
-	LoadS    float64 `json:"load_s"`
-	StackS   float64 `json:"stack_s"`
-	// Time split of StackS: arm-to-frozen captures, FPGA scans, uploads and downloads.
-	CaptureS  float64 `json:"capture_s"`
-	ScanS     float64 `json:"scan_s"`
-	UploadS   float64 `json:"upload_s"`
-	DownloadS float64 `json:"download_s"`
-	// Stack is the ARM-side accumulation for local review rendering.
-	Stack *superres.Stack `json:"-"`
-}
+type (
+	// FPGAStackRequest is the core's hardware stacking session.
+	FPGAStackRequest = superres.StackRequest
+	// FPGAStackResult is its outcome.
+	FPGAStackResult = superres.StackResult
+)
 
 // SetImageSwitcher enables FPGA stacking. Call before Run.
 // TRLC-LINKS: REQ-SDS-141

@@ -10,9 +10,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/labeth/open-dso-core/instrument"
+	"github.com/labeth/open-dso-core/uimodel/panel"
 	"github.com/labeth/open-sds1000cml/app/internal/board"
 	"github.com/labeth/open-sds1000cml/app/internal/engine"
-	"github.com/labeth/open-sds1000cml/app/internal/panel"
+	cmlpanel "github.com/labeth/open-sds1000cml/app/internal/panel"
 )
 
 // panelScope is the web test's engine fake as both the server's scope and
@@ -46,7 +48,7 @@ func (p *panelScope) SetNorm(on bool) {
 }
 
 // TRLC-LINKS: REQ-SDS-162
-func (p *panelScope) SetTdiv(s float64) (engine.Band, bool) {
+func (p *panelScope) SetTdiv(s float64) (instrument.Timebase, bool) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	return p.fakeScope.SetTdiv(s)
@@ -67,10 +69,10 @@ func (p *panelScope) SetRunning(on bool) {
 // TRLC-LINKS: REQ-SDS-162, REQ-SDS-164, REQ-SDS-211, REQ-SDS-212
 func TestPanelRemoteEndToEnd(t *testing.T) {
 	ps := &panelScope{fakeScope: &fakeScope{stats: engine.Stats{Running: true, TdivS: 500e-6, TrigCode: 31437, TrigPosFrac: 0.5}}}
-	pc := panel.New(ps, nil, board.New(ps, nil), -1, engine.SupportedTdivs(), 500e-6, t.Logf)
+	pc := panel.New(ps, nil, board.New(ps, nil), cmlpanel.Hardware{}, engine.SupportedTdivs(), 500e-6, t.Logf)
 	stop := make(chan struct{})
 	defer close(stop)
-	go pc.Run(stop)
+	go pc.Run(stop, nil)
 	s := newServer(ps, nil, pc, nil)
 
 	status := func() map[string]any { return jsonAt[map[string]any](t, getStatus(t, s), "panel") }

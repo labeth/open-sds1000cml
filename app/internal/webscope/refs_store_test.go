@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/labeth/open-dso-core/sample"
-	"github.com/labeth/open-sds1000cml/app/internal/panel"
+	"github.com/labeth/open-dso-core/uimodel/panel"
 )
 
 // fakeRefStore keeps REF A/B as the panel does for the web's fake scopes: a

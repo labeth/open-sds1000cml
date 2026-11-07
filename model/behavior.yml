@@ -1112,7 +1112,7 @@ behavior:
     to: FU-APP-PANEL
   - type: depends_on
     from: FU-APP-PANEL
-    to: CODE-APP-INTERNAL-PANEL-AUTOSET-GO
+    to: CODE-APP-INTERNAL-PANEL-INPUT-GO
     description: Primary implementation or support artifact; does not imply hardware qualification.
   - type: contains
     from: FG-APP
