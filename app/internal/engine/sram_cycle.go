@@ -47,14 +47,16 @@ type sramCycle struct {
 	streamShown     bool            // stopped on a decoded stream's record: its image stays
 
 	// this pass's capture
-	cfg     sramcapture.Config
-	plan    SRAMPlan
-	tdiv    float64
-	norm    bool
-	tp      core.TrigParams
-	replay  bool
-	feAtArm uint64 // the front end's write generation the capture is armed under
-	symbols int    // the symbol trigger's match count at the arm, -1 for none
+	cfg      sramcapture.Config
+	stageGen uint64             // the board's StageGen cfg was composed at
+	next     sramcapture.Config // a look's drafted configuration (Watch)
+	plan     SRAMPlan
+	tdiv     float64
+	norm     bool
+	tp       core.TrigParams
+	replay   bool
+	feAtArm  uint64 // the front end's write generation the capture is armed under
+	symbols  int    // the symbol trigger's match count at the arm, -1 for none
 
 	// this pass's stage times, for FrameStages
 	armAt, armedAt, frozenAt, recalledAt, detailAt, conditionedAt time.Time
@@ -223,6 +225,7 @@ func (c *sramCycle) Plan(context.Context) (core.Capture, bool) {
 		// staged on the board: the trigger programmed, the plan configured
 		c.plan, c.tdiv, c.norm, c.tp = e.planCapture(boardTarget{e})
 		c.cfg = e.hw().Staged()
+		c.stageGen = e.hw().StageGen()
 	}
 	e.mu.Lock()
 	if e.pendSet {
@@ -231,7 +234,7 @@ func (c *sramCycle) Plan(context.Context) (core.Capture, bool) {
 	}
 	e.stats.BandKind = "sram"
 	e.stats.HaltMode = "freeze-read-rearm"
-	e.noteBackendsLocked(c.cfg, c.tp)
+	e.noteBackendsLocked(&c.cfg, c.tp)
 	e.stats.TdivS = c.tdiv
 	e.stats.DisplayedS = math.Min(c.tdiv, float64(c.plan.Samples)*c.plan.SampleS/10)
 	e.stats.RecordS = float64(c.plan.Samples) * c.plan.SampleS
@@ -242,7 +245,7 @@ func (c *sramCycle) Plan(context.Context) (core.Capture, bool) {
 	if !c.replay {
 		c.retained = false
 		c.held = heldRecall{} // a new capture: the stopped record's copies go
-		c.symbols = e.symbolCount(c.cfg)
+		c.symbols = e.symbolCount(&c.cfg)
 	}
 	// AUTO waits for enough prehistory plus a bounded event wait. SINGLE/NORM
 	// never fabricate a trigger.
@@ -257,9 +260,15 @@ func (c *sramCycle) Plan(context.Context) (core.Capture, bool) {
 func (c *sramCycle) Watch(settings bool) core.Interrupt {
 	e := c.e
 	if settings {
-		var next sramcapture.Config
-		_, nextTdiv, nextNorm, nextTP := e.sramConfigInto(&next)
-		if next != c.cfg || nextTdiv != c.tdiv || nextNorm != c.norm || nextTP != c.tp {
+		d, _, nextTdiv, nextNorm, nextTP := e.draftCapture()
+		if nextTdiv != c.tdiv || nextNorm != c.norm || nextTP != c.tp {
+			return core.Abort
+		}
+		if d.Staged() && e.hw().StageGen() == c.stageGen {
+			return core.Continue // the staged capture, which c.cfg was composed from
+		}
+		d.ConfigInto(&c.next)
+		if c.next != c.cfg {
 			return core.Abort
 		}
 		return core.Continue
@@ -312,7 +321,7 @@ func (c *sramCycle) Frame(_ context.Context, _ core.Capture, a core.Armed) (*sam
 	c.armAt, c.armedAt = a.ArmAt, armedAt
 	if !replay {
 		c.savedScale = e.liveScale()
-		e.noteSymbolMatches(cfg, c.symbols, e.clk.Now().Sub(armedAt))
+		e.noteSymbolMatches(&cfg, c.symbols, e.clk.Now().Sub(armedAt))
 	}
 	c.shownScaleGen = e.scaleGen.Load()
 	e.shownScaleGen.Store(c.shownScaleGen)
@@ -587,7 +596,7 @@ func (c *sramCycle) Frame(_ context.Context, _ core.Capture, a core.Armed) (*sam
 		f.TriggerAt = -1
 	}
 	e.noteARINCLevels(f)
-	qualified = e.serialTriggerKind(f, m, cfg, qualified)
+	qualified = e.serialTriggerKind(f, m, &cfg, qualified)
 	switch {
 	case cfg.Zones.Enabled():
 		if f.Status.Triggered {

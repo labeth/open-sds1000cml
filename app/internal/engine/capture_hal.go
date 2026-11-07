@@ -25,7 +25,8 @@ import (
 type captureTarget interface {
 	Program(s hal.TriggerSpec) error
 	Configure(p hal.Plan) error
-	Config() sramcapture.Config
+	// Trigger is the programmed trigger's fields of the configuration.
+	Trigger() *sramcapture.Config
 }
 
 // boardTarget stages on the board's facets.
@@ -37,8 +38,8 @@ func (t boardTarget) Program(s hal.TriggerSpec) error { return t.e.trigger().Pro
 // TRLC-LINKS: REQ-SDS-008
 func (t boardTarget) Configure(p hal.Plan) error { return t.e.acquirer().Configure(p) }
 
-// TRLC-LINKS: REQ-SDS-008
-func (t boardTarget) Config() sramcapture.Config { return t.e.hw().Staged() }
+// TRLC-LINKS: REQ-SDS-011
+func (t boardTarget) Trigger() *sramcapture.Config { return t.e.hw().StagedTrigger() }
 
 // halTrigger is the engine's scratch for one trigger in HAL terms, reused
 // at every look at the settings (owner only).
@@ -73,7 +74,7 @@ func (e *Engine) planCapture(t captureTarget) (SRAMPlan, float64, bool, core.Tri
 	// trigger reads the raw samples (as the edge and the qualifier do; the
 	// zones judge the filter's words): the decode reads edges, which the
 	// precision filter's band smooths away
-	pick := e.caps().PickAlt && block == blockBus && p.Log != 0 && acq.HardwareSerialName(t.Config()) != ""
+	pick := e.caps().PickAlt && block == blockBus && p.Log != 0 && acq.HardwareSerialName(t.Trigger()) != ""
 	_ = t.Configure(hal.Plan{
 		Request: hal.Request{Channels: bothChannels, TimePerDivS: tdiv, PretrigFrac: frac, PretrigRoom: room, Mode: e.halMode()},
 		Mode:    e.halMode(), SampleS: p.SampleS, Depth: p.Samples, AcqDecim: 1 << p.Log, Pick: pick,
@@ -321,11 +322,11 @@ func (e *Engine) planQualifier(tp core.TrigParams, ch int, rising bool) (sramcap
 	if why != "" {
 		return sramcapture.QualifierConfig{}, 0, why
 	}
-	d := e.hw().Draft()
-	if err := e.program(&d, st, true, false); err != nil {
+	d := e.qualDraft()
+	if err := e.program(d, st, true, false); err != nil {
 		return sramcapture.QualifierConfig{}, 0, err.Error()
 	}
-	c := d.Config()
+	c := d.Trigger()
 	return c.Qualifier, c.TriggerLevel, ""
 }
 

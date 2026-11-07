@@ -110,7 +110,7 @@ func (e *Engine) decodedStreamConfig(p SerialParams, trig StreamTrigger) (sramca
 	words := sramcapture.SamplesPerChannel / 2
 	c := sramcapture.Config{Source: sramcapture.ADC, PreWords: words / 2, PostWords: words - words/2, Normal: true}
 	e.planSerial(&c, p, false)
-	if acq.HardwareSerialName(c) == "" {
+	if acq.HardwareSerialName(&c) == "" {
 		return c, errors.New("the loaded image cannot stream this protocol with that trigger")
 	}
 	if trig == StreamManual {

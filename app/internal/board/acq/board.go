@@ -40,16 +40,19 @@ type Board struct {
 	imageLoaded string // the image in use: "" the general one
 
 	// acquisition state, owner only
-	plan     hal.Plan
-	planned  planPart // the configured plan's fields; the trigger's are trig.staged
-	state    hal.AcqState
-	rec      sramcapture.Metadata // the halted record Readout reads
-	reading  bool                 // inside a read: Service flushes the lamps only
-	yield    func()               // the current read's yield
-	progress func(done, total int)
-	trig     trigState
-	scratch  readScratch
-	stream   streamState
+	plan       hal.Plan
+	planned    planPart // the configured plan's fields; the trigger's are trig.stagedPart
+	stageGen   uint64   // counts the changes of the staged plan or trigger
+	composed   sramcapture.Config
+	composedOK bool // composed is the staged plan and trigger
+	state      hal.AcqState
+	rec        sramcapture.Metadata // the halted record Readout reads
+	reading    bool                 // inside a read: Service flushes the lamps only
+	yield      func()               // the current read's yield
+	progress   func(done, total int)
+	trig       trigState
+	scratch    readScratch
+	stream     streamState
 
 	diagMu sync.Mutex
 	diag   boardDiag

@@ -188,10 +188,41 @@ func (e *Engine) hasSerialHardware() bool {
 // waits.
 // TRLC-LINKS: REQ-SDS-009
 func (e *Engine) sramConfigInto(c *sramcapture.Config) (SRAMPlan, float64, bool, core.TrigParams) {
-	e.draft = e.hw().Draft()
-	p, tdiv, norm, tp := e.planCapture(&e.draft)
-	*c = e.draft.Config()
+	d, p, tdiv, norm, tp := e.draftCapture()
+	d.ConfigInto(c)
 	return p, tdiv, norm, tp
+}
+
+// draftCapture drafts the capture the settings ask for on the look's
+// draft, without composing its configuration: a look whose draft is the
+// staged capture (Draft.Staged) needs none.
+// TRLC-LINKS: REQ-SDS-009
+func (e *Engine) draftCapture() (*acq.Draft, SRAMPlan, float64, bool, core.TrigParams) {
+	d := e.lookDraft()
+	d.Reset()
+	p, tdiv, norm, tp := e.planCapture(d)
+	return d, p, tdiv, norm, tp
+}
+
+// lookDraft is the owner's draft for a look at the settings, made once
+// for the board: it holds two 2.7 KB trigger configurations.
+// TRLC-LINKS: REQ-SDS-009
+func (e *Engine) lookDraft() *acq.Draft {
+	if e.draft == nil || !e.draft.Of(e.hw()) {
+		e.draft = e.hw().Draft()
+	}
+	return e.draft
+}
+
+// qualDraft is the owner's draft for the qualifier's status, apart from
+// the look's, so that neither changes what the other drafted.
+// TRLC-LINKS: REQ-SDS-011
+func (e *Engine) qualDraft() *acq.Draft {
+	if e.qdraft == nil || !e.qdraft.Of(e.hw()) {
+		e.qdraft = e.hw().Draft()
+	}
+	e.qdraft.Reset()
+	return e.qdraft
 }
 
 // capturePlan is the capture the settings ask for: the record's plan with
@@ -320,7 +351,7 @@ func (e *Engine) decodedIdle() {
 // noteBackendsLocked reports what serves the serial trigger, the trigger
 // qualifier and the zones of capture cfg (e.mu held).
 // TRLC-LINKS: REQ-SDS-011, REQ-SDS-013, REQ-SDS-014
-func (e *Engine) noteBackendsLocked(cfg sramcapture.Config, tp core.TrigParams) {
+func (e *Engine) noteBackendsLocked(cfg *sramcapture.Config, tp core.TrigParams) {
 	e.stats.SerialBackend = ""
 	if name := acq.HardwareSerialName(cfg); name != "" {
 		e.stats.SerialBackend = "hardware-" + name
@@ -488,7 +519,7 @@ func (e *Engine) refineEdgeTrigger(f *sample.Frame, disc []uint8, cfg sramcaptur
 // or the serial trigger decided it, and places the serial trigger's point
 // at the match's start. It returns whether f is qualified.
 // TRLC-LINKS: REQ-SDS-013, REQ-SDS-223
-func (e *Engine) serialTriggerKind(f *sample.Frame, m sramcapture.Metadata, cfg sramcapture.Config, qualified bool) bool {
+func (e *Engine) serialTriggerKind(f *sample.Frame, m sramcapture.Metadata, cfg *sramcapture.Config, qualified bool) bool {
 	if m.HostTrigger {
 		// A history ring stopped on a decoded stream's frame (ADR-STREAM-RING):
 		// for streaming data software is the trigger, and the trigger word is
@@ -645,7 +676,7 @@ func (e *Engine) liveScale() [2]core.ChScale {
 // symbolCount reads the symbol trigger's match count (modulo 2^16), or -1
 // without the block.
 // TRLC-LINKS: REQ-SDS-013
-func (e *Engine) symbolCount(cfg sramcapture.Config) int {
+func (e *Engine) symbolCount(cfg *sramcapture.Config) int {
 	if !cfg.Symbol.Enabled {
 		return -1
 	}
@@ -660,7 +691,7 @@ func (e *Engine) symbolCount(cfg sramcapture.Config) int {
 // just frozen and how long it was armed (it counts only while armed): their
 // ratio is the bus's rate of matches.
 // TRLC-LINKS: REQ-SDS-013
-func (e *Engine) noteSymbolMatches(cfg sramcapture.Config, armed int, took time.Duration) {
+func (e *Engine) noteSymbolMatches(cfg *sramcapture.Config, armed int, took time.Duration) {
 	done := e.symbolCount(cfg)
 	n := int64(-1)
 	if armed >= 0 && done >= 0 {

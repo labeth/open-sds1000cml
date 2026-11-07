@@ -1451,7 +1451,7 @@ func (e *Engine) softArmCapture(s *softStream, feature, longest float64) {
 		pat = s.valuePattern(-1)
 	}
 	c := e.softRecordConfig(s, words, log, pat)
-	s.symCount = e.symbolCount(c)
+	s.symCount = e.symbolCount(&c)
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	err := e.sram.Arm(ctx, c)
 	cancel()
@@ -1505,7 +1505,7 @@ func (e *Engine) softCapture(s *softStream) {
 	}
 	end := e.clk.Now()
 	s.armed = false
-	hit := s.trig == StreamOnValue && s.symCount >= 0 && e.symbolCount(s.capCfg) != s.symCount
+	hit := s.trig == StreamOnValue && s.symCount >= 0 && e.symbolCount(&s.capCfg) != s.symCount
 	n := int(m.Length) * int(m.SamplesPerWord)
 	if n == 0 || !(m.SampleRateHz > 0) {
 		return
