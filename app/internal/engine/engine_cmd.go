@@ -15,9 +15,10 @@ import (
 func (e *Engine) flushLEDs() { e.hw().FlushLamps() }
 
 // serviceCommands flushes staged work at the frame boundary — the engine is
-// armed+filling here, never inside a halt window. Snapshot+clear under the
-// mutex; bus writes with it released. Order: the LED latch, the offset DACs,
-// then the trigger words.
+// armed+filling here, never inside a halt window: the decoded stream's
+// requests and events, then the board's housekeeping (its panel plane: the
+// LED latch, the offset DACs, the trigger level DAC), then on the register
+// path the trigger words.
 // TRLC-LINKS: REQ-SDS-001
 func (e *Engine) serviceCommands() {
 	// The stages are timed for a decoded session's service figures only:

@@ -45,6 +45,7 @@ var updateHALRecord = flag.Bool("update-halrecord", false, "rewrite the acquisit
 
 // callLog is the ordered trace of one scenario.
 type callLog struct {
+	off   bool // a benchmark's: nothing is kept
 	mu    sync.Mutex
 	lines []string
 	last  string
@@ -52,6 +53,9 @@ type callLog struct {
 }
 
 func (l *callLog) add(format string, args ...any) {
+	if l.off {
+		return
+	}
 	l.mu.Lock()
 	defer l.mu.Unlock()
 	s := fmt.Sprintf(format, args...)
@@ -111,7 +115,8 @@ type memRecorder struct {
 	forced   bool
 	record   uint32
 	spanHook func(done, total int)
-	onSpan   func(e *Engine) // once, before the first span hook of a recall
+	onSpan   func(e *Engine)   // once, before the first span hook of a recall
+	cache    map[string][]byte // payloads already made, when set (a benchmark's)
 
 	// scenario
 	hooks    map[int]func(e *Engine) // at the k-th arm, before it returns
@@ -330,7 +335,18 @@ func (m *memRecorder) recall(name string, offset, count uint32, dst io.Writer) (
 	var buf []byte
 	for done := uint32(0); done < count; done += span {
 		n := min(span, count-done)
-		buf = m.appendWords(buf[:0], md, offset+done, n)
+		key := ""
+		if m.cache != nil {
+			key = fmt.Sprintf("raw %d %d %d %d %d", md.TriggerIndex, md.SamplesPerWord, md.Decimation, offset+done, n)
+		}
+		if c, ok := m.cache[key]; ok {
+			buf = c
+		} else {
+			buf = m.appendWords(nil, md, offset+done, n)
+			if m.cache != nil {
+				m.cache[key] = buf
+			}
+		}
 		w, err := dst.Write(buf)
 		total += int64(w)
 		if err != nil {
@@ -363,10 +379,20 @@ func (m *memRecorder) RecallReadsOf(_ context.Context, md sramcapture.Metadata, 
 	m.log.add("RecallReadsOf record %d%s", md.RecordID, b.String())
 	for _, r := range reads {
 		var buf []byte
-		if r.Bucket != 0 {
+		key := ""
+		if m.cache != nil {
+			key = fmt.Sprintf("%d %d %d %d %d %d", md.TriggerIndex, md.SamplesPerWord, md.Decimation, r.Offset, r.Bucket, r.Count)
+			buf = m.cache[key]
+		}
+		switch {
+		case buf != nil:
+		case r.Bucket != 0:
 			buf = m.appendBuckets(nil, md, r.Offset, r.Bucket, r.Count)
-		} else {
+		default:
 			buf = m.appendWords(nil, md, r.Offset, r.Count)
+		}
+		if m.cache != nil {
+			m.cache[key] = buf
 		}
 		if _, err := r.Dst.Write(buf); err != nil {
 			return err
