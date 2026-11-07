@@ -1,0 +1,135 @@
+schemaVersion: 2
+reqLinks:
+- id: LNK-SDS-020-CORE
+  parent: REQ-SDS-020
+  child: core::CAP-DSO-ACQUISITION
+  pinned:
+    version: v0.1.0
+  status: claimed
+  rationale: The UI model that meets it moved to the core (uimodel/panel); this scope runs it.
+- id: LNK-SDS-137-CORE
+  parent: REQ-SDS-137
+  child: core::CAP-DSO-AUTOSET
+  pinned:
+    version: v0.1.0
+  status: claimed
+  rationale: The UI model that meets it moved to the core (uimodel/panel); this scope runs it.
+- id: LNK-SDS-140-CORE
+  parent: REQ-SDS-140
+  child: core::CAP-DSO-ENHANCED-RESOLUTION
+  pinned:
+    version: v0.1.0
+  status: claimed
+  rationale: The UI model that meets it moved to the core (uimodel/panel); this scope runs it.
+- id: LNK-SDS-224-CORE
+  parent: REQ-SDS-224
+  child: core::CAP-DSO-AUTOSET
+  pinned:
+    version: v0.1.0
+  status: claimed
+  rationale: The UI model that meets it moved to the core (uimodel/panel); this scope runs it.
+- id: LNK-SDS-225-CORE
+  parent: REQ-SDS-225
+  child: core::CAP-DSO-AUTOSET
+  pinned:
+    version: v0.1.0
+  status: claimed
+  rationale: The UI model that meets it moved to the core (uimodel/panel); this scope runs it.
+- id: LNK-SDS-238-CORE
+  parent: REQ-SDS-238
+  child: core::CAP-DSO-PROTOCOL-DECODE
+  pinned:
+    version: v0.1.0
+  status: claimed
+  rationale: The UI model that meets it moved to the core (uimodel/panel); this scope runs it.
+- id: LNK-SDS-241-CORE
+  parent: REQ-SDS-241
+  child: core::CAP-DSO-BUS-ANALYSIS
+  pinned:
+    version: v0.1.0
+  status: claimed
+  rationale: The UI model that meets it moved to the core (uimodel/panel); this scope runs it.
+- id: LNK-SDS-242-CORE
+  parent: REQ-SDS-242
+  child: core::CAP-DSO-BUS-ANALYSIS
+  pinned:
+    version: v0.1.0
+  status: claimed
+  rationale: The UI model that meets it moved to the core (uimodel/panel); this scope runs it.
+- id: LNK-SDS-243-CORE
+  parent: REQ-SDS-243
+  child: core::CAP-DSO-BUS-ANALYSIS
+  pinned:
+    version: v0.1.0
+  status: claimed
+  rationale: The UI model that meets it moved to the core (uimodel/panel); this scope runs it.
+- id: LNK-SDS-244-CORE
+  parent: REQ-SDS-244
+  child: core::CAP-DSO-BUS-ANALYSIS
+  pinned:
+    version: v0.1.0
+  status: claimed
+  rationale: The UI model that meets it moved to the core (uimodel/panel); this scope runs it.
+- id: LNK-SDS-247-CORE
+  parent: REQ-SDS-247
+  child: core::CAP-DSO-BUS-ANALYSIS
+  pinned:
+    version: v0.1.0
+  status: claimed
+  rationale: The UI model that meets it moved to the core (uimodel/panel); this scope runs it.
+- id: LNK-SDS-248-CORE
+  parent: REQ-SDS-248
+  child: core::CAP-DSO-TRIGGER
+  pinned:
+    version: v0.1.0
+  status: claimed
+  rationale: The UI model that meets it moved to the core (uimodel/panel); this scope runs it.
+- id: LNK-SDS-256-CORE
+  parent: REQ-SDS-256
+  child: core::CAP-DSO-PROTOCOL-DECODE
+  pinned:
+    version: v0.1.0
+  status: claimed
+  rationale: The UI model that meets it moved to the core (uimodel/panel); this scope runs it.
+- id: LNK-SDS-266-CORE
+  parent: REQ-SDS-266
+  child: core::CAP-DSO-SOUND
+  pinned:
+    version: v0.1.0
+  status: claimed
+  rationale: The UI model that meets it moved to the core (uimodel/panel); this scope runs it.
+- id: LNK-SDS-267-CORE
+  parent: REQ-SDS-267
+  child: core::CAP-DSO-SOUND
+  pinned:
+    version: v0.1.0
+  status: claimed
+  rationale: The UI model that meets it moved to the core (uimodel/panel); this scope runs it.
+- id: LNK-SDS-269-CORE
+  parent: REQ-SDS-269
+  child: core::CAP-DSO-SOUND
+  pinned:
+    version: v0.1.0
+  status: claimed
+  rationale: The UI model that meets it moved to the core (uimodel/panel); this scope runs it.
+- id: LNK-SDS-271-CORE
+  parent: REQ-SDS-271
+  child: core::CAP-DSO-SOUND
+  pinned:
+    version: v0.1.0
+  status: claimed
+  rationale: The UI model that meets it moved to the core (uimodel/panel); this scope runs it.
+- id: LNK-SDS-276-CORE
+  parent: REQ-SDS-276
+  child: core::CAP-DSO-SOUND
+  pinned:
+    version: v0.1.0
+  status: claimed
+  rationale: The UI model that meets it moved to the core (uimodel/panel); this scope runs it.
+- id: LNK-SDS-281-CORE
+  parent: REQ-SDS-281
+  child: core::CAP-DSO-BUS-ANALYSIS
+  pinned:
+    version: v0.1.0
+  status: claimed
+  rationale: The UI model that meets it moved to the core (uimodel/panel); this scope runs it.

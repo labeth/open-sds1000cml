@@ -16,6 +16,7 @@ documents:
   compliance: compliance.yml
   views: views.yml
   decisions: decisions.yml
+  reqLinks: req-links.yml
 dependencies:
 - alias: core
   path: github.com/labeth/open-dso-core/model@v0

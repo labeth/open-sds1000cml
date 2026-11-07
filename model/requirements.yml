@@ -614,10 +614,10 @@ requirements:
   category: functional
   sourceRefs:
   - CODE-APP-INTERNAL-ENGINE-ENGINE-LOOP-GO
-  - CODE-APP-INTERNAL-PANEL-PANEL-GO
   - CODE-APP-INTERNAL-ENGINE-ENGINE-BUS-GO
   - CODE-APP-INTERNAL-ENGINE-ENGINE-TEST-GO
   appliesTo:
+  - core::FU-DSO-PANEL
   - FU-APP-ENGINE
   - FU-APP-PANEL
   notes: Source-derived contract; source presence is not evidence of a passing hardware qualification.
@@ -2039,15 +2039,8 @@ requirements:
   realizes:
   - CAP-SDS-FRONT-PANEL
   category: functional
-  sourceRefs:
-  - CODE-APP-INTERNAL-PANEL-CHAOS-TEST-GO
-  - CODE-APP-INTERNAL-PANEL-MENU-INJECT-GO
-  - CODE-APP-INTERNAL-PANEL-PANEL-GO
-  - CODE-APP-INTERNAL-PANEL-PANEL-DISPATCH-GO
-  - CODE-APP-INTERNAL-PANEL-PANEL-INPUT-TEST-GO
-  - CODE-APP-INTERNAL-PANEL-PANEL-LED-GO
-  - CODE-APP-INTERNAL-PANEL-PANEL-TEST-GO
   appliesTo:
+  - core::FU-DSO-PANEL
   - FU-APP-PANEL
   verificationMethods:
   - inspection
@@ -2067,16 +2060,8 @@ requirements:
   realizes:
   - CAP-SDS-FRONT-PANEL
   category: functional
-  sourceRefs:
-  - CODE-APP-INTERNAL-PANEL-CHAOS-TEST-GO
-  - CODE-APP-INTERNAL-PANEL-DISPLAY-STATE-GO
-  - CODE-APP-INTERNAL-PANEL-DISPLAY-STATE-TEST-GO
-  - CODE-APP-INTERNAL-PANEL-ENGFMT-TEST-GO
-  - CODE-APP-INTERNAL-PANEL-MENUFUZZ-TEST-GO
-  - CODE-APP-INTERNAL-PANEL-PANEL-MENU-TEST-GO
-  - CODE-APP-INTERNAL-PANEL-SETTINGS-GO
-  - CODE-APP-INTERNAL-PANEL-SETTINGS-TEST-GO
   appliesTo:
+  - core::FU-DSO-PANEL
   - FU-APP-PANEL
   verificationMethods:
   - inspection
@@ -2094,11 +2079,8 @@ requirements:
   realizes:
   - CAP-SDS-AUTOSET
   category: functional
-  sourceRefs:
-  - CODE-APP-INTERNAL-PANEL-AUTOSET-GO
-  - CODE-APP-INTERNAL-PANEL-AUTOSET-TEST-GO
-  - CODE-APP-INTERNAL-PANEL-AUTOSET-VERIFY-TEST-GO
   appliesTo:
+  - core::FU-DSO-PANEL
   - FU-APP-PANEL
   verificationMethods:
   - inspection
@@ -2115,10 +2097,8 @@ requirements:
   realizes:
   - CAP-SDS-COMPARE
   category: functional
-  sourceRefs:
-  - CODE-APP-INTERNAL-PANEL-AUTOSET-GO
-  - CODE-APP-INTERNAL-PANEL-REFS-GO
   appliesTo:
+  - core::FU-DSO-PANEL
   - FU-APP-PANEL
   verificationMethods:
   - inspection
@@ -2136,10 +2116,8 @@ requirements:
   realizes:
   - CAP-SDS-COMPARE
   category: functional
-  sourceRefs:
-  - CODE-APP-INTERNAL-PANEL-AUTOSET-GO
-  - CODE-APP-INTERNAL-PANEL-MASK-GO
   appliesTo:
+  - core::FU-DSO-PANEL
   - FU-APP-PANEL
   verificationMethods:
   - inspection
@@ -2157,12 +2135,8 @@ requirements:
   realizes:
   - CAP-SDS-ENHANCED-RESOLUTION
   category: functional
-  sourceRefs:
-  - CODE-APP-INTERNAL-PANEL-AUTOSET-GO
-  - CODE-APP-INTERNAL-PANEL-PANEL-MENU-TEST-GO
-  - CODE-APP-INTERNAL-PANEL-SUPERRES-GO
-  - CODE-APP-INTERNAL-PANEL-SUPERRES-COMP-TEST-GO
   appliesTo:
+  - core::FU-DSO-PANEL
   - FU-APP-PANEL
   verificationMethods:
   - inspection
