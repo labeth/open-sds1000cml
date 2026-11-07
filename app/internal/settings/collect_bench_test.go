@@ -3,8 +3,9 @@
 package settings_test
 
 import (
-	core "github.com/labeth/open-dso-core/settings"
 	"testing"
+
+	core "github.com/labeth/open-dso-core/settings"
 )
 
 // Collect over a live engine, front end and panel (the saver's poll and the

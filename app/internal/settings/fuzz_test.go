@@ -3,12 +3,12 @@
 package settings_test
 
 import (
-	core "github.com/labeth/open-dso-core/settings"
 	"testing"
 	"time"
 
 	"github.com/labeth/open-dso-core/analysis"
 	"github.com/labeth/open-dso-core/framecalc"
+	core "github.com/labeth/open-dso-core/settings"
 	"github.com/labeth/open-dso-core/uimodel/panel"
 	"github.com/labeth/open-sds1000cml/app/internal/analog"
 	"github.com/labeth/open-sds1000cml/app/internal/board"

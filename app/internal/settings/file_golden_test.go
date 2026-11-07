@@ -5,11 +5,11 @@ package settings_test
 import (
 	"bytes"
 	"flag"
-	core "github.com/labeth/open-dso-core/settings"
 	"os"
 	"path/filepath"
 	"testing"
 
+	core "github.com/labeth/open-dso-core/settings"
 	"github.com/labeth/open-sds1000cml/app/internal/engine"
 	"github.com/labeth/open-sds1000cml/app/internal/settings"
 )
