@@ -18,10 +18,11 @@ import (
 
 	"github.com/labeth/open-dso-core/sample"
 	"github.com/labeth/open-dso-core/testenv"
+	"github.com/labeth/open-dso-core/uimodel/panel"
 	"github.com/labeth/open-dso-core/webserver/wire"
 	"github.com/labeth/open-sds1000cml/app/internal/board"
 	"github.com/labeth/open-sds1000cml/app/internal/engine"
-	"github.com/labeth/open-sds1000cml/app/internal/panel"
+	cmlpanel "github.com/labeth/open-sds1000cml/app/internal/panel"
 )
 
 // ownerScope is a scope with an audio stream behind the real panel: the
@@ -88,9 +89,9 @@ func newOwnerScope(t *testing.T) (*ownerScope, *panel.Controller, *Server, func(
 	}
 	fs := &fakeScope{frameGen: gen, stats: engine.Stats{Running: true, TdivS: 500e-6, TrigCode: 31437, TrigPosFrac: 0.5}}
 	o := &ownerScope{panelScope: &panelScope{fakeScope: fs}, snd: &soundScope{fakeScope: fs, t0: time.Now(), fs: 500e6 / 8192}}
-	pc := panel.New(o, nil, board.New(o, nil), -1, engine.SupportedTdivs(), 500e-6, t.Logf)
+	pc := panel.New(o, nil, board.New(o, nil), cmlpanel.Hardware{}, engine.SupportedTdivs(), 500e-6, t.Logf)
 	stop := make(chan struct{})
-	go pc.Run(stop)
+	go pc.Run(stop, nil)
 	return o, pc, newServer(o, nil, pc, nil), func() { close(stop) }
 }
 

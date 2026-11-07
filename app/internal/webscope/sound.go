@@ -4,7 +4,7 @@ package webscope
 
 import (
 	"github.com/labeth/open-dso-core/scopeweb"
-	"github.com/labeth/open-sds1000cml/app/internal/panel"
+	"github.com/labeth/open-dso-core/uimodel/panel"
 )
 
 // SOUND (ADR-SOUND) on the scope's side of the web server: the stream,

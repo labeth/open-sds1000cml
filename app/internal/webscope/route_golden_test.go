@@ -26,9 +26,9 @@ import (
 	"time"
 
 	"github.com/labeth/open-dso-core/sample"
+	"github.com/labeth/open-dso-core/uimodel/panel"
 	"github.com/labeth/open-dso-core/webserver/wire"
 	"github.com/labeth/open-sds1000cml/app/internal/engine"
-	"github.com/labeth/open-sds1000cml/app/internal/panel"
 	"github.com/labeth/open-sds1000cml/app/internal/sramcapture"
 	"github.com/labeth/open-sds1000cml/app/internal/streamview"
 )

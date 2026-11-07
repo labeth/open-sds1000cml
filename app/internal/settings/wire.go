@@ -8,6 +8,7 @@ import (
 
 	"github.com/labeth/open-dso-core/hal"
 	"github.com/labeth/open-dso-core/instrument"
+	core "github.com/labeth/open-dso-core/settings"
 	"github.com/labeth/open-sds1000cml/app/internal/analog"
 	"github.com/labeth/open-sds1000cml/app/internal/engine"
 )
@@ -43,18 +44,8 @@ type Extension interface {
 	ApplyTrigger(t Trigger)
 }
 
-// ViewState is the controller-owned slice of the setup: the device decode
-// config and the display view mode.
-// TRLC-LINKS: REQ-SDS-072, REQ-SDS-089
-type ViewState struct {
-	ViewMode int
-	Decode   Decode
-	Display  Display
-	UI       UI
-	Serial   Serial
-	Screen   Screen
-	Sound    Sound
-}
+// ViewState is the controller-owned slice of the setup.
+type ViewState = core.ViewState
 
 // Panel is the front-panel controller surface (implemented by
 // *panel.Controller). ApplySettingsView must enforce the same domains the

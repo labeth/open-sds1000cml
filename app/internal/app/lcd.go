@@ -13,12 +13,12 @@ import (
 	"github.com/labeth/open-dso-core/framecalc"
 	"github.com/labeth/open-dso-core/render"
 	"github.com/labeth/open-dso-core/sample"
+	"github.com/labeth/open-dso-core/uimodel/panel"
 	"github.com/labeth/open-dso-core/uimodel/wsview"
 	"github.com/labeth/open-dso-core/webserver"
 	"github.com/labeth/open-sds1000cml/app/internal/analog"
 	"github.com/labeth/open-sds1000cml/app/internal/engine"
 	"github.com/labeth/open-sds1000cml/app/internal/lcd"
-	"github.com/labeth/open-sds1000cml/app/internal/panel"
 	"github.com/labeth/open-sds1000cml/app/internal/scpi"
 	"github.com/labeth/open-sds1000cml/app/internal/streamview"
 )

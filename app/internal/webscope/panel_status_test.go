@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/labeth/open-sds1000cml/app/internal/panel"
+	"github.com/labeth/open-dso-core/uimodel/panel"
 )
 
 // panelFixture is the panel's remote surface with canned answers; it

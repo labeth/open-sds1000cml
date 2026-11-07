@@ -6,12 +6,13 @@ import (
 	"testing"
 	"time"
 
+	"github.com/labeth/open-dso-core/uimodel/panel"
 	"github.com/labeth/open-dso-core/webserver"
 	"github.com/labeth/open-dso-core/webserver/webtest"
 	"github.com/labeth/open-sds1000cml/app/internal/analog"
 	"github.com/labeth/open-sds1000cml/app/internal/board"
 	"github.com/labeth/open-sds1000cml/app/internal/engine"
-	"github.com/labeth/open-sds1000cml/app/internal/panel"
+	cmlpanel "github.com/labeth/open-sds1000cml/app/internal/panel"
 )
 
 // The SDS1000CML+ adapter passes the shared server's conformance suite: with
@@ -26,7 +27,7 @@ func TestConformance(t *testing.T) {
 			fe := analog.New(remoteSPI{}, func(time.Duration) {}, nil)
 			fe.OnOffset(eng.SetOffsetDAC)
 			lv := board.New(eng, fe)
-			pc := panel.New(eng, fe, lv, -1, engine.SupportedTdivs(), 500e-6, t.Logf)
+			pc := panel.New(eng, fe, lv, cmlpanel.Hardware{}, engine.SupportedTdivs(), 500e-6, t.Logf)
 			sc := New(eng, fe, lv, pc, func() []byte { return []byte("\x89PNG") })
 			sc.SetSetupMemory(&goldenSetups{})
 			return sc

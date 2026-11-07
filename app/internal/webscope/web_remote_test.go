@@ -20,10 +20,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/labeth/open-dso-core/uimodel/panel"
 	"github.com/labeth/open-dso-core/webserver"
 	"github.com/labeth/open-sds1000cml/app/internal/board"
 	"github.com/labeth/open-sds1000cml/app/internal/engine"
-	"github.com/labeth/open-sds1000cml/app/internal/panel"
+	cmlpanel "github.com/labeth/open-sds1000cml/app/internal/panel"
 )
 
 // get runs one GET (with extra headers) against s.
@@ -283,10 +284,10 @@ func TestPanelWorkspaceEndpoint(t *testing.T) {
 // TRLC-LINKS: REQ-SDS-162, REQ-SDS-211, REQ-SDS-220
 func TestPanelWorkspaceWithAnLCDSheetOpen(t *testing.T) {
 	ps := &panelScope{fakeScope: &fakeScope{stats: engine.Stats{Running: true, TdivS: 500e-6, TrigCode: 31437, TrigPosFrac: 0.5}}}
-	pc := panel.New(ps, nil, board.New(ps, nil), -1, engine.SupportedTdivs(), 500e-6, t.Logf)
+	pc := panel.New(ps, nil, board.New(ps, nil), cmlpanel.Hardware{}, engine.SupportedTdivs(), 500e-6, t.Logf)
 	stop := make(chan struct{})
 	defer close(stop)
-	go pc.Run(stop)
+	go pc.Run(stop, nil)
 	s := newServer(ps, nil, pc, nil)
 	if _, out := httpCall(t, s, "POST", "/api/panel", map[string]any{"button": "trigmenu"}); out["ok"] != true {
 		t.Fatalf("Trig Menu: %v", out)

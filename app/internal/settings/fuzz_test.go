@@ -8,10 +8,11 @@ import (
 
 	"github.com/labeth/open-dso-core/analysis"
 	"github.com/labeth/open-dso-core/framecalc"
+	"github.com/labeth/open-dso-core/uimodel/panel"
 	"github.com/labeth/open-sds1000cml/app/internal/analog"
 	"github.com/labeth/open-sds1000cml/app/internal/board"
 	"github.com/labeth/open-sds1000cml/app/internal/engine"
-	"github.com/labeth/open-sds1000cml/app/internal/panel"
+	cmlpanel "github.com/labeth/open-sds1000cml/app/internal/panel"
 	"github.com/labeth/open-sds1000cml/app/internal/settings"
 )
 
@@ -41,7 +42,7 @@ func FuzzParseAndApply(f *testing.F) {
 	fe := analog.New(&nullSPI{}, func(time.Duration) {}, nil)
 	fe.OnOffset(e.SetOffsetDAC)
 	fe.OnVdiv(e.SetChannelVdiv)
-	pc := panel.New(e, fe, board.New(e, fe), -1, engine.SupportedTdivs(), 500e-6, func(string, ...any) {})
+	pc := panel.New(e, fe, board.New(e, fe), cmlpanel.Hardware{}, engine.SupportedTdivs(), 500e-6, func(string, ...any) {})
 
 	f.Fuzz(func(t *testing.T, raw []byte) {
 		s, err := settings.Parse(raw)
