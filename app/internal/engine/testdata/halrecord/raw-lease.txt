@@ -1,0 +1,40 @@
+SetSpanHook true
+Supports uart
+Supports i2c
+Supports spi
+Supports sample-spi
+Supports sample-uart
+Supports sample-i2c
+Supports sent
+Supports usbls
+Supports mil1553
+Supports manchester
+Supports sequence
+Supports envelope
+Supports qualifier
+Supports symbol
+Supports sequence-only
+PacketProtocols
+Supports raw-only
+Supports box
+Supports pick
+Supports pick-on-asking
+RestartEncode
+Snapshot x64
+Arm #1 at 0s: decimation_log2=4 normal post_words=262144 pre_words=262144 trigger_hysteresis=4 trigger_level=128
+Poll x2
+Status frozen=true words=524288 trig=262144
+RecallForward offset 183955 words 156378
+Arm #2 at 1ms: decimation_log2=4 normal post_words=262144 pre_words=262144 trigger_hysteresis=4 trigger_level=128
+frame seq 1 len 156378 content raw-decimated flags 0 sample 3.2e-08 win 156250 trig true kind 1 node "edge" at 78189.0000 decim 16 depth 524288 filter "box average" hash 56968b29ca2a9bdc
+Poll x2
+Status frozen=true words=524288 trig=262144
+RecallForward offset 183955 words 156378
+Arm #3 at 2ms: decimation_log2=4 normal post_words=262144 pre_words=262144 trigger_hysteresis=4 trigger_level=128
+frame seq 2 len 156378 content raw-decimated flags 0 sample 3.2e-08 win 156250 trig true kind 1 node "edge" at 78189.0000 decim 16 depth 524288 filter "box average" hash 56968b29ca2a9bdc
+Poll x2
+Status frozen=true words=524288 trig=262144
+RecallForward offset 183955 words 156378
+Arm #4 at 3ms: decimation_log2=4 normal post_words=262144 pre_words=262144 trigger_hysteresis=4 trigger_level=128
+frame seq 3 len 156378 content raw-decimated flags 0 sample 3.2e-08 win 156250 trig true kind 1 node "edge" at 78189.0000 decim 16 depth 524288 filter "box average" hash 56968b29ca2a9bdc
+Halt at 3ms

@@ -1,0 +1,37 @@
+SetSpanHook true
+Supports uart
+Supports i2c
+Supports spi
+Supports sample-spi
+Supports sample-uart
+Supports sample-i2c
+Supports sent
+Supports usbls
+Supports mil1553
+Supports manchester
+Supports sequence
+Supports envelope
+Supports qualifier
+Supports symbol
+Supports sequence-only
+PacketProtocols
+Supports raw-only
+Supports box
+Supports pick
+Supports pick-on-asking
+RestartEncode
+Snapshot x64
+Arm #1 at 0s: decimation_log2=4 normal post_words=262144 pre_words=262144 trigger_hysteresis=4 trigger_level=128
+Halt at 0s
+Arm #2 at 0s: decimation_log2=9 normal post_words=9766 pre_words=9766 trigger_hysteresis=4 trigger_level=128
+Poll x2
+Status frozen=true words=19532 trig=9766
+RecallForward offset 7261 words 5011
+Arm #3 at 1ms: decimation_log2=9 normal post_words=9766 pre_words=9766 trigger_hysteresis=4 trigger_level=128
+frame seq 1 len 5011 content raw-decimated flags 0 sample 1.024e-06 win 4883 trig true kind 1 node "edge" at 2505.0000 decim 512 depth 19532 filter "box average; ERES 3-point boxcar" hash 6f210db98e86ded9
+Poll x2
+Status frozen=true words=19532 trig=9766
+RecallForward offset 7261 words 5011
+Arm #4 at 2ms: decimation_log2=9 normal post_words=9766 pre_words=9766 trigger_hysteresis=4 trigger_level=128
+frame seq 2 len 5011 content raw-decimated flags 0 sample 1.024e-06 win 4883 trig true kind 1 node "edge" at 2505.0000 decim 512 depth 19532 filter "box average; ERES 3-point boxcar" hash 6f210db98e86ded9
+Halt at 2ms

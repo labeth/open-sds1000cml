@@ -1,0 +1,34 @@
+SetSpanHook true
+Supports uart
+Supports i2c
+Supports spi
+Supports sample-spi
+Supports sample-uart
+Supports sample-i2c
+Supports sent
+Supports usbls
+Supports mil1553
+Supports manchester
+Supports sequence
+Supports envelope
+Supports qualifier
+Supports symbol
+Supports sequence-only
+PacketProtocols
+Supports raw-only
+Supports box
+Supports pick
+Supports pick-on-asking
+RestartEncode
+Snapshot x64
+Arm #1 at 0s: decimation_log2=4 normal post_words=262144 pre_words=262144 trigger_hysteresis=4 trigger_level=128
+Halt at 0s
+Arm #2 at 0s: decimation_log2=4 normal post_words=262144 pre_words=262144 trigger_hysteresis=4 trigger_level=128
+Poll x2
+Status frozen=true words=524288 trig=262144
+RecallReadsOf record 1 {183296 154 1024}
+RecallReadsOf record 1 {261632 0 1024}
+Arm #3 at 1ms: decimation_log2=4 normal post_words=262144 pre_words=262144 trigger_hysteresis=4 trigger_level=128
+frame seq 1 len 2048 content peak-pairs flags 1 sample 2.464e-06 win 2029 trig true kind 1 node "edge" at 1024.0000 decim 16 depth 524288 filter "peak-detect display readout, 154 words per bucket; full record in SRAM" hash 304a89cd721c20be detail 2 [0 0] read 1 len 1024
+Poll x155
+Halt at 301ms

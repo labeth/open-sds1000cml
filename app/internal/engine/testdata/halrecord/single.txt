@@ -1,0 +1,526 @@
+SetSpanHook true
+Supports uart
+Supports i2c
+Supports spi
+Supports sample-spi
+Supports sample-uart
+Supports sample-i2c
+Supports sent
+Supports usbls
+Supports mil1553
+Supports manchester
+Supports sequence
+Supports envelope
+Supports qualifier
+Supports symbol
+Supports sequence-only
+PacketProtocols
+Supports raw-only
+Supports box
+Supports pick
+Supports pick-on-asking
+RestartEncode
+Snapshot x64
+Arm #1 at 0s: decimation_log2=4 normal post_words=262144 pre_words=262144 trigger_hysteresis=4 trigger_level=128
+Halt at 0s
+Arm #2 at 0s: decimation_log2=4 normal post_words=262144 pre_words=262144 trigger_hysteresis=4 trigger_level=128
+Poll x2
+Status frozen=true words=524288 trig=262144
+RecallReadsOf record 1 {183296 154 1024}
+RecallReadsOf record 1 {261632 0 1024}
+RecallForward offset 0 words 524288
+at 300ms
+Arm #3 at 301ms: decimation_log2=4 normal post_words=262144 pre_words=262144 trigger_hysteresis=4 trigger_level=128
+frame seq 2 len 524288 content raw-decimated flags 0 sample 3.2e-08 win 156250 trig true kind 1 node "edge" at 262144.0000 decim 16 depth 524288 filter "box average; stopped full record (single acquisition)" hash 77e65e228e25f9f6
+Poll x2
+Status frozen=true words=524288 trig=262144
+RecallReadsOf record 2 {183296 154 1024}
+Arm #4 at 302ms: decimation_log2=4 normal post_words=262144 pre_words=262144 trigger_hysteresis=4 trigger_level=128
+frame seq 3 len 2048 content peak-pairs flags 1 sample 2.464e-06 win 2029 trig true kind 1 node "edge" at 1024.0000 decim 16 depth 524288 filter "peak-detect display readout, 154 words per bucket; full record in SRAM" hash 304a89cd721c20be detail 2 [0 0] read 1 len 1024
+Poll x2
+Status frozen=true words=524288 trig=262144
+RecallReadsOf record 3 {183296 154 1024}
+Arm #5 at 303ms: decimation_log2=4 normal post_words=262144 pre_words=262144 trigger_hysteresis=4 trigger_level=128
+frame seq 4 len 2048 content peak-pairs flags 1 sample 2.464e-06 win 2029 trig true kind 1 node "edge" at 1024.0000 decim 16 depth 524288 filter "peak-detect display readout, 154 words per bucket; full record in SRAM" hash 304a89cd721c20be detail 2 [0 0] read 1 len 1024
+Poll x2
+Status frozen=true words=524288 trig=262144
+RecallReadsOf record 4 {183296 154 1024}
+Arm #6 at 304ms: decimation_log2=4 normal post_words=262144 pre_words=262144 trigger_hysteresis=4 trigger_level=128
+frame seq 5 len 2048 content peak-pairs flags 1 sample 2.464e-06 win 2029 trig true kind 1 node "edge" at 1024.0000 decim 16 depth 524288 filter "peak-detect display readout, 154 words per bucket; full record in SRAM" hash 304a89cd721c20be detail 2 [0 0] read 1 len 1024
+Poll x2
+Status frozen=true words=524288 trig=262144
+RecallReadsOf record 5 {183296 154 1024}
+Arm #7 at 305ms: decimation_log2=4 normal post_words=262144 pre_words=262144 trigger_hysteresis=4 trigger_level=128
+frame seq 6 len 2048 content peak-pairs flags 1 sample 2.464e-06 win 2029 trig true kind 1 node "edge" at 1024.0000 decim 16 depth 524288 filter "peak-detect display readout, 154 words per bucket; full record in SRAM" hash 304a89cd721c20be detail 2 [0 0] read 1 len 1024
+Poll x2
+Status frozen=true words=524288 trig=262144
+RecallReadsOf record 6 {183296 154 1024}
+Arm #8 at 306ms: decimation_log2=4 normal post_words=262144 pre_words=262144 trigger_hysteresis=4 trigger_level=128
+frame seq 7 len 2048 content peak-pairs flags 1 sample 2.464e-06 win 2029 trig true kind 1 node "edge" at 1024.0000 decim 16 depth 524288 filter "peak-detect display readout, 154 words per bucket; full record in SRAM" hash 304a89cd721c20be detail 2 [0 0] read 1 len 1024
+Poll x2
+Status frozen=true words=524288 trig=262144
+RecallReadsOf record 7 {183296 154 1024}
+Arm #9 at 307ms: decimation_log2=4 normal post_words=262144 pre_words=262144 trigger_hysteresis=4 trigger_level=128
+frame seq 8 len 2048 content peak-pairs flags 1 sample 2.464e-06 win 2029 trig true kind 1 node "edge" at 1024.0000 decim 16 depth 524288 filter "peak-detect display readout, 154 words per bucket; full record in SRAM" hash 304a89cd721c20be detail 2 [0 0] read 1 len 1024
+Poll x2
+Status frozen=true words=524288 trig=262144
+RecallReadsOf record 8 {183296 154 1024}
+Arm #10 at 308ms: decimation_log2=4 normal post_words=262144 pre_words=262144 trigger_hysteresis=4 trigger_level=128
+frame seq 9 len 2048 content peak-pairs flags 1 sample 2.464e-06 win 2029 trig true kind 1 node "edge" at 1024.0000 decim 16 depth 524288 filter "peak-detect display readout, 154 words per bucket; full record in SRAM" hash 304a89cd721c20be detail 2 [0 0] read 1 len 1024
+Poll x2
+Status frozen=true words=524288 trig=262144
+RecallReadsOf record 9 {183296 154 1024}
+Arm #11 at 309ms: decimation_log2=4 normal post_words=262144 pre_words=262144 trigger_hysteresis=4 trigger_level=128
+frame seq 10 len 2048 content peak-pairs flags 1 sample 2.464e-06 win 2029 trig true kind 1 node "edge" at 1024.0000 decim 16 depth 524288 filter "peak-detect display readout, 154 words per bucket; full record in SRAM" hash 304a89cd721c20be detail 2 [0 0] read 1 len 1024
+Poll x2
+Status frozen=true words=524288 trig=262144
+RecallReadsOf record 10 {183296 154 1024}
+Arm #12 at 310ms: decimation_log2=4 normal post_words=262144 pre_words=262144 trigger_hysteresis=4 trigger_level=128
+frame seq 11 len 2048 content peak-pairs flags 1 sample 2.464e-06 win 2029 trig true kind 1 node "edge" at 1024.0000 decim 16 depth 524288 filter "peak-detect display readout, 154 words per bucket; full record in SRAM" hash 304a89cd721c20be detail 2 [0 0] read 1 len 1024
+Poll x2
+Status frozen=true words=524288 trig=262144
+RecallReadsOf record 11 {183296 154 1024}
+Arm #13 at 311ms: decimation_log2=4 normal post_words=262144 pre_words=262144 trigger_hysteresis=4 trigger_level=128
+frame seq 12 len 2048 content peak-pairs flags 1 sample 2.464e-06 win 2029 trig true kind 1 node "edge" at 1024.0000 decim 16 depth 524288 filter "peak-detect display readout, 154 words per bucket; full record in SRAM" hash 304a89cd721c20be detail 2 [0 0] read 1 len 1024
+Poll x2
+Status frozen=true words=524288 trig=262144
+RecallReadsOf record 12 {183296 154 1024}
+Arm #14 at 312ms: decimation_log2=4 normal post_words=262144 pre_words=262144 trigger_hysteresis=4 trigger_level=128
+frame seq 13 len 2048 content peak-pairs flags 1 sample 2.464e-06 win 2029 trig true kind 1 node "edge" at 1024.0000 decim 16 depth 524288 filter "peak-detect display readout, 154 words per bucket; full record in SRAM" hash 304a89cd721c20be detail 2 [0 0] read 1 len 1024
+Poll x2
+Status frozen=true words=524288 trig=262144
+RecallReadsOf record 13 {183296 154 1024}
+Arm #15 at 313ms: decimation_log2=4 normal post_words=262144 pre_words=262144 trigger_hysteresis=4 trigger_level=128
+frame seq 14 len 2048 content peak-pairs flags 1 sample 2.464e-06 win 2029 trig true kind 1 node "edge" at 1024.0000 decim 16 depth 524288 filter "peak-detect display readout, 154 words per bucket; full record in SRAM" hash 304a89cd721c20be detail 2 [0 0] read 1 len 1024
+Poll x2
+Status frozen=true words=524288 trig=262144
+RecallReadsOf record 14 {183296 154 1024}
+Arm #16 at 314ms: decimation_log2=4 normal post_words=262144 pre_words=262144 trigger_hysteresis=4 trigger_level=128
+frame seq 15 len 2048 content peak-pairs flags 1 sample 2.464e-06 win 2029 trig true kind 1 node "edge" at 1024.0000 decim 16 depth 524288 filter "peak-detect display readout, 154 words per bucket; full record in SRAM" hash 304a89cd721c20be detail 2 [0 0] read 1 len 1024
+Poll x2
+Status frozen=true words=524288 trig=262144
+RecallReadsOf record 15 {183296 154 1024}
+Arm #17 at 315ms: decimation_log2=4 normal post_words=262144 pre_words=262144 trigger_hysteresis=4 trigger_level=128
+frame seq 16 len 2048 content peak-pairs flags 1 sample 2.464e-06 win 2029 trig true kind 1 node "edge" at 1024.0000 decim 16 depth 524288 filter "peak-detect display readout, 154 words per bucket; full record in SRAM" hash 304a89cd721c20be detail 2 [0 0] read 1 len 1024
+Poll x2
+Status frozen=true words=524288 trig=262144
+RecallReadsOf record 16 {183296 154 1024}
+Arm #18 at 316ms: decimation_log2=4 normal post_words=262144 pre_words=262144 trigger_hysteresis=4 trigger_level=128
+frame seq 17 len 2048 content peak-pairs flags 1 sample 2.464e-06 win 2029 trig true kind 1 node "edge" at 1024.0000 decim 16 depth 524288 filter "peak-detect display readout, 154 words per bucket; full record in SRAM" hash 304a89cd721c20be detail 2 [0 0] read 1 len 1024
+Poll x2
+Status frozen=true words=524288 trig=262144
+RecallReadsOf record 17 {183296 154 1024}
+Arm #19 at 317ms: decimation_log2=4 normal post_words=262144 pre_words=262144 trigger_hysteresis=4 trigger_level=128
+frame seq 18 len 2048 content peak-pairs flags 1 sample 2.464e-06 win 2029 trig true kind 1 node "edge" at 1024.0000 decim 16 depth 524288 filter "peak-detect display readout, 154 words per bucket; full record in SRAM" hash 304a89cd721c20be detail 2 [0 0] read 1 len 1024
+Poll x2
+Status frozen=true words=524288 trig=262144
+RecallReadsOf record 18 {183296 154 1024}
+Arm #20 at 318ms: decimation_log2=4 normal post_words=262144 pre_words=262144 trigger_hysteresis=4 trigger_level=128
+frame seq 19 len 2048 content peak-pairs flags 1 sample 2.464e-06 win 2029 trig true kind 1 node "edge" at 1024.0000 decim 16 depth 524288 filter "peak-detect display readout, 154 words per bucket; full record in SRAM" hash 304a89cd721c20be detail 2 [0 0] read 1 len 1024
+Poll x2
+Status frozen=true words=524288 trig=262144
+RecallReadsOf record 19 {183296 154 1024}
+Arm #21 at 319ms: decimation_log2=4 normal post_words=262144 pre_words=262144 trigger_hysteresis=4 trigger_level=128
+frame seq 20 len 2048 content peak-pairs flags 1 sample 2.464e-06 win 2029 trig true kind 1 node "edge" at 1024.0000 decim 16 depth 524288 filter "peak-detect display readout, 154 words per bucket; full record in SRAM" hash 304a89cd721c20be detail 2 [0 0] read 1 len 1024
+Poll x2
+Status frozen=true words=524288 trig=262144
+RecallReadsOf record 20 {183296 154 1024}
+Arm #22 at 320ms: decimation_log2=4 normal post_words=262144 pre_words=262144 trigger_hysteresis=4 trigger_level=128
+frame seq 21 len 2048 content peak-pairs flags 1 sample 2.464e-06 win 2029 trig true kind 1 node "edge" at 1024.0000 decim 16 depth 524288 filter "peak-detect display readout, 154 words per bucket; full record in SRAM" hash 304a89cd721c20be detail 2 [0 0] read 1 len 1024
+Poll x2
+Status frozen=true words=524288 trig=262144
+RecallReadsOf record 21 {183296 154 1024}
+Arm #23 at 321ms: decimation_log2=4 normal post_words=262144 pre_words=262144 trigger_hysteresis=4 trigger_level=128
+frame seq 22 len 2048 content peak-pairs flags 1 sample 2.464e-06 win 2029 trig true kind 1 node "edge" at 1024.0000 decim 16 depth 524288 filter "peak-detect display readout, 154 words per bucket; full record in SRAM" hash 304a89cd721c20be detail 2 [0 0] read 1 len 1024
+Poll x2
+Status frozen=true words=524288 trig=262144
+RecallReadsOf record 22 {183296 154 1024}
+Arm #24 at 322ms: decimation_log2=4 normal post_words=262144 pre_words=262144 trigger_hysteresis=4 trigger_level=128
+frame seq 23 len 2048 content peak-pairs flags 1 sample 2.464e-06 win 2029 trig true kind 1 node "edge" at 1024.0000 decim 16 depth 524288 filter "peak-detect display readout, 154 words per bucket; full record in SRAM" hash 304a89cd721c20be detail 2 [0 0] read 1 len 1024
+Poll x2
+Status frozen=true words=524288 trig=262144
+RecallReadsOf record 23 {183296 154 1024}
+Arm #25 at 323ms: decimation_log2=4 normal post_words=262144 pre_words=262144 trigger_hysteresis=4 trigger_level=128
+frame seq 24 len 2048 content peak-pairs flags 1 sample 2.464e-06 win 2029 trig true kind 1 node "edge" at 1024.0000 decim 16 depth 524288 filter "peak-detect display readout, 154 words per bucket; full record in SRAM" hash 304a89cd721c20be detail 2 [0 0] read 1 len 1024
+Poll x2
+Status frozen=true words=524288 trig=262144
+RecallReadsOf record 24 {183296 154 1024}
+Arm #26 at 324ms: decimation_log2=4 normal post_words=262144 pre_words=262144 trigger_hysteresis=4 trigger_level=128
+frame seq 25 len 2048 content peak-pairs flags 1 sample 2.464e-06 win 2029 trig true kind 1 node "edge" at 1024.0000 decim 16 depth 524288 filter "peak-detect display readout, 154 words per bucket; full record in SRAM" hash 304a89cd721c20be detail 2 [0 0] read 1 len 1024
+Poll x2
+Status frozen=true words=524288 trig=262144
+RecallReadsOf record 25 {183296 154 1024}
+Arm #27 at 325ms: decimation_log2=4 normal post_words=262144 pre_words=262144 trigger_hysteresis=4 trigger_level=128
+frame seq 26 len 2048 content peak-pairs flags 1 sample 2.464e-06 win 2029 trig true kind 1 node "edge" at 1024.0000 decim 16 depth 524288 filter "peak-detect display readout, 154 words per bucket; full record in SRAM" hash 304a89cd721c20be detail 2 [0 0] read 1 len 1024
+Poll x2
+Status frozen=true words=524288 trig=262144
+RecallReadsOf record 26 {183296 154 1024}
+Arm #28 at 326ms: decimation_log2=4 normal post_words=262144 pre_words=262144 trigger_hysteresis=4 trigger_level=128
+frame seq 27 len 2048 content peak-pairs flags 1 sample 2.464e-06 win 2029 trig true kind 1 node "edge" at 1024.0000 decim 16 depth 524288 filter "peak-detect display readout, 154 words per bucket; full record in SRAM" hash 304a89cd721c20be detail 2 [0 0] read 1 len 1024
+Poll x2
+Status frozen=true words=524288 trig=262144
+RecallReadsOf record 27 {183296 154 1024}
+Arm #29 at 327ms: decimation_log2=4 normal post_words=262144 pre_words=262144 trigger_hysteresis=4 trigger_level=128
+frame seq 28 len 2048 content peak-pairs flags 1 sample 2.464e-06 win 2029 trig true kind 1 node "edge" at 1024.0000 decim 16 depth 524288 filter "peak-detect display readout, 154 words per bucket; full record in SRAM" hash 304a89cd721c20be detail 2 [0 0] read 1 len 1024
+Poll x2
+Status frozen=true words=524288 trig=262144
+RecallReadsOf record 28 {183296 154 1024}
+Arm #30 at 328ms: decimation_log2=4 normal post_words=262144 pre_words=262144 trigger_hysteresis=4 trigger_level=128
+frame seq 29 len 2048 content peak-pairs flags 1 sample 2.464e-06 win 2029 trig true kind 1 node "edge" at 1024.0000 decim 16 depth 524288 filter "peak-detect display readout, 154 words per bucket; full record in SRAM" hash 304a89cd721c20be detail 2 [0 0] read 1 len 1024
+Poll x2
+Status frozen=true words=524288 trig=262144
+RecallReadsOf record 29 {183296 154 1024}
+Arm #31 at 329ms: decimation_log2=4 normal post_words=262144 pre_words=262144 trigger_hysteresis=4 trigger_level=128
+frame seq 30 len 2048 content peak-pairs flags 1 sample 2.464e-06 win 2029 trig true kind 1 node "edge" at 1024.0000 decim 16 depth 524288 filter "peak-detect display readout, 154 words per bucket; full record in SRAM" hash 304a89cd721c20be detail 2 [0 0] read 1 len 1024
+Poll x2
+Status frozen=true words=524288 trig=262144
+RecallReadsOf record 30 {183296 154 1024}
+Arm #32 at 330ms: decimation_log2=4 normal post_words=262144 pre_words=262144 trigger_hysteresis=4 trigger_level=128
+frame seq 31 len 2048 content peak-pairs flags 1 sample 2.464e-06 win 2029 trig true kind 1 node "edge" at 1024.0000 decim 16 depth 524288 filter "peak-detect display readout, 154 words per bucket; full record in SRAM" hash 304a89cd721c20be detail 2 [0 0] read 1 len 1024
+Poll x2
+Status frozen=true words=524288 trig=262144
+RecallReadsOf record 31 {183296 154 1024}
+Arm #33 at 331ms: decimation_log2=4 normal post_words=262144 pre_words=262144 trigger_hysteresis=4 trigger_level=128
+frame seq 32 len 2048 content peak-pairs flags 1 sample 2.464e-06 win 2029 trig true kind 1 node "edge" at 1024.0000 decim 16 depth 524288 filter "peak-detect display readout, 154 words per bucket; full record in SRAM" hash 304a89cd721c20be detail 2 [0 0] read 1 len 1024
+Poll x2
+Status frozen=true words=524288 trig=262144
+RecallReadsOf record 32 {183296 154 1024}
+Arm #34 at 332ms: decimation_log2=4 normal post_words=262144 pre_words=262144 trigger_hysteresis=4 trigger_level=128
+frame seq 33 len 2048 content peak-pairs flags 1 sample 2.464e-06 win 2029 trig true kind 1 node "edge" at 1024.0000 decim 16 depth 524288 filter "peak-detect display readout, 154 words per bucket; full record in SRAM" hash 304a89cd721c20be detail 2 [0 0] read 1 len 1024
+Poll x2
+Status frozen=true words=524288 trig=262144
+RecallReadsOf record 33 {183296 154 1024}
+Arm #35 at 333ms: decimation_log2=4 normal post_words=262144 pre_words=262144 trigger_hysteresis=4 trigger_level=128
+frame seq 34 len 2048 content peak-pairs flags 1 sample 2.464e-06 win 2029 trig true kind 1 node "edge" at 1024.0000 decim 16 depth 524288 filter "peak-detect display readout, 154 words per bucket; full record in SRAM" hash 304a89cd721c20be detail 2 [0 0] read 1 len 1024
+Poll x2
+Status frozen=true words=524288 trig=262144
+RecallReadsOf record 34 {183296 154 1024}
+Arm #36 at 334ms: decimation_log2=4 normal post_words=262144 pre_words=262144 trigger_hysteresis=4 trigger_level=128
+frame seq 35 len 2048 content peak-pairs flags 1 sample 2.464e-06 win 2029 trig true kind 1 node "edge" at 1024.0000 decim 16 depth 524288 filter "peak-detect display readout, 154 words per bucket; full record in SRAM" hash 304a89cd721c20be detail 2 [0 0] read 1 len 1024
+Poll x2
+Status frozen=true words=524288 trig=262144
+RecallReadsOf record 35 {183296 154 1024}
+Arm #37 at 335ms: decimation_log2=4 normal post_words=262144 pre_words=262144 trigger_hysteresis=4 trigger_level=128
+frame seq 36 len 2048 content peak-pairs flags 1 sample 2.464e-06 win 2029 trig true kind 1 node "edge" at 1024.0000 decim 16 depth 524288 filter "peak-detect display readout, 154 words per bucket; full record in SRAM" hash 304a89cd721c20be detail 2 [0 0] read 1 len 1024
+Poll x2
+Status frozen=true words=524288 trig=262144
+RecallReadsOf record 36 {183296 154 1024}
+Arm #38 at 336ms: decimation_log2=4 normal post_words=262144 pre_words=262144 trigger_hysteresis=4 trigger_level=128
+frame seq 37 len 2048 content peak-pairs flags 1 sample 2.464e-06 win 2029 trig true kind 1 node "edge" at 1024.0000 decim 16 depth 524288 filter "peak-detect display readout, 154 words per bucket; full record in SRAM" hash 304a89cd721c20be detail 2 [0 0] read 1 len 1024
+Poll x2
+Status frozen=true words=524288 trig=262144
+RecallReadsOf record 37 {183296 154 1024}
+Arm #39 at 337ms: decimation_log2=4 normal post_words=262144 pre_words=262144 trigger_hysteresis=4 trigger_level=128
+frame seq 38 len 2048 content peak-pairs flags 1 sample 2.464e-06 win 2029 trig true kind 1 node "edge" at 1024.0000 decim 16 depth 524288 filter "peak-detect display readout, 154 words per bucket; full record in SRAM" hash 304a89cd721c20be detail 2 [0 0] read 1 len 1024
+Poll x2
+Status frozen=true words=524288 trig=262144
+RecallReadsOf record 38 {183296 154 1024}
+Arm #40 at 338ms: decimation_log2=4 normal post_words=262144 pre_words=262144 trigger_hysteresis=4 trigger_level=128
+frame seq 39 len 2048 content peak-pairs flags 1 sample 2.464e-06 win 2029 trig true kind 1 node "edge" at 1024.0000 decim 16 depth 524288 filter "peak-detect display readout, 154 words per bucket; full record in SRAM" hash 304a89cd721c20be detail 2 [0 0] read 1 len 1024
+Poll x2
+Status frozen=true words=524288 trig=262144
+RecallReadsOf record 39 {183296 154 1024}
+Arm #41 at 339ms: decimation_log2=4 normal post_words=262144 pre_words=262144 trigger_hysteresis=4 trigger_level=128
+frame seq 40 len 2048 content peak-pairs flags 1 sample 2.464e-06 win 2029 trig true kind 1 node "edge" at 1024.0000 decim 16 depth 524288 filter "peak-detect display readout, 154 words per bucket; full record in SRAM" hash 304a89cd721c20be detail 2 [0 0] read 1 len 1024
+Poll x2
+Status frozen=true words=524288 trig=262144
+RecallReadsOf record 40 {183296 154 1024}
+Arm #42 at 340ms: decimation_log2=4 normal post_words=262144 pre_words=262144 trigger_hysteresis=4 trigger_level=128
+frame seq 41 len 2048 content peak-pairs flags 1 sample 2.464e-06 win 2029 trig true kind 1 node "edge" at 1024.0000 decim 16 depth 524288 filter "peak-detect display readout, 154 words per bucket; full record in SRAM" hash 304a89cd721c20be detail 2 [0 0] read 1 len 1024
+Poll x2
+Status frozen=true words=524288 trig=262144
+RecallReadsOf record 41 {183296 154 1024}
+Arm #43 at 341ms: decimation_log2=4 normal post_words=262144 pre_words=262144 trigger_hysteresis=4 trigger_level=128
+frame seq 42 len 2048 content peak-pairs flags 1 sample 2.464e-06 win 2029 trig true kind 1 node "edge" at 1024.0000 decim 16 depth 524288 filter "peak-detect display readout, 154 words per bucket; full record in SRAM" hash 304a89cd721c20be detail 2 [0 0] read 1 len 1024
+Poll x2
+Status frozen=true words=524288 trig=262144
+RecallReadsOf record 42 {183296 154 1024}
+Arm #44 at 342ms: decimation_log2=4 normal post_words=262144 pre_words=262144 trigger_hysteresis=4 trigger_level=128
+frame seq 43 len 2048 content peak-pairs flags 1 sample 2.464e-06 win 2029 trig true kind 1 node "edge" at 1024.0000 decim 16 depth 524288 filter "peak-detect display readout, 154 words per bucket; full record in SRAM" hash 304a89cd721c20be detail 2 [0 0] read 1 len 1024
+Poll x2
+Status frozen=true words=524288 trig=262144
+RecallReadsOf record 43 {183296 154 1024}
+Arm #45 at 343ms: decimation_log2=4 normal post_words=262144 pre_words=262144 trigger_hysteresis=4 trigger_level=128
+frame seq 44 len 2048 content peak-pairs flags 1 sample 2.464e-06 win 2029 trig true kind 1 node "edge" at 1024.0000 decim 16 depth 524288 filter "peak-detect display readout, 154 words per bucket; full record in SRAM" hash 304a89cd721c20be detail 2 [0 0] read 1 len 1024
+Poll x2
+Status frozen=true words=524288 trig=262144
+RecallReadsOf record 44 {183296 154 1024}
+Arm #46 at 344ms: decimation_log2=4 normal post_words=262144 pre_words=262144 trigger_hysteresis=4 trigger_level=128
+frame seq 45 len 2048 content peak-pairs flags 1 sample 2.464e-06 win 2029 trig true kind 1 node "edge" at 1024.0000 decim 16 depth 524288 filter "peak-detect display readout, 154 words per bucket; full record in SRAM" hash 304a89cd721c20be detail 2 [0 0] read 1 len 1024
+Poll x2
+Status frozen=true words=524288 trig=262144
+RecallReadsOf record 45 {183296 154 1024}
+Arm #47 at 345ms: decimation_log2=4 normal post_words=262144 pre_words=262144 trigger_hysteresis=4 trigger_level=128
+frame seq 46 len 2048 content peak-pairs flags 1 sample 2.464e-06 win 2029 trig true kind 1 node "edge" at 1024.0000 decim 16 depth 524288 filter "peak-detect display readout, 154 words per bucket; full record in SRAM" hash 304a89cd721c20be detail 2 [0 0] read 1 len 1024
+Poll x2
+Status frozen=true words=524288 trig=262144
+RecallReadsOf record 46 {183296 154 1024}
+Arm #48 at 346ms: decimation_log2=4 normal post_words=262144 pre_words=262144 trigger_hysteresis=4 trigger_level=128
+frame seq 47 len 2048 content peak-pairs flags 1 sample 2.464e-06 win 2029 trig true kind 1 node "edge" at 1024.0000 decim 16 depth 524288 filter "peak-detect display readout, 154 words per bucket; full record in SRAM" hash 304a89cd721c20be detail 2 [0 0] read 1 len 1024
+Poll x2
+Status frozen=true words=524288 trig=262144
+RecallReadsOf record 47 {183296 154 1024}
+Arm #49 at 347ms: decimation_log2=4 normal post_words=262144 pre_words=262144 trigger_hysteresis=4 trigger_level=128
+frame seq 48 len 2048 content peak-pairs flags 1 sample 2.464e-06 win 2029 trig true kind 1 node "edge" at 1024.0000 decim 16 depth 524288 filter "peak-detect display readout, 154 words per bucket; full record in SRAM" hash 304a89cd721c20be detail 2 [0 0] read 1 len 1024
+Poll x2
+Status frozen=true words=524288 trig=262144
+RecallReadsOf record 48 {183296 154 1024}
+Arm #50 at 348ms: decimation_log2=4 normal post_words=262144 pre_words=262144 trigger_hysteresis=4 trigger_level=128
+frame seq 49 len 2048 content peak-pairs flags 1 sample 2.464e-06 win 2029 trig true kind 1 node "edge" at 1024.0000 decim 16 depth 524288 filter "peak-detect display readout, 154 words per bucket; full record in SRAM" hash 304a89cd721c20be detail 2 [0 0] read 1 len 1024
+Poll x2
+Status frozen=true words=524288 trig=262144
+RecallReadsOf record 49 {183296 154 1024}
+Arm #51 at 349ms: decimation_log2=4 normal post_words=262144 pre_words=262144 trigger_hysteresis=4 trigger_level=128
+frame seq 50 len 2048 content peak-pairs flags 1 sample 2.464e-06 win 2029 trig true kind 1 node "edge" at 1024.0000 decim 16 depth 524288 filter "peak-detect display readout, 154 words per bucket; full record in SRAM" hash 304a89cd721c20be detail 2 [0 0] read 1 len 1024
+Poll x2
+Status frozen=true words=524288 trig=262144
+RecallReadsOf record 50 {183296 154 1024}
+Arm #52 at 350ms: decimation_log2=4 normal post_words=262144 pre_words=262144 trigger_hysteresis=4 trigger_level=128
+frame seq 51 len 2048 content peak-pairs flags 1 sample 2.464e-06 win 2029 trig true kind 1 node "edge" at 1024.0000 decim 16 depth 524288 filter "peak-detect display readout, 154 words per bucket; full record in SRAM" hash 304a89cd721c20be detail 2 [0 0] read 1 len 1024
+Poll x2
+Status frozen=true words=524288 trig=262144
+RecallReadsOf record 51 {183296 154 1024}
+Arm #53 at 351ms: decimation_log2=4 normal post_words=262144 pre_words=262144 trigger_hysteresis=4 trigger_level=128
+frame seq 52 len 2048 content peak-pairs flags 1 sample 2.464e-06 win 2029 trig true kind 1 node "edge" at 1024.0000 decim 16 depth 524288 filter "peak-detect display readout, 154 words per bucket; full record in SRAM" hash 304a89cd721c20be detail 2 [0 0] read 1 len 1024
+Poll x2
+Status frozen=true words=524288 trig=262144
+RecallReadsOf record 52 {183296 154 1024}
+Arm #54 at 352ms: decimation_log2=4 normal post_words=262144 pre_words=262144 trigger_hysteresis=4 trigger_level=128
+frame seq 53 len 2048 content peak-pairs flags 1 sample 2.464e-06 win 2029 trig true kind 1 node "edge" at 1024.0000 decim 16 depth 524288 filter "peak-detect display readout, 154 words per bucket; full record in SRAM" hash 304a89cd721c20be detail 2 [0 0] read 1 len 1024
+Poll x2
+Status frozen=true words=524288 trig=262144
+RecallReadsOf record 53 {183296 154 1024}
+Arm #55 at 353ms: decimation_log2=4 normal post_words=262144 pre_words=262144 trigger_hysteresis=4 trigger_level=128
+frame seq 54 len 2048 content peak-pairs flags 1 sample 2.464e-06 win 2029 trig true kind 1 node "edge" at 1024.0000 decim 16 depth 524288 filter "peak-detect display readout, 154 words per bucket; full record in SRAM" hash 304a89cd721c20be detail 2 [0 0] read 1 len 1024
+Poll x2
+Status frozen=true words=524288 trig=262144
+RecallReadsOf record 54 {183296 154 1024}
+Arm #56 at 354ms: decimation_log2=4 normal post_words=262144 pre_words=262144 trigger_hysteresis=4 trigger_level=128
+frame seq 55 len 2048 content peak-pairs flags 1 sample 2.464e-06 win 2029 trig true kind 1 node "edge" at 1024.0000 decim 16 depth 524288 filter "peak-detect display readout, 154 words per bucket; full record in SRAM" hash 304a89cd721c20be detail 2 [0 0] read 1 len 1024
+Poll x2
+Status frozen=true words=524288 trig=262144
+RecallReadsOf record 55 {183296 154 1024}
+Arm #57 at 355ms: decimation_log2=4 normal post_words=262144 pre_words=262144 trigger_hysteresis=4 trigger_level=128
+frame seq 56 len 2048 content peak-pairs flags 1 sample 2.464e-06 win 2029 trig true kind 1 node "edge" at 1024.0000 decim 16 depth 524288 filter "peak-detect display readout, 154 words per bucket; full record in SRAM" hash 304a89cd721c20be detail 2 [0 0] read 1 len 1024
+Poll x2
+Status frozen=true words=524288 trig=262144
+RecallReadsOf record 56 {183296 154 1024}
+Arm #58 at 356ms: decimation_log2=4 normal post_words=262144 pre_words=262144 trigger_hysteresis=4 trigger_level=128
+frame seq 57 len 2048 content peak-pairs flags 1 sample 2.464e-06 win 2029 trig true kind 1 node "edge" at 1024.0000 decim 16 depth 524288 filter "peak-detect display readout, 154 words per bucket; full record in SRAM" hash 304a89cd721c20be detail 2 [0 0] read 1 len 1024
+Poll x2
+Status frozen=true words=524288 trig=262144
+RecallReadsOf record 57 {183296 154 1024}
+Arm #59 at 357ms: decimation_log2=4 normal post_words=262144 pre_words=262144 trigger_hysteresis=4 trigger_level=128
+frame seq 58 len 2048 content peak-pairs flags 1 sample 2.464e-06 win 2029 trig true kind 1 node "edge" at 1024.0000 decim 16 depth 524288 filter "peak-detect display readout, 154 words per bucket; full record in SRAM" hash 304a89cd721c20be detail 2 [0 0] read 1 len 1024
+Poll x2
+Status frozen=true words=524288 trig=262144
+RecallReadsOf record 58 {183296 154 1024}
+Arm #60 at 358ms: decimation_log2=4 normal post_words=262144 pre_words=262144 trigger_hysteresis=4 trigger_level=128
+frame seq 59 len 2048 content peak-pairs flags 1 sample 2.464e-06 win 2029 trig true kind 1 node "edge" at 1024.0000 decim 16 depth 524288 filter "peak-detect display readout, 154 words per bucket; full record in SRAM" hash 304a89cd721c20be detail 2 [0 0] read 1 len 1024
+Poll x2
+Status frozen=true words=524288 trig=262144
+RecallReadsOf record 59 {183296 154 1024}
+Arm #61 at 359ms: decimation_log2=4 normal post_words=262144 pre_words=262144 trigger_hysteresis=4 trigger_level=128
+frame seq 60 len 2048 content peak-pairs flags 1 sample 2.464e-06 win 2029 trig true kind 1 node "edge" at 1024.0000 decim 16 depth 524288 filter "peak-detect display readout, 154 words per bucket; full record in SRAM" hash 304a89cd721c20be detail 2 [0 0] read 1 len 1024
+Poll x2
+Status frozen=true words=524288 trig=262144
+RecallReadsOf record 60 {183296 154 1024}
+Arm #62 at 360ms: decimation_log2=4 normal post_words=262144 pre_words=262144 trigger_hysteresis=4 trigger_level=128
+frame seq 61 len 2048 content peak-pairs flags 1 sample 2.464e-06 win 2029 trig true kind 1 node "edge" at 1024.0000 decim 16 depth 524288 filter "peak-detect display readout, 154 words per bucket; full record in SRAM" hash 304a89cd721c20be detail 2 [0 0] read 1 len 1024
+Poll x2
+Status frozen=true words=524288 trig=262144
+RecallReadsOf record 61 {183296 154 1024}
+Arm #63 at 361ms: decimation_log2=4 normal post_words=262144 pre_words=262144 trigger_hysteresis=4 trigger_level=128
+frame seq 62 len 2048 content peak-pairs flags 1 sample 2.464e-06 win 2029 trig true kind 1 node "edge" at 1024.0000 decim 16 depth 524288 filter "peak-detect display readout, 154 words per bucket; full record in SRAM" hash 304a89cd721c20be detail 2 [0 0] read 1 len 1024
+Poll x2
+Status frozen=true words=524288 trig=262144
+RecallReadsOf record 62 {183296 154 1024}
+Arm #64 at 362ms: decimation_log2=4 normal post_words=262144 pre_words=262144 trigger_hysteresis=4 trigger_level=128
+frame seq 63 len 2048 content peak-pairs flags 1 sample 2.464e-06 win 2029 trig true kind 1 node "edge" at 1024.0000 decim 16 depth 524288 filter "peak-detect display readout, 154 words per bucket; full record in SRAM" hash 304a89cd721c20be detail 2 [0 0] read 1 len 1024
+Poll x2
+Status frozen=true words=524288 trig=262144
+RecallReadsOf record 63 {183296 154 1024}
+Arm #65 at 363ms: decimation_log2=4 normal post_words=262144 pre_words=262144 trigger_hysteresis=4 trigger_level=128
+frame seq 64 len 2048 content peak-pairs flags 1 sample 2.464e-06 win 2029 trig true kind 1 node "edge" at 1024.0000 decim 16 depth 524288 filter "peak-detect display readout, 154 words per bucket; full record in SRAM" hash 304a89cd721c20be detail 2 [0 0] read 1 len 1024
+Poll x2
+Status frozen=true words=524288 trig=262144
+RecallReadsOf record 64 {183296 154 1024}
+Arm #66 at 364ms: decimation_log2=4 normal post_words=262144 pre_words=262144 trigger_hysteresis=4 trigger_level=128
+frame seq 65 len 2048 content peak-pairs flags 1 sample 2.464e-06 win 2029 trig true kind 1 node "edge" at 1024.0000 decim 16 depth 524288 filter "peak-detect display readout, 154 words per bucket; full record in SRAM" hash 304a89cd721c20be detail 2 [0 0] read 1 len 1024
+Poll x2
+Status frozen=true words=524288 trig=262144
+RecallReadsOf record 65 {183296 154 1024}
+Arm #67 at 365ms: decimation_log2=4 normal post_words=262144 pre_words=262144 trigger_hysteresis=4 trigger_level=128
+frame seq 66 len 2048 content peak-pairs flags 1 sample 2.464e-06 win 2029 trig true kind 1 node "edge" at 1024.0000 decim 16 depth 524288 filter "peak-detect display readout, 154 words per bucket; full record in SRAM" hash 304a89cd721c20be detail 2 [0 0] read 1 len 1024
+Poll x2
+Status frozen=true words=524288 trig=262144
+RecallReadsOf record 66 {183296 154 1024}
+Arm #68 at 366ms: decimation_log2=4 normal post_words=262144 pre_words=262144 trigger_hysteresis=4 trigger_level=128
+frame seq 67 len 2048 content peak-pairs flags 1 sample 2.464e-06 win 2029 trig true kind 1 node "edge" at 1024.0000 decim 16 depth 524288 filter "peak-detect display readout, 154 words per bucket; full record in SRAM" hash 304a89cd721c20be detail 2 [0 0] read 1 len 1024
+Poll x2
+Status frozen=true words=524288 trig=262144
+RecallReadsOf record 67 {183296 154 1024}
+Arm #69 at 367ms: decimation_log2=4 normal post_words=262144 pre_words=262144 trigger_hysteresis=4 trigger_level=128
+frame seq 68 len 2048 content peak-pairs flags 1 sample 2.464e-06 win 2029 trig true kind 1 node "edge" at 1024.0000 decim 16 depth 524288 filter "peak-detect display readout, 154 words per bucket; full record in SRAM" hash 304a89cd721c20be detail 2 [0 0] read 1 len 1024
+Poll x2
+Status frozen=true words=524288 trig=262144
+RecallReadsOf record 68 {183296 154 1024}
+Arm #70 at 368ms: decimation_log2=4 normal post_words=262144 pre_words=262144 trigger_hysteresis=4 trigger_level=128
+frame seq 69 len 2048 content peak-pairs flags 1 sample 2.464e-06 win 2029 trig true kind 1 node "edge" at 1024.0000 decim 16 depth 524288 filter "peak-detect display readout, 154 words per bucket; full record in SRAM" hash 304a89cd721c20be detail 2 [0 0] read 1 len 1024
+Poll x2
+Status frozen=true words=524288 trig=262144
+RecallReadsOf record 69 {183296 154 1024}
+Arm #71 at 369ms: decimation_log2=4 normal post_words=262144 pre_words=262144 trigger_hysteresis=4 trigger_level=128
+frame seq 70 len 2048 content peak-pairs flags 1 sample 2.464e-06 win 2029 trig true kind 1 node "edge" at 1024.0000 decim 16 depth 524288 filter "peak-detect display readout, 154 words per bucket; full record in SRAM" hash 304a89cd721c20be detail 2 [0 0] read 1 len 1024
+Poll x2
+Status frozen=true words=524288 trig=262144
+RecallReadsOf record 70 {183296 154 1024}
+Arm #72 at 370ms: decimation_log2=4 normal post_words=262144 pre_words=262144 trigger_hysteresis=4 trigger_level=128
+frame seq 71 len 2048 content peak-pairs flags 1 sample 2.464e-06 win 2029 trig true kind 1 node "edge" at 1024.0000 decim 16 depth 524288 filter "peak-detect display readout, 154 words per bucket; full record in SRAM" hash 304a89cd721c20be detail 2 [0 0] read 1 len 1024
+Poll x2
+Status frozen=true words=524288 trig=262144
+RecallReadsOf record 71 {183296 154 1024}
+Arm #73 at 371ms: decimation_log2=4 normal post_words=262144 pre_words=262144 trigger_hysteresis=4 trigger_level=128
+frame seq 72 len 2048 content peak-pairs flags 1 sample 2.464e-06 win 2029 trig true kind 1 node "edge" at 1024.0000 decim 16 depth 524288 filter "peak-detect display readout, 154 words per bucket; full record in SRAM" hash 304a89cd721c20be detail 2 [0 0] read 1 len 1024
+Poll x2
+Status frozen=true words=524288 trig=262144
+RecallReadsOf record 72 {183296 154 1024}
+Arm #74 at 372ms: decimation_log2=4 normal post_words=262144 pre_words=262144 trigger_hysteresis=4 trigger_level=128
+frame seq 73 len 2048 content peak-pairs flags 1 sample 2.464e-06 win 2029 trig true kind 1 node "edge" at 1024.0000 decim 16 depth 524288 filter "peak-detect display readout, 154 words per bucket; full record in SRAM" hash 304a89cd721c20be detail 2 [0 0] read 1 len 1024
+Poll x2
+Status frozen=true words=524288 trig=262144
+RecallReadsOf record 73 {183296 154 1024}
+Arm #75 at 373ms: decimation_log2=4 normal post_words=262144 pre_words=262144 trigger_hysteresis=4 trigger_level=128
+frame seq 74 len 2048 content peak-pairs flags 1 sample 2.464e-06 win 2029 trig true kind 1 node "edge" at 1024.0000 decim 16 depth 524288 filter "peak-detect display readout, 154 words per bucket; full record in SRAM" hash 304a89cd721c20be detail 2 [0 0] read 1 len 1024
+Poll x2
+Status frozen=true words=524288 trig=262144
+RecallReadsOf record 74 {183296 154 1024}
+Arm #76 at 374ms: decimation_log2=4 normal post_words=262144 pre_words=262144 trigger_hysteresis=4 trigger_level=128
+frame seq 75 len 2048 content peak-pairs flags 1 sample 2.464e-06 win 2029 trig true kind 1 node "edge" at 1024.0000 decim 16 depth 524288 filter "peak-detect display readout, 154 words per bucket; full record in SRAM" hash 304a89cd721c20be detail 2 [0 0] read 1 len 1024
+Poll x2
+Status frozen=true words=524288 trig=262144
+RecallReadsOf record 75 {183296 154 1024}
+Arm #77 at 375ms: decimation_log2=4 normal post_words=262144 pre_words=262144 trigger_hysteresis=4 trigger_level=128
+frame seq 76 len 2048 content peak-pairs flags 1 sample 2.464e-06 win 2029 trig true kind 1 node "edge" at 1024.0000 decim 16 depth 524288 filter "peak-detect display readout, 154 words per bucket; full record in SRAM" hash 304a89cd721c20be detail 2 [0 0] read 1 len 1024
+Poll x2
+Status frozen=true words=524288 trig=262144
+RecallReadsOf record 76 {183296 154 1024}
+Arm #78 at 376ms: decimation_log2=4 normal post_words=262144 pre_words=262144 trigger_hysteresis=4 trigger_level=128
+frame seq 77 len 2048 content peak-pairs flags 1 sample 2.464e-06 win 2029 trig true kind 1 node "edge" at 1024.0000 decim 16 depth 524288 filter "peak-detect display readout, 154 words per bucket; full record in SRAM" hash 304a89cd721c20be detail 2 [0 0] read 1 len 1024
+Poll x2
+Status frozen=true words=524288 trig=262144
+RecallReadsOf record 77 {183296 154 1024}
+Arm #79 at 377ms: decimation_log2=4 normal post_words=262144 pre_words=262144 trigger_hysteresis=4 trigger_level=128
+frame seq 78 len 2048 content peak-pairs flags 1 sample 2.464e-06 win 2029 trig true kind 1 node "edge" at 1024.0000 decim 16 depth 524288 filter "peak-detect display readout, 154 words per bucket; full record in SRAM" hash 304a89cd721c20be detail 2 [0 0] read 1 len 1024
+Poll x2
+Status frozen=true words=524288 trig=262144
+RecallReadsOf record 78 {183296 154 1024}
+Arm #80 at 378ms: decimation_log2=4 normal post_words=262144 pre_words=262144 trigger_hysteresis=4 trigger_level=128
+frame seq 79 len 2048 content peak-pairs flags 1 sample 2.464e-06 win 2029 trig true kind 1 node "edge" at 1024.0000 decim 16 depth 524288 filter "peak-detect display readout, 154 words per bucket; full record in SRAM" hash 304a89cd721c20be detail 2 [0 0] read 1 len 1024
+Poll x2
+Status frozen=true words=524288 trig=262144
+RecallReadsOf record 79 {183296 154 1024}
+Arm #81 at 379ms: decimation_log2=4 normal post_words=262144 pre_words=262144 trigger_hysteresis=4 trigger_level=128
+frame seq 80 len 2048 content peak-pairs flags 1 sample 2.464e-06 win 2029 trig true kind 1 node "edge" at 1024.0000 decim 16 depth 524288 filter "peak-detect display readout, 154 words per bucket; full record in SRAM" hash 304a89cd721c20be detail 2 [0 0] read 1 len 1024
+Poll x2
+Status frozen=true words=524288 trig=262144
+RecallReadsOf record 80 {183296 154 1024}
+Arm #82 at 380ms: decimation_log2=4 normal post_words=262144 pre_words=262144 trigger_hysteresis=4 trigger_level=128
+frame seq 81 len 2048 content peak-pairs flags 1 sample 2.464e-06 win 2029 trig true kind 1 node "edge" at 1024.0000 decim 16 depth 524288 filter "peak-detect display readout, 154 words per bucket; full record in SRAM" hash 304a89cd721c20be detail 2 [0 0] read 1 len 1024
+Poll x2
+Status frozen=true words=524288 trig=262144
+RecallReadsOf record 81 {183296 154 1024}
+Arm #83 at 381ms: decimation_log2=4 normal post_words=262144 pre_words=262144 trigger_hysteresis=4 trigger_level=128
+frame seq 82 len 2048 content peak-pairs flags 1 sample 2.464e-06 win 2029 trig true kind 1 node "edge" at 1024.0000 decim 16 depth 524288 filter "peak-detect display readout, 154 words per bucket; full record in SRAM" hash 304a89cd721c20be detail 2 [0 0] read 1 len 1024
+Poll x2
+Status frozen=true words=524288 trig=262144
+RecallReadsOf record 82 {183296 154 1024}
+Arm #84 at 382ms: decimation_log2=4 normal post_words=262144 pre_words=262144 trigger_hysteresis=4 trigger_level=128
+frame seq 83 len 2048 content peak-pairs flags 1 sample 2.464e-06 win 2029 trig true kind 1 node "edge" at 1024.0000 decim 16 depth 524288 filter "peak-detect display readout, 154 words per bucket; full record in SRAM" hash 304a89cd721c20be detail 2 [0 0] read 1 len 1024
+Poll x2
+Status frozen=true words=524288 trig=262144
+RecallReadsOf record 83 {183296 154 1024}
+Arm #85 at 383ms: decimation_log2=4 normal post_words=262144 pre_words=262144 trigger_hysteresis=4 trigger_level=128
+frame seq 84 len 2048 content peak-pairs flags 1 sample 2.464e-06 win 2029 trig true kind 1 node "edge" at 1024.0000 decim 16 depth 524288 filter "peak-detect display readout, 154 words per bucket; full record in SRAM" hash 304a89cd721c20be detail 2 [0 0] read 1 len 1024
+Poll x2
+Status frozen=true words=524288 trig=262144
+RecallReadsOf record 84 {183296 154 1024}
+Arm #86 at 384ms: decimation_log2=4 normal post_words=262144 pre_words=262144 trigger_hysteresis=4 trigger_level=128
+frame seq 85 len 2048 content peak-pairs flags 1 sample 2.464e-06 win 2029 trig true kind 1 node "edge" at 1024.0000 decim 16 depth 524288 filter "peak-detect display readout, 154 words per bucket; full record in SRAM" hash 304a89cd721c20be detail 2 [0 0] read 1 len 1024
+Poll x2
+Status frozen=true words=524288 trig=262144
+RecallReadsOf record 85 {183296 154 1024}
+Arm #87 at 385ms: decimation_log2=4 normal post_words=262144 pre_words=262144 trigger_hysteresis=4 trigger_level=128
+frame seq 86 len 2048 content peak-pairs flags 1 sample 2.464e-06 win 2029 trig true kind 1 node "edge" at 1024.0000 decim 16 depth 524288 filter "peak-detect display readout, 154 words per bucket; full record in SRAM" hash 304a89cd721c20be detail 2 [0 0] read 1 len 1024
+Poll x2
+Status frozen=true words=524288 trig=262144
+RecallReadsOf record 86 {183296 154 1024}
+Arm #88 at 386ms: decimation_log2=4 normal post_words=262144 pre_words=262144 trigger_hysteresis=4 trigger_level=128
+frame seq 87 len 2048 content peak-pairs flags 1 sample 2.464e-06 win 2029 trig true kind 1 node "edge" at 1024.0000 decim 16 depth 524288 filter "peak-detect display readout, 154 words per bucket; full record in SRAM" hash 304a89cd721c20be detail 2 [0 0] read 1 len 1024
+Poll x2
+Status frozen=true words=524288 trig=262144
+RecallReadsOf record 87 {183296 154 1024}
+Arm #89 at 387ms: decimation_log2=4 normal post_words=262144 pre_words=262144 trigger_hysteresis=4 trigger_level=128
+frame seq 88 len 2048 content peak-pairs flags 1 sample 2.464e-06 win 2029 trig true kind 1 node "edge" at 1024.0000 decim 16 depth 524288 filter "peak-detect display readout, 154 words per bucket; full record in SRAM" hash 304a89cd721c20be detail 2 [0 0] read 1 len 1024
+Poll x2
+Status frozen=true words=524288 trig=262144
+RecallReadsOf record 88 {183296 154 1024}
+Arm #90 at 388ms: decimation_log2=4 normal post_words=262144 pre_words=262144 trigger_hysteresis=4 trigger_level=128
+frame seq 89 len 2048 content peak-pairs flags 1 sample 2.464e-06 win 2029 trig true kind 1 node "edge" at 1024.0000 decim 16 depth 524288 filter "peak-detect display readout, 154 words per bucket; full record in SRAM" hash 304a89cd721c20be detail 2 [0 0] read 1 len 1024
+Poll x2
+Status frozen=true words=524288 trig=262144
+RecallReadsOf record 89 {183296 154 1024}
+Arm #91 at 389ms: decimation_log2=4 normal post_words=262144 pre_words=262144 trigger_hysteresis=4 trigger_level=128
+frame seq 90 len 2048 content peak-pairs flags 1 sample 2.464e-06 win 2029 trig true kind 1 node "edge" at 1024.0000 decim 16 depth 524288 filter "peak-detect display readout, 154 words per bucket; full record in SRAM" hash 304a89cd721c20be detail 2 [0 0] read 1 len 1024
+Poll x2
+Status frozen=true words=524288 trig=262144
+RecallReadsOf record 90 {183296 154 1024}
+Arm #92 at 390ms: decimation_log2=4 normal post_words=262144 pre_words=262144 trigger_hysteresis=4 trigger_level=128
+frame seq 91 len 2048 content peak-pairs flags 1 sample 2.464e-06 win 2029 trig true kind 1 node "edge" at 1024.0000 decim 16 depth 524288 filter "peak-detect display readout, 154 words per bucket; full record in SRAM" hash 304a89cd721c20be detail 2 [0 0] read 1 len 1024
+Poll x2
+Status frozen=true words=524288 trig=262144
+RecallReadsOf record 91 {183296 154 1024}
+Arm #93 at 391ms: decimation_log2=4 normal post_words=262144 pre_words=262144 trigger_hysteresis=4 trigger_level=128
+frame seq 92 len 2048 content peak-pairs flags 1 sample 2.464e-06 win 2029 trig true kind 1 node "edge" at 1024.0000 decim 16 depth 524288 filter "peak-detect display readout, 154 words per bucket; full record in SRAM" hash 304a89cd721c20be detail 2 [0 0] read 1 len 1024
+Poll x2
+Status frozen=true words=524288 trig=262144
+RecallReadsOf record 92 {183296 154 1024}
+Arm #94 at 392ms: decimation_log2=4 normal post_words=262144 pre_words=262144 trigger_hysteresis=4 trigger_level=128
+frame seq 93 len 2048 content peak-pairs flags 1 sample 2.464e-06 win 2029 trig true kind 1 node "edge" at 1024.0000 decim 16 depth 524288 filter "peak-detect display readout, 154 words per bucket; full record in SRAM" hash 304a89cd721c20be detail 2 [0 0] read 1 len 1024
+Poll x2
+Status frozen=true words=524288 trig=262144
+RecallReadsOf record 93 {183296 154 1024}
+Arm #95 at 393ms: decimation_log2=4 normal post_words=262144 pre_words=262144 trigger_hysteresis=4 trigger_level=128
+frame seq 94 len 2048 content peak-pairs flags 1 sample 2.464e-06 win 2029 trig true kind 1 node "edge" at 1024.0000 decim 16 depth 524288 filter "peak-detect display readout, 154 words per bucket; full record in SRAM" hash 304a89cd721c20be detail 2 [0 0] read 1 len 1024
+Poll x2
+Status frozen=true words=524288 trig=262144
+RecallReadsOf record 94 {183296 154 1024}
+Arm #96 at 394ms: decimation_log2=4 normal post_words=262144 pre_words=262144 trigger_hysteresis=4 trigger_level=128
+frame seq 95 len 2048 content peak-pairs flags 1 sample 2.464e-06 win 2029 trig true kind 1 node "edge" at 1024.0000 decim 16 depth 524288 filter "peak-detect display readout, 154 words per bucket; full record in SRAM" hash 304a89cd721c20be detail 2 [0 0] read 1 len 1024
+Poll x2
+Status frozen=true words=524288 trig=262144
+RecallReadsOf record 95 {183296 154 1024}
+Arm #97 at 395ms: decimation_log2=4 normal post_words=262144 pre_words=262144 trigger_hysteresis=4 trigger_level=128
+frame seq 96 len 2048 content peak-pairs flags 1 sample 2.464e-06 win 2029 trig true kind 1 node "edge" at 1024.0000 decim 16 depth 524288 filter "peak-detect display readout, 154 words per bucket; full record in SRAM" hash 304a89cd721c20be detail 2 [0 0] read 1 len 1024
+Poll x2
+Status frozen=true words=524288 trig=262144
+RecallReadsOf record 96 {183296 154 1024}
+Arm #98 at 396ms: decimation_log2=4 normal post_words=262144 pre_words=262144 trigger_hysteresis=4 trigger_level=128
+frame seq 97 len 2048 content peak-pairs flags 1 sample 2.464e-06 win 2029 trig true kind 1 node "edge" at 1024.0000 decim 16 depth 524288 filter "peak-detect display readout, 154 words per bucket; full record in SRAM" hash 304a89cd721c20be detail 2 [0 0] read 1 len 1024
+Poll x2
+Status frozen=true words=524288 trig=262144
+RecallReadsOf record 97 {183296 154 1024}
+Arm #99 at 397ms: decimation_log2=4 normal post_words=262144 pre_words=262144 trigger_hysteresis=4 trigger_level=128
+frame seq 98 len 2048 content peak-pairs flags 1 sample 2.464e-06 win 2029 trig true kind 1 node "edge" at 1024.0000 decim 16 depth 524288 filter "peak-detect display readout, 154 words per bucket; full record in SRAM" hash 304a89cd721c20be detail 2 [0 0] read 1 len 1024
+Poll x2
+Status frozen=true words=524288 trig=262144
+RecallReadsOf record 98 {183296 154 1024}
+Arm #100 at 398ms: decimation_log2=4 normal post_words=262144 pre_words=262144 trigger_hysteresis=4 trigger_level=128
+frame seq 99 len 2048 content peak-pairs flags 1 sample 2.464e-06 win 2029 trig true kind 1 node "edge" at 1024.0000 decim 16 depth 524288 filter "peak-detect display readout, 154 words per bucket; full record in SRAM" hash 304a89cd721c20be detail 2 [0 0] read 1 len 1024
+Poll x2
+Status frozen=true words=524288 trig=262144
+RecallReadsOf record 99 {183296 154 1024}
+Arm #101 at 399ms: decimation_log2=4 normal post_words=262144 pre_words=262144 trigger_hysteresis=4 trigger_level=128
+frame seq 100 len 2048 content peak-pairs flags 1 sample 2.464e-06 win 2029 trig true kind 1 node "edge" at 1024.0000 decim 16 depth 524288 filter "peak-detect display readout, 154 words per bucket; full record in SRAM" hash 304a89cd721c20be detail 2 [0 0] read 1 len 1024
+Poll
+Halt at 400ms
