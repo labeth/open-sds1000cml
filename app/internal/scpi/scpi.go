@@ -1,8 +1,9 @@
-// Package scpi implements the LeCroy/Siglent short-form SCPI set (spec 11
-// §3): one \n-terminated line in, reply bytes out. Transport-agnostic —
-// VXI-11 feeds it today; a USB-TMC pump can feed the same HandleLine later.
-// The parser is a pure producer/consumer: setters stage, queries snapshot;
-// it NEVER touches the GPMC bus.
+// Package scpi is this scope's SCPI dialect over the core engine: the
+// LeCroy/Siglent legacy short-form set (spec 11 §3) in the core's Line
+// grammar, and the adapter that binds it to the engine, the front end, the
+// board's levels and the panel. One \n-terminated line in, reply bytes out;
+// VXI-11 feeds it. Setters stage, queries snapshot; nothing here touches
+// the GPMC bus.
 // ENGMODEL-OWNER-UNIT: FU-APP-SCPI
 package scpi
 
@@ -10,13 +11,12 @@ import (
 	"fmt"
 	"math"
 	"os"
-	"strconv"
 	"strings"
-	"sync"
 	"sync/atomic"
 	"time"
 
 	"github.com/labeth/open-dso-core/sample"
+	core "github.com/labeth/open-dso-core/scpi"
 	"github.com/labeth/open-sds1000cml/app/internal/engine"
 )
 
@@ -81,12 +81,12 @@ type traceDisplay interface {
 // TRLC-LINKS: REQ-SDS-024
 type Screenshot func() []byte
 
-// Error tokens (spec 11 §3.4) — emitted exactly, \n-terminated.
-const (
-	errUndefined  = "Undefined header"
-	errHeader     = "Command header error"
-	errSuffix     = "Header suffix out of range"
-	errOutOfRange = "Data out of range"
+// The error texts (spec 11 §3.4) the legacy grammar answers in place.
+var (
+	errUndefined  = core.StandardErrors[core.ErrUndefinedHeader]
+	errHeader     = core.StandardErrors[core.ErrHeader]
+	errSuffix     = core.StandardErrors[core.ErrHeaderSuffixRange]
+	errOutOfRange = core.StandardErrors[core.ErrDataOutOfRange]
 )
 
 // Handler answers SCPI lines against the scope, its front end and display.
@@ -102,16 +102,16 @@ type Handler struct {
 	// silent success).
 	setups SetupMemory
 
-	// mu serializes HandleLine against the cross-goroutine snapshot readers.
-	mu sync.Mutex
+	// eng runs the dialect; its lock serializes the commands against each
+	// other and guards the shadows below.
+	eng *core.Engine
 
 	// invs is the per-channel INVS (display invert) state, bit ch. It is
-	// atomic, not under mu: the web status snapshot, the LCD HUD builder and
-	// the panel (whose CH tab writes it) read it while HandleLine holds mu
-	// and calls into the panel (MENU, Cn:TRA).
+	// atomic, not under the engine's lock: the web status snapshot, the LCD
+	// HUD builder and the panel (whose CH tab writes it) read it while a
+	// command holds the lock and calls into the panel (MENU, Cn:TRA).
 	invs atomic.Uint32
 
-	chdr string // "SHORT" | "OFF" (power-on default SHORT)
 	wfSP int
 	wfNP int
 	wfFP int
@@ -151,17 +151,17 @@ func (h *Handler) tdivNow(st engine.Stats) float64 {
 // settle waits, unlocked and bounded, until a pending timebase is applied
 // (*OPC?, *WAI): it answered at once while the band switch still ran.
 // TRLC-LINKS: REQ-SDS-024
-func (h *Handler) settle() {
+func (h *Handler) settle(c *core.Call) {
 	if h.pendTdiv == 0 {
 		return
 	}
-	h.mu.Unlock()
-	defer h.mu.Lock()
-	for deadline := time.Now().Add(10 * time.Second); time.Now().Before(deadline); time.Sleep(20 * time.Millisecond) {
-		if math.Abs(h.sc.Snapshot().TdivS-h.pendTdiv) <= h.pendTdiv*1e-6 {
-			return
+	c.Unlocked(func() {
+		for deadline := time.Now().Add(10 * time.Second); time.Now().Before(deadline); time.Sleep(20 * time.Millisecond) {
+			if math.Abs(h.sc.Snapshot().TdivS-h.pendTdiv) <= h.pendTdiv*1e-6 {
+				return
+			}
 		}
-	}
+	})
 }
 
 // SetupMemory stores and recalls whole instrument setups in numbered slots
@@ -190,9 +190,7 @@ type cursorMeasure interface {
 // files) to a setup store.
 // TRLC-LINKS: REQ-SDS-024
 func (h *Handler) SetSetupMemory(m SetupMemory) {
-	h.mu.Lock()
-	h.setups = m
-	h.mu.Unlock()
+	h.eng.Do(func() { h.setups = m })
 }
 
 // setupSlots is the vendor's *SAV/*RCL range.
@@ -202,9 +200,9 @@ const setupSlots = 20
 // that need them then answer with an error.
 // TRLC-LINKS: REQ-SDS-024
 func New(sc Scope, fe Analog, lv Levels, disp Display, shot Screenshot, logf func(string, ...any)) *Handler {
-	return &Handler{
+	h := &Handler{
 		sc: sc, fe: fe, lv: lv, disp: disp, shot: shot, logf: logf,
-		chdr: "SHORT", wfSP: 1,
+		wfSP:   1,
 		tra:    [2]bool{true, true},
 		cpl:    [2]string{"D1M", "D1M"},
 		attn:   [2]float64{1, 1},
@@ -212,6 +210,8 @@ func New(sc Scope, fe Analog, lv Levels, disp Display, shot Screenshot, logf fun
 		trmd:   "AUTO",
 		serial: loadSerial(),
 	}
+	h.eng = core.New(h.dialect(), instrument{h})
+	return h
 }
 
 // Inverted reports the per-channel INVS (display invert) state. The SCPI
@@ -270,33 +270,7 @@ func loadSerial() string {
 // compound commands) and returns the concatenated reply bytes. Pure setters
 // are silent (spec 11: no OK acknowledgements).
 // TRLC-LINKS: REQ-SDS-024
-func (h *Handler) HandleLine(line []byte) []byte {
-	h.mu.Lock()
-	defer h.mu.Unlock()
-	var out []byte
-	rest := strings.TrimRight(string(line), "\r\n")
-	for more := true; more; {
-		var part string
-		part, rest, more = strings.Cut(rest, ";")
-		if part = strings.TrimSpace(part); part == "" {
-			continue
-		}
-		out = append(out, h.exec(part)...)
-	}
-	return out
-}
-
-// reply formats a query answer honoring the CHDR state.
-// TRLC-LINKS: REQ-SDS-024
-func (h *Handler) reply(header, value string) []byte {
-	if h.chdr == "OFF" {
-		return []byte(value + "\n")
-	}
-	return []byte(header + " " + value + "\n")
-}
-
-// TRLC-LINKS: REQ-SDS-024
-func errTok(tok string) []byte { return []byte(tok + "\n") }
+func (h *Handler) HandleLine(line []byte) []byte { return h.eng.Exec(line) }
 
 // sciV formats volts per the reply grammar: %.2E + upper-case V.
 // TRLC-LINKS: REQ-SDS-024
@@ -321,77 +295,10 @@ func saraStr(rate float64) string {
 	}
 }
 
-// exec runs one command (no ';').
+// parseNum is a legacy number with its unit suffix.
 // TRLC-LINKS: REQ-SDS-024
-func (h *Handler) exec(cmd string) []byte {
-	up := strings.ToUpper(cmd)
+func parseNum(s string) (float64, error) { return core.ParseLegacyNumber(s) }
 
-	// Channel-pair prefix Ca-Cb: (MEAD? delay between two channels).
-	if len(up) >= 6 && up[0] == 'C' && up[2] == '-' && up[3] == 'C' && up[5] == ':' {
-		a, b := int(up[1]-'0'), int(up[4]-'0')
-		if a < 1 || a > 2 || b < 1 || b > 2 || a == b {
-			return errTok(errSuffix)
-		}
-		head, arg := up[6:], ""
-		if i := strings.IndexByte(head, ' '); i >= 0 {
-			head, arg = head[:i], strings.TrimSpace(head[i+1:])
-		}
-		if head != "MEAD?" {
-			return errTok(errUndefined)
-		}
-		return h.mead(a-1, b-1, arg)
-	}
-
-	// Channel prefix Cn: (C1/C2 only; anything else is a suffix error).
-	ch := -1
-	rest := up
-	if len(up) >= 3 && up[0] == 'C' && up[2] == ':' && up[1] >= '0' && up[1] <= '9' {
-		n := int(up[1] - '0')
-		if n != 1 && n != 2 {
-			return errTok(errSuffix)
-		}
-		ch = n - 1
-		rest = up[3:]
-	}
-
-	head, arg := rest, ""
-	if i := strings.IndexByte(rest, ' '); i >= 0 {
-		head, arg = rest[:i], strings.TrimSpace(rest[i+1:])
-	}
-	if head == "" || strings.HasSuffix(head, ":") {
-		return errTok("Header separator error")
-	}
-
-	if ch >= 0 {
-		return h.execChannel(ch, head, arg)
-	}
-	return h.execGlobal(head, arg)
-}
-
+// chHeader is a channel reply's header, "C1:VDIV".
 // TRLC-LINKS: REQ-SDS-024
-func parseNum(s string) (float64, error) {
-	s = strings.TrimSpace(s)
-	// Strip a trailing SI unit (V, S, US, MS, NS...) if present.
-	up := strings.ToUpper(s)
-	mult := 1.0
-	for _, suf := range []struct {
-		s string
-		m float64
-	}{
-		{"NS", 1e-9},
-		{"US", 1e-6},
-		{"MS", 1e-3},
-		{"MV", 1e-3},
-		{"UV", 1e-6},
-		{"V", 1},
-		{"S", 1},
-	} {
-		if before, ok := strings.CutSuffix(up, suf.s); ok {
-			up = before
-			mult = suf.m
-			break
-		}
-	}
-	v, err := strconv.ParseFloat(strings.TrimSpace(up), 64)
-	return v * mult, err
-}
+func chHeader(ch int, h string) string { return fmt.Sprintf("C%d:%s", ch+1, h) }
