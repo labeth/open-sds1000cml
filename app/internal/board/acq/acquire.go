@@ -24,32 +24,92 @@ const (
 
 type acquirerFacet Board
 
-// Configure stages plan p: its decimation, its words around the trigger and
+// planPart is a configured plan as the plan fields of the fabric's capture
+// configuration: the source, the decimation, picking, and the record's
+// words with those before the trigger the plan asks for.
+type planPart struct {
+	cfg     sramcapture.Config // Source, DecimationLog2, Pick
+	words   uint32
+	pre     uint32 // words before the trigger, before a trigger's own delay
+	perWord int
+	sampleS float64
+}
+
+// Configure stages plan p: its decimation, its words around the trigger
+// (PretrigFrac's share of the record and PretrigRoom beyond it) and
 // whether decimation picks. The trigger is staged by Trigger.Program; the
-// next Arm commits both in one write.
+// next Arm commits both in one write, in either order.
 // TRLC-LINKS: REQ-SDS-008
 func (a *acquirerFacet) Configure(p hal.Plan) error {
 	b := (*Board)(a)
-	c, err := planConfig(p)
+	pp, err := planConfig(p)
 	if err != nil {
 		return err
 	}
-	b.plan = p
-	b.staged.Source, b.staged.DecimationLog2, b.staged.Pick = c.Source, c.DecimationLog2, c.Pick
-	b.staged.PreWords, b.staged.PostWords = c.PreWords, c.PostWords
+	b.plan, b.planned = p, pp
 	return nil
 }
 
-// StageCapture stages a whole capture configuration, plan and trigger as
-// the fabric takes them in its one arm write. The engine's planner builds
-// it from the instrument's settings until the trigger settings reach the
-// board in volts. COMMIT.
+// Staged is the configuration the next Arm commits: the configured plan
+// and the programmed trigger.
 // TRLC-LINKS: REQ-SDS-008
-func (b *Board) StageCapture(c sramcapture.Config) { b.staged = c }
+func (b *Board) Staged() sramcapture.Config { return compose(b.planned, b.trig.staged) }
 
-// Staged is the configuration the next Arm commits.
+// compose is plan pp with trigger tp in one capture configuration: the
+// zone trigger's fire delay is held before the trigger too.
+// TRLC-LINKS: REQ-SDS-008, REQ-SDS-014
+func compose(pp planPart, tp trigPart) sramcapture.Config {
+	c := tp.cfg
+	c.Source, c.DecimationLog2, c.Pick = pp.cfg.Source, pp.cfg.DecimationLog2, pp.cfg.Pick
+	if pp.words == 0 {
+		return c
+	}
+	pre := pp.pre
+	if c.Zones.Enabled() && pp.sampleS > 0 {
+		pre = min(pre+uint32(tp.zoneDelayS/pp.sampleS)/uint32(pp.perWord), pp.words-1) //nolint:gosec // G115: perWord is 1 or 2
+	}
+	c.PreWords, c.PostWords = pre, pp.words-pre
+	return c
+}
+
+// Draft stages a capture's plan and trigger as Configure and Program do,
+// apart from what the next Arm commits: the owner drafts its settings at
+// every look while a capture waits, to see whether they changed. Its zero
+// value is unusable; Board.Draft makes one.
+type Draft struct {
+	b    *Board
+	plan planPart
+	trig trigPart
+}
+
+// Draft is a draft over the board's loaded image and front end, staging
+// nothing.
 // TRLC-LINKS: REQ-SDS-008
-func (b *Board) Staged() sramcapture.Config { return b.staged }
+func (b *Board) Draft() Draft { return Draft{b: b} }
+
+// Configure drafts plan p.
+// TRLC-LINKS: REQ-SDS-008
+func (d *Draft) Configure(p hal.Plan) error {
+	pp, err := planConfig(p)
+	if err == nil {
+		d.plan = pp
+	}
+	return err
+}
+
+// Program drafts trigger s.
+// TRLC-LINKS: REQ-SDS-011
+func (d *Draft) Program(s hal.TriggerSpec) error {
+	tp, err := d.b.trigConfig(s)
+	if err == nil {
+		d.trig = tp
+	}
+	return err
+}
+
+// Config is the drafted capture's configuration.
+// TRLC-LINKS: REQ-SDS-008
+func (d *Draft) Config() sramcapture.Config { return compose(d.plan, d.trig) }
 
 // Arm commits the staged capture and starts it. OWNER.
 // TRLC-LINKS: REQ-SDS-008
@@ -59,7 +119,7 @@ func (a *acquirerFacet) Arm() error {
 		return hal.Refuse("acquisition", "no SRAM capture fabric")
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), armTimeout)
-	err := b.mem.Arm(ctx, b.staged)
+	err := b.mem.Arm(ctx, b.Staged())
 	cancel()
 	b.count(func(d *boardDiag) { d.Arms++ })
 	if err != nil {

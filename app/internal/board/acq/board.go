@@ -41,7 +41,7 @@ type Board struct {
 
 	// acquisition state, owner only
 	plan     hal.Plan
-	staged   sramcapture.Config
+	planned  planPart // the configured plan's fields; the trigger's are trig.staged
 	state    hal.AcqState
 	rec      sramcapture.Metadata // the halted record Readout reads
 	reading  bool                 // inside a read: Service flushes the lamps only

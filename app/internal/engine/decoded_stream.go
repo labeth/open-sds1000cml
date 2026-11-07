@@ -120,7 +120,7 @@ func (e *Engine) decodedStreamConfig(p SerialParams, trig StreamTrigger) (sramca
 		c.Sequence.Qualify = false
 		c.Sequence.Elements[0] = sramcapture.SequenceElement{Kind: sramcapture.SequenceData, Value: streamNever, Mask: streamNever}
 	}
-	e.planHysteresis(&c, false)
+	e.planHysteresis(&c)
 	return c, nil
 }
 

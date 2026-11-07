@@ -335,6 +335,9 @@ type Engine struct {
 	sram                  acq.Memory // the board's record memory, for the paths the HAL does not cover yet
 	board                 *acq.Board // the acquisition board: the owner loop drives it through the HAL facets below
 	acqr                  hal.Acquirer
+	trg                   hal.Trigger // the board's trigger
+	draft                 acq.Draft   // the capture drafted at a look at the settings (owner)
+	halTrig               halTrigger  // the trigger's HAL terms, reused (owner)
 	plat                  hal.Platform
 	readYield             func()          // the readout's yield: the board's Service
 	rdx                   hal.Readout     // the board's readout
@@ -599,7 +602,10 @@ func (e *Engine) useBoard(b *acq.Board) {
 		e.mu.Unlock()
 	}, e.busErr)
 	b.SetImages(e.images)
-	e.acqr, e.plat = b.Acquirer(), b.Platform()
+	if e.interleaveCalibration != nil {
+		b.SetConverterOffsets(&e.interleaveCalibration.Offset)
+	}
+	e.acqr, e.plat, e.trg = b.Acquirer(), b.Platform(), b.Trigger()
 	e.readYield = e.plat.Service
 	e.rdx = b.Readout()
 }
@@ -621,6 +627,21 @@ func (e *Engine) acquirer() hal.Acquirer { e.hw(); return e.acqr }
 
 // TRLC-LINKS: REQ-SDS-001
 func (e *Engine) platform() hal.Platform { e.hw(); return e.plat }
+
+// TRLC-LINKS: REQ-SDS-011
+func (e *Engine) trigger() hal.Trigger { e.hw(); return e.trg }
+
+// setInterleaveCalibration uses converter calibration cal; the board's
+// trigger re-arm band spans its offsets.
+// TRLC-LINKS: REQ-SDS-016
+func (e *Engine) setInterleaveCalibration(cal *InterleaveCalibration) {
+	e.interleaveCalibration = cal
+	var off *[2][5]float64
+	if cal != nil {
+		off = &cal.Offset
+	}
+	e.hw().SetConverterOffsets(off)
+}
 
 // TRLC-LINKS: REQ-SDS-001
 func (e *Engine) yield() func() { e.hw(); return e.readYield }
