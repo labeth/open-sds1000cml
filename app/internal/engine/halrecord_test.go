@@ -127,8 +127,6 @@ type memRecorder struct {
 
 var _ acq.Memory = (*memRecorder)(nil)
 
-const recWords = sramcapture.Words
-
 // cfgText is the configuration's fields that differ from the zero value.
 func cfgText(c sramcapture.Config) string {
 	b, err := json.Marshal(c)

@@ -8,12 +8,6 @@ import (
 	"github.com/labeth/open-sds1000cml/app/internal/iface"
 )
 
-// flushLEDs writes a staged lamp word (the board's panel plane). Besides
-// the frame boundary it runs between SRAM recall bursts, so a key press
-// lights its lamp at once instead of after a multi-second deep recall.
-// TRLC-LINKS: REQ-SDS-001, REQ-SDS-135
-func (e *Engine) flushLEDs() { e.hw().FlushLamps() }
-
 // serviceCommands flushes staged work at the frame boundary — the engine is
 // armed+filling here, never inside a halt window: the decoded stream's
 // requests and events, then the board's housekeeping (its panel plane: the

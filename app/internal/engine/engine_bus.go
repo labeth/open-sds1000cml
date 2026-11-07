@@ -144,13 +144,6 @@ func (e *Engine) w(sel, val uint16) {
 }
 
 // TRLC-LINKS: REQ-SDS-001
-func (e *Engine) w3(sel, val uint16) {
-	if err := e.b.Write(bus.PlaneCS3, sel, val); err != nil {
-		e.busErr(err)
-	}
-}
-
-// TRLC-LINKS: REQ-SDS-001
 func (e *Engine) r(sel uint16) uint16 {
 	v, err := e.b.Read(bus.PlaneCS1, sel)
 	if err != nil {
