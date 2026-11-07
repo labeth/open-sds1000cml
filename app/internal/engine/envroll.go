@@ -348,10 +348,11 @@ func (e *Engine) rollUpdate(norm bool) {
 	// Copy the ring in scroll order (oldest first) into the frame, snapshot
 	// it, and reduce the snapshot deque to the 800-column band.
 	f := e.arena.Write()
+	c1, c2 := f.Codes8(0), f.Codes8(1)
 	for i := range rollWin {
 		j := (e.rollPos + i) % rollWin
-		f.Codes8(0)[i] = e.rollRing1[j]
-		f.Codes8(1)[i] = e.rollRing2[j]
+		c1[i] = e.rollRing1[j]
+		c2[i] = e.rollRing2[j]
 	}
 	e.rollSnap(f)
 	e.rollReduce(f)

@@ -178,16 +178,17 @@ func (w *sramFrameWriter) Write(b []byte) (int, error) {
 // writeWords is Write word by word, for any samples-a-word count.
 // TRLC-LINKS: REQ-SDS-040
 func (w *sramFrameWriter) writeWords(b []byte) (int, error) {
+	c1, c2, q1, q2 := w.f.Codes8(0), w.f.Codes8(1), w.f.Precision(0), w.f.Precision(1)
 	for i := 0; i < len(b); i += 4 {
 		if w.m.FractionBits == 8 {
 			a, c := binary.LittleEndian.Uint16(b[i:]), binary.LittleEndian.Uint16(b[i+2:])
-			w.f.Precision(0)[w.n], w.f.Precision(1)[w.n] = a, c
-			w.f.Codes8(0)[w.n], w.f.Codes8(1)[w.n] = roundQ8(a), roundQ8(c)
+			q1[w.n], q2[w.n] = a, c
+			c1[w.n], c2[w.n] = roundQ8(a), roundQ8(c)
 			w.n++
 		} else {
-			w.f.Codes8(0)[w.n], w.f.Codes8(1)[w.n] = b[i], b[i+1]
+			c1[w.n], c2[w.n] = b[i], b[i+1]
 			w.n++
-			w.f.Codes8(0)[w.n], w.f.Codes8(1)[w.n] = b[i+2], b[i+3]
+			c1[w.n], c2[w.n] = b[i+2], b[i+3]
 			w.n++
 		}
 	}
@@ -943,8 +944,9 @@ func (e *Engine) calibrateRecord(f *sample.Frame, q1, q2 []uint16, savedScale [2
 func (c *frameConditioner) eres(f *sample.Frame, q1, q2 []uint16, length int) {
 	if len(f.Precision(0)) != f.Len() {
 		f.Traces[0].Precision, f.Traces[1].Precision = qBuffer(q1, f.Len()), qBuffer(q2, f.Len())
+		q1, q2, c1, c2 := f.Precision(0), f.Precision(1), f.Codes8(0), f.Codes8(1)
 		for i := range f.Len() {
-			f.Precision(0)[i], f.Precision(1)[i] = uint16(f.Codes8(0)[i])<<8, uint16(f.Codes8(1)[i])<<8
+			q1[i], q2[i] = uint16(c1[i])<<8, uint16(c2[i])<<8
 		}
 	}
 	c.scratch = qBuffer(c.scratch, f.Len())
@@ -1086,8 +1088,9 @@ func (e *Engine) averageFrame(f *sample.Frame, avg *sramAverage, cfg sramcapture
 	}
 	if len(f.Precision(0)) != f.Len() {
 		f.Traces[0].Precision, f.Traces[1].Precision = qBuffer(q1, f.Len()), qBuffer(q2, f.Len())
+		q1, q2, c1, c2 := f.Precision(0), f.Precision(1), f.Codes8(0), f.Codes8(1)
 		for i := range f.Len() {
-			f.Precision(0)[i], f.Precision(1)[i] = uint16(f.Codes8(0)[i])<<8, uint16(f.Codes8(1)[i])<<8
+			q1[i], q2[i] = uint16(c1[i])<<8, uint16(c2[i])<<8
 		}
 	}
 	count := 0

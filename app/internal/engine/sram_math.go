@@ -130,6 +130,7 @@ func (a *sramAverage) push(f *sample.Frame, target int) int {
 	// 1/target share for the new record's.
 	running, t := a.count >= target, uint32(target) //nolint:gosec // G115: an average of at most 256 records
 	byT := newRecip(t)
+	p1, p2, c1, c2 := f.Precision(0), f.Precision(1), f.Codes8(0), f.Codes8(1)
 	for i := range m {
 		if a.count == 0 {
 			a.sum1[i] = 0
@@ -139,10 +140,10 @@ func (a *sramAverage) push(f *sample.Frame, target int) int {
 		if j < 0 || j >= n {
 			continue
 		}
-		x1, x2 := uint32(f.Precision(0)[j]), uint32(f.Precision(1)[j])
+		x1, x2 := uint32(p1[j]), uint32(p2[j])
 		if frac != 0 && j+1 < n {
-			x1 = uint32(math.Round(float64(f.Precision(0)[j])*(1-frac) + float64(f.Precision(0)[j+1])*frac))
-			x2 = uint32(math.Round(float64(f.Precision(1)[j])*(1-frac) + float64(f.Precision(1)[j+1])*frac))
+			x1 = uint32(math.Round(float64(p1[j])*(1-frac) + float64(p1[j+1])*frac))
+			x2 = uint32(math.Round(float64(p2[j])*(1-frac) + float64(p2[j+1])*frac))
 		}
 		if running {
 			a.sum1[i] -= byT.div(a.sum1[i])
@@ -155,10 +156,10 @@ func (a *sramAverage) push(f *sample.Frame, target int) int {
 	byC := newRecip(count)
 	for i := a.lo; i < a.hi; i++ {
 		out := i - a.lo
-		f.Precision(0)[out] = uint16(byC.div(a.sum1[i] + count/2)) //nolint:gosec // G115: a mean of Q8.8 codes
-		f.Precision(1)[out] = uint16(byC.div(a.sum2[i] + count/2)) //nolint:gosec // G115: a mean of Q8.8 codes
-		f.Codes8(0)[out] = roundQ8(f.Precision(0)[out])
-		f.Codes8(1)[out] = roundQ8(f.Precision(1)[out])
+		p1[out] = uint16(byC.div(a.sum1[i] + count/2)) //nolint:gosec // G115: a mean of Q8.8 codes
+		p2[out] = uint16(byC.div(a.sum2[i] + count/2)) //nolint:gosec // G115: a mean of Q8.8 codes
+		c1[out] = roundQ8(p1[out])
+		c2[out] = roundQ8(p2[out])
 	}
 	f.SetLen(a.hi - a.lo)
 	f.Traces[0].Precision = f.Precision(0)[:f.Len()]

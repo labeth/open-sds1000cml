@@ -299,8 +299,9 @@ func (e *Engine) drainQuiet(f *sample.Frame, cols int) {
 		if n > 0 {
 			fillC1, fillC2 = f.Codes8(0)[n-1], f.Codes8(1)[n-1]
 		}
+		c1, c2 := f.Codes8(0), f.Codes8(1)
 		for i := n; i < cols; i++ {
-			f.Codes8(0)[i], f.Codes8(1)[i] = fillC1, fillC2
+			c1[i], c2[i] = fillC1, fillC2
 		}
 		e.mu.Lock()
 		e.stats.ShortDrains++

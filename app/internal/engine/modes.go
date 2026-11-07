@@ -123,13 +123,14 @@ func (r *avgRing) reset(depth, width int) {
 func (r *avgRing) push(f *sample.Frame, edgeX float64) {
 	shift := int(math.Round(edgeX)) - r.width/2
 	c1, c2, vm := r.c1[r.pos], r.c2[r.pos], r.valid[r.pos]
+	f1, f2, n := f.Codes8(0), f.Codes8(1), f.Len()
 	for i := range r.width {
 		j := i + shift
-		if j < 0 || j >= f.Len() {
+		if j < 0 || j >= n {
 			vm[i] = false
 			continue
 		}
-		c1[i], c2[i], vm[i] = f.Codes8(0)[j], f.Codes8(1)[j], true
+		c1[i], c2[i], vm[i] = f1[j], f2[j], true
 	}
 	r.pos = (r.pos + 1) % r.depth
 	if r.cnt < r.depth {
@@ -145,6 +146,7 @@ func (r *avgRing) meanInto(f *sample.Frame) {
 	if r.cnt == 0 {
 		return
 	}
+	f1, f2 := f.Codes8(0), f.Codes8(1)
 	for i := range r.width {
 		var s1, s2, nc int
 		for k := range r.cnt {
@@ -156,11 +158,11 @@ func (r *avgRing) meanInto(f *sample.Frame) {
 			nc++
 		}
 		if nc == 0 {
-			f.Codes8(0)[i], f.Codes8(1)[i] = 128, 128
+			f1[i], f2[i] = 128, 128
 			continue
 		}
-		f.Codes8(0)[i] = uint8(s1 / nc) //nolint:gosec // G115: a mean of 8-bit codes
-		f.Codes8(1)[i] = uint8(s2 / nc) //nolint:gosec // G115: a mean of 8-bit codes
+		f1[i] = uint8(s1 / nc) //nolint:gosec // G115: a mean of 8-bit codes
+		f2[i] = uint8(s2 / nc) //nolint:gosec // G115: a mean of 8-bit codes
 	}
 	f.SetLen(r.width)
 	f.TriggerAt = float64(r.width) / 2

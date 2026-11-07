@@ -1350,9 +1350,10 @@ func drawThumbXY(sf Surface, f *sample.Frame, x0, y0, w, h int) {
 	}
 	step := max(1, valid/600)
 	px, py := -1, -1
+	c1, c2 := f.Codes8(0), f.Codes8(1)
 	for i := 0; i < valid; i += step {
-		x := x0 + 1 + int(float64(f.Codes8(0)[i])*float64(w-3)/255)
-		y := y0 + h - 2 - int(float64(f.Codes8(1)[i])*float64(h-3)/255)
+		x := x0 + 1 + int(float64(c1[i])*float64(w-3)/255)
+		y := y0 + h - 2 - int(float64(c2[i])*float64(h-3)/255)
 		if px >= 0 {
 			drawLine(sf, px, py, x, y, colMath)
 		}
