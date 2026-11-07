@@ -73,6 +73,16 @@ func (b *Board) ProbeImage(logf func(string, ...any)) Caps {
 	return c
 }
 
+// ImageCaps is the loaded image's capabilities, as ProbeImage read them.
+// ANY from the owner's view, as State.
+// TRLC-LINKS: REQ-SDS-013
+func (b *Board) ImageCaps() Caps { return b.trig.caps }
+
+// SetImageCaps takes capabilities probed elsewhere, for a board whose
+// fabric is a model (the engine's tests). OWNER.
+// TRLC-LINKS: REQ-SDS-013
+func (b *Board) SetImageCaps(c Caps) { b.trig.caps = c }
+
 // trigCaps is the loaded image's trigger nodes.
 // TRLC-LINKS: REQ-SDS-013
 func (b *Board) trigCaps() hal.TrigCaps {

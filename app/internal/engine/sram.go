@@ -235,7 +235,7 @@ func (e *Engine) serialLeadWords(p SRAMPlan, perWord int, words, pre uint32) uin
 // hasSerialHardware reports a matcher in the loaded image for any protocol.
 // TRLC-LINKS: REQ-SDS-013
 func (e *Engine) hasSerialHardware() bool {
-	return e.hardwareUART || e.hardwareI2C || e.hardwareSPI || e.hardwareSENT || e.hardwareMIL1553 || e.hardwareUSBLS || e.hardwareManchester || e.hardwarePacket != 0 || e.hardwareSymbol
+	return e.caps().UART || e.caps().I2C || e.caps().SPI || e.caps().SENT || e.caps().MIL1553 || e.caps().USBLS || e.caps().Manchester || e.caps().Packet != 0 || e.caps().Symbol
 }
 
 // sramConfigInto is sramConfig filling c in place: the config is 2.7 KB, and
@@ -251,7 +251,7 @@ func (e *Engine) sramConfigInto(c *sramcapture.Config) (SRAMPlan, float64, bool,
 	// video qualifier fires on decimated records too, its fire held until
 	// the record takes it.
 	e.stats.TdivMaxS = 0
-	if e.rawOnly {
+	if e.caps().RawOnly {
 		lim := rawScreenTdiv()
 		e.stats.TdivMaxS = lim
 		cur := e.band.TdivS
@@ -271,10 +271,10 @@ func (e *Engine) sramConfigInto(c *sramcapture.Config) (SRAMPlan, float64, bool,
 	norm, tp := e.norm, e.tp
 	e.mu.Unlock()
 	p := PlanSRAM(tdiv)
-	if e.acqMode.Load() == AcqPrecision && !e.rawOnly && !e.boxDecim {
+	if e.acqMode.Load() == AcqPrecision && !e.caps().RawOnly && !e.caps().BoxDecim {
 		p = PlanPrecisionSRAM(tdiv, uint8(e.precisionLog.Load())) //nolint:gosec // G115: a precision log2 of a few (SetPrecision)
 	}
-	if e.rawOnly && p.Log != 0 {
+	if e.caps().RawOnly && p.Log != 0 {
 		// The packet image records raw samples only: the deepest raw record.
 		p = SRAMPlan{Samples: int(sramcapture.SamplesPerChannel), SampleS: 2e-9, Screen: int(sramcapture.SamplesPerChannel)}
 	}
@@ -289,7 +289,7 @@ func (e *Engine) sramConfigInto(c *sramcapture.Config) (SRAMPlan, float64, bool,
 	mode := e.acqMode.Load()
 	filtered := mode == AcqAverage || mode == AcqPrecision || mode == AcqEres
 	budget := liveBudget(block, float64(p.Screen)*p.SampleS, math.Float64frombits(e.busSampleS.Load()))
-	if live, ok := acq.LiveSRAMPlan(p, budget); ok && (!e.singleArmed.Load() || filtered) && !e.rawOnly && liveDecimatesPlan(block, p) {
+	if live, ok := acq.LiveSRAMPlan(p, budget); ok && (!e.singleArmed.Load() || filtered) && !e.caps().RawOnly && liveDecimatesPlan(block, p) {
 		if block == blockSearch || block == blockSamples || block == blockSpectrum || block == blockBus {
 			live.Samples = min(live.Samples, max(int(leaseRecord*float64(live.Screen)), 8192))
 		}
@@ -299,7 +299,7 @@ func (e *Engine) sramConfigInto(c *sramcapture.Config) (SRAMPlan, float64, bool,
 	// trigger reads the raw samples (as the edge and the qualifier do; the
 	// zones judge the filter's words): the decode reads edges, which the
 	// precision filter's band smooths away
-	c.Pick = e.pickAlt && block == blockBus && c.DecimationLog2 != 0 && acq.HardwareSerialName(*c) != ""
+	c.Pick = e.caps().PickAlt && block == blockBus && c.DecimationLog2 != 0 && acq.HardwareSerialName(*c) != ""
 	return p, tdiv, norm, tp
 }
 
@@ -326,7 +326,7 @@ func (e *Engine) planSerial(c *sramcapture.Config, serial SerialParams, fallback
 	if acq.SymbolProtocol(serial.Proto) {
 		// ADR-SYMBOL-TRIGGER: the whole request compiles into the symbol
 		// trigger (it has no sequence trigger: the units are its window's).
-		if e.hardwareSymbol {
+		if e.caps().Symbol {
 			c.Symbol = acq.PlanHardwareSymbol(&serial)
 		}
 		if !c.Symbol.Enabled {
@@ -351,17 +351,17 @@ func (e *Engine) planSerial(c *sramcapture.Config, serial SerialParams, fallback
 	// A request beyond the protocol's native matcher runs the decoder
 	// unfiltered and matches with the sequence trigger; without that
 	// trigger it stays a software qualification.
-	request, needSequence := serial, core.SequenceNeeded(serial) || (e.sequenceOnly && len(core.PatternOf(serial)) != 0)
+	request, needSequence := serial, core.SequenceNeeded(serial) || (e.caps().SequenceOnly && len(core.PatternOf(serial)) != 0)
 	if needSequence {
 		serial.Bytes, serial.Pattern = nil, nil
-		if !e.hardwareSequence {
+		if !e.caps().Sequence {
 			serial.Proto = 0
 		}
 	}
-	if e.hardwarePacket != 0 {
-		c.Packet = acq.PlanHardwarePacket(&serial, e.hardwarePacket, e.arincAux.Load())
+	if e.caps().Packet != 0 {
+		c.Packet = acq.PlanHardwarePacket(&serial, e.caps().Packet, e.arincAux.Load())
 	}
-	if e.hardwareManchester {
+	if e.caps().Manchester {
 		c.Manchester = acq.PlanHardwareManchester(&serial)
 	}
 	if c.Packet.Enabled || c.Manchester.Enabled {
@@ -369,23 +369,23 @@ func (e *Engine) planSerial(c *sramcapture.Config, serial SerialParams, fallback
 		c.TriggerChannel = uint8(serial.ChA) //nolint:gosec // G115: the channel is 0 or 1 (serialPlanParams)
 		c.TriggerLevel = uint8(math.Round(serial.Threshold))
 	}
-	if e.hardwareUSBLS {
+	if e.caps().USBLS {
 		c.USBLS = acq.PlanHardwareUSBLS(&serial)
 	}
-	if e.hardwareMIL1553 {
+	if e.caps().MIL1553 {
 		c.MIL1553 = acq.PlanHardwareMIL1553(&serial)
 	}
-	if e.hardwareSENT {
+	if e.caps().SENT {
 		c.SENT = acq.PlanHardwareSENT(&serial)
 	}
-	if e.hardwareUART {
-		c.UART = acq.PlanHardwareUART(&serial, e.hardwareSampleUART)
+	if e.caps().UART {
+		c.UART = acq.PlanHardwareUART(&serial, e.caps().SampleUART)
 	}
-	if e.hardwareSPI {
-		c.SPI = acq.PlanHardwareSPI(&serial, e.hardwareSampleSPI)
+	if e.caps().SPI {
+		c.SPI = acq.PlanHardwareSPI(&serial, e.caps().SampleSPI)
 	}
-	if e.hardwareI2C {
-		c.I2C = acq.PlanHardwareI2C(&serial, e.hardwareSampleI2C)
+	if e.caps().I2C {
+		c.I2C = acq.PlanHardwareI2C(&serial, e.caps().SampleI2C)
 	}
 	if c.USBLS.Enabled {
 		c.Normal = true
@@ -546,12 +546,12 @@ type frameConditioner struct {
 // and ERES. q1 and q2 are the frame's Q8.8 buffers, returned grown.
 // TRLC-LINKS: REQ-SDS-012, REQ-SDS-040
 func (e *Engine) conditionFrame(f *sample.Frame, m sramcapture.Metadata, cfg sramcapture.Config, bucket uint32, q1, q2 []uint16, savedScale [2]core.ChScale, c *frameConditioner) ([]uint16, []uint16) {
-	if len(f.Precision(0)) == f.Len() && len(f.Precision(1)) == f.Len() && bucket == 0 && (e.boxDecim || cfg.Pick) && m.Decimation > 1 {
+	if len(f.Precision(0)) == f.Len() && len(f.Precision(1)) == f.Len() && bucket == 0 && (e.caps().BoxDecim || cfg.Pick) && m.Decimation > 1 {
 		// Box averages: no CIC droop to compensate; a sinc's -3 dB
 		// at 0.443 of the output rate. Picked samples: no filter.
 		f.Cond.PassbandHz, f.Cond.BandwidthHz = .2/f.SampleS, .443/f.SampleS
 		f.Cond.Filter = "box average"
-		if e.pickDecim || cfg.Pick {
+		if e.caps().PickDecim || cfg.Pick {
 			f.Cond.PassbandHz, f.Cond.BandwidthHz = .5/f.SampleS, .5/f.SampleS
 			f.Cond.Filter = "every 2^n-th sample"
 		}

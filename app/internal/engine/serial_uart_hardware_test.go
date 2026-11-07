@@ -26,7 +26,7 @@ func TestFastImageTakesFastUART(t *testing.T) {
 		t.Fatalf("115200 Bd plan %+v", cfg.UART)
 	}
 	e.SetSerialParams(SerialParams{Proto: core.SerUART, Baud: 62500000, ChA: 0, HaveThr: true, Threshold: 128, Bytes: []int{0x48}})
-	if !e.serviceImage() || b.image != "fast" || !e.hardwareSampleUART {
+	if !e.serviceImage() || b.image != "fast" || !e.caps().SampleUART {
 		t.Fatalf("62.5 MBd: loads %v image %s", images.loads, b.image)
 	}
 	cfg, _, _, _, _ := e.sramConfig()

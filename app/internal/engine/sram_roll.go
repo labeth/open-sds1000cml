@@ -86,7 +86,7 @@ func planRoll(tdiv float64) rollPlan {
 // timebase on a plain edge trigger, with nothing that needs triggered frames.
 // TRLC-LINKS: REQ-SDS-010
 func (e *Engine) rollActive() bool {
-	if !e.running.Load() || e.singleArmed.Load() || e.rawOnly {
+	if !e.running.Load() || e.singleArmed.Load() || e.caps().RawOnly {
 		return false
 	}
 	e.mu.Lock()

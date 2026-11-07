@@ -85,7 +85,7 @@ func (e *Engine) learnLevels(f *sample.Frame, sc [2]core.ChScale, feAtArm uint64
 // TRLC-LINKS: REQ-SDS-011
 func (e *Engine) planQualifier(tp core.TrigParams, ch int, rising bool) (sramcapture.QualifierConfig, uint8, string) {
 	ch &= 1
-	if !e.hardwareQualifier {
+	if !e.caps().Qualifier {
 		if e.images != nil && e.images.HasQualify() && e.protocolImage != acq.ImageQualify {
 			return sramcapture.QualifierConfig{}, 0, "loading the qualifier FPGA image"
 		}
@@ -157,7 +157,7 @@ func (e *Engine) zonesOn() bool {
 // one).
 // TRLC-LINKS: REQ-SDS-014
 func (e *Engine) planZones() (z sramcapture.ZoneConfig, delayS float64, why string) {
-	if !e.hardwareQualifier {
+	if !e.caps().Qualifier {
 		if e.images != nil && e.images.HasQualify() && e.protocolImage != acq.ImageQualify {
 			return z, 0, "loading the qualifier FPGA image"
 		}

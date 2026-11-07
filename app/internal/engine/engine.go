@@ -347,34 +347,6 @@ type Engine struct {
 	panelState            panelKnobs
 	panelRejects          int       // implausible scan reads dropped (panelMu)
 	panelRejectLog        time.Time // last logged reject (panelMu)
-	hardwareUART          bool      // immutable while runSRAM owns the loaded image
-	hardwareI2C           bool
-	hardwareSPI           bool
-	hardwareSampleSPI     bool // the SPI receiver on the samples (spi_sample.v)
-	hardwareSampleUART    bool // the UART receiver on the samples (uart_sample.v)
-	hardwareSampleI2C     bool // the I2C receiver on the samples (i2c_sample.v)
-	hardwareSENT          bool
-	hardwareMIL1553       bool
-	hardwareUSBLS         bool
-	hardwareManchester    bool
-	hardwareSequence      bool
-	hardwareEnvelope      bool
-	hardwareQualifier     bool // the image measures pulse widths, slopes and video lines (ADR-HARDWARE-QUALIFIERS)
-	hardwareSymbol        bool // the image has the symbol trigger for timed-pulse buses (ADR-SYMBOL-TRIGGER)
-	// sequenceOnly: the image's decoders take no pattern of their own.
-	sequenceOnly bool
-	// hardwarePacket is the packet block's protocol mask (bit n = protocol n).
-	hardwarePacket uint16
-	// rawOnly: the loaded image has no precision decimation.
-	rawOnly bool
-	// boxDecim: the loaded image decimates by box averages or, with
-	// pickDecim, by picking every 2^n-th sample - not the precision filter
-	// (no Precision mode, no CIC compensation).
-	boxDecim, pickDecim bool
-	// pickAlt: the loaded image picks every 2^n-th sample on asking, which
-	// BUS's sampled records ask for (the precision filter's band, a quarter
-	// of the output rate, flattened WS281x's bits at 10ms/div)
-	pickAlt bool
 	// protocolImage names the loaded protocol image ("" for general);
 	// failedImage stops reloading one after a failed load until the serial
 	// choice changes.

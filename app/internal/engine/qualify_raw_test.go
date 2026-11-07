@@ -5,6 +5,8 @@ package engine
 import (
 	"math"
 	"testing"
+
+	"github.com/labeth/open-sds1000cml/app/internal/board/acq"
 )
 
 // The FPGA's pulse, slope and video qualifier fires on decimated records
@@ -16,24 +18,27 @@ import (
 // TRLC-LINKS: REQ-SDS-010, REQ-SDS-011
 func TestQualifierTriggerPlansAsAnEdge(t *testing.T) {
 	for _, typ := range []TrigType{TrigEdge, TrigPulse, TrigSlope, TrigVideo} {
-		e := &Engine{hardwareQualifier: true, band: Band{TdivS: 1e-3}}
+		e := &Engine{band: Band{TdivS: 1e-3}}
+		setCaps(e, func(c *acq.Caps) { c.Qualifier = true })
 		e.tp.Typ = typ
 		e.trigPosFrac.Store(math.Float64bits(.5))
 		_, p, tdiv, _, _ := e.sramConfig()
 		if tdiv != 1e-3 || e.stats.TdivMaxS != 0 || p.Log == 0 {
 			t.Fatalf("type %d at 1ms/div: timebase %g (most %g), log %d; want 1ms/div decimated", typ, tdiv, e.stats.TdivMaxS, p.Log)
 		}
-		for _, acq := range []int32{AcqAverage, AcqEres, AcqPrecision} {
-			e := &Engine{hardwareQualifier: true, band: Band{TdivS: 20e-6}}
+		for _, mode := range []int32{AcqAverage, AcqEres, AcqPrecision} {
+			e := &Engine{band: Band{TdivS: 20e-6}}
+			setCaps(e, func(c *acq.Caps) { c.Qualifier = true })
 			e.tp.Typ = typ
-			e.acqMode.Store(acq)
+			e.acqMode.Store(mode)
 			e.trigPosFrac.Store(math.Float64bits(.5))
 			if _, p, _, _, _ := e.sramConfig(); p.Log == 0 {
-				t.Fatalf("type %d, acquisition %d at 20us/div: the full rate", typ, acq)
+				t.Fatalf("type %d, acquisition %d at 20us/div: the full rate", typ, mode)
 			}
 		}
 	}
-	e := &Engine{rawOnly: true, band: Band{TdivS: 1e-3}}
+	e := &Engine{band: Band{TdivS: 1e-3}}
+	setCaps(e, func(c *acq.Caps) { c.RawOnly = true })
 	e.trigPosFrac.Store(math.Float64bits(.5))
 	if _, _, tdiv, _, _ := e.sramConfig(); tdiv != 200e-6 || e.stats.TdivMaxS != 200e-6 {
 		t.Fatalf("a raw-only image at 1ms/div: %g (most %g), want 200us/div", tdiv, e.stats.TdivMaxS)
