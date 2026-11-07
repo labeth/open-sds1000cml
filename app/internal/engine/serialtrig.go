@@ -15,6 +15,7 @@ package engine
 
 import (
 	"math"
+	"time"
 
 	core "github.com/labeth/open-dso-core/engine"
 	"github.com/labeth/open-dso-core/sample"
@@ -58,35 +59,26 @@ func (e *Engine) SetSerialMode(m int) {
 
 // autoGateLiveness is AUTO's rule for a capture the armed serial or zone gate
 // rejected, in the SRAM loop (engine_loop.go applies the same rule): hold
-// it, but let a liveness frame through (autoLivenessDue). With no gate armed
+// it, but let a liveness frame through (core.Liveness). With no gate armed
 // every capture publishes. Engine goroutine only.
 // TRLC-LINKS: REQ-SDS-013
 func (e *Engine) autoGateLiveness() bool {
 	switch {
 	case e.serialMode.Load() == SerialTrigger:
-		return e.autoLivenessDue(&e.serialHeld, core.SerialFallback)
+		return e.serialHeld.Due(core.SerialFallback, e.publishedAt, e.clk.Now)
 	case e.zoneMode.Load() == ZoneTrigger:
-		return e.autoLivenessDue(&e.zoneHeld, core.ZoneFallback)
+		return e.zoneHeld.Due(core.ZoneFallback, e.publishedAt, e.clk.Now)
 	}
 	return true
 }
 
-// autoLivenessDue counts one capture a gate held in AUTO (held its counter)
-// and reports a liveness frame due: every fallback holds, or autoLiveMax
-// after the last frame published (none yet: at once). Engine goroutine only.
+// publishedAt is when the newest frame was published; zero before the
+// first.
 // TRLC-LINKS: REQ-SDS-013
-func (e *Engine) autoLivenessDue(held *int, fallback int) bool {
-	*held++
-	if *held < fallback {
-		e.mu.Lock()
-		last := e.lastPublish
-		e.mu.Unlock()
-		if !last.IsZero() && e.clk.Now().Sub(last) < core.AutoLiveMax {
-			return false
-		}
-	}
-	*held = 0
-	return true
+func (e *Engine) publishedAt() time.Time {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	return e.lastPublish
 }
 
 // serialQualify decodes the captured record with the armed serial config and

@@ -640,7 +640,8 @@ func (c *sramCycle) Frame(_ context.Context, _ core.Capture, a core.Armed) (*sam
 		e.bodeEval(f, f.Len(), f.SampleS)
 	}
 	if qualified {
-		e.serialHeld, e.zoneHeld = 0, 0
+		e.serialHeld.Reset()
+		e.zoneHeld.Reset()
 	}
 	return f, core.Verdict{Qualified: qualified, Complete: averageDone, FullRecall: fullRecall, UserForced: userForced, MaskStop: maskStop}, true
 }

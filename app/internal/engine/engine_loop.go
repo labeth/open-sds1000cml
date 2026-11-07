@@ -502,13 +502,13 @@ func (e *Engine) oneFrame(norm bool) { //nolint:gocyclo,funlen // one native-fas
 		switch {
 		case matched:
 			serialMatched = true
-			e.serialHeld = 0
+			e.serialHeld.Reset()
 			e.serialMatches.Add(1)
 			if anchor >= 0 && anchor < cols {
 				edgeX = float64(anchor) // centre the matched byte
 				f.Status.Triggered = true
 			}
-		case norm || !e.autoLivenessDue(&e.serialHeld, core.SerialFallback):
+		case norm || !e.serialHeld.Due(core.SerialFallback, e.publishedAt, e.clk.Now):
 			publish = false // (an AUTO liveness frame is displayed, but not observed)
 		}
 	}
@@ -524,8 +524,8 @@ func (e *Engine) oneFrame(norm bool) { //nolint:gocyclo,funlen // one native-fas
 	if publish && e.zoneMode.Load() == ZoneTrigger {
 		qualified := lock && e.zonesQualify(f, cols, edgeX, f.SampleS)
 		if qualified {
-			e.zoneHeld = 0
-		} else if norm || !e.autoLivenessDue(&e.zoneHeld, core.ZoneFallback) {
+			e.zoneHeld.Reset()
+		} else if norm || !e.zoneHeld.Due(core.ZoneFallback, e.publishedAt, e.clk.Now) {
 			publish = false // (AUTO lets a liveness frame through)
 		}
 	}

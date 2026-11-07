@@ -56,7 +56,7 @@ func TestZoneMaskPublishPolicy(t *testing.T) {
 	// AUTO liveness: feature permanently off -> exactly one unqualified
 	// publish per zoneFallback holds.
 	feature = false
-	e.zoneHeld = 0
+	e.zoneHeld.Reset()
 	pubs := 0
 	for range 2 * core.ZoneFallback {
 		e.oneFrame(false)

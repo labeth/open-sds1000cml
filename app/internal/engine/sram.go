@@ -579,7 +579,7 @@ func (e *Engine) conditionFrame(f *sample.Frame, m sramcapture.Metadata, cfg sra
 		q1, q2 = e.calibrateRecord(f, q1, q2, savedScale)
 	}
 	if length := core.ClampEresLen(int(e.eresLen.Load())); e.acqMode.Load() == AcqEres && length > 1 {
-		c.eres(f, q1, q2, length)
+		core.Eres(f, length, &c.scratch, q1, q2)
 	}
 	return q1, q2
 }
@@ -624,39 +624,6 @@ func (e *Engine) calibrateRecord(f *sample.Frame, q1, q2 []uint16, savedScale [2
 		f.Cond.Guard = 2
 	}
 	return q1, q2
-}
-
-// ensurePrecision gives frame f Q8.8 samples made from its codes, in q1
-// and q2's storage, when it has none.
-// TRLC-LINKS: REQ-SDS-012
-func ensurePrecision(f *sample.Frame, q1, q2 []uint16) {
-	if len(f.Precision(0)) == f.Len() {
-		return
-	}
-	f.Traces[0].Precision, f.Traces[1].Precision = core.QBuffer(q1, f.Len()), core.QBuffer(q2, f.Len())
-	q1, q2, c1, c2 := f.Precision(0), f.Precision(1), f.Codes8(0), f.Codes8(1)
-	for i := range f.Len() {
-		q1[i], q2[i] = uint16(c1[i])<<8, uint16(c2[i])<<8
-	}
-}
-
-// eres applies the ERES boxcar of length points to frame f (its Q8.8
-// samples made from the codes when it has none, in q1 and q2).
-// TRLC-LINKS: REQ-SDS-012
-func (c *frameConditioner) eres(f *sample.Frame, q1, q2 []uint16, length int) {
-	ensurePrecision(f, q1, q2)
-	c.scratch = core.QBuffer(c.scratch, f.Len())
-	core.EresQ8(f.Precision(0), c.scratch, length)
-	core.EresQ8(f.Precision(1), c.scratch, length)
-	dsp.RoundQ8(f.Codes8(0)[:f.Len()], f.Precision(0)[:f.Len()])
-	dsp.RoundQ8(f.Codes8(1)[:f.Len()], f.Precision(1)[:f.Len()])
-	f.Cond.Filter += fmt.Sprintf("; ERES %d-point boxcar", length)
-	f.Cond.Guard += length / 2
-	bw := .443 / (float64(length) * f.SampleS)
-	f.Cond.NoiseGain = math.Sqrt(float64(length))
-	if f.Cond.BandwidthHz == 0 || bw < f.Cond.BandwidthHz {
-		f.Cond.BandwidthHz = bw
-	}
 }
 
 // readEdgeWindows reads envelope frame f's trigger edge and the next edge
@@ -782,7 +749,7 @@ func (e *Engine) averageFrame(f *sample.Frame, avg *core.SramAverage, cfg sramca
 		avg.Reset()
 		avg.Key = key
 	}
-	ensurePrecision(f, q1, q2)
+	core.EnsurePrecision(f, q1, q2)
 	count := 0
 	if edge >= 0 {
 		count = avg.Push(f, n)
