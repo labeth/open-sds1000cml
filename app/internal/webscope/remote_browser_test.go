@@ -14,6 +14,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/labeth/open-dso-core/instrument"
 	"github.com/labeth/open-dso-core/testenv"
 	"github.com/labeth/open-dso-core/webserver"
 	"github.com/labeth/open-sds1000cml/app/internal/analog"
@@ -83,13 +84,14 @@ func (e *remoteEngine) Snapshot() (s engine.Stats) {
 }
 
 // TRLC-LINKS: REQ-SDS-220
-func (e *remoteEngine) SetTdiv(v float64) (b engine.Band, ok bool) {
+func (e *remoteEngine) SetTdiv(v float64) (tb instrument.Timebase, ok bool) {
 	e.lock(func() {
 		if e.tdivLag <= 0 {
-			b, ok = e.fakeScope.SetTdiv(v)
+			tb, ok = e.fakeScope.SetTdiv(v)
 			return
 		}
-		if b, ok = engine.PlanTdiv(v); !ok {
+		b, found := engine.PlanTdiv(v)
+		if tb, ok = b.Timebase(), found; !ok {
 			return
 		}
 		e.tdivPend = b.TdivS
@@ -102,7 +104,7 @@ func (e *remoteEngine) SetTdiv(v float64) (b engine.Band, ok bool) {
 			})
 		})
 	})
-	return b, ok
+	return tb, ok
 }
 
 // TRLC-LINKS: REQ-SDS-220

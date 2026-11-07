@@ -1755,8 +1755,8 @@ func (c *Controller) setTdivNearest(target float64) float64 {
 	c.mu.Lock()
 	c.tdivIdx = best
 	c.mu.Unlock()
-	band, _ := c.eng.SetTdiv(c.tdivs[best])
-	return band.CaptureIntervalNs() * 1e-9
+	tb, _ := c.eng.SetTdiv(c.tdivs[best])
+	return tb.SampleS
 }
 
 // waitBandFrame waits for a published frame whose sample rate matches the band

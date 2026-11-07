@@ -11,6 +11,7 @@ package webscope
 import (
 	"time"
 
+	"github.com/labeth/open-dso-core/instrument"
 	"github.com/labeth/open-dso-core/sample"
 	"github.com/labeth/open-dso-core/scopeweb"
 	"github.com/labeth/open-dso-core/webserver"
@@ -24,29 +25,12 @@ import (
 // works on its snapshot under the fan-out lock).
 // TRLC-LINKS: REQ-SDS-161, REQ-SDS-162, REQ-SDS-163, REQ-SDS-164
 type Engine interface {
-	Snapshot() engine.Stats
+	instrument.Controls
 	WithFrame(fn func(*sample.Frame))
 	QuietRLock()   // block during the engine's load-sensitive windows (settle+drain)
 	QuietRUnlock() // release
-	SetRunning(bool)
-	SetNorm(bool)
-	SetTdiv(float64) (engine.Band, bool)
-	SetTrigSlope(rising bool)
-	SetTrigSource(ch int)
-	SetETS(on bool)
-	SetTrigType(t int)
-	SetPulseParams(lvlFrac, wMinNs, wMaxNs float64, cond int)
-	SetSlopeParams(loFrac, hiFrac, tMinNs, tMaxNs float64, cond int)
-	SetVideoParams(std, line int, neg bool)
-	SetAcqMode(m int)
-	SetAvgCount(n int)
-	SetEresLen(l int)
-	SetSingle()
-	SetTrigPosFrac(frac float64)
-	SetMemDepth(samples int) int
 	SetFramePeriod(ms int) int
 	SetStreamMode(on bool) bool
-	SetHoldoff(sec float64) float64
 	SetZones(z []engine.Zone)
 	SetZoneMode(m int)
 	SetMask(m *engine.Mask)

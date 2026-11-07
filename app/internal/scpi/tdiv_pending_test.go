@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	inst "github.com/labeth/open-dso-core/instrument"
 	"github.com/labeth/open-sds1000cml/app/internal/engine"
 )
 
@@ -19,14 +20,14 @@ type slowScope struct {
 }
 
 // TRLC-LINKS: REQ-SDS-024
-func (s *slowScope) SetTdiv(t float64) (engine.Band, bool) {
+func (s *slowScope) SetTdiv(t float64) (inst.Timebase, bool) {
 	b, ok := engine.PlanTdiv(t)
 	if ok {
 		s.mu.Lock()
 		s.pending = b.TdivS
 		s.mu.Unlock()
 	}
-	return b, ok
+	return b.Timebase(), ok
 }
 
 // TRLC-LINKS: REQ-SDS-024

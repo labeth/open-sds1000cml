@@ -7,27 +7,16 @@ import (
 	"math"
 
 	"github.com/labeth/open-dso-core/hal"
+	"github.com/labeth/open-dso-core/instrument"
 	"github.com/labeth/open-sds1000cml/app/internal/analog"
 	"github.com/labeth/open-sds1000cml/app/internal/engine"
 )
 
-// Engine is the slice of the engine's staging-setter surface the persisted
-// setup flows through (the same calls web /api/set and the panel make; every
-// setter clamps and stages — nothing here touches the bus).
+// Engine is the instrument's controls the persisted setup flows through
+// (the same calls web /api/set and the panel make; every setter clamps and
+// stages — nothing here touches the bus).
 // TRLC-LINKS: REQ-SDS-072, REQ-SDS-089
-type Engine interface {
-	Snapshot() engine.Stats
-	SetTdiv(tdivS float64) (engine.Band, bool)
-	SetNorm(on bool)
-	SetTrigSlope(rising bool)
-	SetTrigSource(ch int)
-	SetTrigType(t int)
-	SetHoldoff(sec float64) float64
-	SetTrigPosFrac(frac float64)
-	SetAcqMode(m int)
-	SetAvgCount(n int)
-	SetEresLen(l int)
-}
+type Engine = instrument.Controls
 
 // Analog is the vertical front-end surface (implemented by *analog.FrontEnd,
 // producer-direct off the GPMC bus). May be nil when SPI is unavailable —
@@ -196,8 +185,8 @@ func applyEngine(s Settings, eng Engine, ext Extension, logf func(string, ...any
 	if p := s.Trigger.PosFrac; finite(p) && p > 0 && p <= 1 {
 		eng.SetTrigPosFrac(p)
 	}
-	if md, ok := eng.(interface{ SetMemDepth(int) int }); ok && s.Acq.MemDepth > 0 {
-		md.SetMemDepth(s.Acq.MemDepth) // clamps to the backend's range
+	if s.Acq.MemDepth > 0 {
+		eng.SetMemDepth(s.Acq.MemDepth) // clamps to the backend's range
 	}
 	if finite(s.Trigger.HoldoffS) {
 		eng.SetHoldoff(s.Trigger.HoldoffS) // clamps [0, 10] s

@@ -94,11 +94,7 @@ func (in instrument) Change(fn func(*core.State) error) error {
 		h.pendTdiv = b.TdivS
 	}
 	if s.DelayS != old.DelayS {
-		sc, ok := h.sc.(interface{ SetTrigPosFrac(float64) })
-		if !ok {
-			return errFixed
-		}
-		sc.SetTrigPosFrac(math.Min(1, math.Max(0, .5+s.DelayS/(10*h.sc.Snapshot().TdivS))))
+		h.sc.SetTrigPosFrac(math.Min(1, math.Max(0, .5+s.DelayS/(10*h.sc.Snapshot().TdivS))))
 	}
 	t, ot := s.Trigger, old.Trigger
 	if t.Source != ot.Source {

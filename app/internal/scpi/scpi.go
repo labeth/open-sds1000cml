@@ -15,24 +15,18 @@ import (
 	"sync/atomic"
 	"time"
 
+	inst "github.com/labeth/open-dso-core/instrument"
 	"github.com/labeth/open-dso-core/sample"
 	core "github.com/labeth/open-dso-core/scpi"
 	"github.com/labeth/open-sds1000cml/app/internal/engine"
 )
 
-// Scope is the instrument surface (engine + fan-out frames).
+// Scope is the instrument surface: the instrument's controls and the
+// fan-out's frames.
 // TRLC-LINKS: REQ-SDS-024
 type Scope interface {
-	Snapshot() engine.Stats
+	inst.Controls
 	WithFrame(fn func(*sample.Frame))
-	SetRunning(on bool)
-	SetNorm(on bool)
-	SetSingle()
-	SetTdiv(tdivS float64) (engine.Band, bool)
-	SetTrigSlope(rising bool)
-	SetTrigSource(ch int)
-	SetAcqMode(m int)
-	SetAvgCount(n int)
 }
 
 // Analog is the vertical front end, in volts at the BNC; may be nil.

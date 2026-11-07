@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/labeth/open-dso-core/hal"
+	"github.com/labeth/open-dso-core/instrument"
 	"github.com/labeth/open-sds1000cml/app/internal/analog"
 	"github.com/labeth/open-sds1000cml/app/internal/board"
 	"github.com/labeth/open-sds1000cml/app/internal/engine"
@@ -132,17 +133,17 @@ func (f *fakeEng) SetTrigLevelCode(code uint16) uint16 {
 }
 
 // TRLC-LINKS: REQ-SDS-135
-func (f *fakeEng) SetTdiv(t float64) (engine.Band, bool) {
+func (f *fakeEng) SetTdiv(t float64) (instrument.Timebase, bool) {
 	f.record("tdiv", int(t*1e9), 0)
 	f.statMu.Lock()
 	defer f.statMu.Unlock()
 	b, ok := engine.PlanTdiv(t)
 	if !ok {
 		f.bad("SetTdiv %g not a ladder detent", t)
-		return engine.Band{}, false
+		return instrument.Timebase{}, false
 	}
 	f.stats.TdivS, f.stats.TdivSetS = b.TdivS, 0 // applied at once: nothing pending
-	return b, true
+	return b.Timebase(), true
 }
 
 // TRLC-LINKS: REQ-SDS-135

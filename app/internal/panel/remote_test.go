@@ -13,6 +13,7 @@ import (
 	"testing/synctest"
 	"time"
 
+	"github.com/labeth/open-dso-core/instrument"
 	"github.com/labeth/open-sds1000cml/app/internal/engine"
 )
 
@@ -434,14 +435,14 @@ type stagedEng struct {
 
 // SetTdiv stages the timebase.
 // TRLC-LINKS: REQ-SDS-220
-func (e *stagedEng) SetTdiv(t float64) (engine.Band, bool) {
+func (e *stagedEng) SetTdiv(t float64) (instrument.Timebase, bool) {
 	b, ok := engine.PlanTdiv(t)
 	if ok {
 		e.mu.Lock()
 		e.pend = b.TdivS
 		e.mu.Unlock()
 	}
-	return b, ok
+	return b.Timebase(), ok
 }
 
 // Snapshot names a staged timebase as the one asked for.

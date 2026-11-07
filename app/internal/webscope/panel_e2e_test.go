@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/labeth/open-dso-core/instrument"
 	"github.com/labeth/open-sds1000cml/app/internal/board"
 	"github.com/labeth/open-sds1000cml/app/internal/engine"
 	"github.com/labeth/open-sds1000cml/app/internal/panel"
@@ -46,7 +47,7 @@ func (p *panelScope) SetNorm(on bool) {
 }
 
 // TRLC-LINKS: REQ-SDS-162
-func (p *panelScope) SetTdiv(s float64) (engine.Band, bool) {
+func (p *panelScope) SetTdiv(s float64) (instrument.Timebase, bool) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	return p.fakeScope.SetTdiv(s)

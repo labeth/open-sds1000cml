@@ -2,7 +2,11 @@
 
 package engine
 
-import "math"
+import (
+	"math"
+
+	"github.com/labeth/open-dso-core/instrument"
+)
 
 // Band is one row of the timebase ladder (app spec 04 §2). The row carries the
 // factory ladder's NOMINAL per-sample interval (class + 32-bit divisor, 10 ns
@@ -255,6 +259,13 @@ func (b Band) NativeFast() bool {
 // DECIM base ticks.
 // TRLC-LINKS: REQ-SDS-010
 func (b Band) CaptureIntervalNs() float64 { return float64(b.Decim()) * baseTickNs }
+
+// Timebase is the band as the instrument's controls report it: its label
+// and the interval it captures at.
+// TRLC-LINKS: REQ-SDS-010
+func (b Band) Timebase() instrument.Timebase {
+	return instrument.Timebase{TdivS: b.TdivS, SampleS: b.CaptureIntervalNs() * 1e-9}
+}
 
 // displayIntervalNs sizes the display window: the delivered interval, so ten
 // divisions of the screen hold exactly the samples the fabric captured and

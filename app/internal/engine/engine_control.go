@@ -7,6 +7,7 @@ import (
 	"time"
 
 	core "github.com/labeth/open-dso-core/engine"
+	"github.com/labeth/open-dso-core/instrument"
 	"github.com/labeth/open-dso-core/sample"
 	"github.com/labeth/open-sds1000cml/app/internal/sramcapture"
 )
@@ -328,17 +329,17 @@ func (e *Engine) setNorm(on bool) {
 // with a full bring-up. Returns the resolved band, or ok=false if the value
 // is not a v1 ladder detent.
 // TRLC-LINKS: REQ-SDS-010
-func (e *Engine) SetTdiv(tdivS float64) (Band, bool) {
+func (e *Engine) SetTdiv(tdivS float64) (instrument.Timebase, bool) {
 	b, ok := PlanTdiv(tdivS)
 	if !ok {
-		return Band{}, false
+		return instrument.Timebase{}, false
 	}
 	e.mu.Lock()
 	e.pendBand, e.pendSet = b, true
 	e.mu.Unlock()
 	e.hintReset.Store(true)
 	e.clearNoiseTriggers()
-	return b, true
+	return b.Timebase(), true
 }
 
 // SetMemDepth sets the decimated drain depth in samples — the fps↔data knob.

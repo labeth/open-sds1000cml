@@ -15,6 +15,7 @@ import (
 
 	"github.com/labeth/open-dso-core/decode"
 	"github.com/labeth/open-dso-core/hal"
+	"github.com/labeth/open-dso-core/instrument"
 	"github.com/labeth/open-dso-core/sample"
 	"github.com/labeth/open-dso-core/superres"
 	"github.com/labeth/open-sds1000cml/app/internal/board"
@@ -22,32 +23,17 @@ import (
 	"github.com/labeth/open-sds1000cml/app/internal/settings"
 )
 
-// Engine is the command surface the controller drives (spec 08 §4).
+// Engine is the command surface the controller drives (spec 08 §4): the
+// instrument's controls, the mask test, and the key matrix and lamp word
+// the engine's owner serves.
 // TRLC-LINKS: REQ-SDS-135
 type Engine interface {
+	instrument.Controls
 	ReadMatrix() ([5]uint16, bool)
 	SetLEDs(word uint16)
-	SetTdiv(tdivS float64) (engine.Band, bool)
-	SetNorm(on bool)
-	SetRunning(on bool)
-	SetSingle()
-	SetTrigSlope(rising bool)
-	SetTrigSource(ch int)
-	SetTrigType(typ int)
-	SetAcqMode(m int)
-	SetAvgCount(n int)
-	SetEresLen(l int)
-	SetETS(on bool)
-	SetTrigPosFrac(frac float64)
-	SetHoldoff(sec float64) float64
-	SetMemDepth(samples int) int
-	SetPulseParams(lvlFrac, wMinNs, wMaxNs float64, cond int)
-	SetSlopeParams(loFrac, hiFrac, tMinNs, tMaxNs float64, cond int)
-	SetVideoParams(std, line int, neg bool)
 	SetMask(m *engine.Mask)
 	SetMaskMode(m int)
 	ClearMaskFails()
-	Snapshot() engine.Stats // authoritative state to resync knob shadows
 	// AcqLog exposes the per-capture instrumentation ring; autoset uses it to
 	// verify its chosen trigger level actually fires the comparator.
 	AcqLog(n int) ([]engine.AcqSample, float64)
