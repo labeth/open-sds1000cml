@@ -1,0 +1,46 @@
+{
+  "name": "SDS1102CML+ bench with the Alchitry Au signal source",
+  "wiring": [
+    "scope C1 probe tip on Alchitry Au ball L2 (header A11), its ground clip on the Au's ground",
+    "scope C2 probe tip on Alchitry Au ball T8 (header A2), its ground clip on the Au's ground",
+    "the Au on USB: its FT2232 JTAG loads each source's bitstream into SRAM (no root needed)"
+  ],
+  "notes": [
+    "both bench probes are 10x: the sessions' start state sets ch1.probe and ch2.probe to 10x, which a bench already at 10x leaves alone",
+    "the Au drives 3.3 V LVCMOS: logic levels 0 V and 3.3 V",
+    "the bitstreams are those built for this wiring: out/a2-a11-* drive both headers, out/a11-* one tone on A11; a session no source provides is skipped"
+  ],
+  "sources": [
+    {
+      "id": "fpga-uart",
+      "provides": {
+        "C1": {"kind": "uart", "rate": 115200, "vpp": 3.3, "offset": 1.65, "hex": "48692055aa0ff00a"},
+        "C2": {"kind": "uart", "rate": 115200, "vpp": 3.3, "offset": 1.65, "hex": "48692055aa0ff00a"}
+      },
+      "select": ["$HOME/ws/fpga/openFPGALoader/build/openFPGALoader -b alchitry_au -m $HOME/ws/fpga-signal-source/out/a2-a11-uart/uart.bit"]
+    },
+    {
+      "id": "fpga-spi",
+      "provides": {
+        "C1": {"kind": "spi", "line": "mosi", "rate": 200e3, "vpp": 3.3, "offset": 1.65, "hex": "48692055aa0ff00a", "opts": {"mode": "0"}},
+        "C2": {"kind": "spi", "line": "clk", "rate": 200e3, "vpp": 3.3, "offset": 1.65, "hex": "48692055aa0ff00a", "opts": {"mode": "0"}}
+      },
+      "select": ["$HOME/ws/fpga/openFPGALoader/build/openFPGALoader -b alchitry_au -m $HOME/ws/fpga-signal-source/out/a2-a11-spi/spi.bit"]
+    },
+    {
+      "id": "fpga-i2c",
+      "provides": {
+        "C1": {"kind": "i2c", "line": "sda", "rate": 200e3, "vpp": 3.3, "offset": 1.65, "hex": "55aa0ff0", "opts": {"addr": "0x24", "rw": "w"}},
+        "C2": {"kind": "i2c", "line": "scl", "rate": 200e3, "vpp": 3.3, "offset": 1.65, "hex": "55aa0ff0", "opts": {"addr": "0x24", "rw": "w"}}
+      },
+      "select": ["$HOME/ws/fpga/openFPGALoader/build/openFPGALoader -b alchitry_au -m $HOME/ws/fpga-signal-source/out/a2-a11-i2c/i2c.bit"]
+    },
+    {
+      "id": "fpga-tone-10mhz",
+      "provides": {
+        "C1": {"kind": "square", "hz": 10e6, "vpp": 3.3, "offset": 1.65}
+      },
+      "select": ["$HOME/ws/fpga/openFPGALoader/build/openFPGALoader -b alchitry_au -m $HOME/ws/fpga-signal-source/out/a11-10mhz/sig.bit"]
+    }
+  ]
+}
