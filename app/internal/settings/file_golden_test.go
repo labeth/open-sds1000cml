@@ -5,6 +5,7 @@ package settings_test
 import (
 	"bytes"
 	"flag"
+	core "github.com/labeth/open-dso-core/settings"
 	"os"
 	"path/filepath"
 	"testing"
@@ -78,12 +79,12 @@ func golden(t *testing.T, name string, got []byte) {
 func TestSettingsFileGolden(t *testing.T) {
 	e, fe, pc, _ := rig(t)
 	x := ext(e, fe)
-	settings.Apply(fullSetup(), e, fe, pc, x, t.Logf)
-	collect := func() settings.Settings { return settings.Collect(e, fe, pc, x) }
+	core.Apply(fullSetup(), e, fe, pc, x, t.Logf)
+	collect := func() settings.Settings { return core.Collect(e, fe, pc, x) }
 
 	dir := t.TempDir()
 	path := settings.PathIn(dir)
-	if err := settings.Save(path, collect()); err != nil {
+	if err := core.SaveFile(path, collect()); err != nil {
 		t.Fatal(err)
 	}
 	raw, err := os.ReadFile(path)
@@ -92,7 +93,7 @@ func TestSettingsFileGolden(t *testing.T) {
 	}
 	golden(t, "scope-settings.json.golden", raw)
 
-	slots := settings.Slots{Dir: dir, Collect: collect}
+	slots := core.Slots{KV: settings.Storage{Dir: dir}.Settings(), Key: settings.SlotKey, Collect: collect}
 	if err := slots.SaveSetup(3); err != nil {
 		t.Fatal(err)
 	}
@@ -107,7 +108,7 @@ func TestSettingsFileGolden(t *testing.T) {
 		golden(t, g, raw)
 	}
 	// The golden file loads back to the setup it was saved from.
-	got, ok := settings.Load(path, t.Logf)
+	got, ok := core.LoadFile(path, t.Logf)
 	if !ok || got != collect() {
 		t.Fatalf("the golden file does not load back: %v\n got %+v\nwant %+v", ok, got, collect())
 	}

@@ -3,9 +3,8 @@
 package settings_test
 
 import (
+	core "github.com/labeth/open-dso-core/settings"
 	"testing"
-
-	"github.com/labeth/open-sds1000cml/app/internal/settings"
 )
 
 // Collect over a live engine, front end and panel (the saver's poll and the
@@ -14,7 +13,7 @@ import (
 func BenchmarkCollect(b *testing.B) {
 	e, fe, pc, _ := rig(b)
 	for b.Loop() {
-		settings.Collect(e, fe, pc, ext(e, fe))
+		core.Collect(e, fe, pc, ext(e, fe))
 	}
 }
 
@@ -23,7 +22,7 @@ func BenchmarkSave(b *testing.B) { // the same setup again: the unchanged file
 	path := b.TempDir() + "/s.json"
 	s := sampleValid()
 	for b.Loop() {
-		if err := settings.Save(path, s); err != nil {
+		if err := core.SaveFile(path, s); err != nil {
 			b.Fatal(err)
 		}
 	}
@@ -36,10 +35,10 @@ func TestSaveWritesAChange(t *testing.T) {
 	s := sampleValid()
 	for _, tdiv := range []float64{1e-3, 1e-3, 2e-3} {
 		s.TdivS = tdiv
-		if err := settings.Save(path, s); err != nil {
+		if err := core.SaveFile(path, s); err != nil {
 			t.Fatal(err)
 		}
-		got, ok := settings.Load(path, nil)
+		got, ok := core.LoadFile(path, nil)
 		if !ok || got.TdivS != tdiv {
 			t.Fatalf("saved %g, read %g (%v)", tdiv, got.TdivS, ok)
 		}
@@ -51,6 +50,6 @@ func TestSaveWritesAChange(t *testing.T) {
 func BenchmarkCollectEngineAnalog(b *testing.B) {
 	e, fe, _, _ := rig(b)
 	for b.Loop() {
-		settings.Collect(e, fe, nil, ext(e, fe))
+		core.Collect(e, fe, nil, ext(e, fe))
 	}
 }

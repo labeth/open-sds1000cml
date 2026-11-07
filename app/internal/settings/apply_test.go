@@ -3,6 +3,7 @@
 package settings_test
 
 import (
+	core "github.com/labeth/open-dso-core/settings"
 	"math"
 	"testing"
 	"time"
@@ -67,7 +68,7 @@ func rig(tb testing.TB) (*engine.Engine, *analog.FrontEnd, *panel.Controller, *n
 
 // ext is the board's settings extension over e and fe (fe may be nil).
 // TRLC-LINKS: REQ-SDS-072
-func ext(e *engine.Engine, fe *analog.FrontEnd) settings.Extension {
+func ext(e *engine.Engine, fe *analog.FrontEnd) core.Extension {
 	if fe == nil {
 		return board.SettingsExtension{Levels: board.New(e, nil)}
 	}
@@ -118,8 +119,8 @@ func TestApplyRestoreCollectFidelity(t *testing.T) {
 			EnvCV: true, Gate: 0, GateV: 1.5, VOctAuto: true, PreS: 2.5, PostS: 6, TrigGate: true,
 		},
 	}
-	settings.Apply(want, e, fe, pc, ext(e, fe), t.Logf)
-	got := settings.Collect(e, fe, pc, ext(e, fe))
+	core.Apply(want, e, fe, pc, ext(e, fe), t.Logf)
+	got := core.Collect(e, fe, pc, ext(e, fe))
 
 	// The tdiv is staged for the next frame boundary; without running the
 	// engine the stats keep the pre-restore value. Everything else must
@@ -181,7 +182,7 @@ func TestApplyHostileValuesClampThroughSetters(t *testing.T) {
 		ViewMode: -7,
 		UI:       settings.UI{Set: true, Workspace: 77, Views: [5]int{-3, 9, 99, -1, 5}, Meas: [12]int{-5, 9999, 33}, FFTSource: -3, MasterDepth: 7},
 	}
-	settings.Apply(hostile, e, fe, pc, ext(e, fe), t.Logf)
+	core.Apply(hostile, e, fe, pc, ext(e, fe), t.Logf)
 
 	st := e.Snapshot()
 	if st.TrigCode != 0 {
@@ -242,7 +243,7 @@ func TestApplyVirginVerticalStaysUntouched(t *testing.T) {
 		},
 		VertSet: false,
 	}
-	settings.Apply(s, e, fe, pc, ext(e, fe), t.Logf)
+	core.Apply(s, e, fe, pc, ext(e, fe), t.Logf)
 	if fe.Emitted() {
 		t.Fatal("restore emitted onto a virgin front end")
 	}
@@ -259,10 +260,10 @@ func TestApplyVirginVerticalStaysUntouched(t *testing.T) {
 func TestApplyNilOwners(t *testing.T) {
 	// fe==nil (no SPI front end) and pc==nil must be tolerated everywhere.
 	e, _, _, _ := rig(t)
-	settings.Apply(sampleValid(), e, nil, nil, ext(e, nil), t.Logf)
-	settings.Apply(sampleValid(), nil, nil, nil, nil, nil)
-	_ = settings.Collect(e, nil, nil, ext(e, nil))
-	_ = settings.Collect(nil, nil, nil, nil)
+	core.Apply(sampleValid(), e, nil, nil, ext(e, nil), t.Logf)
+	core.Apply(sampleValid(), nil, nil, nil, nil, nil)
+	_ = core.Collect(e, nil, nil, ext(e, nil))
+	_ = core.Collect(nil, nil, nil, nil)
 }
 
 // TRLC-LINKS: REQ-SDS-072
@@ -282,18 +283,18 @@ func sampleValid() settings.Settings {
 func TestApplyRestoresBodeChannels(t *testing.T) {
 	e, fe, pc, _ := rig(t)
 	e.SetBodeMode(true, 1, 0)
-	s := settings.Collect(e, fe, pc, ext(e, fe))
+	s := core.Collect(e, fe, pc, ext(e, fe))
 	if !s.Bode.Set || s.Bode.Ref != 1 || s.Bode.Dut != 0 {
 		t.Fatalf("collected %+v", s.Bode)
 	}
 	e.SetBodeMode(false, 0, 1)
-	settings.Apply(s, e, fe, pc, ext(e, fe), t.Logf)
+	core.Apply(s, e, fe, pc, ext(e, fe), t.Logf)
 	if st := e.Snapshot(); st.BodeRef != 1 || st.BodeDut != 0 || st.BodeMode != 0 {
 		t.Fatalf("restored ref %d dut %d mode %d, want 1 0 disarmed", st.BodeRef, st.BodeDut, st.BodeMode)
 	}
 	s.Bode = settings.Bode{}
 	e.SetBodeMode(false, 1, 0)
-	settings.Apply(s, e, fe, pc, ext(e, fe), t.Logf)
+	core.Apply(s, e, fe, pc, ext(e, fe), t.Logf)
 	if st := e.Snapshot(); st.BodeRef != 1 || st.BodeDut != 0 {
 		t.Fatalf("an older file moved the channels: ref %d dut %d", st.BodeRef, st.BodeDut)
 	}
