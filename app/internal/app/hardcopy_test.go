@@ -5,8 +5,8 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/labeth/open-dso-core/uimodel/wsview"
 	"github.com/labeth/open-sds1000cml/app/internal/lcd"
-	"github.com/labeth/open-sds1000cml/app/internal/panel/wsview"
 )
 
 // PRINT numbers its screenshots and never overwrites one.

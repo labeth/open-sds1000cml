@@ -6,7 +6,7 @@ import (
 	"math/rand"
 	"strings"
 
-	"github.com/labeth/open-sds1000cml/app/internal/panel/wsview"
+	"github.com/labeth/open-dso-core/uimodel/wsview"
 )
 
 // fuzzView is a hostile workspace UI for the render fuzz: any workspace,

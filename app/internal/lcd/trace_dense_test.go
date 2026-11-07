@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/labeth/open-dso-core/sample"
-	"github.com/labeth/open-sds1000cml/app/internal/panel/wsview"
+	"github.com/labeth/open-dso-core/uimodel/wsview"
 )
 
 // A record denser than the screen draws each column's full min..max: a

@@ -7,9 +7,9 @@ import (
 	"strings"
 
 	"github.com/labeth/open-dso-core/dsp"
+	"github.com/labeth/open-dso-core/framecalc"
 	"github.com/labeth/open-dso-core/sample"
-	"github.com/labeth/open-sds1000cml/app/internal/panel/framecalc"
-	"github.com/labeth/open-sds1000cml/app/internal/panel/wsview"
+	"github.com/labeth/open-dso-core/uimodel/wsview"
 )
 
 // The task-workspace UI on the LCD (ADR-TASK-WORKSPACES): a 30 px pictogram

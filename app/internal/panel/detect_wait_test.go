@@ -6,8 +6,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/labeth/open-dso-core/framecalc"
 	"github.com/labeth/open-dso-core/sample"
-	"github.com/labeth/open-sds1000cml/app/internal/panel/framecalc"
 )
 
 // envelopeOf is f as the live peak-detect readout at a slow timebase: one

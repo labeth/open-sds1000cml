@@ -140,46 +140,6 @@ func TestCouplingIsSoftwareOnly(t *testing.T) {
 	}
 }
 
-// TRLC-LINKS: REQ-SDS-096
-func TestCoupleDisplay(t *testing.T) {
-	sig := []uint8{100, 200, 100, 200} // mean 150
-	// DC passes through unchanged (same backing array).
-	if got := CoupleDisplay(sig, CplDC); &got[0] != &sig[0] {
-		t.Fatal("DC coupling copied/altered the signal")
-	}
-	// AC removes DC: mean → 128, so 100→78, 200→178 (shift −22).
-	ac := CoupleDisplay(sig, CplAC)
-	if ac[0] != 78 || ac[1] != 178 {
-		t.Fatalf("AC = %v, want [78 178 ...]", ac[:2])
-	}
-	// GND is a flat mid-scale ground trace.
-	for _, v := range CoupleDisplay(sig, CplGND) {
-		if v != 128 {
-			t.Fatalf("GND produced %d, want flat 128", v)
-		}
-	}
-}
-
-// TRLC-LINKS: REQ-SDS-096
-func TestRemoveDC(t *testing.T) {
-	sig := make([]uint8, 100)
-	for i := range sig {
-		sig[i] = 200 // flat DC level well above centre
-	}
-	out := RemoveDC(sig)
-	if out[50] != 128 {
-		t.Fatalf("flat 200 recentred to %d, want 128", out[50])
-	}
-	if sig[0] != 200 {
-		t.Fatal("RemoveDC mutated its input")
-	}
-	// Clamps at the rails rather than wrapping.
-	// (mean 64: a shift of +64 takes 255 past the top rail, to 255, not 63)
-	if got := RemoveDC([]uint8{0, 0, 0, 255}); !slices.Equal(got, []uint8{64, 64, 64, 255}) {
-		t.Fatalf("RemoveDC at the rail: %v", got)
-	}
-}
-
 // TRLC-LINKS: REQ-SDS-015
 func TestPlanVdiv(t *testing.T) {
 	if idx, ok := PlanVdiv(0.002); !ok || idx != 0 {

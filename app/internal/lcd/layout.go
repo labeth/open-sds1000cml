@@ -6,7 +6,7 @@ import (
 	"math"
 	"sync"
 
-	"github.com/labeth/open-sds1000cml/app/internal/panel/wsview"
+	"github.com/labeth/open-dso-core/uimodel/wsview"
 )
 
 // plotArea is the rectangle the waveform views draw in (REQ-SDS-211): the

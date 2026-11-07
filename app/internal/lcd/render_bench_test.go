@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/labeth/open-dso-core/sample"
-	"github.com/labeth/open-sds1000cml/app/internal/panel/wsview"
+	"github.com/labeth/open-dso-core/uimodel/wsview"
 )
 
 // The LCD draws 20 frames a second on the device's single core; these

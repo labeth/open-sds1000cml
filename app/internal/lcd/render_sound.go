@@ -6,7 +6,7 @@ import (
 	"math"
 	"strconv"
 
-	"github.com/labeth/open-sds1000cml/app/internal/panel/wsview"
+	"github.com/labeth/open-dso-core/uimodel/wsview"
 )
 
 // SPECTRUM's SOUND view (ADR-SOUND): the tuner (the note large, a cents

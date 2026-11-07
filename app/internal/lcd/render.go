@@ -8,10 +8,11 @@ import (
 	"strconv"
 	"sync"
 
+	"github.com/labeth/open-dso-core/dsp"
 	"github.com/labeth/open-dso-core/sample"
+	"github.com/labeth/open-dso-core/uimodel/wsview"
 	"github.com/labeth/open-sds1000cml/app/internal/analog"
 	"github.com/labeth/open-sds1000cml/app/internal/engine"
-	"github.com/labeth/open-sds1000cml/app/internal/panel/wsview"
 	"github.com/labeth/open-sds1000cml/app/internal/streamview"
 )
 
@@ -701,7 +702,7 @@ func frameValid(f *sample.Frame) int {
 // TRLC-LINKS: REQ-SDS-021
 func coupledDisplay(sig []uint8, cpl int) []uint8 {
 	if cpl != analog.CplDC {
-		return analog.CoupleDisplay(sig, cpl)
+		return dsp.CoupleDisplay(sig, cpl)
 	}
 	return sig
 }
@@ -910,7 +911,7 @@ func drawYT(sf, traceTarget Surface, p plotArea, f *sample.Frame, hud HUD, sc1, 
 	win, xc, posFrac := traceWindow(f, hud, valid)
 	c1 := f.Codes8(0)[:valid]
 	if hud.Cpl1 != analog.CplDC { // software coupling: AC removes DC, GND grounds
-		c1 = analog.CoupleDisplay(c1, hud.Cpl1)
+		c1 = dsp.CoupleDisplay(c1, hud.Cpl1)
 	}
 	if hud.Inv1 { // display-level INVS: mirror the rendered trace only
 		c1 = invertCodes(c1)
@@ -924,7 +925,7 @@ func drawYT(sf, traceTarget Surface, p plotArea, f *sample.Frame, hud HUD, sc1, 
 	}
 	if sc1 {
 		if zoomed {
-			v1 := analog.CoupleDisplayBy(view.Codes8(0)[:view.Len()], f.Codes8(0)[:valid], hud.Cpl1)
+			v1 := dsp.CoupleDisplayBy(view.Codes8(0)[:view.Len()], f.Codes8(0)[:valid], hud.Cpl1)
 			if hud.Inv1 {
 				v1 = invertCodes(v1)
 			}
@@ -968,9 +969,9 @@ func drawEnvelopes(sf Surface, p plotArea, f *sample.Frame, hud HUD, sc1, sc2 bo
 func drawC2(traceTarget Surface, p plotArea, f *sample.Frame, hud HUD, valid int, rec, zw ytWindow, view *sample.Frame, zoomed bool) {
 	c2 := f.Codes8(1)[:valid]
 	if zoomed {
-		c2 = analog.CoupleDisplayBy(view.Codes8(1)[:view.Len()], c2, hud.Cpl2)
+		c2 = dsp.CoupleDisplayBy(view.Codes8(1)[:view.Len()], c2, hud.Cpl2)
 	} else if hud.Cpl2 != analog.CplDC {
-		c2 = analog.CoupleDisplay(c2, hud.Cpl2)
+		c2 = dsp.CoupleDisplay(c2, hud.Cpl2)
 	}
 	if hud.Inv2 {
 		c2 = invertCodes(c2)

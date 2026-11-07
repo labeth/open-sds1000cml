@@ -3,7 +3,7 @@ package lcd
 import (
 	"testing"
 
-	"github.com/labeth/open-sds1000cml/app/internal/panel/wsview"
+	"github.com/labeth/open-dso-core/uimodel/wsview"
 )
 
 // A cursor whose signal time or level is off the screen keeps its value and

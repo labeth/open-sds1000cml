@@ -6,7 +6,7 @@ import (
 	"math"
 	"testing"
 
-	"github.com/labeth/open-sds1000cml/app/internal/panel/wsview"
+	"github.com/labeth/open-dso-core/uimodel/wsview"
 )
 
 // goldenSoundPane is a SOUND view as the panel builds it: A4 3 cents sharp

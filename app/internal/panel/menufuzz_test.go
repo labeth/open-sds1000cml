@@ -32,11 +32,11 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/labeth/open-dso-core/framecalc"
+	"github.com/labeth/open-dso-core/uimodel/wsview"
 	"github.com/labeth/open-sds1000cml/app/internal/analog"
 	"github.com/labeth/open-sds1000cml/app/internal/engine"
 	"github.com/labeth/open-sds1000cml/app/internal/lcd"
-	"github.com/labeth/open-sds1000cml/app/internal/panel/framecalc"
-	"github.com/labeth/open-sds1000cml/app/internal/panel/wsview"
 )
 
 // fuzzAction is one scripted step: a button press, a knob turn or a frame.

@@ -3,9 +3,10 @@
 package panel
 
 import (
+	"github.com/labeth/open-dso-core/dsp"
+	"github.com/labeth/open-dso-core/framecalc"
 	"github.com/labeth/open-dso-core/sample"
 	"github.com/labeth/open-sds1000cml/app/internal/analog"
-	"github.com/labeth/open-sds1000cml/app/internal/panel/framecalc"
 )
 
 // codesOf returns a channel's valid samples as codes (Q8.8 when the frame
@@ -19,7 +20,7 @@ func codesOf(f *sample.Frame, ch, lo, hi, cpl int) []float64 {
 	}
 	sig := framecalc.Channel(f, ch, valid)
 	if cpl != analog.CplDC {
-		sig = analog.CoupleDisplay(sig, cpl)
+		sig = dsp.CoupleDisplay(sig, cpl)
 	}
 	q := f.Precision(0)
 	if ch == 1 {

@@ -7,9 +7,9 @@ import (
 	"math"
 
 	"github.com/labeth/open-dso-core/decode"
+	"github.com/labeth/open-dso-core/framecalc"
 	"github.com/labeth/open-dso-core/sample"
-	"github.com/labeth/open-sds1000cml/app/internal/panel/framecalc"
-	"github.com/labeth/open-sds1000cml/app/internal/panel/wsview"
+	"github.com/labeth/open-dso-core/uimodel/wsview"
 )
 
 // drawXY plots C1 (x) against C2 (y) — the Lissajous view (parity with the web

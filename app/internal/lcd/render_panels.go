@@ -9,11 +9,12 @@ import (
 	"sync"
 	"time"
 
+	"github.com/labeth/open-dso-core/dsp"
 	"github.com/labeth/open-dso-core/measure"
 	"github.com/labeth/open-dso-core/sample"
+	"github.com/labeth/open-dso-core/uimodel/wsview"
 	"github.com/labeth/open-sds1000cml/app/internal/analog"
 	"github.com/labeth/open-sds1000cml/app/internal/engine"
-	"github.com/labeth/open-sds1000cml/app/internal/panel/wsview"
 )
 
 // measFor throttles the full-record auto-measurement to readout rate. The HUD
@@ -106,7 +107,7 @@ func chanMeasure(f *sample.Frame, hud HUD, ch int) *measure.Result {
 		probe = 1
 	}
 	if cpl != analog.CplDC { // match the displayed (coupled) trace
-		sig = analog.CoupleDisplay(sig, cpl)
+		sig = dsp.CoupleDisplay(sig, cpl)
 		off = 0
 	}
 	vpc := vdiv * float64(zoomOf(hud, ch)) / 25 * probe

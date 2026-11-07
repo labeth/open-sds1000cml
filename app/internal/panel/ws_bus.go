@@ -13,11 +13,12 @@ import (
 
 	"github.com/labeth/open-dso-core/analysis"
 	"github.com/labeth/open-dso-core/decode"
+	"github.com/labeth/open-dso-core/dsp"
+	"github.com/labeth/open-dso-core/framecalc"
 	"github.com/labeth/open-dso-core/sample"
+	"github.com/labeth/open-dso-core/uimodel/wsview"
 	"github.com/labeth/open-sds1000cml/app/internal/analog"
 	"github.com/labeth/open-sds1000cml/app/internal/engine"
-	"github.com/labeth/open-sds1000cml/app/internal/panel/framecalc"
-	"github.com/labeth/open-sds1000cml/app/internal/panel/wsview"
 	"github.com/labeth/open-sds1000cml/app/internal/sramcapture"
 )
 
@@ -2221,7 +2222,7 @@ func displayCodes(f *sample.Frame, s *sv, ch, lo, n, stride int) []float64 {
 	sig := framecalc.Channel(f, ch, valid)
 	cpl := s.cpl[ch]
 	if cpl != analog.CplDC {
-		sig = analog.CoupleDisplay(sig, cpl)
+		sig = dsp.CoupleDisplay(sig, cpl)
 	}
 	q := f.Precision(0)
 	if ch == 1 {
