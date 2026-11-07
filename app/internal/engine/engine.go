@@ -334,7 +334,7 @@ type Engine struct {
 	lastPublish           time.Time // when the newest frame was published (guarded by mu)
 	logf                  func(string, ...any)
 	arena                 *arena
-	sram                  *sramcapture.Capture
+	sram                  recordMemory
 	adc                   adcHealth // the converters' health checks (adc_health.go)
 	panelScan             sramcapture.PanelConfig
 	panelScanSet          bool
@@ -643,7 +643,6 @@ func New(cfg Config) *Engine {
 		logf:                  cfg.Logf,
 		bode:                  bodeState{dutCh: 1}, // the frequency response's reference on C1, the DUT on C2
 		arena:                 newArena(capacity),
-		sram:                  cfg.SRAM,
 		interleaveCalibration: cfg.InterleaveCalibration,
 		armSettle:             cfg.ArmSettle,
 		armBusy:               realTime,
@@ -653,6 +652,9 @@ func New(cfg Config) *Engine {
 		done:                  make(chan struct{}),
 		sramJobs:              make(chan ownerJob, 1),
 		decodedRequests:       make(chan ownerJob, 8),
+	}
+	if cfg.SRAM != nil { // a nil *Capture must leave the interface nil
+		e.sram = cfg.SRAM
 	}
 	// Tuning defaults. ROOT-CAUSE FIX for the native-fast half-record: the free-run
 	// wait returned the instant done+fill asserted and halted immediately, catching
