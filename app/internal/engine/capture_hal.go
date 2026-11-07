@@ -62,8 +62,9 @@ var bothChannels = []int{0, 1}
 // TRLC-LINKS: REQ-SDS-009, REQ-SDS-010, REQ-SDS-011, REQ-SDS-013, REQ-SDS-014
 func (e *Engine) planCapture(t captureTarget) (SRAMPlan, float64, bool, core.TrigParams) {
 	p, tdiv, norm, tp, block := e.capturePlan()
-	perWord := 2 - acq.BoolInt(p.Log != 0)
-	words := uint32(p.Samples / perWord) //nolint:gosec // G115: the plan's samples fit the SRAM
+	shift := acq.BoolInt(p.Log == 0) // a raw word packs two samples: a shift, no divide on the A8
+	perWord := 1 + shift
+	words := uint32(p.Samples >> shift) //nolint:gosec // G115: the plan's samples fit the SRAM
 	frac := math.Float64frombits(e.trigPosFrac.Load())
 	room := 0
 	if e.serialMode.Load() == SerialTrigger && p.SampleS > 0 {

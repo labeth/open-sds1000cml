@@ -224,7 +224,7 @@ func (c *sramCycle) Plan(context.Context) (core.Capture, bool) {
 	} else {
 		// staged on the board: the trigger programmed, the plan configured
 		c.plan, c.tdiv, c.norm, c.tp = e.planCapture(boardTarget{e})
-		c.cfg = e.hw().Staged()
+		c.cfg = *e.hw().StagedConfig() // one copy: a returned Config takes a 2.7 KB stack temporary
 		c.stageGen = e.hw().StageGen()
 	}
 	e.mu.Lock()
@@ -321,7 +321,7 @@ func (c *sramCycle) Frame(_ context.Context, _ core.Capture, a core.Armed) (*sam
 	c.armAt, c.armedAt = a.ArmAt, armedAt
 	if !replay {
 		c.savedScale = e.liveScale()
-		e.noteSymbolMatches(&cfg, c.symbols, e.clk.Now().Sub(armedAt))
+		e.noteSymbolMatches(&c.cfg, c.symbols, e.clk.Now().Sub(armedAt))
 	}
 	c.shownScaleGen = e.scaleGen.Load()
 	e.shownScaleGen.Store(c.shownScaleGen)
@@ -596,7 +596,7 @@ func (c *sramCycle) Frame(_ context.Context, _ core.Capture, a core.Armed) (*sam
 		f.TriggerAt = -1
 	}
 	e.noteARINCLevels(f)
-	qualified = e.serialTriggerKind(f, m, &cfg, qualified)
+	qualified = e.serialTriggerKind(f, m, &c.cfg, qualified) // c.cfg is cfg; the local's address would grow the frame
 	switch {
 	case cfg.Zones.Enabled():
 		if f.Status.Triggered {

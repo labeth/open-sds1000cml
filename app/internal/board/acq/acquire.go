@@ -77,6 +77,11 @@ func (b *Board) StageGen() uint64 { return b.stageGen }
 // TRLC-LINKS: REQ-SDS-008
 func (b *Board) Staged() sramcapture.Config { return *b.staged() }
 
+// StagedConfig is Staged in place, valid until the next Program or
+// Configure: the owner copies it once into its capture.
+// TRLC-LINKS: REQ-SDS-008
+func (b *Board) StagedConfig() *sramcapture.Config { return b.staged() }
+
 // staged is the staged configuration, composed once after each change:
 // it is 2.7 KB, and the owner reads it at every arm.
 // TRLC-LINKS: REQ-SDS-008
