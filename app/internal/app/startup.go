@@ -5,6 +5,7 @@ package app
 import (
 	"errors"
 
+	"github.com/labeth/open-dso-core/render"
 	"github.com/labeth/open-sds1000cml/app/internal/fpgaload"
 	"github.com/labeth/open-sds1000cml/app/internal/lcd"
 )
@@ -22,10 +23,10 @@ func loadGeneralImage(fd int) error {
 	show := func(_ string, _, _ int) {}
 	if fb, err := lcd.OpenFB(); err == nil {
 		defer func() { _ = fb.Close() }()
-		surface := lcd.NewMemSurface()
+		surface := render.NewImage565()
 		shown := false
 		show = func(stage string, sent, total int) {
-			lcd.DrawLoading(surface, stage, sent, total)
+			render.DrawLoading(surface, stage, sent, total)
 			if !shown || stage == "Firmware loading failed" {
 				fb.Present(surface)
 				shown = true

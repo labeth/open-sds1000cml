@@ -5,15 +5,15 @@ package app
 import (
 	"testing"
 
+	"github.com/labeth/open-dso-core/render"
 	"github.com/labeth/open-dso-core/sample"
 	"github.com/labeth/open-dso-core/uimodel/wsview"
-	"github.com/labeth/open-sds1000cml/app/internal/lcd"
 )
 
 // benchHUD is a HUD as the LCD loop builds it for SCOPE with a menu open.
 // TRLC-LINKS: REQ-SDS-168
-func benchHUD() lcd.HUD {
-	var hud lcd.HUD
+func benchHUD() render.HUD {
+	var hud render.HUD
 	hud.UI = wsview.View{}
 	hud.TdivS, hud.C1VdivV, hud.Running, hud.Notice = 1e-6, 0.5, true, "AUTO: square 1 kHz"
 	hud.AutosetMsg, hud.MeasItems = "", []string{"Vpp", "Freq", "Rise"}

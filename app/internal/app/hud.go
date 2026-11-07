@@ -6,6 +6,7 @@ import (
 	"math"
 	"time"
 
+	"github.com/labeth/open-dso-core/render"
 	"github.com/labeth/open-sds1000cml/app/internal/analog"
 	"github.com/labeth/open-sds1000cml/app/internal/engine"
 	"github.com/labeth/open-sds1000cml/app/internal/lcd"
@@ -15,12 +16,12 @@ import (
 // buildHUD assembles the LCD/SCDP heads-up state from the engine + front end.
 // The trigger-level readout is scaled by the SOURCE channel's V/div.
 // TRLC-LINKS: REQ-SDS-168
-func buildHUD(e *engine.Engine, fe *analog.FrontEnd) lcd.HUD {
+func buildHUD(e *engine.Engine, fe *analog.FrontEnd) render.HUD {
 	st := e.Snapshot()
-	hud := lcd.HUD{
+	hud := render.HUD{
 		C1VdivV: 1, C2VdivV: 1, TdivS: st.TdivS,
 		TrigSrc: st.TrigSource, TrigRising: st.TrigRising,
-		TrigType: st.TrigType, TrigQual: st.TrigQual, SerialArmed: st.SerialMode != 0, ZoneTrig: st.ZoneMode != 0,
+		TrigType: st.TrigType, TrigQual: render.TrigQual(st.TrigQual), SerialArmed: st.SerialMode != 0, ZoneTrig: st.ZoneMode != 0,
 		SerialMatch: matchText(e.SerialConfig()),
 		Running:     st.Running, Norm: st.Norm, Single: st.Single, RecordS: st.RecordS,
 		TrigPosFrac: st.TrigPosFrac, TwoChan: true,
@@ -113,7 +114,7 @@ func buildHUD(e *engine.Engine, fe *analog.FrontEnd) lcd.HUD {
 		hud.AutosetBusy, hud.AutosetMsg = d.AutosetBusy, d.AutosetMsg
 		hud.Notice, hud.Remote = v.Notice, d.Remote
 		hud.UI = v
-		hud.Match = lcd.MatchView(pc.MatchEditor())
+		hud.Match = render.MatchView(pc.MatchEditor())
 		hud.Zoom, hud.ZoomOff = d.Zoom, d.ZoomOff
 		hud.Persist = d.Persist
 		hud.DecProto, hud.DecBaud = d.DecProto, d.DecBaud
@@ -146,7 +147,11 @@ func buildHUD(e *engine.Engine, fe *analog.FrontEnd) lcd.HUD {
 	hud.MaskStopped = st.MaskStopped
 	hud.ZoneSkip = st.ZoneSkip
 	if st.ZoneCount > 0 {
-		hud.Zones = e.Zones()
+		zs := e.Zones() // the engine's copy
+		hud.Zones = make([]render.Zone, len(zs))
+		for i, z := range zs {
+			hud.Zones[i] = render.Zone(z)
+		}
 	}
 	if st.MaskMode > 0 && st.MaskSet {
 		if m := e.MaskEnvelope(); m != nil {

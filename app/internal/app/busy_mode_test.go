@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"testing"
 
+	"github.com/labeth/open-dso-core/render"
 	"github.com/labeth/open-sds1000cml/app/internal/engine"
 	"github.com/labeth/open-sds1000cml/app/internal/lcd"
 )
@@ -32,7 +33,7 @@ func TestLCDBusyMode(t *testing.T) {
 			t.Errorf("%q autoset %v streaming %v: mode %d, want %d", c.st.Busy, c.autoset, c.streaming, got, c.want)
 		}
 	}
-	back := lcd.NewMemSurface()
+	back := render.NewImage565()
 	for i := range back.Pix {
 		back.Pix[i] = 0x5A
 	}
@@ -43,7 +44,7 @@ func TestLCDBusyMode(t *testing.T) {
 	if !lcdBusyDraw(busyLoad, engine.Stats{Busy: "reading", BusyMs: 400, BusyPct: 30}, back) {
 		t.Fatal("the loading mode drew nothing")
 	}
-	slot := lcd.StatusSlotRows * lcd.W * 2
+	slot := render.StatusSlotRows * lcd.W * 2
 	if bytes.Equal(back.Pix[:slot], before[:slot]) {
 		t.Fatal("the indicator is not in the status slot's rows")
 	}

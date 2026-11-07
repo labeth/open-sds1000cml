@@ -5,8 +5,8 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/labeth/open-dso-core/render"
 	"github.com/labeth/open-dso-core/uimodel/wsview"
-	"github.com/labeth/open-sds1000cml/app/internal/lcd"
 )
 
 // PRINT numbers its screenshots and never overwrites one.
@@ -47,7 +47,7 @@ func TestRenderSigSeesUIChanges(t *testing.T) {
 			Keys: &wsview.Keys{Title: "TYPE"},
 		}
 	}
-	h := lcd.HUD{UI: view("Pulse")}
+	h := render.HUD{UI: view("Pulse")}
 	a := renderSigOf(nil, h, false)
 	if h.UI = view("Pulse"); renderSigOf(nil, h, false) != a {
 		t.Fatal("the same UI rebuilt changed the render signature")

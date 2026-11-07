@@ -11,6 +11,7 @@ import (
 
 	"github.com/labeth/open-dso-core/engine/fanout"
 	"github.com/labeth/open-dso-core/framecalc"
+	"github.com/labeth/open-dso-core/render"
 	"github.com/labeth/open-dso-core/sample"
 	"github.com/labeth/open-dso-core/uimodel/wsview"
 	"github.com/labeth/open-dso-core/webserver"
@@ -29,7 +30,7 @@ var lastViewWasBode atomic.Bool
 // lcdSpect is the one "FFT over time" waterfall buffer: the LCD loop pushes new
 // spectrum rows into it (SPECTROGRAM view); every render path (panel, the
 // /api/screen.png PNG, the SCDP hardcopy) blits it, so all three agree.
-var lcdSpect = lcd.NewSpectrogram()
+var lcdSpect = render.NewSpectrogram()
 
 // uiCtrl is the panel controller, published after creation so the LCD render
 // loop (started earlier) and the SCDP screenshot can read the workspace UI.
@@ -83,7 +84,7 @@ type renderSig struct {
 	extra uint64
 }
 
-// statusSlot is what the top bar's status slot shows (lcd.DrawStatusSlot).
+// statusSlot is what the top bar's status slot shows (render.DrawStatusSlot).
 type statusSlot struct {
 	busy       string
 	pct, phase int
@@ -108,7 +109,7 @@ func uiSig(v wsview.View) uint64 {
 // waitSecond is the whole seconds a waiting trigger has waited (the
 // screen counts them), 0 when nothing waits.
 // TRLC-LINKS: REQ-SDS-168
-func waitSecond(hud lcd.HUD) int {
+func waitSecond(hud render.HUD) int {
 	if !hud.Waiting {
 		return 0
 	}
@@ -116,7 +117,7 @@ func waitSecond(hud lcd.HUD) int {
 }
 
 // TRLC-LINKS: REQ-SDS-168
-func renderSigOf(f *sample.Frame, hud lcd.HUD, live bool) renderSig {
+func renderSigOf(f *sample.Frame, hud render.HUD, live bool) renderSig {
 	var seq uint64
 	if f != nil {
 		seq = f.Seq
@@ -150,7 +151,7 @@ func renderSigOf(f *sample.Frame, hud lcd.HUD, live bool) renderSig {
 // hudExtraSig fingerprints the rest of the HUD a held display shows,
 // value by value: printing them with fmt every tick allocated a string.
 // TRLC-LINKS: REQ-SDS-168
-func hudExtraSig(hud *lcd.HUD) uint64 {
+func hudExtraSig(hud *render.HUD) uint64 {
 	h := sigOffset
 	flag := func(b bool) {
 		if b {
@@ -212,10 +213,10 @@ func runLCD(e *engine.Engine, fe *analog.FrontEnd, fo *fanout.Fanout[sample.Fram
 		return
 	}
 	logf("lcd: renderer up on /dev/fb0")
-	back := lcd.NewMemSurface()
-	persistLayer := lcd.NewMemSurface() // afterglow trace layer, owned by this loop
-	var sgSeq uint64                    // last frame pushed into the shared spectrogram (lcdSpect)
-	sgSrc := -1                         // the channel the waterfall shows (it restarts on a change)
+	back := render.NewImage565()
+	persistLayer := render.NewImage565() // afterglow trace layer, owned by this loop
+	var sgSeq uint64                     // last frame pushed into the shared spectrogram (lcdSpect)
+	sgSrc := -1                          // the channel the waterfall shows (it restarts on a change)
 	var lastSeq uint64
 	var lastPresented uint64
 	var lastFresh time.Time
@@ -279,11 +280,11 @@ func runLCD(e *engine.Engine, fe *analog.FrontEnd, fo *fanout.Fanout[sample.Fram
 				busyDrawAt, wasBusy = now, true
 				e.QuietRLock()
 				if lcdBusyDraw(mode, st, back) {
-					fb.PresentRows(back, 0, lcd.StatusSlotRows)
+					fb.PresentRows(back, 0, render.StatusSlotRows)
 				} else {
 					hud := buildHUD(e, fe)
 					fo.WithFrame(func(f *sample.Frame) {
-						lcd.Render(back, f, hud, true, persistLayer)
+						render.Render(back, f, hud, true, persistLayer)
 						if f != nil && f.Seq != lastPresented {
 							lastSeq, lastFresh, lastPresented = f.Seq, now, f.Seq
 							e.NoteLCDFrame()
@@ -326,7 +327,7 @@ func runLCD(e *engine.Engine, fe *analog.FrontEnd, fo *fanout.Fanout[sample.Fram
 				// Zoomed into the live envelope: ask for the zoomed part at
 				// full detail (the frame's view window).
 				if a, b, ok := scopeViewLease(hud, f); ok {
-					e.LeaseViewWindow(engine.ViewScope, a, b, lcd.PlotColumns(hud.UI.Layout), time.Second)
+					e.LeaseViewWindow(engine.ViewScope, a, b, render.PlotColumns(hud.UI.Layout), time.Second)
 				}
 				// Spectrogram: push each fresh per-sample frame's spectrum of the
 				// FFT source as a new waterfall row while the SPECTROGRAM view is
@@ -357,9 +358,9 @@ func runLCD(e *engine.Engine, fe *analog.FrontEnd, fo *fanout.Fanout[sample.Fram
 				}
 				return
 			case panel.ScreenSaver:
-				if now := time.Now(); now.Sub(saverAt) >= lcd.SaverStep {
+				if now := time.Now(); now.Sub(saverAt) >= render.SaverStep {
 					saverAt = now
-					lcd.DrawSaver(back, f, hud, int(now.Sub(saverT0)/lcd.SaverStep))
+					render.DrawSaver(back, f, hud, int(now.Sub(saverT0)/render.SaverStep))
 					present = true
 				}
 				return
@@ -376,7 +377,7 @@ func runLCD(e *engine.Engine, fe *analog.FrontEnd, fo *fanout.Fanout[sample.Fram
 				// Only the loading indicator moved: redraw its slot alone.
 				if slot != lastSlot {
 					lastSlot = slot
-					lcd.RedrawStatusSlot(back, hud)
+					render.RedrawStatusSlot(back, hud)
 					present = true
 				}
 				return // nothing else visible changed — skip the rasterize
@@ -394,7 +395,7 @@ func runLCD(e *engine.Engine, fe *analog.FrontEnd, fo *fanout.Fanout[sample.Fram
 				renderDue = now.Add(lcdStreamPeriod) // the transcript's text: a few pictures a second read it
 			}
 			pictures++
-			lcd.Render(back, f, hud, live, persistLayer)
+			render.Render(back, f, hud, live, persistLayer)
 			present = true
 		})
 		if present {
@@ -429,7 +430,7 @@ const lcdSoundView = 5
 // it was redrawn as fast as the core allowed (a fifth of it) and the audio
 // stream's listeners ran dry.
 // TRLC-LINKS: REQ-SDS-168, REQ-SDS-273
-func lcdForceRepaint(hud lcd.HUD) bool {
+func lcdForceRepaint(hud render.HUD) bool {
 	return hud.Persist || (hud.ViewMode >= 3 && hud.ViewMode != lcdSoundView) || hud.SRActive ||
 		hud.MaskMode > 0 || hud.ZoneMode > 0
 }
@@ -627,11 +628,11 @@ func lcdBusyMode(st engine.Stats, autoset, streaming bool) int {
 // for busyLoad; for busyAutoset it draws nothing and reports false (the
 // caller renders the whole screen).
 // TRLC-LINKS: REQ-SDS-168
-func lcdBusyDraw(mode int, st engine.Stats, back *lcd.MemSurface) bool {
+func lcdBusyDraw(mode int, st engine.Stats, back *render.Image565) bool {
 	if mode != busyLoad {
 		return false
 	}
-	lcd.RedrawStatusSlot(back, lcd.HUD{Busy: st.Busy, BusyPct: st.BusyPct, BusyPhase: int(st.BusyMs / 250), URL: lcd.DeviceURL()})
+	render.RedrawStatusSlot(back, render.HUD{Busy: st.Busy, BusyPct: st.BusyPct, BusyPhase: int(st.BusyMs / 250), URL: lcd.DeviceURL()})
 	return true
 }
 
@@ -639,18 +640,18 @@ func lcdBusyDraw(mode int, st engine.Stats, back *lcd.MemSurface) bool {
 // the SCDP hardcopy, PRINT): the workspace analysis of the frame first, so
 // the pane describes the frame drawn.
 // TRLC-LINKS: REQ-SDS-168, REQ-SDS-211
-func renderScreen(e *engine.Engine, fe *analog.FrontEnd, fo *fanout.Fanout[sample.Frame]) *lcd.MemSurface {
+func renderScreen(e *engine.Engine, fe *analog.FrontEnd, fo *fanout.Fanout[sample.Frame]) *render.Image565 {
 	if pc := uiCtrl.Load(); pc != nil {
 		fo.WithFrame(pc.OnFrame)
 	}
-	back := lcd.NewMemSurface()
+	back := render.NewImage565()
 	hud := buildHUD(e, fe)
 	fo.WithFrame(func(f *sample.Frame) {
 		if f != nil {
 			hud.SampleS = f.SampleS
 			hud.Trigd = f.Status.Triggered
 		}
-		lcd.Render(back, f, hud, true)
+		render.Render(back, f, hud, true)
 	})
 	return back
 }
@@ -661,7 +662,7 @@ func renderScreen(e *engine.Engine, fe *analog.FrontEnd, fo *fanout.Fanout[sampl
 // shows, in screen widths from the trigger, while zoomed in Y-T (X-Y draws no
 // zoomed stretch, and its reads cost frames).
 // TRLC-LINKS: REQ-SDS-021
-func scopeViewLease(hud lcd.HUD, f *sample.Frame) (a, b float64, ok bool) {
+func scopeViewLease(hud render.HUD, f *sample.Frame) (a, b float64, ok bool) {
 	if hud.Zoom <= 1 || hud.ViewMode != 0 || f == nil || f.Content != sample.PeakPairs || f.WinPoints <= 0 || f.Len() <= 0 {
 		return 0, 0, false
 	}
@@ -671,7 +672,7 @@ func scopeViewLease(hud lcd.HUD, f *sample.Frame) (a, b float64, ok bool) {
 }
 
 // TRLC-LINKS: REQ-SDS-018
-func streamSlot(hud lcd.HUD) int64 {
+func streamSlot(hud render.HUD) int64 {
 	if hud.StreamOn && (hud.Stream.State == streamview.Streaming || hud.Stream.State == streamview.Starting) {
 		return time.Now().UnixMilli() / 250
 	}
