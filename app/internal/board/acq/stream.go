@@ -62,7 +62,7 @@ func (s *streamerFacet) Start(spec hal.StreamSpec) error {
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), armTimeout)
 	defer cancel()
-	if err := b.mem.StartStream(ctx, b.staged, true, false, sramcapture.StreamPace{}); err != nil {
+	if err := b.mem.StartStream(ctx, b.Staged(), true, false, sramcapture.StreamPace{}); err != nil {
 		return err
 	}
 	st := s.streamOf()

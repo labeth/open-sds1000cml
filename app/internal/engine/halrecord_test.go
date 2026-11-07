@@ -26,6 +26,7 @@ import (
 
 	core "github.com/labeth/open-dso-core/engine"
 	"github.com/labeth/open-dso-core/hal"
+	"github.com/labeth/open-dso-core/hal/prototrig"
 	"github.com/labeth/open-dso-core/sample"
 	"github.com/labeth/open-dso-core/superres"
 	"github.com/labeth/open-sds1000cml/app/internal/bus"
@@ -602,6 +603,7 @@ func runHALScenario(t *testing.T, sc halScenario) (string, string) {
 	e.plat = recPlatform{e.plat, hl}
 	e.readYield = e.plat.Service
 	e.rdx = recReader{e.rdx, hl}
+	e.trg = recTrigger{e.trg, hl}
 	// Each arm also reports the newest frame published before it.
 	hooks := map[int]func(*Engine){}
 	for k := 1; k <= max(sc.stopAt, 1000); k++ {
@@ -862,4 +864,49 @@ func (r recReader) Read(ctx context.Context, req hal.ReadRequest, dst []*sample.
 	err := r.Readout.Read(ctx, req, dst, yield)
 	r.h.add("Readout.Read%s -> %v", b.String(), err)
 	return err
+}
+
+type recTrigger struct {
+	hal.Trigger
+	h *halLog
+}
+
+func (t recTrigger) Program(s hal.TriggerSpec) error {
+	err := t.Trigger.Program(s)
+	t.h.add("Trigger.Program%s -> %v", specText(s), err)
+	return err
+}
+
+// specText summarizes a trigger for the HAL trace.
+func specText(s hal.TriggerSpec) string {
+	var b strings.Builder
+	for _, st := range s.Stages {
+		slope := map[hal.Slope]string{hal.Rising: "rising", hal.Falling: "falling", hal.Either: "either"}[st.Levels.Slope]
+		fmt.Fprintf(&b, " %v C%d %.6g", st.Node, st.Source.Index+1, st.Levels.High)
+		if st.Node == hal.NodeSlope {
+			fmt.Fprintf(&b, "/%.6g", st.Levels.Low)
+		}
+		fmt.Fprintf(&b, " V %s", slope)
+		if q := st.Qual; q != nil {
+			fmt.Fprintf(&b, " qual %d [%.6g %.6g]", q.Op, q.MinS, q.MaxS)
+		}
+		if v := st.Video; v != nil {
+			fmt.Fprintf(&b, " video %s line %d positive %v", v.Standard, v.Line, v.Positive)
+		}
+		if bus, ok := st.Proto.(*prototrig.Bus); ok {
+			fmt.Fprintf(&b, " bus %d levels %.6g/%.6g V", bus.Request.Proto, bus.Levels[0], bus.Levels[1])
+		} else if st.Proto != nil {
+			fmt.Fprintf(&b, " %s", st.Proto.Protocol())
+		}
+		for _, z := range st.Zones {
+			fmt.Fprintf(&b, " zone C%d [%.6g %.6g] s [%.6g %.6g] V avoid %v", z.Source.Index+1, z.FromS, z.ToS, z.Low, z.High, z.Avoid)
+		}
+	}
+	if s.Sweep == hal.NormalSweep {
+		b.WriteString(" normal")
+	}
+	if s.FreeRun {
+		b.WriteString(" free-run")
+	}
+	return b.String()
 }

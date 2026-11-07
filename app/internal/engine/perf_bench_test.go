@@ -294,7 +294,7 @@ func BenchmarkViewWindow(b *testing.B) {
 	for k := range cal.Offset[0] {
 		cal.Offset[0][k], cal.Offset[1][k] = 0.3*float64(k)-0.5, -0.2*float64(k)
 	}
-	e.interleaveCalibration = cal
+	e.setInterleaveCalibration(cal)
 	m := sramcapture.Metadata{SampleRateHz: 500e6, SamplesPerWord: 2, Decimation: 1}
 	const n = 2048
 	src := discernSig(n)

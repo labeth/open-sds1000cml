@@ -17,13 +17,18 @@ import (
 // decoder publishes once the record's history is in fires the trigger.
 // TRLC-LINKS: REQ-SDS-013, REQ-SDS-018
 func TestDecodedStreamOnErrorPlansTheErrorToken(t *testing.T) {
-	images := map[string]*Engine{
-		"general": {hardwareUART: true, hardwareI2C: true, hardwareSPI: true, hardwareSequence: true},
+	images := map[string]*Engine{}
+	for name, c := range map[string]acq.Caps{
+		"general": {UART: true, I2C: true, SPI: true, Sequence: true},
 		"packet": {
-			hardwareSENT: true, hardwareMIL1553: true, hardwareSequence: true, sequenceOnly: true,
-			hardwarePacket: 1<<core.SerCAN | 1<<core.SerARINC | 1<<core.SerFlexRay,
+			SENT: true, MIL1553: true, Sequence: true, SequenceOnly: true,
+			Packet: 1<<core.SerCAN | 1<<core.SerARINC | 1<<core.SerFlexRay,
 		},
-		"line": {hardwareManchester: true, hardwareUSBLS: true, hardwareSequence: true, sequenceOnly: true},
+		"line": {Manchester: true, USBLS: true, Sequence: true, SequenceOnly: true},
+	} {
+		e := &Engine{}
+		e.hw().SetImageCaps(c)
+		images[name] = e
 	}
 	for _, c := range []struct {
 		image string

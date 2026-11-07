@@ -171,6 +171,9 @@ type Engine struct {
 	sram                  acq.Memory // the board's record memory, for the paths the HAL does not cover yet
 	board                 *acq.Board // the acquisition board: the owner loop drives it through the HAL facets below
 	acqr                  hal.Acquirer
+	trg                   hal.Trigger // the board's trigger
+	draft                 acq.Draft   // the capture drafted at a look at the settings (owner)
+	halTrig               halTrigger  // the trigger's HAL terms, reused (owner)
 	plat                  hal.Platform
 	readYield             func()          // the readout's yield: the board's Service
 	rdx                   hal.Readout     // the board's readout
@@ -183,34 +186,6 @@ type Engine struct {
 	panelState            panelKnobs
 	panelRejects          int       // implausible scan reads dropped (panelMu)
 	panelRejectLog        time.Time // last logged reject (panelMu)
-	hardwareUART          bool      // immutable while runSRAM owns the loaded image
-	hardwareI2C           bool
-	hardwareSPI           bool
-	hardwareSampleSPI     bool // the SPI receiver on the samples (spi_sample.v)
-	hardwareSampleUART    bool // the UART receiver on the samples (uart_sample.v)
-	hardwareSampleI2C     bool // the I2C receiver on the samples (i2c_sample.v)
-	hardwareSENT          bool
-	hardwareMIL1553       bool
-	hardwareUSBLS         bool
-	hardwareManchester    bool
-	hardwareSequence      bool
-	hardwareEnvelope      bool
-	hardwareQualifier     bool // the image measures pulse widths, slopes and video lines (ADR-HARDWARE-QUALIFIERS)
-	hardwareSymbol        bool // the image has the symbol trigger for timed-pulse buses (ADR-SYMBOL-TRIGGER)
-	// sequenceOnly: the image's decoders take no pattern of their own.
-	sequenceOnly bool
-	// hardwarePacket is the packet block's protocol mask (bit n = protocol n).
-	hardwarePacket uint16
-	// rawOnly: the loaded image has no precision decimation.
-	rawOnly bool
-	// boxDecim: the loaded image decimates by box averages or, with
-	// pickDecim, by picking every 2^n-th sample - not the precision filter
-	// (no Precision mode, no CIC compensation).
-	boxDecim, pickDecim bool
-	// pickAlt: the loaded image picks every 2^n-th sample on asking, which
-	// BUS's sampled records ask for (the precision filter's band, a quarter
-	// of the output rate, flattened WS281x's bits at 10ms/div)
-	pickAlt bool
 	// protocolImage names the loaded protocol image ("" for general);
 	// failedImage stops reloading one after a failed load until the serial
 	// choice changes.
@@ -463,7 +438,10 @@ func (e *Engine) useBoard(b *acq.Board) {
 		e.mu.Unlock()
 	}, e.busErr)
 	b.SetImages(e.images)
-	e.acqr, e.plat = b.Acquirer(), b.Platform()
+	if e.interleaveCalibration != nil {
+		b.SetConverterOffsets(&e.interleaveCalibration.Offset)
+	}
+	e.acqr, e.plat, e.trg = b.Acquirer(), b.Platform(), b.Trigger()
 	e.readYield = e.plat.Service
 	e.rdx = b.Readout()
 }
@@ -485,6 +463,21 @@ func (e *Engine) acquirer() hal.Acquirer { e.hw(); return e.acqr }
 
 // TRLC-LINKS: REQ-SDS-001
 func (e *Engine) platform() hal.Platform { e.hw(); return e.plat }
+
+// TRLC-LINKS: REQ-SDS-011
+func (e *Engine) trigger() hal.Trigger { e.hw(); return e.trg }
+
+// setInterleaveCalibration uses converter calibration cal; the board's
+// trigger re-arm band spans its offsets.
+// TRLC-LINKS: REQ-SDS-016
+func (e *Engine) setInterleaveCalibration(cal *InterleaveCalibration) {
+	e.interleaveCalibration = cal
+	var off *[2][5]float64
+	if cal != nil {
+		off = &cal.Offset
+	}
+	e.hw().SetConverterOffsets(off)
+}
 
 // TRLC-LINKS: REQ-SDS-001
 func (e *Engine) yield() func() { e.hw(); return e.readYield }

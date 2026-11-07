@@ -182,13 +182,13 @@ func TestPacketImageFollowsSerialTrigger(t *testing.T) {
 	}
 	e.SetSerialParams(SerialParams{Proto: core.SerCAN, Baud: 500000, HaveThr: true, Threshold: 120, Bytes: []int{0xAA, 0x0F}})
 	e.SetSerialMode(SerialTrigger)
-	if !e.serviceImage() || b.image != "packet" || e.protocolImage != acq.ImagePacket || e.hardwarePacket != 0x0540 || e.rawOnly || !e.boxDecim || e.hardwareManchester || e.hardwareMIL1553 {
-		t.Fatalf("packet image: loads %v image %s protocol image %q mask %x raw %v box %v", images.loads, b.image, e.protocolImage, e.hardwarePacket, e.rawOnly, e.boxDecim)
+	if !e.serviceImage() || b.image != "packet" || e.protocolImage != acq.ImagePacket || e.caps().Packet != 0x0540 || e.caps().RawOnly || !e.caps().BoxDecim || e.caps().Manchester || e.caps().MIL1553 {
+		t.Fatalf("packet image: loads %v image %s protocol image %q mask %x raw %v box %v", images.loads, b.image, e.protocolImage, e.caps().Packet, e.caps().RawOnly, e.caps().BoxDecim)
 	}
 	cfg, plan, _, _, _ := e.sramConfig()
 	// The packet image is sequence-only: the decoder runs unfiltered and the
 	// pattern becomes a qualified sequence.
-	if !cfg.Normal || cfg.TriggerLevel != 120 || !e.sequenceOnly ||
+	if !cfg.Normal || cfg.TriggerLevel != 120 || !e.caps().SequenceOnly ||
 		cfg.Packet != (sramcapture.PacketTriggerConfig{Enabled: true, Protocol: 6, Ticks: 64000, Aux: 64000}) ||
 		cfg.Sequence.Length != 2 || !cfg.Sequence.Qualify || cfg.Sequence.Elements[1] != (sramcapture.SequenceElement{Kind: 2, Value: 0x0F, Mask: 0xff}) {
 		t.Fatalf("plan %+v config %+v sequence %+v", plan, cfg.Packet, cfg.Sequence)
@@ -202,12 +202,12 @@ func TestPacketImageFollowsSerialTrigger(t *testing.T) {
 	// Without a threshold it waits on the general image until a capture has
 	// shown the line's levels (TestEveryBusPlansFromTheScope).
 	e.SetSerialParams(SerialParams{Proto: core.SerCAN, Baud: 500000})
-	if !e.serviceImage() || b.image != "general" || e.protocolImage != "" || e.hardwarePacket != 0 || e.rawOnly || e.boxDecim || !e.hardwareUART || !e.hardwareEnvelope {
+	if !e.serviceImage() || b.image != "general" || e.protocolImage != "" || e.caps().Packet != 0 || e.caps().RawOnly || e.caps().BoxDecim || !e.caps().UART || !e.caps().Envelope {
 		t.Fatalf("general image: loads %v image %s", images.loads, b.image)
 	}
 	// Manchester runs on the line image.
 	e.SetSerialParams(SerialParams{Proto: core.SerManchester, Baud: 1000000, HaveThr: true, Threshold: 128, Bits: 16, IEEE: true})
-	if !e.serviceImage() || b.image != "line" || !e.hardwareManchester || e.hardwareUSBLS || e.hardwareMIL1553 || e.hardwarePacket != 0 || !e.boxDecim {
+	if !e.serviceImage() || b.image != "line" || !e.caps().Manchester || e.caps().USBLS || e.caps().MIL1553 || e.caps().Packet != 0 || !e.caps().BoxDecim {
 		t.Fatalf("line image: loads %v image %s", images.loads, b.image)
 	}
 	e.SetSerialParams(SerialParams{Proto: core.SerManchester, Baud: 1000000, HaveThr: true, Threshold: 128, Bits: 16, IEEE: true})
@@ -216,7 +216,7 @@ func TestPacketImageFollowsSerialTrigger(t *testing.T) {
 	}
 	// MIL-1553, SENT and USB run on the frame image.
 	e.SetSerialParams(SerialParams{Proto: core.SerMIL1553, Baud: 1000000, HaveThr: true, Threshold: 128})
-	if !e.serviceImage() || b.image != "frame" || e.protocolImage != acq.ImageFrame || !e.hardwareMIL1553 || !e.hardwareSENT || !e.hardwareUSBLS || e.hardwarePacket != 0 || !e.boxDecim {
+	if !e.serviceImage() || b.image != "frame" || e.protocolImage != acq.ImageFrame || !e.caps().MIL1553 || !e.caps().SENT || !e.caps().USBLS || e.caps().Packet != 0 || !e.caps().BoxDecim {
 		t.Fatalf("frame image: loads %v image %s", images.loads, b.image)
 	}
 	e.SetSerialParams(SerialParams{Proto: core.SerUSB, Baud: 1500000, HaveThr: true, Threshold: 128})
@@ -286,14 +286,14 @@ func TestFastImageTakesFastSPI(t *testing.T) {
 	e, b, images := newPacketTestEngine(t)
 	e.SetSerialParams(SerialParams{Proto: core.SerSPI, SPIClockHz: 1000000, ChA: 1, ChB: 0, MSB: true, HaveThr: true, Threshold: 128, Bytes: []int{0x4f}})
 	e.SetSerialMode(SerialTrigger)
-	if e.serviceImage() || b.image != "general" || !e.hardwareSPI || e.hardwareSampleSPI {
+	if e.serviceImage() || b.image != "general" || !e.caps().SPI || e.caps().SampleSPI {
 		t.Fatalf("1 MHz left the general image: %v", images.loads)
 	}
 	if cfg, _, _, _, _ := e.sramConfig(); !cfg.SPI.Enabled || cfg.SPI.GapTicks != 188 || cfg.SPI.Delay != 0 {
 		t.Fatalf("1 MHz plan %+v", cfg.SPI)
 	}
 	e.SetSerialParams(SerialParams{Proto: core.SerSPI, SPIClockHz: 104000000, ChA: 1, ChB: 0, MSB: true, HaveThr: true, Threshold: 128, Bytes: []int{0x4f}})
-	if !e.serviceImage() || b.image != "fast" || e.protocolImage != acq.ImageFast || !e.hardwareSampleSPI || !e.boxDecim || !e.pickDecim {
+	if !e.serviceImage() || b.image != "fast" || e.protocolImage != acq.ImageFast || !e.caps().SampleSPI || !e.caps().BoxDecim || !e.caps().PickDecim {
 		t.Fatalf("104 MHz: loads %v image %s", images.loads, b.image)
 	}
 	cfg, _, _, _, _ := e.sramConfig()
@@ -316,11 +316,11 @@ func TestFastImageTakesFastSPI(t *testing.T) {
 // TRLC-LINKS: REQ-SDS-010, REQ-SDS-214
 func TestBusRecordsPickSamplesOnTheQualifyImage(t *testing.T) {
 	e, b, _ := newPacketTestEngine(t)
-	e.hardwareEnvelope = true
+	setCaps(e, func(c *acq.Caps) { c.Envelope = true })
 	e.SetSerialParams(SerialParams{Proto: core.SerWS281x, Baud: 800000, HaveThr: true, Threshold: 128, Pattern: []PatternElem{{Kind: core.PatternStart}}})
 	e.SetSerialMode(SerialTrigger)
-	if !e.serviceImage() || b.image != "qualify" || !e.pickAlt || e.boxDecim || e.pickDecim {
-		t.Fatalf("qualify image %s: pick on asking %v box %v pick %v", b.image, e.pickAlt, e.boxDecim, e.pickDecim)
+	if !e.serviceImage() || b.image != "qualify" || !e.caps().PickAlt || e.caps().BoxDecim || e.caps().PickDecim {
+		t.Fatalf("qualify image %s: pick on asking %v box %v pick %v", b.image, e.caps().PickAlt, e.caps().BoxDecim, e.caps().PickDecim)
 	}
 	band, _ := PlanTdiv(10e-3)
 	e.band = band

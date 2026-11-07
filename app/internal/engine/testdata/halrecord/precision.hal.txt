@@ -1,12 +1,20 @@
-Service x1; Acquirer.Arm -> <nil>
+Service x1; Trigger.Program edge C1 0 V rising -> <nil>
+Acquirer.Configure decim 16 depth 524288 -> <nil>
+Acquirer.Arm -> <nil>
 Service x1; Acquirer.Stop -> <nil>
-Service x1; Acquirer.Arm -> <nil>
+Service x1; Trigger.Program edge C1 0 V rising -> <nil>
+Acquirer.Configure decim 1024 depth 19532 -> <nil>
+Acquirer.Arm -> <nil>
 Service x1; Acquirer.Wait(0s) -> triggered true done false record {0 0} hal: wait timed out
 Service x1; Acquirer.Wait(0s) -> triggered true done true record {1 1} <nil>
 Readout.Read {0 -2505+5011 points 0 raw-decimated} -> <nil>
-Service x1; Acquirer.Arm -> <nil>
+Service x1; Trigger.Program edge C1 0 V rising -> <nil>
+Acquirer.Configure decim 1024 depth 19532 -> <nil>
+Acquirer.Arm -> <nil>
 Service x1; Acquirer.Wait(0s) -> triggered true done false record {0 0} hal: wait timed out
 Service x1; Acquirer.Wait(0s) -> triggered true done true record {1 2} <nil>
 Readout.Read {0 -2505+5011 points 0 raw-decimated} -> <nil>
-Service x1; Acquirer.Arm -> <nil>
+Service x1; Trigger.Program edge C1 0 V rising -> <nil>
+Acquirer.Configure decim 1024 depth 19532 -> <nil>
+Acquirer.Arm -> <nil>
 Acquirer.Stop -> <nil>

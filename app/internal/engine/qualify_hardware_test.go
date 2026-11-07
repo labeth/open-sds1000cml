@@ -53,8 +53,8 @@ func TestPulseTriggerIsPlannedInHardware(t *testing.T) {
 	}
 	e.SetTrigType(int(TrigPulse))
 	e.SetPulseParams(.5, 2000, 3000, CondInside)
-	if !e.serviceImage() || b.image != "qualify" || !e.hardwareQualifier {
-		t.Fatalf("Pulse: image %s, qualifier %v", b.image, e.hardwareQualifier)
+	if !e.serviceImage() || b.image != "qualify" || !e.caps().Qualifier {
+		t.Fatalf("Pulse: image %s, qualifier %v", b.image, e.caps().Qualifier)
 	}
 	c, _, _, _, _ := e.sramConfig()
 	if c.Qualifier.Enabled || c.Normal {

@@ -73,6 +73,22 @@ func (b *Board) ProbeImage(logf func(string, ...any)) Caps {
 	return c
 }
 
+// Serial reports a matcher for any bus.
+// TRLC-LINKS: REQ-SDS-013
+func (c Caps) Serial() bool {
+	return c.UART || c.I2C || c.SPI || c.SENT || c.MIL1553 || c.USBLS || c.Manchester || c.Packet != 0 || c.Symbol
+}
+
+// ImageCaps is the loaded image's capabilities, as ProbeImage read them.
+// ANY from the owner's view, as State.
+// TRLC-LINKS: REQ-SDS-013
+func (b *Board) ImageCaps() Caps { return b.trig.caps }
+
+// SetImageCaps takes capabilities probed elsewhere, for a board whose
+// fabric is a model (the engine's tests). OWNER.
+// TRLC-LINKS: REQ-SDS-013
+func (b *Board) SetImageCaps(c Caps) { b.trig.caps = c }
+
 // trigCaps is the loaded image's trigger nodes.
 // TRLC-LINKS: REQ-SDS-013
 func (b *Board) trigCaps() hal.TrigCaps {
