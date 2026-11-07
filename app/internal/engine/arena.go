@@ -13,16 +13,16 @@ import (
 // reused in place: every producer path must set or clear ALL metadata every
 // frame (spec 01 §2: a stale flag renders wrong output from correct data).
 
-// codeFormat is the converters' code format as the frames carry it: 8-bit
+// CodeFormat is the converters' code format as the frames carry it: 8-bit
 // codes, the screen's centre line at 128.
-var codeFormat = sample.CodeFormat{Bits: 8, Storage: sample.U8, Max: 255, Mid: 128}
+var CodeFormat = sample.CodeFormat{Bits: 8, Storage: sample.U8, Max: 255, Mid: 128}
 
-// codesPerDiv is a record's codes per vertical division.
-const codesPerDiv = 25
+// CodesPerDiv is a record's codes per vertical division.
+const CodesPerDiv = 25
 
 // RollCodesPerDiv is the codes per division of the factory roll FIFO's
 // half-scale codes, which a frame's traces say they hold by it.
-const RollCodesPerDiv = codesPerDiv / 2.0
+const RollCodesPerDiv = CodesPerDiv / 2.0
 
 // HalfScale reports whether frame f holds the roll FIFO's half-scale codes
 // (RollCodesPerDiv), which an export must rescale.
@@ -45,10 +45,24 @@ func resetFrame(f *sample.Frame) {
 	for ch := range traces {
 		t := &traces[ch]
 		*t = sample.Trace{
-			Ch: ch, Format: codeFormat, CodesPerDiv: codesPerDiv, PrecisionFrac: precisionFrac,
+			Ch: ch, Format: CodeFormat, CodesPerDiv: CodesPerDiv, PrecisionFrac: precisionFrac,
 			Codes8: t.Codes8, Min8: t.Min8[:0], Max8: t.Max8[:0],
 		}
 	}
+}
+
+// recordFrame is a frame of its own for n samples a channel of a record:
+// two traces stating the record's format, their codes allocated.
+// TRLC-LINKS: REQ-SDS-007, REQ-SDS-021
+func recordFrame(n int) *sample.Frame {
+	f := &sample.Frame{Traces: make([]sample.Trace, 2)}
+	for ch := range f.Traces {
+		f.Traces[ch] = sample.Trace{
+			Ch: ch, Format: CodeFormat, CodesPerDiv: CodesPerDiv, PrecisionFrac: precisionFrac,
+			Codes8: make([]uint8, n), Valid: n,
+		}
+	}
+	return f
 }
 
 // setEnvCols sizes frame f's display envelope to cols columns, keeping the

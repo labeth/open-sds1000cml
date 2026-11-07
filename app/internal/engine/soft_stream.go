@@ -13,7 +13,6 @@ import (
 	"time"
 
 	"github.com/labeth/open-dso-core/decode"
-	"github.com/labeth/open-dso-core/sample"
 	"github.com/labeth/open-sds1000cml/app/internal/bus"
 	"github.com/labeth/open-sds1000cml/app/internal/decodedlines"
 	"github.com/labeth/open-sds1000cml/app/internal/sramcapture"
@@ -1505,13 +1504,11 @@ func (e *Engine) softCapture(s *softStream) {
 	end := e.clk.Now()
 	s.armed = false
 	hit := s.trig == StreamOnValue && s.symCount >= 0 && e.symbolCount(s.capCfg) != s.symCount
-	f := &sample.Frame{Traces: []sample.Trace{{}, {Ch: 1}}}
 	n := int(m.Length) * int(m.SamplesPerWord)
 	if n == 0 || !(m.SampleRateHz > 0) {
 		return
 	}
-	f.Traces[0].Codes8, f.Traces[1].Codes8 = make([]uint8, n), make([]uint8, n)
-	f.SetLen(n)
+	f := recordFrame(n)
 	if m.FractionBits == 8 {
 		f.Traces[0].Precision, f.Traces[1].Precision = make([]uint16, n), make([]uint16, n)
 	}

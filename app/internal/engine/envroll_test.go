@@ -143,7 +143,7 @@ func TestRollBand(t *testing.T) {
 		}
 	}
 	f, fresh := e.Consume()
-	if !fresh || !f.Flags.Has(sample.Envelope) || f.Len() != rollWin || f.Traces[0].CodesPerDiv != codesPerDiv {
+	if !fresh || !f.Flags.Has(sample.Envelope) || f.Len() != rollWin || f.Traces[0].CodesPerDiv != CodesPerDiv {
 		t.Fatalf("roll frame: fresh=%v isEnv=%v valid=%d codes/div=%v", fresh, f.Flags.Has(sample.Envelope), f.Len(), f.Traces[0].CodesPerDiv)
 	}
 	if !f.Status.Coherent {

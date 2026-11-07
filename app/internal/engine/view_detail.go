@@ -140,7 +140,7 @@ type viewRead struct {
 // TRLC-LINKS: REQ-SDS-021
 func newViewRead(m sramcapture.Metadata, p viewPlan) *viewRead {
 	n := p.n
-	f := &sample.Frame{Traces: []sample.Trace{{Codes8: make([]uint8, n), Valid: n}, {Ch: 1, Codes8: make([]uint8, n), Valid: n}}}
+	f := recordFrame(n)
 	if m.FractionBits == 8 {
 		f.Traces[0].Precision, f.Traces[1].Precision = make([]uint16, n), make([]uint16, n)
 	}
