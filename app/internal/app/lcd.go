@@ -213,10 +213,10 @@ func runLCD(e *engine.Engine, fe *analog.FrontEnd, fo *fanout.Fanout[sample.Fram
 		return
 	}
 	logf("lcd: renderer up on /dev/fb0")
-	back := render.NewImage565()
-	persistLayer := render.NewImage565() // afterglow trace layer, owned by this loop
-	var sgSeq uint64                     // last frame pushed into the shared spectrogram (lcdSpect)
-	sgSrc := -1                          // the channel the waterfall shows (it restarts on a change)
+	back := lcd.NewBackBuffer()
+	persistLayer := lcd.NewBackBuffer() // afterglow trace layer, owned by this loop
+	var sgSeq uint64                    // last frame pushed into the shared spectrogram (lcdSpect)
+	sgSrc := -1                         // the channel the waterfall shows (it restarts on a change)
 	var lastSeq uint64
 	var lastPresented uint64
 	var lastFresh time.Time
@@ -327,7 +327,7 @@ func runLCD(e *engine.Engine, fe *analog.FrontEnd, fo *fanout.Fanout[sample.Fram
 				// Zoomed into the live envelope: ask for the zoomed part at
 				// full detail (the frame's view window).
 				if a, b, ok := scopeViewLease(hud, f); ok {
-					e.LeaseViewWindow(engine.ViewScope, a, b, render.PlotColumns(hud.UI.Layout), time.Second)
+					e.LeaseViewWindow(engine.ViewScope, a, b, render.PlotColumns(lcd.Screen, hud.UI.Layout), time.Second)
 				}
 				// Spectrogram: push each fresh per-sample frame's spectrum of the
 				// FFT source as a new waterfall row while the SPECTROGRAM view is
@@ -644,7 +644,7 @@ func renderScreen(e *engine.Engine, fe *analog.FrontEnd, fo *fanout.Fanout[sampl
 	if pc := uiCtrl.Load(); pc != nil {
 		fo.WithFrame(pc.OnFrame)
 	}
-	back := render.NewImage565()
+	back := lcd.NewBackBuffer()
 	hud := buildHUD(e, fe)
 	fo.WithFrame(func(f *sample.Frame) {
 		if f != nil {

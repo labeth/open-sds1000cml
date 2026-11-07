@@ -33,7 +33,7 @@ func TestLCDBusyMode(t *testing.T) {
 			t.Errorf("%q autoset %v streaming %v: mode %d, want %d", c.st.Busy, c.autoset, c.streaming, got, c.want)
 		}
 	}
-	back := render.NewImage565()
+	back := lcd.NewBackBuffer()
 	for i := range back.Pix {
 		back.Pix[i] = 0x5A
 	}

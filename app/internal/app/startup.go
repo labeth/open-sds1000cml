@@ -23,7 +23,7 @@ func loadGeneralImage(fd int) error {
 	show := func(_ string, _, _ int) {}
 	if fb, err := lcd.OpenFB(); err == nil {
 		defer func() { _ = fb.Close() }()
-		surface := render.NewImage565()
+		surface := lcd.NewBackBuffer()
 		shown := false
 		show = func(stage string, sent, total int) {
 			render.DrawLoading(surface, stage, sent, total)

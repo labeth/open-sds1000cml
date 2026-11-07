@@ -191,7 +191,7 @@ func (r *viewRig) shot(name string) wsview.View {
 		r.c.OnFrame(r.f) // as the LCD loop does each tick
 	}
 	v := r.c.View()
-	sf := render.NewImage565()
+	sf := render.NewImage565(&render.Metrics800x480)
 	func() {
 		defer func() {
 			if p := recover(); p != nil {

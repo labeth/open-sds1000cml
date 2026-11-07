@@ -22,9 +22,12 @@ var updateGolden = flag.Bool("update-golden", false, "rewrite testdata/golden/*.
 // read back as the web's screen view encodes it.
 // TRLC-LINKS: REQ-SDS-021, REQ-SDS-211
 func TestGolden(t *testing.T) {
+	if Screen.W != W || Screen.H != H {
+		t.Fatalf("the renderer's screen is %dx%d, the panel %dx%d", Screen.W, Screen.H, W, H)
+	}
 	for _, s := range rendertest.Scenes() {
 		t.Run(s.Name, func(t *testing.T) {
-			back := render.NewImage565()
+			back := NewBackBuffer()
 			if len(back.Pix) != pageBytes {
 				t.Fatalf("back buffer %d bytes, the panel's page %d", len(back.Pix), pageBytes)
 			}

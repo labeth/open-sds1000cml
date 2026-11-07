@@ -298,7 +298,7 @@ func TestUIFuzz(t *testing.T) {
 			dump := func() string {
 				return fmt.Sprintf("reproducing sequence (%d steps):\n%s", len(actions), strings.Join(actions, " "))
 			}
-			sf := render.NewImage565()
+			sf := render.NewImage565(&render.Metrics800x480)
 			for i := range steps {
 				a := alphabet[rng.Intn(len(alphabet))]
 				actions = append(actions, a.name)
