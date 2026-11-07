@@ -94,20 +94,25 @@ func (b *Board) HasMemory() bool { return b.mem != nil }
 // TRLC-LINKS: REQ-SDS-001
 func (b *Board) Memory() Memory { return b.mem }
 
-// SetProfile, SetFrontEnd, SetLevelGrid, SetDevices and SetHandover attach
-// the parts the composition builds outside the acquisition.
+// SetProfile attaches the scope's profile. It, SetFrontEnd, SetLevelGrid,
+// SetDevices and SetHandover attach the parts the composition builds outside
+// the acquisition.
 // TRLC-LINKS: REQ-SDS-001
 func (b *Board) SetProfile(p hal.Profile) { b.profile = p }
 
+// SetFrontEnd attaches the analog front end.
 // TRLC-LINKS: REQ-SDS-001
 func (b *Board) SetFrontEnd(fe hal.FrontEnd) { b.frontEnd = fe }
 
+// SetLevelGrid attaches the trigger level grid of each source.
 // TRLC-LINKS: REQ-SDS-001
 func (b *Board) SetLevelGrid(g func(src int) hal.Grid) { b.levelGrid = g }
 
+// SetHandover attaches what the supervisor gave this process.
 // TRLC-LINKS: REQ-SDS-001
 func (b *Board) SetHandover(h hal.Handover) { b.handover = h }
 
+// SetDevices attaches the display, the input and the storage.
 // TRLC-LINKS: REQ-SDS-001
 func (b *Board) SetDevices(d hal.Display, in hal.Input, st hal.Storage) {
 	b.display, b.input, b.storage = d, in, st
@@ -141,13 +146,15 @@ func (b *Board) Trigger() hal.Trigger { return (*triggerFacet)(b) }
 // TRLC-LINKS: REQ-SDS-001
 func (b *Board) FrontEnd() hal.FrontEnd { return b.frontEnd }
 
-// Display, Input and Storage are the devices the composition attached.
+// Display is the display the composition attached.
 // TRLC-LINKS: REQ-SDS-001
 func (b *Board) Display() hal.Display { return b.display }
 
+// Input is the panel input the composition attached.
 // TRLC-LINKS: REQ-SDS-001
 func (b *Board) Input() hal.Input { return b.input }
 
+// Storage is the storage the composition attached.
 // TRLC-LINKS: REQ-SDS-001
 func (b *Board) Storage() hal.Storage { return b.storage }
 
@@ -178,16 +185,20 @@ func (b *Board) Stacker() (hal.Stacker, bool) {
 	return (*stackerFacet)(b), true
 }
 
-// Segments, Counter, LogicProbe and Generator: the SDS1000CML+ has none.
+// Segments reports no segmented memory: the SDS1000CML+ has none, nor a
+// counter, a logic probe or a generator.
 // TRLC-LINKS: REQ-SDS-001
 func (b *Board) Segments() (hal.Segments, bool) { return nil, false }
 
+// Counter reports no hardware frequency counter.
 // TRLC-LINKS: REQ-SDS-001
 func (b *Board) Counter() (hal.Counter, bool) { return nil, false }
 
+// LogicProbe reports no logic probe.
 // TRLC-LINKS: REQ-SDS-001
 func (b *Board) LogicProbe() (hal.LogicProbe, bool) { return nil, false }
 
+// Generator reports no waveform generator.
 // TRLC-LINKS: REQ-SDS-001
 func (b *Board) Generator() (hal.Generator, bool) { return nil, false }
 

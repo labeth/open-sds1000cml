@@ -14,6 +14,7 @@ import (
 // CodeFormat is the converters' code format as the frames carry it.
 var CodeFormat = acq.CodeFormat
 
+// CodesPerDiv and RollCodesPerDiv are the acquisition board's code scales.
 const (
 	CodesPerDiv     = acq.CodesPerDiv
 	RollCodesPerDiv = acq.RollCodesPerDiv
@@ -39,4 +40,5 @@ func PlanSRAM(tdiv float64) acq.SRAMPlan { return acq.PlanSRAM(tdiv) }
 // TRLC-LINKS: REQ-SDS-010
 func SPIDelayFPGA(ns float64, clockCh int) float64 { return acq.SPIDelayFPGA(ns, clockCh) }
 
+// SRAMPlan is acq.SRAMPlan.
 type SRAMPlan = acq.SRAMPlan

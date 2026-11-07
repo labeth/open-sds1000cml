@@ -138,7 +138,7 @@ func newSymTab(longest float64, lead, data uint8) *SymTab {
 	return t
 }
 
-// count is a duration's prescaled tick count.
+// Count is a duration's prescaled tick count.
 // TRLC-LINKS: REQ-SDS-013
 func (t *SymTab) Count(s float64) float64 {
 	if math.IsInf(s, 1) {
@@ -148,7 +148,7 @@ func (t *SymTab) Count(s float64) float64 {
 	return math.Max(0, math.Floor((w-1)/float64(int(1)<<t.Prescale)))
 }
 
-// each calls f with every index of level whose bucket's middle count lies
+// Each calls f with every index of level whose bucket's middle count lies
 // in [lo, hi] seconds (hi +Inf: open-ended).
 // TRLC-LINKS: REQ-SDS-013
 func (t *SymTab) Each(level bool, lo, hi float64, f func(int)) {
@@ -207,7 +207,7 @@ func (t *SymTab) both(level bool, lo, hi float64, lead, data uint8) {
 // symUnit is a pattern unit: value under mask.
 type symUnit struct{ value, mask int }
 
-// symSpec is one protocol's compilation: the block's settings and table,
+// SymSpec is one protocol's compilation: the block's settings and table,
 // the bits a frame start requires (start, given the frame's units: RC-5's
 // second start bit carries a command bit), each unit's bits, the width of
 // the unit (for its value) and the bits a unit takes at any unit boundary
@@ -219,7 +219,7 @@ type symUnit struct{ value, mask int }
 // frame, letters of variable length): the bits, and the period of an
 // unanchored match (0: anchored). dropFreeTail leaves the trailing units
 // that ask nothing out: a start fires at the frame's opening.
-type symSpec struct {
+type SymSpec struct {
 	cfg          sramcapture.SymbolTriggerConfig
 	tab          *SymTab
 	start        func(b *symBits, units []symUnit) bool
@@ -263,13 +263,13 @@ func uartChar(b *symBits, u symUnit, bits int, parity string) {
 // SymbolSpec compiles a protocol's line timing: false when its rate is out
 // of the block's reach.
 // TRLC-LINKS: REQ-SDS-013, REQ-SDS-018
-func SymbolSpec(p core.SerialParams) (symSpec, bool) { //nolint:gocyclo,funlen // one case per protocol: the table reads as one
+func SymbolSpec(p core.SerialParams) (SymSpec, bool) { //nolint:gocyclo,funlen // one case per protocol: the table reads as one
 	T := 1 / float64(p.Baud)
 	inf := math.Inf(1)
 	us, ms := 1e-6, 1e-3
 	q8 := func(s float64) uint32 { return uint32(math.Round(s / (sramcapture.SymbolClockNs * 1e-9) * 256)) }
 	w8 := func(int) int { return 8 }
-	s := symSpec{cfg: sramcapture.SymbolTriggerConfig{Enabled: true, Channel: uint8(p.ChA), InvA: p.Inverted, InvB: p.Inverted, UnitQ8: 2048}, Width: w8} //nolint:gosec // G115: the channel is 0 or 1 (serialPlanParams)
+	s := SymSpec{cfg: sramcapture.SymbolTriggerConfig{Enabled: true, Channel: uint8(p.ChA), InvA: p.Inverted, InvB: p.Inverted, UnitQ8: 2048}, Width: w8} //nolint:gosec // G115: the channel is 0 or 1 (serialPlanParams)
 	none := func(*symBits, []symUnit) bool { return true }
 	s.start = none
 	set := func(mode, lead int, longest float64, data uint8) {
@@ -621,7 +621,7 @@ func SymbolSpec(p core.SerialParams) (symSpec, bool) { //nolint:gocyclo,funlen /
 // symbol trigger cannot take. A free tail is dropped where the protocol
 // says so.
 // TRLC-LINKS: REQ-SDS-013, REQ-SDS-018
-func (s *symSpec) units(elems []core.PatternElem) ([]symUnit, bool) {
+func (s *SymSpec) units(elems []core.PatternElem) ([]symUnit, bool) {
 	var units []symUnit
 	for i, e := range elems {
 		switch {
@@ -647,9 +647,9 @@ func (s *symSpec) units(elems []core.PatternElem) ([]symUnit, bool) {
 }
 
 // customConfig is the block's settings for a protocol that builds its own
-// bits (symSpec.custom); off when they do not fit the 64-bit window.
+// bits (SymSpec.custom); off when they do not fit the 64-bit window.
 // TRLC-LINKS: REQ-SDS-013, REQ-SDS-018
-func (s *symSpec) customConfig(units []symUnit, anchored bool) sramcapture.SymbolTriggerConfig {
+func (s *SymSpec) customConfig(units []symUnit, anchored bool) sramcapture.SymbolTriggerConfig {
 	b, period, ok := s.custom(units, anchored)
 	n := len(b.val)
 	if !ok || n > 1023 || (period != 0 && (n == 0 || n > 64)) {

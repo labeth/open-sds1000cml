@@ -9,8 +9,10 @@ import (
 	"github.com/labeth/open-sds1000cml/app/internal/sramcapture"
 )
 
-// Each repository MIL sync-delimited packet contains one word. A multiword
-// pattern cannot match that packet contract and is not sent to this matcher.
+// PlanHardwareMIL1553 is the MIL-STD-1553 receiver's setting for p, or the
+// zero (off) setting. Each repository MIL sync-delimited packet contains one
+// word. A multiword pattern cannot match that packet contract and is not
+// sent to this matcher.
 // TRLC-LINKS: REQ-SDS-013, REQ-SDS-018
 func PlanHardwareMIL1553(p *core.SerialParams) sramcapture.MIL1553TriggerConfig {
 	if p.Proto != core.SerMIL1553 || !p.HaveThr || p.ChA < 0 || p.ChA > 1 || len(p.Bytes) > 1 || p.Baud <= 0 || math.IsNaN(p.Threshold) || math.IsInf(p.Threshold, 0) || p.Threshold < 0 || p.Threshold > 255 {

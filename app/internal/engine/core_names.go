@@ -10,7 +10,6 @@ import (
 
 // The engine's hardware-free parts live in the core engine; these names
 // keep the scope's packages naming them through this one.
-
 const (
 	AcqAverage      = core.AcqAverage
 	AcqEres         = core.AcqEres
@@ -42,26 +41,46 @@ const (
 )
 
 type (
-	BodePoint        = core.BodePoint
-	ClientChunk      = core.ClientChunk
+	// BodePoint is core.BodePoint.
+	BodePoint = core.BodePoint
+	// ClientChunk is core.ClientChunk.
+	ClientChunk = core.ClientChunk
+	// ClientStreamInfo is core.ClientStreamInfo.
 	ClientStreamInfo = core.ClientStreamInfo
-	ClientWords      = core.ClientWords
-	Clock            = core.Clock
-	Mask             = core.Mask
-	MaskFail         = core.MaskFail
-	PatternElem      = core.PatternElem
-	SerialDecoder    = core.SerialDecoder
-	SerialParams     = core.SerialParams
-	SoundBlock       = core.SoundBlock
-	SoundInfo        = core.SoundInfo
-	SoundMark        = core.SoundMark
-	SoundMarkConfig  = core.SoundMarkConfig
-	SoundScale       = core.SoundScale
-	SoundTake        = core.SoundTake
-	TrigQual         = core.TrigQual
-	TrigType         = core.TrigType
-	ViewSurface      = core.ViewSurface
-	Zone             = core.Zone
+	// ClientWords is core.ClientWords.
+	ClientWords = core.ClientWords
+	// Clock is core.Clock.
+	Clock = core.Clock
+	// Mask is core.Mask.
+	Mask = core.Mask
+	// MaskFail is core.MaskFail.
+	MaskFail = core.MaskFail
+	// PatternElem is core.PatternElem.
+	PatternElem = core.PatternElem
+	// SerialDecoder is core.SerialDecoder.
+	SerialDecoder = core.SerialDecoder
+	// SerialParams is core.SerialParams.
+	SerialParams = core.SerialParams
+	// SoundBlock is core.SoundBlock.
+	SoundBlock = core.SoundBlock
+	// SoundInfo is core.SoundInfo.
+	SoundInfo = core.SoundInfo
+	// SoundMark is core.SoundMark.
+	SoundMark = core.SoundMark
+	// SoundMarkConfig is core.SoundMarkConfig.
+	SoundMarkConfig = core.SoundMarkConfig
+	// SoundScale is core.SoundScale.
+	SoundScale = core.SoundScale
+	// SoundTake is core.SoundTake.
+	SoundTake = core.SoundTake
+	// TrigQual is core.TrigQual.
+	TrigQual = core.TrigQual
+	// TrigType is core.TrigType.
+	TrigType = core.TrigType
+	// ViewSurface is core.ViewSurface.
+	ViewSurface = core.ViewSurface
+	// Zone is core.Zone.
+	Zone = core.Zone
 )
 
 // AppendClientChunkHeads is core.AppendClientChunkHeads.

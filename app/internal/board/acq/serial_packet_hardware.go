@@ -10,9 +10,11 @@ import (
 	"github.com/labeth/open-sds1000cml/app/internal/sramcapture"
 )
 
-// Hardware plans mirror the registry decoders: a pattern the software matcher
-// could not find in one packet is never sent to hardware, and polarity or
-// threshold choices the decoder does not honour are not added.
+// SerialThresholdOK reports whether p has a usable threshold (0..255 codes),
+// channel and rate. Hardware plans mirror the registry decoders: a pattern
+// the software matcher could not find in one packet is never sent to
+// hardware, and polarity or threshold choices the decoder does not honour
+// are not added.
 // TRLC-LINKS: REQ-SDS-013, REQ-SDS-018
 func SerialThresholdOK(p *core.SerialParams) bool {
 	return p.HaveThr && !math.IsNaN(p.Threshold) && !math.IsInf(p.Threshold, 0) && p.Threshold >= 0 && p.Threshold <= 255 &&

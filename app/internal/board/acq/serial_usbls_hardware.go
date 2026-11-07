@@ -9,6 +9,8 @@ import (
 	"github.com/labeth/open-sds1000cml/app/internal/sramcapture"
 )
 
+// PlanHardwareUSBLS is the low-speed USB receiver's setting for p, or the zero
+// (off) setting when the block cannot match it.
 // TRLC-LINKS: REQ-SDS-013, REQ-SDS-018
 func PlanHardwareUSBLS(p *core.SerialParams) sramcapture.USBLSTriggerConfig {
 	if p.Proto != core.SerUSB || !p.HaveThr || p.ChA < 0 || p.ChA > 1 || len(p.Bytes) > 4 || p.Baud <= 0 || math.IsNaN(p.Threshold) || math.IsInf(p.Threshold, 0) || p.Threshold < 0 || p.Threshold > 255 {

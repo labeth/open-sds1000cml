@@ -95,7 +95,8 @@ func (f *FrontEnd) OffsetGrid(ch int) hal.Grid {
 	return hal.Grid{Step: (hi - lo) / 0xFFFF, Min: lo, Max: hi}
 }
 
-// Couplings: the relay stays in DC; AC and GND are done on the samples.
+// Couplings lists the couplings: the relay stays in DC; AC and GND are done
+// on the samples.
 // TRLC-LINKS: REQ-SDS-096
 func (f *FrontEnd) Couplings(int) []hal.CouplingOption {
 	return []hal.CouplingOption{{Coupling: hal.DC}, {Coupling: hal.AC, Software: true}, {Coupling: hal.GND, Software: true}}

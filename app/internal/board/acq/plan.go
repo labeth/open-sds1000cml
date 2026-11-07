@@ -115,6 +115,7 @@ const (
 	SampleSPIFastBand = 6
 )
 
+// BoolInt is v as 1 or 0.
 // TRLC-LINKS: REQ-SDS-040
 func BoolInt(v bool) int {
 	if v {
@@ -160,7 +161,8 @@ func LiveSRAMWindowPre(m sramcapture.Metadata, screen int, posFrac float64, extr
 	return offset, words
 }
 
-// A stopped timebase change reuses the captured sample pitch and depth.
+// RetainedSRAMPlan is p at timebase tdiv after a stopped timebase change: it
+// reuses the captured sample pitch and depth.
 // TRLC-LINKS: REQ-SDS-010, REQ-SDS-040
 func RetainedSRAMPlan(p SRAMPlan, tdiv float64) SRAMPlan {
 	p.Screen = int(math.Min(float64(p.Samples), math.Max(2, math.Round(10*tdiv/p.SampleS))))
