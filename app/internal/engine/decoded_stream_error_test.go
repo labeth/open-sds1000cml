@@ -61,7 +61,7 @@ func TestDecodedStreamOnErrorPlansTheErrorToken(t *testing.T) {
 			t.Errorf("protocol %d: a history of %d words, the transcript's window %d samples", c.p.Proto, cfg.PreWords, decodedlines.HistorySamples)
 		}
 		if cfg.Sequence.Length != 1 || cfg.Sequence.Elements[0].Kind != sramcapture.SequenceError || cfg.Sequence.Qualify || !cfg.Normal {
-			t.Errorf("protocol %d (%s): sequence %+v", c.p.Proto, acq.HardwareSerialName(cfg), cfg.Sequence)
+			t.Errorf("protocol %d (%s): sequence %+v", c.p.Proto, acq.HardwareSerialName(&cfg), cfg.Sequence)
 		}
 	}
 }

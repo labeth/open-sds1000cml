@@ -124,7 +124,7 @@ func PlanHardwareManchester(p *core.SerialParams) sramcapture.ManchesterTriggerC
 // HardwareSerialName names the enabled hardware decoder, or "" for none,
 // with a "-sequence" suffix when the sequence trigger matches for it.
 // TRLC-LINKS: REQ-SDS-013
-func HardwareSerialName(c sramcapture.Config) string {
+func HardwareSerialName(c *sramcapture.Config) string {
 	name := decoderName(c)
 	if name != "" && c.Sequence.Length != 0 {
 		name += "-sequence"
@@ -133,7 +133,7 @@ func HardwareSerialName(c sramcapture.Config) string {
 }
 
 // TRLC-LINKS: REQ-SDS-013
-func decoderName(c sramcapture.Config) string {
+func decoderName(c *sramcapture.Config) string {
 	switch {
 	case c.Symbol.Enabled:
 		return "symbol"
