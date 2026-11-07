@@ -3,12 +3,12 @@
 package scpi
 
 import (
-	"fmt"
-	"math"
 	"strings"
 
 	"github.com/labeth/open-dso-core/measure"
 	"github.com/labeth/open-dso-core/sample"
+	core "github.com/labeth/open-dso-core/scpi"
+	"github.com/labeth/open-dso-core/scpi/meas"
 	"github.com/labeth/open-sds1000cml/app/internal/analog"
 	"github.com/labeth/open-sds1000cml/app/internal/engine"
 )
@@ -47,43 +47,49 @@ func (h *Handler) coupling(ch int) int {
 	return analog.CplDC
 }
 
-// pavaParam maps a Cn:PAVA? parameter to its value and unit. timing marks
-// the parameters that need a resolved edge; edge, those that need its shape,
-// which a peak-detect envelope's bucket hides.
-var pavaParam = map[string]struct {
-	unit   string
-	timing bool
-	get    func(r *measure.Result) float64
-	edge   bool
-}{
-	"PKPK":  {"V", false, func(r *measure.Result) float64 { return r.Vpp }, false},
-	"MAX":   {"V", false, func(r *measure.Result) float64 { return r.Vmax }, false},
-	"MIN":   {"V", false, func(r *measure.Result) float64 { return r.Vmin }, false},
-	"AMPL":  {"V", false, func(r *measure.Result) float64 { return r.Vampl }, false},
-	"TOP":   {"V", false, func(r *measure.Result) float64 { return r.Vtop }, false},
-	"BASE":  {"V", false, func(r *measure.Result) float64 { return r.Vbase }, false},
-	"MEAN":  {"V", false, func(r *measure.Result) float64 { return notAliased(r, r.Vmean) }, false},
-	"RMS":   {"V", false, func(r *measure.Result) float64 { return notAliased(r, r.Vrms) }, false},
-	"OVSP":  {"%", true, func(r *measure.Result) float64 { return r.Overshoot }, true},
-	"RPRE":  {"%", true, func(r *measure.Result) float64 { return r.Preshoot }, true},
-	"PER":   {"s", true, func(r *measure.Result) float64 { return r.Period }, false},
-	"FREQ":  {"Hz", true, func(r *measure.Result) float64 { return r.Freq }, false},
-	"PWID":  {"s", true, func(r *measure.Result) float64 { return r.PosWidthS }, false},
-	"NWID":  {"s", true, func(r *measure.Result) float64 { return r.NegWidthS }, false},
-	"RISE":  {"s", true, func(r *measure.Result) float64 { return r.RiseS }, true},
-	"FALL":  {"s", true, func(r *measure.Result) float64 { return r.FallS }, true},
-	"DUTY":  {"%", true, func(r *measure.Result) float64 { return r.Duty }, false},
-	"NDUTY": {"%", true, func(r *measure.Result) float64 { return 100 - r.Duty }, false},
-}
+// pavaOrder is PAVA? ALL's parameter order: the core's legacy order.
+var pavaOrder = func() []string {
+	names := make([]string, len(meas.Params))
+	for i, p := range meas.Params {
+		names[i] = p.Name
+	}
+	return names
+}()
 
 // pava answers Cn:PAVA? <param> from the published frame with the same
 // measurement code, scale, offset, probe and coupling as the screen. A value
 // the record cannot support reads "****", as the vendor firmware does.
 // TRLC-LINKS: REQ-SDS-021, REQ-SDS-024
-func (h *Handler) pava(ch int, arg string) []byte {
-	if _, ok := pavaParam[arg]; !ok && arg != "ALL" {
-		return errTok(errHeader)
+func (h *Handler) pava(c *core.Call, ch int, arg string) error {
+	param, known := meas.Lookup(arg)
+	if !known && arg != "ALL" {
+		return c.Error(core.ErrHeader)
 	}
+	r := h.measure(ch)
+	header := chHeader(ch, "PAVA")
+	if arg != "ALL" {
+		c.Reply(header, arg+","+param.Legacy(r))
+		return nil
+	}
+	// Every parameter from one measurement, in one buffer.
+	var out strings.Builder
+	out.Grow(400)
+	out.WriteString("ALL")
+	for i := range meas.Params {
+		p := &meas.Params[i]
+		out.WriteString(",")
+		out.WriteString(p.Name)
+		out.WriteString(",")
+		out.WriteString(p.Legacy(r))
+	}
+	c.Reply(header, out.String())
+	return nil
+}
+
+// measure measures channel ch on the published frame as the screen does;
+// nil when there is nothing to measure.
+// TRLC-LINKS: REQ-SDS-021, REQ-SDS-024
+func (h *Handler) measure(ch int) *measure.Result {
 	vdiv, offV := 1.0, 0.0
 	if h.fe != nil {
 		vdiv = h.fe.RangeV(ch & 1) // codes are on the analog range
@@ -129,68 +135,16 @@ func (h *Handler) pava(ch int, arg string) []byte {
 	if r != nil && h.inverted(ch) {
 		r = r.Inverted() // measure what the inverted trace shows
 	}
-	if arg == "ALL" { // every parameter from one measurement
-		var out strings.Builder // one buffer, not a new string a parameter
-		out.Grow(400)
-		out.WriteString("ALL")
-		for _, name := range pavaOrder {
-			out.WriteString(",")
-			out.WriteString(name)
-			out.WriteString(",")
-			out.WriteString(pavaValue(name, r))
-		}
-		return h.reply(fmt.Sprintf("C%d:PAVA", ch+1), out.String())
-	}
-	return h.reply(fmt.Sprintf("C%d:PAVA", ch+1), arg+","+pavaValue(arg, r))
+	return r
 }
-
-// pavaOrder is PAVA? ALL's parameter order.
-var pavaOrder = []string{
-	"PKPK", "MAX", "MIN", "AMPL", "TOP", "BASE", "MEAN", "RMS", "OVSP", "RPRE",
-	"PER", "FREQ", "PWID", "NWID", "RISE", "FALL", "DUTY", "NDUTY",
-}
-
-// noReading is the vendor's reading of a measurement the record cannot
-// support.
-const noReading = "****"
 
 // pavaValue formats one parameter of a measurement; "****" when the record
 // cannot support it.
 // TRLC-LINKS: REQ-SDS-024
 func pavaValue(arg string, r *measure.Result) string {
-	p := pavaParam[arg]
-	value := noReading
-	show := r != nil
-	switch {
-	case !show:
-	case p.edge:
-		// Edge shape needs an edge, not a period: one edge on screen (a fast
-		// timebase) has a rise time (RISE must not read **** at 50 ns/div on a
-		// clean 20 ns edge).
-		show = (!r.EnvTiming || r.EdgeShape) && (r.RiseS > 0 || r.FallS > 0)
-		switch arg {
-		case "RISE":
-			show = show && r.RiseS > 0
-		case "FALL":
-			show = show && r.FallS > 0
-		}
-	case p.timing:
-		show = r.HasTiming
+	p, ok := meas.Lookup(arg)
+	if !ok {
+		return meas.NoReading
 	}
-	if show {
-		if v := p.get(r); !math.IsNaN(v) && !math.IsInf(v, 0) {
-			value = fmt.Sprintf("%.6E%s", v, p.unit)
-		}
-	}
-	return value
-}
-
-// notAliased is v, or NaN (****) when r is an envelope of a signal faster
-// than its buckets, which holds no mean or RMS.
-// TRLC-LINKS: REQ-SDS-024
-func notAliased(r *measure.Result, v float64) float64 {
-	if r.EnvAliased {
-		return math.NaN()
-	}
-	return v
+	return p.Legacy(r)
 }
