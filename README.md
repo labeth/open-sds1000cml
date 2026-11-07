@@ -520,7 +520,8 @@ file holds. In one boot, each stage only after checks that the one before found 
 ## Documentation
 
 The engineering model is the documentation: requirements, architecture, behaviour and design
-decisions are in [`model/`](model/) (start with `requirements.yml` and `decisions.yml`). The
+decisions are in [`model/`](model/) (start with `requirements.yml` and `decisions.yml`), composing
+open-dso-core's model for the code that lives there. The
 behavioural specifications the implementation was written from are in [`specs/`](specs/).
 
 ## Layout
