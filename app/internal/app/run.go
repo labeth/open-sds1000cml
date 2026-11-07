@@ -8,21 +8,20 @@ package app
 
 import (
 	"context"
-	"errors"
 	"fmt"
-	"net/http"
 	"os"
 	"os/signal"
 	"path/filepath"
-	"runtime/debug"
 	"strconv"
+	"sync/atomic"
 	"syscall"
 	"time"
 
-	"github.com/labeth/open-dso-core/engine/fanout"
 	"github.com/labeth/open-dso-core/hal"
 	"github.com/labeth/open-dso-core/render"
+	"github.com/labeth/open-dso-core/scopeapp"
 	scpihost "github.com/labeth/open-dso-core/scpi/host"
+	coresettings "github.com/labeth/open-dso-core/settings"
 	"github.com/labeth/open-dso-core/uimodel/panel"
 	"github.com/labeth/open-dso-core/webserver"
 	scope "github.com/labeth/open-sds1000cml/app"
@@ -80,24 +79,61 @@ func startMark(stage string) {
 	logf("start: %s at %v", stage, time.Since(startAt).Round(time.Millisecond))
 }
 
-// Run is the app: it brings the fabric up, starts the acquisition engine and
-// serves the LCD, the front panel, the web UI and SCPI until SIGTERM.
+// Run is the app: it brings the fabric up, builds the board and runs the
+// core's scope application over it (scopeapp.Run) until SIGTERM, then
+// returns the process's exit code.
 // TRLC-LINKS: REQ-SDS-167
-func Run() {
+func Run() int {
 	logf("start pid=%d version=%s", os.Getpid(), buildinfo.String())
-	// The unit has 125 MB and the default collector lets the heap reach twice
-	// the live set: after 1 M-sample stopped records and full-depth WF?/frame
-	// transfers the app reaches 71 MB RSS with 25 MB left free.
-	// A soft limit makes the collector work harder near it instead of growing.
-	if os.Getenv("GOMEMLIMIT") == "" {
-		debug.SetMemoryLimit(appMemoryLimit)
-	}
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGINT)
+	defer stop()
 
+	c, ok := newBoard(ctx)
+	if !ok {
+		return 0
+	}
+	if err := scopeapp.Run(ctx, c.acq, c.options()); err != nil {
+		logf("FATAL: %v", err)
+		return 1
+	}
+	return 0
+}
+
+// composition is the SDS1000CML+'s parts the core's application runs: the
+// engine (its own owner until it is HAL terms throughout), the analog front
+// end and its levels, the board, and the UI model, decoded stream and SCPI
+// handler they wire to one another.
+type composition struct {
+	bus    *bus.Dev
+	acq    *acq.Board
+	e      *engine.Engine
+	fe     *analog.FrontEnd // nil without SPI to the front end
+	levels *board.Levels
+	keyFD  int
+
+	pc   *panel.Controller
+	sv   *streamview.Controller
+	scpi *scpi.Handler
+
+	// lastViewWasBode tracks whether the device's BODE view armed FRA, so
+	// leaving the view disarms only the device's own auto-arm (a web-armed
+	// sweep persists).
+	lastViewWasBode atomic.Bool
+	lastStreamPage  atomic.Pointer[cachedStreamPage] // the HUD's cached transcript page
+}
+
+// newBoard brings the unit up to a board the core can run: the OTA agent's
+// contract, the fabric and its worker, the engine, the calibration and the
+// front end, the profile with the unit's identity, the hand-over and the
+// devices. false: there is nothing to drive (logged; without the GPMC
+// descriptor or a bus it waits for the signal, never writing the health
+// token, so the agent sees why).
+// TRLC-LINKS: REQ-SDS-167, REQ-SDS-002
+func newBoard(ctx context.Context) (*composition, bool) {
 	// The OTA agent starts the app and hands it its contract: the GPMC device
 	// it opened (inherited, never opened here), the health token's path and
 	// the stick's ota/ directory, where the settings live. The app runs only
 	// under the agent.
-	const listen = ":8080"
 	gpmcDev, healthPath, otaDir := os.Getenv("SCOPE_GPMC"), os.Getenv("OTA_HEALTH_PATH"), os.Getenv("OTA_DIR")
 	if gpmcDev == "" || healthPath == "" || otaDir == "" {
 		logf("FATAL: SCOPE_GPMC, OTA_HEALTH_PATH and OTA_DIR come from the OTA agent (got %q, %q, %q)", gpmcDev, healthPath, otaDir)
@@ -108,29 +144,26 @@ func Run() {
 	keyFD := findInheritedFD("/dev/fpga_key")
 	logf("inherited %s fd=%d  /dev/fpga_key fd=%d", gpmcDev, gpmcFD, keyFD)
 
-	sig := make(chan os.Signal, 1)
-	signal.Notify(sig, syscall.SIGTERM, syscall.SIGINT)
-
 	if gpmcFD < 0 {
 		// Spec 01 §5.2: refuse to drive, never write the health token, stay
 		// alive for diagnosis. No fresh open — that could wedge the driver.
 		logf("FATAL: no inherited %s fd — refusing to drive (spec 01 §5.2)", gpmcDev)
-		<-sig
-		os.Exit(0)
+		<-ctx.Done()
+		return nil, false
 	}
 
 	b, err := bus.New(gpmcFD)
 	if err != nil {
 		logf("FATAL: bus init: %v — refusing to drive", err)
-		<-sig
-		os.Exit(0)
+		<-ctx.Done()
+		return nil, false
 	}
 	// Fabric deployment: load the general image, verify the SRAM transport,
 	// then hand the bus to the acquisition worker. Any failure stops here:
 	// no health token is written, so the agent rolls the app back.
 	sramBackend, ok := bringUpFabric(b, gpmcFD)
 	if !ok {
-		return
+		return nil, false
 	}
 
 	var interleaveCal *engine.InterleaveCalibration
@@ -149,8 +182,6 @@ func Run() {
 	e := engine.New(engine.Config{Bus: b, Logf: logf, Board: acqBoard, InterleaveCalibration: interleaveCal})
 	e.SetImageSwitcher(imageSwitcher{fd: gpmcFD})
 
-	go healthLoop(e, healthPath)
-
 	// Per-unit calibration (spec 10): file → backup → compiled defaults.
 	calTab := cal.Load(logf)
 	logf("cal source: %s (C1@1V zero=%d gainDAC=%d)", calTab.Source,
@@ -159,154 +190,139 @@ func Run() {
 	// The vertical front end is off the GPMC bus (SPI). Optional: without it
 	// the scope still runs on the inherited boot range.
 	fe := startFrontEnd(e, calTab)
-	var feIface webscope.Analog
-	if fe != nil {
-		feIface = fe
-	}
-
 	if fe != nil {
 		for ch := range 2 {
 			if err := fe.SetVdiv(ch, 8); err != nil {
 				logf("SRAM: initial range: %v", err)
-				return
+				return nil, false
 			}
 		}
 	}
-	go e.Run()
-	// The fan-out is the arena's single consumer; the web UI and the LCD
-	// renderer read its snapshot under the fan-out lock.
-	fo := fanout.NewFrames()
-	stopFo := make(chan struct{})
-	go fo.Run(e, stopFo)
-
-	go runLCD(e, fe, fo)
-
-	// Front-panel controller: SIGIO off the inherited /dev/fpga_key fd,
-	// matrix reads via the engine's request/reply channel.
-	var pfe panel.Analog
-	var bfe board.FrontEnd
-	if fe != nil {
-		pfe, bfe = fe, fe
-	}
 	// The trigger level and the offsets in volts over the DACs the engine
 	// stages: the controllers' side of the board's levels.
-	levels := board.New(e, bfe)
+	var bfe board.FrontEnd
 	if fe != nil {
+		bfe = fe
 		acqBoard.SetFrontEnd(fe)
 	}
+	levels := board.New(e, bfe)
 	acqBoard.SetLevelGrid(levels.TrigLevelGrid)
-	pc := panel.New(e, pfe, levels, cmlpanel.Hardware{}, engine.SupportedTdivs(), 500e-6, logf)
-	pc.SetFrameSource(fo.WithFrame) // let the AUTO button measure the live signal
-	// Decoded stream (ADR-PANEL-DECODED-STREAM): the panel starts it from the
-	// BUS sheet's decoder settings (typed in, or filled in by Auto).
-	sv := streamview.New(e, logf)
-	streamCtrl.Store(sv)
-	pc.SetDecodeStream(sv)
-	uiCtrl.Store(pc) // publish for the LCD render loop + SCDP screenshot
-	// The front panel: the key matrix on SIGIO through the engine, the lamp
-	// latch; the UI model takes its events on its own goroutine.
-	keys := cmlpanel.NewInput(e, keyFD, logf)
-	go keys.Run(stopFo)
-	go pc.Run(stopFo, keys)
-	logf("panel controller up (fpga_key fd=%d)", keyFD)
-	startMark("panel up")
+	attachProfile(acqBoard)
+	acqBoard.SetHandover(hal.Handover{
+		FDs:       map[string]int{"gpmc": gpmcFD, "fpga_key": keyFD},
+		HealthTok: healthPath, StateDir: otaDir,
+	})
+	// The front panel: the key matrix on SIGIO off the inherited
+	// /dev/fpga_key fd through the engine, the lamp latch. The settings and
+	// setups live in the stick's ota/ directory.
+	acqBoard.SetDevices(nil, cmlpanel.NewInput(e, keyFD, logf),
+		settings.Storage{Dir: otaDir, Cal: hal.CalSource{Source: calTab.Source, Valid: true}})
+	return &composition{bus: b, acq: acqBoard, e: e, fe: fe, levels: levels, keyFD: keyFD}, true
+}
 
-	// Device-screen PNG for the web /api/screen.png endpoint: the exact LCD render.
-	screenPNG := func() []byte { return render.EncodePNG(renderScreen(e, fe, fo)) }
-	// SCPI over VXI-11 (spec 11): the host instrument-control interface.
-	// SCDP renders a fresh headless frame — works with or without the LCD.
-	// Created BEFORE the web server so its INVS shadow (the display-invert
-	// truth) can be wired into the status snapshot; the panel controller
-	// backs the SCPI display commands (XYDS/PESU/MENU) with the real state.
-	var sfe scpi.Analog
-	if fe != nil {
-		sfe = fe
+// options are the SDS1000CML+'s parts of the core's application: its own
+// engine, its UI model's hardware facts, its LCD and HUD, its SCPI dialect
+// on VXI-11, its web scope on :8080, and the settings file's level code.
+// TRLC-LINKS: REQ-SDS-167
+func (c *composition) options() scopeapp.Options {
+	var setFE coresettings.Analog
+	if c.fe != nil { // a nil *FrontEnd must leave the interface nil
+		setFE = c.fe
 	}
-	shot := func() []byte { return lcd.EncodeBMP(renderScreen(e, fe, fo)) }
-	scpiH := scpi.New(scopeSource{e, fo}, sfe, levels, pc, shot, logf)
-	scpiCtrl.Store(scpiH) // publish for the LCD render loop + screenshot paths
-	pc.SetInverter(scpiH) // the CH tabs' Invert rows: the same INVS shadow
-	// Settings persistence: restore the last user setup now that the engine is
-	// up and the panel has its display invert (restored with the rest; a
-	// restore run before it would lose the invert) — through the
-	// SAME setter paths the panel/web use, so every clamp and side-effect
-	// applies — then watch for changes and save them debounced to the U-disk.
-	// A missing/corrupt file just means "boot with defaults".
-	var setFE settings.Analog
-	if fe != nil {
-		setFE = fe
+	return scopeapp.Options{
+		Logf: logf, Mark: startMark,
+		// The unit has 125 MB and the default collector lets the heap reach
+		// twice the live set: after 1 M-sample stopped records and
+		// full-depth WF?/frame transfers the app reaches 71 MB RSS with 25 MB
+		// left free. A soft limit makes the collector work harder near it
+		// instead of growing.
+		MemoryLimit: appMemoryLimit,
+		Owner:       c.e,
+		UI:          c.ui,
+		Display: scopeapp.Display{
+			Open: openLCD, Engine: c.e, HUD: c.hud, OnFrame: c.viewLease, URL: lcd.DeviceURL,
+			Canvas: func() render.Canvas { return lcd.NewBackBuffer() },
+		},
+		// VXI-11 is this scope's only LAN SCPI path (spec 11 §1: no raw
+		// socket, no telnet).
+		SCPI:     c.scpiEngine,
+		SCPIHost: scpihost.Config{VXI11: true, Register: true},
+		// No read or write timeouts beyond the header's: /api/frame.bin
+		// parks requests up to 2 s (long-poll); slow-peer writes are bounded
+		// per response inside the handler.
+		Listen: ":8080", Web: c.web, WebOptions: []webserver.Option{webserver.WithPprof()},
+		Settings: scopeapp.Settings{
+			Analog: setFE, Extension: board.SettingsExtension{Levels: c.levels}, SlotKey: settings.SlotKey,
+		},
+		OnStop: func() {
+			if err := c.bus.CloseWorker(); err != nil {
+				logf("acquisition worker shutdown: %v", err)
+			}
+		},
 	}
-	setExt := board.SettingsExtension{Levels: levels}
-	setPath := settings.PathIn(otaDir)
-	if st, ok := settings.Load(setPath, logf); ok {
-		settings.Apply(st, e, setFE, pc, setExt, logf)
-		logf("settings: restored %s", setPath)
-	} else {
-		logf("settings: no saved setup at %s — defaults", setPath)
+}
+
+// ui is the core's UI model over this scope's engine, front end, levels
+// and hardware facts, with the decoded stream (ADR-PANEL-DECODED-STREAM:
+// the panel starts it from the BUS sheet's decoder settings) and PRINT's
+// hardcopy to the U-disk.
+// TRLC-LINKS: REQ-SDS-167
+func (c *composition) ui(env *scopeapp.Env) (*panel.Controller, error) {
+	var pfe panel.Analog
+	if c.fe != nil {
+		pfe = c.fe
 	}
-	saver := settings.NewSaver(setPath, func() settings.Settings {
-		return settings.Collect(e, setFE, pc, setExt)
-	}, logf)
-	go saver.Run(stopFo)
-	// *SAV/*RCL: numbered setups beside the persisted one, through the same
-	// Collect/Apply paths as the boot restore.
-	setupSlots := settings.Slots{
-		Dir:     filepath.Dir(setPath),
-		Collect: func() settings.Settings { return settings.Collect(e, setFE, pc, setExt) },
-		Apply:   func(st settings.Settings) { settings.Apply(st, e, setFE, pc, setExt, logf) },
-	}
-	pc.SetSetupMemory(setupSlots) // SAVE/RECALL key: the same slots as *SAV/*RCL
-	// SCPI and the web save and recall through the panel, so its FILE rows and
-	// SAVE/RECALL lamp follow them.
-	sharedSetups := pc.SharedSetups()
-	scpiH.SetSetupMemory(sharedSetups)
+	pc := panel.New(c.e, pfe, c.levels, cmlpanel.Hardware{}, engine.SupportedTdivs(), 500e-6, logf)
+	sv := streamview.New(c.e, logf)
+	pc.SetDecodeStream(sv)
 	pc.SetHardcopy(func() (string, error) {
 		if !mountedAt(uDisk) { // the bare directory would be the internal flash
 			return "", fmt.Errorf("no U-disk mounted at %s", uDisk)
 		}
-		return saveHardcopy(uDisk, screenPNG())
+		return saveHardcopy(uDisk, env.ScreenPNG())
 	})
-	// VXI-11 is this scope's only LAN SCPI path (spec 11 §1: no raw socket,
-	// no telnet).
-	if _, err := scpihost.Serve(context.Background(), scpiH.HandleLine,
-		scpihost.Config{VXI11: true, Register: true}, logf); err != nil {
-		logf("WARNING: VXI-11 server failed: %v", err)
-	}
+	c.pc, c.sv = pc, sv
+	logf("panel controller up (fpga_key fd=%d)", c.keyFD)
+	return pc, nil
+}
 
-	// Deliberately NO Read/Write timeouts (see newWebServer): /api/frame.bin
-	// parks requests up to 2 s (long-poll), and a global WriteTimeout would
-	// kill every parked request. Slow-peer writes are bounded per-response
-	// inside the handler (SetWriteDeadline). Don't "harden" this without
-	// moving that contract.
-	sc := webscope.New(scopeSource{e, fo}, feIface, levels, pc, screenPNG, webCaps(acqBoard, logf)...)
-	sc.SetInvertSource(scpiH.Inverted)         // display-level INVS: SCPI shadow → /api/status
-	sc.SetSetupMemory(webSetups{sharedSetups}) // the web top bar's Setups: the same slots as *SAV/*RCL
-	ws := webserver.New(sc.WithCaps(), webserver.WithPprof())
-	webSrv.Store(ws)
-	srv := newWebServer(listen, ws.Handler())
-	go func() {
-		logf("web ui listening on %s", listen)
-		startMark("web up")
-		go webserver.Precompress()
-		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-			logf("web server: %v", err)
-		}
-	}()
+// scpiEngine is SCPI over VXI-11 (spec 11): its INVS shadow is the
+// display-invert truth the status and the HUD read and the CH tabs' Invert
+// rows write, and the panel's display state backs its display commands
+// (XYDS/PESU/MENU). SCDP renders a fresh headless picture.
+// TRLC-LINKS: REQ-SDS-024, REQ-SDS-167
+func (c *composition) scpiEngine(env *scopeapp.Env) (scopeapp.SCPI, error) {
+	var sfe scpi.Analog
+	if c.fe != nil {
+		sfe = c.fe
+	}
+	shot := func() []byte {
+		back := lcd.NewBackBuffer()
+		env.Render(back)
+		return lcd.EncodeBMP(back)
+	}
+	h := scpi.New(scopeSource{c.e, env.Frames}, sfe, c.levels, c.pc, shot, logf)
+	c.scpi = h
+	c.pc.SetInverter(h) // the CH tabs' Invert rows: the same INVS shadow
+	return scopeapp.SCPI{
+		Exec:   h.HandleLine,
+		Setups: func(s *panel.SharedSetups) { h.SetSetupMemory(s) },
+	}, nil
+}
 
-	s := <-sig
-	logf("signal %v — stopping engine at frame boundary", s)
-	saver.Flush() // a change still inside the debounce window survives the restart
-	// Never leave the panel dark behind the screen saver.
-	if err := lcd.SetBacklight(true); err != nil {
-		logf("backlight: %v", err)
+// web is the web scope over this scope's engine and front end, with the
+// board's capabilities, the SCPI shadow's display invert and the shared
+// setup memory.
+// TRLC-LINKS: REQ-SDS-164, REQ-SDS-167
+func (c *composition) web(env *scopeapp.Env) (webserver.Scope, error) {
+	var feIface webscope.Analog
+	if c.fe != nil {
+		feIface = c.fe
 	}
-	if !e.Stop(2 * time.Second) {
-		logf("WARNING: engine did not stop in time")
-	}
-	if err := b.CloseWorker(); err != nil {
-		logf("acquisition worker shutdown: %v", err)
-	}
-	os.Exit(0)
+	sc := webscope.New(scopeSource{c.e, env.Frames}, feIface, c.levels, c.pc, env.ScreenPNG, webscope.WithBoard(c.acq))
+	sc.SetInvertSource(c.scpi.Inverted)                             // display-level INVS: SCPI shadow → /api/status
+	sc.SetSetupMemory(scopeapp.WebSetups{SharedSetups: env.Setups}) // the web top bar's Setups: the same slots as *SAV/*RCL
+	return sc.WithCaps(), nil
 }
 
 // bringUpFabric loads the general image, checks the SRAM transport (fast
@@ -406,16 +422,16 @@ func Worker() int {
 	return 0
 }
 
-// webCaps attaches the scope's profile to the board, from which the page
-// reads its capabilities (with the front end and the trigger); without the
-// profile the web serves none.
-// TRLC-LINKS: REQ-SDS-164
-func webCaps(b *acq.Board, logf func(string, ...any)) []webscope.Option {
-	prof, err := scope.Profile(hal.Identity{Model: "SDS1102CML+"})
+// attachProfile attaches the scope's profile for this unit (its identity,
+// the serial read from the vendor's record) to the board, from which the
+// page reads its capabilities (with the front end and the trigger); without
+// it the web serves none.
+// TRLC-LINKS: REQ-SDS-164, REQ-SDS-010
+func attachProfile(b *acq.Board) {
+	prof, err := scope.Profile(scope.Identity())
 	if err != nil {
 		logf("profile: %v — the web serves no capabilities", err)
-		return nil
+		return
 	}
 	b.SetProfile(prof)
-	return []webscope.Option{webscope.WithBoard(b)}
 }

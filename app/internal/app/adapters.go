@@ -9,8 +9,6 @@ import (
 
 	"github.com/labeth/open-dso-core/engine/fanout"
 	"github.com/labeth/open-dso-core/sample"
-	"github.com/labeth/open-dso-core/uimodel/panel"
-	"github.com/labeth/open-dso-core/webserver/wire"
 	"github.com/labeth/open-sds1000cml/app/internal/engine"
 )
 
@@ -31,20 +29,6 @@ func (s scopeSource) WithFrame(fn func(*sample.Frame)) { s.fo.WithFrame(fn) }
 // TRLC-LINKS: REQ-SDS-167
 func (s scopeSource) WaitNextFrame(last uint64, timeout time.Duration) uint64 {
 	return s.fo.WaitNext(last, timeout)
-}
-
-// webSetups is the panel's shared setup store as the web's Setups list it:
-// what each slot holds, as the scope's FILE tab shows it.
-// TRLC-LINKS: REQ-SDS-219
-type webSetups struct{ *panel.SharedSetups }
-
-// TRLC-LINKS: REQ-SDS-219
-func (w webSetups) SetupSlots() []wire.SetupSlot {
-	var out []wire.SetupSlot
-	for _, s := range w.Slots() {
-		out = append(out, wire.SetupSlot{Slot: s.Slot, Used: s.Used, Summary: s.Summary})
-	}
-	return out
 }
 
 // matchText is a serial trigger's match as the BUS table writes its units:

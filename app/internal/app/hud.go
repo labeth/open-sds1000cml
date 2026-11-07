@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/labeth/open-dso-core/render"
+	"github.com/labeth/open-dso-core/scopeapp"
 	"github.com/labeth/open-dso-core/uimodel/panel"
 	"github.com/labeth/open-sds1000cml/app/internal/analog"
 	"github.com/labeth/open-sds1000cml/app/internal/engine"
@@ -14,10 +15,14 @@ import (
 	"github.com/labeth/open-sds1000cml/app/internal/streamview"
 )
 
-// buildHUD assembles the LCD/SCDP heads-up state from the engine + front end.
-// The trigger-level readout is scaled by the SOURCE channel's V/div.
+// hud assembles the LCD/SCDP heads-up state from the engine and the front
+// end: the levels and offsets are the DACs' codes read back through the
+// calibration, which the core's HUD(n) over the instrument state cannot
+// see until the levels are volts in the Model. The trigger-level readout
+// is scaled by the source channel's V/div.
 // TRLC-LINKS: REQ-SDS-168
-func buildHUD(e *engine.Engine, fe *analog.FrontEnd) render.HUD {
+func (c *composition) hud() render.HUD {
+	e, fe := c.e, c.fe
 	st := e.Snapshot()
 	hud := render.HUD{
 		Ch: [render.MaxChans]render.Channel{{VdivV: 1, Show: true}, {VdivV: 1, Show: true}}, TdivS: st.TdivS,
@@ -48,19 +53,18 @@ func buildHUD(e *engine.Engine, fe *analog.FrontEnd) render.HUD {
 		hud.Waiting = decided && since > time.Duration(math.Max(1, 25*st.TdivS)*float64(time.Second))
 	}
 	hudTrigLevel(&hud, e, st)
-	if pc := uiCtrl.Load(); pc != nil {
-		if sv := streamCtrl.Load(); sv != nil && pc.StreamMode() {
-			hudStreamPage(&hud, pc, sv)
+	if pc := c.pc; pc != nil {
+		if sv := c.sv; sv != nil && pc.StreamMode() {
+			c.hudStreamPage(&hud, pc, sv)
 		}
 		pc.FillHUD(&hud)
 	}
-	if sh := scpiCtrl.Load(); sh != nil { // display-level INVS: the SCPI shadow is the truth
+	if sh := c.scpi; sh != nil { // display-level INVS: the SCPI shadow is the truth
 		inv := sh.Inverted()
 		hud.Ch[0].Inv, hud.Ch[1].Inv = inv[0], inv[1]
 	}
 	hudZonesMask(&hud, e, st)
-	hudBode(&hud, e, st)
-	hud.Spect = lcdSpect
+	c.hudBode(&hud, st)
 	return hud
 }
 
@@ -111,7 +115,7 @@ func hudTrigLevel(hud *render.HUD, e *engine.Engine, st engine.Stats) {
 // hudStreamPage fills the stream page: the decoded stream's state and the
 // transcript lines it shows, formatted again only when they can have changed.
 // TRLC-LINKS: REQ-SDS-168
-func hudStreamPage(hud *render.HUD, pc *panel.Controller, sv *streamview.Controller) {
+func (c *composition) hudStreamPage(hud *render.HUD, pc *panel.Controller, sv *streamview.Controller) {
 	v := sv.Snapshot()
 	list, top := pc.StreamList()
 	hud.StreamOn, hud.Stream = true, v
@@ -122,8 +126,8 @@ func hudStreamPage(hud *render.HUD, pc *panel.Controller, sv *streamview.Control
 	if v.State == streamview.Streaming {
 		lines = 0 // the slot paces a streaming page; its line count grows every tick
 	}
-	key := streamPageKey{v.State, hud.StreamList, top, lines, v.TriggerLine, streamSlot(*hud)}
-	if cached := lastStreamPage.Load(); cached != nil && cached.key == key {
+	key := streamPageKey{v.State, hud.StreamList, top, lines, v.TriggerLine, scopeapp.StreamSlot(*hud)}
+	if cached := c.lastStreamPage.Load(); cached != nil && cached.key == key {
 		hud.StreamPage = cached.page
 		return
 	}
@@ -137,7 +141,22 @@ func hudStreamPage(hud *render.HUD, pc *panel.Controller, sv *streamview.Control
 	default:
 		hud.StreamPage = sv.Window(6, -1)
 	}
-	lastStreamPage.Store(&cachedStreamPage{key, hud.StreamPage})
+	c.lastStreamPage.Store(&cachedStreamPage{key, hud.StreamPage})
+}
+
+// streamPageKey is what a cached transcript page depends on.
+type streamPageKey struct {
+	state      streamview.State
+	list       bool
+	top, lines int
+	trig       int
+	slot       int64
+}
+
+// cachedStreamPage is a transcript page with what it was formatted for.
+type cachedStreamPage struct {
+	key  streamPageKey
+	page streamview.Page
 }
 
 // hudZonesMask fills the zone and mask overlays (engine-side test; render
@@ -170,7 +189,8 @@ func hudZonesMask(hud *render.HUD, e *engine.Engine, st engine.Stats) {
 // accumulated curve to the renderer; leaving it disarms. The web can also
 // arm FRA — both observe the same accumulated points.
 // TRLC-LINKS: REQ-SDS-168
-func hudBode(hud *render.HUD, e *engine.Engine, st engine.Stats) {
+func (c *composition) hudBode(hud *render.HUD, st engine.Stats) {
+	e := c.e
 	if hud.ViewMode == 3 {
 		e.SetBodeMode(true, st.BodeRef, st.BodeDut)
 		hud.BodeRef, hud.BodeDut = st.BodeRef, st.BodeDut
@@ -181,11 +201,11 @@ func hudBode(hud *render.HUD, e *engine.Engine, st engine.Stats) {
 		for i, p := range pts {
 			hud.BodeFreq[i], hud.BodeGain[i], hud.BodePhase[i] = p.FreqHz, p.GainDB, p.PhaseDeg
 		}
-	} else if st.BodeMode > 0 && lastViewWasBode.Swap(false) {
+	} else if st.BodeMode > 0 && c.lastViewWasBode.Swap(false) {
 		// only the device auto-arm gets auto-disarmed; a web-armed FRA persists
 		e.SetBodeMode(false, st.BodeRef, st.BodeDut)
 	}
 	if hud.ViewMode == 3 {
-		lastViewWasBode.Store(true)
+		c.lastViewWasBode.Store(true)
 	}
 }

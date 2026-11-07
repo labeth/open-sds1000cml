@@ -14,6 +14,7 @@ package panel
 import (
 	"os"
 	"os/signal"
+	"slices"
 	"sync"
 	"syscall"
 	"time"
@@ -45,7 +46,43 @@ type Input struct {
 	set  bool
 }
 
-var _ ui.Input = (*Input)(nil)
+var (
+	_ ui.Input  = (*Input)(nil)
+	_ hal.Input = (*Input)(nil)
+)
+
+// Keys are the panel's keys and knob pushes by the UI model's names.
+// TRLC-LINKS: REQ-SDS-135
+func (in *Input) Keys() []string {
+	out := make([]string, 0, len(keyCodes))
+	for _, k := range keyCodes {
+		out = append(out, k)
+	}
+	slices.Sort(out)
+	return out
+}
+
+// Knobs are the panel's knobs by the UI model's names.
+// TRLC-LINKS: REQ-SDS-135
+func (in *Input) Knobs() []string {
+	out := make([]string, len(knobs))
+	for i, k := range knobs {
+		out[i] = k.name
+	}
+	return out
+}
+
+// SetSound is refused: the panel has no beeper.
+// TRLC-LINKS: REQ-SDS-135
+func (in *Input) SetSound(bool) error { return hal.Refuse("key clicks", "this panel has no beeper") }
+
+// Beep is refused: the panel has no beeper.
+// TRLC-LINKS: REQ-SDS-135
+func (in *Input) Beep(time.Duration) error { return hal.Refuse("beep", "this panel has no beeper") }
+
+// SetTouch is refused: the panel has no touch screen.
+// TRLC-LINKS: REQ-SDS-135
+func (in *Input) SetTouch(bool) error { return hal.Refuse("touch", "this panel has no touch screen") }
 
 // NewInput is the front panel over the engine's matrix and the inherited
 // key device keyFD (-1 without one: the matrix is polled).
