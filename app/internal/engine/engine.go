@@ -171,7 +171,8 @@ type Engine struct {
 	board                 *acq.Board // the acquisition board: the owner loop drives it through the HAL facets below
 	acqr                  hal.Acquirer
 	trg                   hal.Trigger // the board's trigger
-	draft                 acq.Draft   // the capture drafted at a look at the settings (owner)
+	draft                 *acq.Draft  // the capture drafted at a look at the settings (owner)
+	qdraft                *acq.Draft  // the qualifier drafted for the status (owner)
 	halTrig               halTrigger  // the trigger's HAL terms, reused (owner)
 	plat                  hal.Platform
 	readYield             func()          // the readout's yield: the board's Service

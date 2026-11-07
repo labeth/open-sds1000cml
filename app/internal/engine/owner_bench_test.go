@@ -3,9 +3,11 @@
 package engine
 
 import (
+	"context"
 	"testing"
 	"time"
 
+	core "github.com/labeth/open-dso-core/engine"
 	"github.com/labeth/open-sds1000cml/app/internal/sramcapture"
 )
 
@@ -49,3 +51,37 @@ func BenchmarkOwnerLoopFrames(b *testing.B) {
 
 // useRecorder makes rec the engine's record memory.
 func useRecorder(e *Engine, rec *memRecorder) { e.useMemory(rec) }
+
+// A look at the settings while a capture waits (the loop's Watch every
+// SettingsPollEvery: a forced AUTO waits 100 ms and more, a serial trigger
+// for its match), the settings unchanged since the pass planned the
+// capture: an edge trigger, and MIDI on the general image's UART receiver.
+// TRLC-LINKS: REQ-SDS-008, REQ-SDS-013
+func BenchmarkSettingsLook(b *testing.B) {
+	for _, bc := range []struct {
+		name   string
+		serial bool
+	}{{"edge", false}, {"midi", true}} {
+		b.Run(bc.name, func(b *testing.B) {
+			e, _, _ := newPacketTestEngine(&testing.T{})
+			e.running.Store(true)
+			if bc.serial {
+				e.SetSerialParams(SerialParams{Proto: core.SerMIDI, Baud: 31250, ChA: 0, HaveThr: true, Threshold: 140, Bytes: []int{0x90}})
+				e.SetSerialMode(SerialTrigger)
+				e.serviceImage()
+			}
+			c := &sramCycle{e: e}
+			if _, ok := c.Plan(context.Background()); !ok {
+				b.Fatal("not planned")
+			}
+			if bc.serial && !c.cfg.UART.Enabled {
+				b.Fatalf("MIDI not on the UART receiver: %+v", c.cfg.UART)
+			}
+			for b.Loop() {
+				if c.Watch(true) != core.Continue {
+					b.Fatal("the settings look changed")
+				}
+			}
+		})
+	}
+}
