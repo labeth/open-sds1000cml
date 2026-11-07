@@ -1,0 +1,169 @@
+{
+  "version": 1,
+  "tdiv_s": 0.001,
+  "ch": [
+    {
+      "vdiv_v": 0.5,
+      "offset_v": 1.5,
+      "offset_set": true,
+      "coupling": 1,
+      "probe": 10,
+      "bwl": true
+    },
+    {
+      "vdiv_v": 2,
+      "offset_v": -2.5,
+      "offset_set": true,
+      "coupling": 2,
+      "probe": 100
+    }
+  ],
+  "vert_set": true,
+  "trigger": {
+    "qualifiers": {
+      "video_std": 1,
+      "video_line": 42,
+      "video_neg": false,
+      "pulse_lvl": 0.4,
+      "pulse_min_ns": 105000,
+      "pulse_max_ns": 120000,
+      "pulse_cond": 3,
+      "slope_lo": 0.3,
+      "slope_hi": 0.7,
+      "slope_min_ns": 100,
+      "slope_max_ns": 1000,
+      "slope_cond": 0
+    },
+    "level_code": 30500,
+    "rising": false,
+    "source": 1,
+    "type": 2,
+    "norm": true,
+    "holdoff_s": 0.001,
+    "pos_frac": 0.3
+  },
+  "acq": {
+    "precision_rate_hz": 15625000,
+    "mode": 1,
+    "avg_count": 64,
+    "eres_len": 1,
+    "mem_depth": 16384
+  },
+  "decode": {
+    "proto": 4,
+    "baud": 9600,
+    "cha": 1,
+    "chb": 0,
+    "cpol": true,
+    "cpha": true,
+    "format": 1
+  },
+  "view_mode": 4,
+  "display": {
+    "math_mode": 0,
+    "show_meas": false,
+    "persist": false,
+    "hidden": [
+      false,
+      false
+    ],
+    "set": true,
+    "invert": [
+      false,
+      false
+    ],
+    "cur_mode": 2,
+    "cur_x": [
+      0.25,
+      0.75
+    ],
+    "cur_y": [
+      0.4,
+      0.55
+    ],
+    "cur_at": true,
+    "cur_t": [
+      -0.00025,
+      0.00025
+    ],
+    "cur_v": [
+      -11,
+      -17
+    ],
+    "cur_v_ch": 0,
+    "cur_sel": 1,
+    "zoom": 10,
+    "zoom_off": -0.2
+  },
+  "ui": {
+    "set": true,
+    "workspace": 2,
+    "views": [
+      1,
+      0,
+      4,
+      0,
+      0
+    ],
+    "bus_eye": true,
+    "meas_all": true,
+    "meas": [
+      33,
+      2,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "fft_source": 1,
+    "master_depth": 128,
+    "remote_notices": true,
+    "mask_frames": 64,
+    "mask_tol": 3,
+    "sr_ch": 2,
+    "sr_grid": 16,
+    "sr_stop": 3,
+    "sr_target": 120
+  },
+  "serial": {
+    "set": true,
+    "armed": false,
+    "match": "55 AA",
+    "addr": -1,
+    "rw": 2
+  },
+  "bode": {
+    "set": true,
+    "ref": 1,
+    "dut": 0
+  },
+  "sound": {
+    "set": true,
+    "a4": 442,
+    "ch": 1,
+    "ref": "euro",
+    "range": "bass",
+    "slow": true,
+    "page": 3,
+    "cycles": 4,
+    "ab_in": 1,
+    "env_cv": true,
+    "gate": 0,
+    "gate_v": 1.5,
+    "voct_auto": true,
+    "pre_s": 2.5,
+    "post_s": 6,
+    "trig_gate": true
+  },
+  "screen": {
+    "set": true,
+    "saver_min": 5,
+    "off_min": 120
+  }
+}
