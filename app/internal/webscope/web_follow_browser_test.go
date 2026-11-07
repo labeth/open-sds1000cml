@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/labeth/open-dso-core/testenv"
+	"github.com/labeth/open-dso-core/uimodel/panel"
 )
 
 // rigInverter is the display invert the CH tabs' Invert rows drive (SCPI's
@@ -43,6 +44,6 @@ func TestWebFollowsTheScopeSheet(t *testing.T) {
 		}
 	}
 	r := newRemoteRig(t)
-	r.pc.SetInverter(&rigInverter{})
+	r.pc.SetInverter(panel.Inverter2(&rigInverter{}))
 	wsDriver(t, "web_follow_browser.mjs", r.app.URL)
 }

@@ -303,7 +303,7 @@ func (c *composition) scpiEngine(env *scopeapp.Env) (scopeapp.SCPI, error) {
 	}
 	h := scpi.New(scopeSource{c.e, env.Frames}, sfe, c.levels, c.pc, shot, logf)
 	c.scpi = h
-	c.pc.SetInverter(h) // the CH tabs' Invert rows: the same INVS shadow
+	c.pc.SetInverter(panel.Inverter2(h)) // the CH tabs' Invert rows: the same INVS shadow
 	return scopeapp.SCPI{
 		Exec:   h.HandleLine,
 		Setups: func(s *panel.SharedSetups) { h.SetSetupMemory(s) },
