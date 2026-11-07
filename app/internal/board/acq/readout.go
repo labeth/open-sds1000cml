@@ -92,6 +92,7 @@ type readoutFacet Board
 // window), each frame sized by the caller. yield runs between the bursts
 // of a long read. A main window that does not fill its frame is
 // ErrShortRead; another window's frame is cut to what it got.
+// TRLC-LINKS: REQ-SDS-010, REQ-SDS-040
 func (r *readoutFacet) Read(req hal.ReadRequest, dst []*sample.Frame, yield func()) error {
 	b := (*Board)(r)
 	ctx, cancel := context.WithTimeout(context.Background(), readTimeout)
@@ -112,11 +113,13 @@ func (r *readoutFacet) Read(req hal.ReadRequest, dst []*sample.Frame, yield func
 
 // Export is the slow per-channel raw path; the SDS1000CML+ reads raw
 // records through Read.
+// TRLC-LINKS: REQ-SDS-010, REQ-SDS-040
 func (r *readoutFacet) Export(context.Context, hal.RecordID, int, *sample.Trace) error {
 	return hal.Refuse("raw export", "the record's raw words are read through Read")
 }
 
 // Limits is what one Read does: the windows of one isolated recall.
+// TRLC-LINKS: REQ-SDS-010, REQ-SDS-040
 func (r *readoutFacet) Limits() hal.ReadLimits {
 	return hal.ReadLimits{MaxPoints: int(sramcapture.SamplesPerChannel), MaxWindows: sramcapture.RecordReadsMax, MaxSegments: 1, ChannelsPerWindow: 2}
 }
@@ -124,6 +127,7 @@ func (r *readoutFacet) Limits() hal.ReadLimits {
 // SetReadProgress installs the fabric's span hook: progress hears each
 // burst of a long recall, then the read's yield runs (the lamp flush).
 // OWNER.
+// TRLC-LINKS: REQ-SDS-010, REQ-SDS-040
 func (b *Board) SetReadProgress(progress func(done, total int)) {
 	b.progress = progress
 	b.mem.SetSpanHook(func(done, total int) {
@@ -154,6 +158,7 @@ type window struct {
 
 // wordsOf is window w of record m in words. Its start and span are whole
 // words of samples relative to the trigger word; its points are buckets.
+// TRLC-LINKS: REQ-SDS-010, REQ-SDS-040
 func wordsOf(m sramcapture.Metadata, w hal.Window) (window, error) {
 	per := int64(m.SamplesPerWord)
 	if per == 0 || w.StartSample%per != 0 || w.Span%per != 0 || w.Span <= 0 {
@@ -176,6 +181,7 @@ func wordsOf(m sramcapture.Metadata, w hal.Window) (window, error) {
 
 // Window is the hal.Window that reads words [offset, offset+words) of
 // record m, in buckets of bucket words (0: every sample).
+// TRLC-LINKS: REQ-SDS-010, REQ-SDS-040
 func Window(m sramcapture.Metadata, role sample.Role, offset, words, bucket uint32) hal.Window {
 	per := int64(m.SamplesPerWord)
 	w := hal.Window{Role: role, StartSample: (int64(offset) - int64(m.TriggerIndex)) * per, Span: int64(words) * per, Want: sample.RawDecimated}
@@ -194,6 +200,7 @@ func Window(m sramcapture.Metadata, role sample.Role, offset, words, bucket uint
 // them; any other set of windows is one isolated recall of the record.
 // Written(i) is how many samples a channel window i got; the frames keep
 // their lengths, so the caller tells a short window from a full one.
+// TRLC-LINKS: REQ-SDS-010, REQ-SDS-040
 func (b *Board) ReadContext(ctx context.Context, req hal.ReadRequest, dst []*sample.Frame, yield func()) error {
 	m := b.rec
 	b.scratch.written = b.scratch.written[:0]
@@ -253,6 +260,7 @@ func (b *Board) ReadContext(ctx context.Context, req hal.ReadRequest, dst []*sam
 
 // Written is how many samples a channel the last read put in its i-th
 // window's frame.
+// TRLC-LINKS: REQ-SDS-010, REQ-SDS-040
 func (b *Board) Written(i int) int {
 	if i < 0 || i >= len(b.scratch.written) {
 		return 0
@@ -263,6 +271,7 @@ func (b *Board) Written(i int) int {
 // Recall streams words [offset, offset+count) of the frozen record into
 // dst, forwards on a revision 10 fabric; yield runs between its bursts.
 // OWNER.
+// TRLC-LINKS: REQ-SDS-010, REQ-SDS-040
 func (b *Board) Recall(ctx context.Context, offset, count uint32, dst io.Writer, yield func()) (int64, error) {
 	b.reading, b.yield = true, yield
 	defer func() { b.reading, b.yield = false, nil }()
@@ -274,4 +283,5 @@ func (b *Board) Recall(ctx context.Context, offset, count uint32, dst io.Writer,
 
 // EnvelopeDiagnostics is the fabric's envelope reject count and its last
 // reason.
+// TRLC-LINKS: REQ-SDS-010, REQ-SDS-040
 func (b *Board) EnvelopeDiagnostics() (int, string) { return b.mem.EnvelopeDiagnostics() }

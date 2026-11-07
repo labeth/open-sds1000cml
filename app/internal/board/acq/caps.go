@@ -74,6 +74,7 @@ func (b *Board) ProbeImage(logf func(string, ...any)) Caps {
 }
 
 // trigCaps is the loaded image's trigger nodes.
+// TRLC-LINKS: REQ-SDS-013
 func (b *Board) trigCaps() hal.TrigCaps {
 	c := b.trig.caps
 	tc := hal.TrigCaps{

@@ -76,6 +76,7 @@ type Config struct {
 }
 
 // New is the board over cfg's fabric and panel plane.
+// TRLC-LINKS: REQ-SDS-001
 func New(cfg Config) *Board {
 	b := &Board{mem: cfg.Memory}
 	b.panel.bus, b.panel.lampLag, b.panel.writeErr = cfg.Panel, cfg.LampLag, cfg.WriteErr
@@ -85,49 +86,73 @@ func New(cfg Config) *Board {
 var _ hal.Board = (*Board)(nil)
 
 // HasMemory reports whether the SRAM fabric is there.
+// TRLC-LINKS: REQ-SDS-001
 func (b *Board) HasMemory() bool { return b.mem != nil }
 
 // Memory is the fabric's port, for the paths the HAL does not cover yet
 // (decoded capture, the stacking scan, the panel chain, the drum streams).
+// TRLC-LINKS: REQ-SDS-001
 func (b *Board) Memory() Memory { return b.mem }
 
 // SetProfile, SetFrontEnd, SetLevelGrid, SetDevices and SetHandover attach
 // the parts the composition builds outside the acquisition.
-func (b *Board) SetProfile(p hal.Profile)              { b.profile = p }
-func (b *Board) SetFrontEnd(fe hal.FrontEnd)           { b.frontEnd = fe }
+// TRLC-LINKS: REQ-SDS-001
+func (b *Board) SetProfile(p hal.Profile) { b.profile = p }
+
+// TRLC-LINKS: REQ-SDS-001
+func (b *Board) SetFrontEnd(fe hal.FrontEnd) { b.frontEnd = fe }
+
+// TRLC-LINKS: REQ-SDS-001
 func (b *Board) SetLevelGrid(g func(src int) hal.Grid) { b.levelGrid = g }
-func (b *Board) SetHandover(h hal.Handover)            { b.handover = h }
+
+// TRLC-LINKS: REQ-SDS-001
+func (b *Board) SetHandover(h hal.Handover) { b.handover = h }
+
+// TRLC-LINKS: REQ-SDS-001
 func (b *Board) SetDevices(d hal.Display, in hal.Input, st hal.Storage) {
 	b.display, b.input, b.storage = d, in, st
 }
 
 // Profile is the unit's capabilities.
+// TRLC-LINKS: REQ-SDS-001
 func (b *Board) Profile() hal.Profile { return b.profile }
 
 // Platform is bring-up, the hand-over and the owner's housekeeping.
+// TRLC-LINKS: REQ-SDS-001
 func (b *Board) Platform() hal.Platform { return (*platformFacet)(b) }
 
 // Planner is the SRAM capture plan arithmetic.
+// TRLC-LINKS: REQ-SDS-001
 func (b *Board) Planner() hal.Planner { return (*plannerFacet)(b) }
 
 // Acquirer arms and serves captures.
+// TRLC-LINKS: REQ-SDS-001
 func (b *Board) Acquirer() hal.Acquirer { return (*acquirerFacet)(b) }
 
 // Readout reads windows of the halted record.
+// TRLC-LINKS: REQ-SDS-001
 func (b *Board) Readout() hal.Readout { return (*readoutFacet)(b) }
 
 // Trigger stages the fabric's trigger.
+// TRLC-LINKS: REQ-SDS-001
 func (b *Board) Trigger() hal.Trigger { return (*triggerFacet)(b) }
 
 // FrontEnd is the analog front end the composition attached.
+// TRLC-LINKS: REQ-SDS-001
 func (b *Board) FrontEnd() hal.FrontEnd { return b.frontEnd }
 
 // Display, Input and Storage are the devices the composition attached.
+// TRLC-LINKS: REQ-SDS-001
 func (b *Board) Display() hal.Display { return b.display }
-func (b *Board) Input() hal.Input     { return b.input }
+
+// TRLC-LINKS: REQ-SDS-001
+func (b *Board) Input() hal.Input { return b.input }
+
+// TRLC-LINKS: REQ-SDS-001
 func (b *Board) Storage() hal.Storage { return b.storage }
 
 // Streamer is the fabric's stream port, when the image has one.
+// TRLC-LINKS: REQ-SDS-001
 func (b *Board) Streamer() (hal.Streamer, bool) {
 	if b.mem == nil {
 		return nil, false
@@ -136,6 +161,7 @@ func (b *Board) Streamer() (hal.Streamer, bool) {
 }
 
 // Images is the FPGA image set, when the composition attached a loader.
+// TRLC-LINKS: REQ-SDS-001
 func (b *Board) Images() (hal.Images, bool) {
 	if b.images == nil {
 		return nil, false
@@ -144,6 +170,7 @@ func (b *Board) Images() (hal.Images, bool) {
 }
 
 // Stacker is the stacking image's accumulator, when it is fitted.
+// TRLC-LINKS: REQ-SDS-001
 func (b *Board) Stacker() (hal.Stacker, bool) {
 	if b.mem == nil || b.images == nil || !b.images.HasStack() {
 		return nil, false
@@ -152,21 +179,31 @@ func (b *Board) Stacker() (hal.Stacker, bool) {
 }
 
 // Segments, Counter, LogicProbe and Generator: the SDS1000CML+ has none.
-func (b *Board) Segments() (hal.Segments, bool)     { return nil, false }
-func (b *Board) Counter() (hal.Counter, bool)       { return nil, false }
+// TRLC-LINKS: REQ-SDS-001
+func (b *Board) Segments() (hal.Segments, bool) { return nil, false }
+
+// TRLC-LINKS: REQ-SDS-001
+func (b *Board) Counter() (hal.Counter, bool) { return nil, false }
+
+// TRLC-LINKS: REQ-SDS-001
 func (b *Board) LogicProbe() (hal.LogicProbe, bool) { return nil, false }
-func (b *Board) Generator() (hal.Generator, bool)   { return nil, false }
+
+// TRLC-LINKS: REQ-SDS-001
+func (b *Board) Generator() (hal.Generator, bool) { return nil, false }
 
 // Extensions are served by the composition's web adapter until the web
 // server moves to the core.
+// TRLC-LINKS: REQ-SDS-001
 func (b *Board) Extensions() []hal.Extension { return nil }
 
+// TRLC-LINKS: REQ-SDS-001
 func (b *Board) count(f func(*boardDiag)) {
 	b.diagMu.Lock()
 	f(&b.diag)
 	b.diagMu.Unlock()
 }
 
+// TRLC-LINKS: REQ-SDS-001
 func (b *Board) diagJSON() json.RawMessage {
 	b.diagMu.Lock()
 	d := b.diag
@@ -177,6 +214,7 @@ func (b *Board) diagJSON() json.RawMessage {
 }
 
 // recordID is the record's identity as the frames carry it.
+// TRLC-LINKS: REQ-SDS-001
 func recordID(m sramcapture.Metadata) sample.RecordID {
 	return sample.RecordID{Epoch: m.EventEpoch, Seq: m.RecordID}
 }

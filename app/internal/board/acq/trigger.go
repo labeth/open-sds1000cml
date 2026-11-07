@@ -38,6 +38,7 @@ type triggerFacet Board
 // SPI receiver. Levels are volts at the probe tip, converted to the record's
 // codes at the front end's applied V/div and offset. What the fabric cannot
 // do is refused with the reason, never replaced.
+// TRLC-LINKS: REQ-SDS-011
 func (t *triggerFacet) Program(s hal.TriggerSpec) error {
 	b := (*Board)(t)
 	var c sramcapture.Config
@@ -54,6 +55,7 @@ func (t *triggerFacet) Program(s hal.TriggerSpec) error {
 }
 
 // code is volts v at channel ch's tip as a record code.
+// TRLC-LINKS: REQ-SDS-011
 func (b *Board) code(ch int, v float64) (uint8, error) {
 	if b.frontEnd == nil {
 		return 0, hal.Refuse("trigger level", "no front end to convert volts")
@@ -66,6 +68,7 @@ func (b *Board) code(ch int, v float64) (uint8, error) {
 }
 
 // codes is a band of volts dv on channel ch in codes, at least minimum.
+// TRLC-LINKS: REQ-SDS-011
 func (b *Board) codes(ch int, dv float64, minimum uint8) uint8 {
 	if b.frontEnd == nil || dv <= 0 {
 		return minimum
@@ -78,6 +81,7 @@ func (b *Board) codes(ch int, dv float64, minimum uint8) uint8 {
 }
 
 // trigConfig is s as the fabric's trigger fields of c.
+// TRLC-LINKS: REQ-SDS-011
 func (b *Board) trigConfig(s hal.TriggerSpec, c *sramcapture.Config) error { //nolint:gocyclo // one case a node
 	switch {
 	case len(s.Stages) != 1:
@@ -126,6 +130,7 @@ func (b *Board) trigConfig(s hal.TriggerSpec, c *sramcapture.Config) error { //n
 }
 
 // qualConfig is a pulse, slope or video stage as the qualifier.
+// TRLC-LINKS: REQ-SDS-011
 func (b *Board) qualConfig(g hal.TrigStage, ch int, c *sramcapture.Config) error {
 	q := sramcapture.QualifierConfig{Enabled: true, Channel: c.TriggerChannel, Negative: c.Falling}
 	var minNs, maxNs float64
@@ -177,6 +182,7 @@ func (b *Board) qualConfig(g hal.TrigStage, ch int, c *sramcapture.Config) error
 }
 
 // protoConfig is a protocol stage as the image's receiver.
+// TRLC-LINKS: REQ-SDS-011
 func (b *Board) protoConfig(g hal.TrigStage, ch int, c *sramcapture.Config) error {
 	caps := b.trig.caps
 	p := core.SerialParams{ChA: ch, ChB: 1 - ch, Threshold: float64(c.TriggerLevel), HaveThr: true, Addr: -1, RW: 2}
@@ -264,10 +270,12 @@ func (b *Board) protoConfig(g hal.TrigStage, ch int, c *sramcapture.Config) erro
 }
 
 // Caps is the loaded image's trigger nodes.
+// TRLC-LINKS: REQ-SDS-011
 func (t *triggerFacet) Caps() hal.TrigCaps { return (*Board)(t).trigCaps() }
 
 // LevelGrid is one step of the trigger comparator DAC at the source's
 // V/div, as the composition's levels compute it.
+// TRLC-LINKS: REQ-SDS-011
 func (t *triggerFacet) LevelGrid(src hal.Source) hal.Grid {
 	b := (*Board)(t)
 	if b.levelGrid == nil || src.Kind != hal.Analog {
@@ -279,6 +287,7 @@ func (t *triggerFacet) LevelGrid(src hal.Source) hal.Grid {
 // Default is a node's starting stage on src: the level at the screen's
 // centre, rising; a pulse inside 1-5 us; a slope from 20 to 80 % in under
 // 100 ns; PAL video on any line.
+// TRLC-LINKS: REQ-SDS-011
 func (t *triggerFacet) Default(node hal.TrigNode, src hal.Source) (hal.TrigStage, error) {
 	b := (*Board)(t)
 	if src.Kind != hal.Analog || src.Index < 0 || src.Index > 1 {
@@ -310,12 +319,14 @@ func (t *triggerFacet) Default(node hal.TrigNode, src hal.Source) (hal.TrigStage
 
 // SetEventEpoch names the decoded-event queue's epoch for Events (the
 // running decoded capture's); 0 ends it. OWNER.
+// TRLC-LINKS: REQ-SDS-011
 func (b *Board) SetEventEpoch(epoch uint32) {
 	b.trig.eventEpoch, b.trig.haveEvents, b.trig.pending = epoch, epoch != 0, nil
 }
 
 // Events reads hardware-decoded events of the running decoded capture.
 // OWNER.
+// TRLC-LINKS: REQ-SDS-011
 func (t *triggerFacet) Events(dst []hal.Event) (int, error) {
 	b := (*Board)(t)
 	if !b.trig.haveEvents {
@@ -337,6 +348,7 @@ func (t *triggerFacet) Events(dst []hal.Event) (int, error) {
 }
 
 // Matches is the symbol trigger's match counter.
+// TRLC-LINKS: REQ-SDS-011
 func (t *triggerFacet) Matches() (hal.MatchStats, bool) {
 	b := (*Board)(t)
 	if !b.trig.caps.Symbol {

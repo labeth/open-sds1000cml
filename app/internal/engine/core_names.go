@@ -65,23 +65,28 @@ type (
 )
 
 // AppendClientChunkHeads is core.AppendClientChunkHeads.
+// TRLC-LINKS: REQ-SDS-021
 func AppendClientChunkHeads(dst []byte, chunks []core.ClientChunk) []byte {
 	return core.AppendClientChunkHeads(dst, chunks)
 }
 
 // BuildMaskFromEnvelope is core.BuildMaskFromEnvelope.
+// TRLC-LINKS: REQ-SDS-021
 func BuildMaskFromEnvelope(lo []uint8, hi []uint8, winCols int, tolCols int, tolCodes int, ch int) *core.Mask {
 	return core.BuildMaskFromEnvelope(lo, hi, winCols, tolCols, tolCodes, ch)
 }
 
 // EdgeRead is core.EdgeRead.
+// TRLC-LINKS: REQ-SDS-021
 func EdgeRead(f *sample.Frame) uint64 { return core.EdgeRead(f) }
 
 // EdgeWindows is measure.EdgeWindows: channel ch's samples of frame f's
 // edge windows.
+// TRLC-LINKS: REQ-SDS-021
 func EdgeWindows(f *sample.Frame, ch int) []measure.EdgeWindow { return measure.EdgeWindows(f, ch) }
 
 // EresLenForBits is core.EresLenForBits.
+// TRLC-LINKS: REQ-SDS-021
 func EresLenForBits(bits float64) int { return core.EresLenForBits(bits) }
 
 // ErrClientFramesBody is the core error value itself, so errors.Is matches either name.
@@ -89,15 +94,19 @@ var ErrClientFramesBody = core.ErrClientFramesBody
 
 // MeasureRange is measure.Range: the stretch of the record measurements
 // read.
+// TRLC-LINKS: REQ-SDS-021
 func MeasureRange(f *sample.Frame) (int, int) { return measure.Range(f) }
 
 // SerialDecoderList is core.SerialDecoderList.
+// TRLC-LINKS: REQ-SDS-021
 func SerialDecoderList() []core.SerialDecoder { return core.SerialDecoderList() }
 
 // SoundTakeTimes is core.SoundTakeTimes.
+// TRLC-LINKS: REQ-SDS-021
 func SoundTakeTimes(pre float64, post float64) (float64, float64) {
 	return core.SoundTakeTimes(pre, post)
 }
 
 // ViewDetail is core.ViewDetail.
+// TRLC-LINKS: REQ-SDS-021
 func ViewDetail(f *sample.Frame, s core.ViewSurface) *sample.Detail { return core.ViewDetail(f, s) }

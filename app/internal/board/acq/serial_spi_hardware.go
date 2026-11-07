@@ -73,6 +73,7 @@ func spiDelay16(ns float64, clockCh int) int {
 }
 
 // The software SPI decoder reads the data line where this receiver does.
+// TRLC-LINKS: REQ-SDS-229
 func init() { core.SPIDataDelayNs = SPIDelayFPGA }
 
 // SPIDelayFPGA is the delay after the sampling edge the receiver on the

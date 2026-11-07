@@ -33,10 +33,12 @@ type streamState struct {
 	faults   hal.StreamFaults
 }
 
+// TRLC-LINKS: REQ-SDS-035
 func (s *streamerFacet) streamOf() *streamState { return &s.stream }
 
 // Kinds is what the loaded image streams: 8-bit codes of both channels on
 // the stream images.
+// TRLC-LINKS: REQ-SDS-035
 func (s *streamerFacet) Kinds() []hal.Payload {
 	b := (*Board)(s)
 	if b.imageLoaded != ImageStream && b.imageLoaded != ImageBits {
@@ -46,6 +48,7 @@ func (s *streamerFacet) Kinds() []hal.Payload {
 }
 
 // Start starts a continuous stream of the staged plan's codes. OWNER.
+// TRLC-LINKS: REQ-SDS-035
 func (s *streamerFacet) Start(spec hal.StreamSpec) error {
 	b := (*Board)(s)
 	if spec.Payload != hal.PayloadCodes {
@@ -72,6 +75,7 @@ func (s *streamerFacet) Start(spec hal.StreamSpec) error {
 
 // Lease drains the next bank and hands it out as channel-major runs of
 // 8-bit codes. OWNER on this board (the drain is a bus access).
+// TRLC-LINKS: REQ-SDS-035
 func (s *streamerFacet) Lease(ctx context.Context) (hal.StreamBlock, error) {
 	b := (*Board)(s)
 	st := s.streamOf()
@@ -104,9 +108,11 @@ func (s *streamerFacet) Lease(ctx context.Context) (hal.StreamBlock, error) {
 
 // Release returns a block; the board's one buffer is reused by the next
 // Lease.
+// TRLC-LINKS: REQ-SDS-035
 func (s *streamerFacet) Release(hal.StreamBlock) {}
 
 // Stop stops the stream. OWNER.
+// TRLC-LINKS: REQ-SDS-035
 func (s *streamerFacet) Stop() error {
 	b := (*Board)(s)
 	st := s.streamOf()
@@ -120,6 +126,7 @@ func (s *streamerFacet) Stop() error {
 }
 
 // Faults is the stream's losses since Start.
+// TRLC-LINKS: REQ-SDS-035
 func (s *streamerFacet) Faults() hal.StreamFaults {
 	st := s.streamOf()
 	st.mu.Lock()
@@ -129,6 +136,7 @@ func (s *streamerFacet) Faults() hal.StreamFaults {
 
 // Freeze stops the history ring the stream image keeps beside the stream:
 // the ring becomes the record Readout reads. OWNER.
+// TRLC-LINKS: REQ-SDS-035
 func (s *streamerFacet) Freeze(uint64) (hal.RecordID, error) {
 	b := (*Board)(s)
 	if !b.mem.StreamRingSupported() {
@@ -151,6 +159,7 @@ type stackerFacet Board
 // Stack is refused: the stacking image accumulates against a template the
 // request carries (a level, a window, a qualifier), which the engine's FPGA
 // stack job builds; hal.Stacker's record count alone cannot ask for it.
+// TRLC-LINKS: REQ-SDS-035
 func (s *stackerFacet) Stack(int) error {
 	return hal.Refuse("hardware stacking", "the stacking image needs its template request: the FPGA stack job runs it")
 }

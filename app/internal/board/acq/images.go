@@ -72,6 +72,7 @@ var imageFeatures = []struct{ image, feature string }{
 // over CS3 and the converters' restart.
 const imageReload = 1300 * time.Millisecond
 
+// TRLC-LINKS: REQ-SDS-005
 func imageName(image string) string {
 	if image == ImageGeneral {
 		return ImageGeneralName
@@ -80,6 +81,7 @@ func imageName(image string) string {
 }
 
 // FeatureOf is image's feature name; "" for an unknown image.
+// TRLC-LINKS: REQ-SDS-005
 func FeatureOf(image string) string {
 	for _, f := range imageFeatures {
 		if f.image == image {
@@ -90,13 +92,16 @@ func FeatureOf(image string) string {
 }
 
 // SetImages attaches the image loader.
+// TRLC-LINKS: REQ-SDS-005
 func (b *Board) SetImages(s ImageSwitcher) { b.images = s }
 
 // ImageLoader is the loader the board holds, nil without one.
+// TRLC-LINKS: REQ-SDS-005
 func (b *Board) ImageLoader() ImageSwitcher { return b.images }
 
 // HasImage reports whether image is built in (the general image always
 // is). ANY.
+// TRLC-LINKS: REQ-SDS-005
 func (b *Board) HasImage(image string) bool {
 	if b.images == nil {
 		return image == ImageGeneral
@@ -126,6 +131,7 @@ func (b *Board) HasImage(image string) bool {
 }
 
 // loader is image's load.
+// TRLC-LINKS: REQ-SDS-005
 func (b *Board) loader(image string) func() error {
 	switch image {
 	case ImageStack:
@@ -152,6 +158,7 @@ func (b *Board) loader(image string) func() error {
 
 // LoadImage loads image (the general one for ""). The fabric's record is
 // gone afterwards. LONG.
+// TRLC-LINKS: REQ-SDS-005
 func (b *Board) LoadImage(image string) error {
 	err := b.loader(image)()
 	b.state = hal.Idle
@@ -164,6 +171,7 @@ func (b *Board) LoadImage(image string) error {
 type imagesFacet Board
 
 // Provides is every image built in.
+// TRLC-LINKS: REQ-SDS-005
 func (i *imagesFacet) Provides() []hal.ImageSet {
 	b := (*Board)(i)
 	var out []hal.ImageSet
@@ -176,6 +184,7 @@ func (i *imagesFacet) Provides() []hal.ImageSet {
 }
 
 // Current is the image in use.
+// TRLC-LINKS: REQ-SDS-005
 func (i *imagesFacet) Current() hal.ImageSet {
 	b := (*Board)(i)
 	return hal.ImageSet{Features: []string{FeatureOf(b.imageLoaded)}, Triggers: b.trigCaps(), Needs: []string{"sram"}, ReloadCost: imageReload}
@@ -184,6 +193,7 @@ func (i *imagesFacet) Current() hal.ImageSet {
 // Load loads the image that has every feature asked: each image has one, so
 // one feature (or none: the general image). The loader refuses an image the
 // build lacks.
+// TRLC-LINKS: REQ-SDS-005
 func (i *imagesFacet) Load(_ context.Context, features []string) error {
 	b := (*Board)(i)
 	want := ImageGeneral

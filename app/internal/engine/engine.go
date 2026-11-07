@@ -643,10 +643,17 @@ func (e *Engine) Board() *acq.Board { return e.hw() }
 
 // acquirer, platform and yield are the board's acquirer, its platform and
 // the readout's yield (the platform's Service).
+// TRLC-LINKS: REQ-SDS-001
 func (e *Engine) acquirer() hal.Acquirer { e.hw(); return e.acqr }
+
+// TRLC-LINKS: REQ-SDS-001
 func (e *Engine) platform() hal.Platform { e.hw(); return e.plat }
-func (e *Engine) yield() func()          { e.hw(); return e.readYield }
-func (e *Engine) reader() recordReader   { e.hw(); return e.rdx }
+
+// TRLC-LINKS: REQ-SDS-001
+func (e *Engine) yield() func() { e.hw(); return e.readYield }
+
+// TRLC-LINKS: REQ-SDS-001
+func (e *Engine) reader() recordReader { e.hw(); return e.rdx }
 
 // recordReader is the board's Readout.Read under a context that abandons
 // a long read, with what each window got: the owner loop cancels a read

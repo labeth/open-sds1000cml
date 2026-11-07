@@ -51,6 +51,7 @@ type panelPort struct {
 
 // stageLamps stages the lamp latch word: compare-on-change, the first word
 // always.
+// TRLC-LINKS: REQ-SDS-001
 func (p *panelPort) stageLamps(word uint16) {
 	p.mu.Lock()
 	if !p.ledInit || word != p.ledWord {
@@ -64,6 +65,7 @@ func (p *panelPort) stageLamps(word uint16) {
 
 // stageOffset stages channel ch's offset DAC code: last write wins, no
 // compare (the producer suppresses redundant writes).
+// TRLC-LINKS: REQ-SDS-001
 func (p *panelPort) stageOffset(ch int, code uint16) {
 	p.mu.Lock()
 	p.offCode[ch&1], p.offDirty[ch&1] = code, true
@@ -71,12 +73,14 @@ func (p *panelPort) stageOffset(ch int, code uint16) {
 }
 
 // stageLevel stages the trigger comparator DAC code.
+// TRLC-LINKS: REQ-SDS-001
 func (p *panelPort) stageLevel(code uint16) {
 	p.mu.Lock()
 	p.lvlCode, p.lvlDirty = code, true
 	p.mu.Unlock()
 }
 
+// TRLC-LINKS: REQ-SDS-001
 func (p *panelPort) w3(sel, val uint16) {
 	if err := p.bus.Write(bus.PlaneCS3, sel, val); err != nil && p.writeErr != nil {
 		p.writeErr(err)
@@ -85,6 +89,7 @@ func (p *panelPort) w3(sel, val uint16) {
 
 // flushLamps writes a staged lamp word: the latch strobe is one indivisible
 // four-write burst, never interleaved with another CS3 write.
+// TRLC-LINKS: REQ-SDS-001
 func (p *panelPort) flushLamps() {
 	p.mu.Lock()
 	dirty, word, at := p.ledDirty, p.ledWord, p.ledAt
@@ -106,6 +111,7 @@ func (p *panelPort) flushLamps() {
 // byte, then the self-latching high byte), then the trigger level quad (both
 // lanes the same code, high bytes self-latch). It reports whether a level
 // was written, and which.
+// TRLC-LINKS: REQ-SDS-001
 func (p *panelPort) flush() (level bool, code uint16) {
 	p.mu.Lock()
 	level, code = p.lvlDirty, p.lvlCode

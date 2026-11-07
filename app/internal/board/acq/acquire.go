@@ -27,6 +27,7 @@ type acquirerFacet Board
 // Configure stages plan p: its decimation, its words around the trigger and
 // whether decimation picks. The trigger is staged by Trigger.Program; the
 // next Arm commits both in one write.
+// TRLC-LINKS: REQ-SDS-008
 func (a *acquirerFacet) Configure(p hal.Plan) error {
 	b := (*Board)(a)
 	c, err := planConfig(p)
@@ -43,12 +44,15 @@ func (a *acquirerFacet) Configure(p hal.Plan) error {
 // the fabric takes them in its one arm write. The engine's planner builds
 // it from the instrument's settings until the trigger settings reach the
 // board in volts. COMMIT.
+// TRLC-LINKS: REQ-SDS-008
 func (b *Board) StageCapture(c sramcapture.Config) { b.staged = c }
 
 // Staged is the configuration the next Arm commits.
+// TRLC-LINKS: REQ-SDS-008
 func (b *Board) Staged() sramcapture.Config { return b.staged }
 
 // Arm commits the staged capture and starts it. OWNER.
+// TRLC-LINKS: REQ-SDS-008
 func (a *acquirerFacet) Arm() error {
 	b := (*Board)(a)
 	if b.mem == nil {
@@ -71,6 +75,7 @@ func (a *acquirerFacet) Arm() error {
 // length and positions (Record). On ErrTimeout the status still says
 // whether the hardware triggered, which AUTO's forced trigger waits for.
 // OWNER.
+// TRLC-LINKS: REQ-SDS-008
 func (a *acquirerFacet) Wait(ctx context.Context, timeout time.Duration) (hal.Status, error) {
 	b := (*Board)(a)
 	deadline := time.Now().Add(timeout)
@@ -102,6 +107,7 @@ func (a *acquirerFacet) Wait(ctx context.Context, timeout time.Duration) (hal.St
 }
 
 // Force forces the waiting capture's trigger. OWNER.
+// TRLC-LINKS: REQ-SDS-008
 func (a *acquirerFacet) Force() error {
 	b := (*Board)(a)
 	ctx, cancel := context.WithTimeout(context.Background(), forceTimeout)
@@ -111,6 +117,7 @@ func (a *acquirerFacet) Force() error {
 }
 
 // Stop halts the capture; a frozen record stays readable. OWNER.
+// TRLC-LINKS: REQ-SDS-008
 func (a *acquirerFacet) Stop() error {
 	b := (*Board)(a)
 	ctx, cancel := context.WithTimeout(context.Background(), haltTimeout)
@@ -124,13 +131,16 @@ func (a *acquirerFacet) Stop() error {
 
 // State is where the acquisition is. ANY from the owner's view; the board
 // keeps no lock, so other goroutines read a recent value.
+// TRLC-LINKS: REQ-SDS-008
 func (a *acquirerFacet) State() hal.AcqState { return a.state }
 
 // Record is the halted record's metadata: its length, trigger word,
 // samples a word and rate, which the owner's window arithmetic reads.
+// TRLC-LINKS: REQ-SDS-008
 func (b *Board) Record() sramcapture.Metadata { return b.rec }
 
 // SetRecord makes m the record Readout reads: a record the board did not
 // halt itself (a decoded stream's adopted capture, a stopped record read
 // again).
+// TRLC-LINKS: REQ-SDS-008
 func (b *Board) SetRecord(m sramcapture.Metadata) { b.rec = m; b.state = hal.Ready }

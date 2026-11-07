@@ -18,6 +18,7 @@ type plannerFacet Board
 // ten divisions fit, else the smallest decimation that fits them (PlanSRAM),
 // both channels always. A decimated record is filtered to Q8.8 precision
 // words (or box averages, or picked samples, on images that do so).
+// TRLC-LINKS: REQ-SDS-010
 func (pl *plannerFacet) Plan(r hal.Request) (hal.Plan, error) {
 	b := (*Board)(pl)
 	switch {
@@ -55,6 +56,7 @@ func (pl *plannerFacet) Plan(r hal.Request) (hal.Plan, error) {
 
 // planConfig is plan p as the capture configuration's plan fields: the
 // decimation, the words before and after the trigger, picking.
+// TRLC-LINKS: REQ-SDS-010
 func planConfig(p hal.Plan) (sramcapture.Config, error) {
 	var c sramcapture.Config
 	if p.AcqDecim < 1 || bits.OnesCount(uint(p.AcqDecim)) != 1 {
