@@ -69,9 +69,13 @@ func planConfig(p hal.Plan) (planPart, error) {
 	if p.Request.PretrigRoom < 0 {
 		return pp, hal.Refuse("pretrigger room", "the room before the trigger is a count of samples")
 	}
-	pp.cfg.Source, pp.cfg.DecimationLog2, pp.cfg.Pick = sramcapture.ADC, uint8(log), p.Pick && log != 0 //nolint:gosec // G115: 0 or 4..20
-	pp.perWord = 2 - BoolInt(log != 0)
-	pp.words = uint32((p.Depth + pp.perWord - 1) / pp.perWord) //nolint:gosec // G115: the plan's samples fit the SRAM
+	pp.source, pp.decimLog2, pp.pick = sramcapture.ADC, uint8(log), p.Pick && log != 0 //nolint:gosec // G115: 0 or 4..20
+	// A raw word packs two samples, a decimated one one: the divisions by
+	// the samples a word are shifts (the Cortex-A8 has no divide
+	// instruction, and the owner configures at every pass and look).
+	shift := BoolInt(log == 0)
+	pp.perWord = 1 + shift
+	pp.words = uint32((p.Depth + shift) >> shift) //nolint:gosec // G115: the plan's samples fit the SRAM
 	if pp.words == 0 || pp.words > sramcapture.Words {
 		return planPart{}, hal.Refuse("record depth", "the SRAM holds one record of its whole memory")
 	}
@@ -79,7 +83,7 @@ func planConfig(p hal.Plan) (planPart, error) {
 	if !(frac >= 0 && frac <= 1) {
 		frac = .5
 	}
-	pre := uint32(math.Floor(float64(pp.words)*frac)) + uint32(p.Request.PretrigRoom/pp.perWord) //nolint:gosec // G115: a room of samples within the record
+	pre := uint32(math.Floor(float64(pp.words)*frac)) + uint32(p.Request.PretrigRoom>>shift) //nolint:gosec // G115: a room of samples within the record
 	pp.pre = min(pre, pp.words-1)
 	pp.sampleS = p.SampleS
 	return pp, nil

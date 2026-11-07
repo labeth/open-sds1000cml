@@ -27,7 +27,7 @@ func TestSequenceOnGeneralImage(t *testing.T) {
 	}
 	cfg, _, _, _, _ := e.sramConfig()
 	if !cfg.UART.Enabled || cfg.UART.Length != 0 || cfg.Sequence.Length != 1 || cfg.Sequence.Elements[0].Kind != sramcapture.SequenceError ||
-		acq.HardwareSerialName(cfg) != "uart-sequence" || !cfg.Normal {
+		acq.HardwareSerialName(&cfg) != "uart-sequence" || !cfg.Normal {
 		t.Fatalf("UART error plan %+v %+v", cfg.UART, cfg.Sequence)
 	}
 	// CAN sequences run on the packet image, which has the trigger too.

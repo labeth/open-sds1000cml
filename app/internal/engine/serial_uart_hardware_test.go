@@ -33,8 +33,8 @@ func TestFastImageTakesFastUART(t *testing.T) {
 	if !cfg.Normal || cfg.TriggerChannel != 0 || cfg.UART != (sramcapture.UARTTriggerConfig{Enabled: true, Period16: 256, Bits: 8, Resync: true, Pattern: 0x48, Length: 1}) {
 		t.Fatalf("62.5 MBd plan %+v", cfg.UART)
 	}
-	if acq.HardwareSerialName(cfg) != "uart" {
-		t.Fatalf("backend %q", acq.HardwareSerialName(cfg))
+	if acq.HardwareSerialName(&cfg) != "uart" {
+		t.Fatalf("backend %q", acq.HardwareSerialName(&cfg))
 	}
 	e.SetSerialParams(slow)
 	if !e.serviceImage() || b.image != "general" {

@@ -193,8 +193,8 @@ func TestPacketImageFollowsSerialTrigger(t *testing.T) {
 		cfg.Sequence.Length != 2 || !cfg.Sequence.Qualify || cfg.Sequence.Elements[1] != (sramcapture.SequenceElement{Kind: 2, Value: 0x0F, Mask: 0xff}) {
 		t.Fatalf("plan %+v config %+v sequence %+v", plan, cfg.Packet, cfg.Sequence)
 	}
-	if acq.HardwareSerialName(cfg) != "can-sequence" {
-		t.Fatalf("backend %q", acq.HardwareSerialName(cfg))
+	if acq.HardwareSerialName(&cfg) != "can-sequence" {
+		t.Fatalf("backend %q", acq.HardwareSerialName(&cfg))
 	}
 	if e.serviceImage() {
 		t.Fatal("reloaded an image that is already loaded")
@@ -211,7 +211,7 @@ func TestPacketImageFollowsSerialTrigger(t *testing.T) {
 		t.Fatalf("line image: loads %v image %s", images.loads, b.image)
 	}
 	e.SetSerialParams(SerialParams{Proto: core.SerManchester, Baud: 1000000, HaveThr: true, Threshold: 128, Bits: 16, IEEE: true})
-	if cfg, _, _, _, _ := e.sramConfig(); !cfg.Manchester.Enabled || cfg.Packet.Enabled || acq.HardwareSerialName(cfg) != "manchester" {
+	if cfg, _, _, _, _ := e.sramConfig(); !cfg.Manchester.Enabled || cfg.Packet.Enabled || acq.HardwareSerialName(&cfg) != "manchester" {
 		t.Fatalf("Manchester plan %+v", cfg.Manchester)
 	}
 	// MIL-1553, SENT and USB run on the frame image.
@@ -301,8 +301,8 @@ func TestFastImageTakesFastSPI(t *testing.T) {
 		cfg.SPI != (sramcapture.SPITriggerConfig{Enabled: true, ClockChannel: 1, MSB: true, GapTicks: 4, Pattern: 0x4f, Length: 1, Delay: 23}) {
 		t.Fatalf("104 MHz plan %+v", cfg.SPI)
 	}
-	if acq.HardwareSerialName(cfg) != "spi" {
-		t.Fatalf("backend %q", acq.HardwareSerialName(cfg))
+	if acq.HardwareSerialName(&cfg) != "spi" {
+		t.Fatalf("backend %q", acq.HardwareSerialName(&cfg))
 	}
 	e.SetSerialParams(SerialParams{Proto: core.SerSPI, SPIClockHz: 1000000, ChA: 1, ChB: 0, MSB: true, HaveThr: true, Threshold: 128})
 	if !e.serviceImage() || b.image != "general" || strings.Join(images.loads, ",") != "fast,general" {
@@ -328,8 +328,8 @@ func TestBusRecordsPickSamplesOnTheQualifyImage(t *testing.T) {
 		t.Fatal("picked without BUS's lease")
 	}
 	e.LeaseBusSamples(104e-9, 5*time.Second)
-	if cfg, _, _, _, _ := e.sramConfig(); !cfg.Pick || cfg.DecimationLog2 == 0 || acq.HardwareSerialName(cfg) == "" {
-		t.Fatalf("BUS's lease: pick %v decimation %d trigger %q", cfg.Pick, cfg.DecimationLog2, acq.HardwareSerialName(cfg))
+	if cfg, _, _, _, _ := e.sramConfig(); !cfg.Pick || cfg.DecimationLog2 == 0 || acq.HardwareSerialName(&cfg) == "" {
+		t.Fatalf("BUS's lease: pick %v decimation %d trigger %q", cfg.Pick, cfg.DecimationLog2, acq.HardwareSerialName(&cfg))
 	}
 	e.SetSerialMode(SerialOff)
 	if cfg, _, _, _, _ := e.sramConfig(); cfg.Pick {

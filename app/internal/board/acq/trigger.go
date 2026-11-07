@@ -18,7 +18,9 @@ import (
 type trigState struct {
 	caps       Caps
 	offsets    *[2][5]float64 // the converter cores' offsets in codes; nil: none measured
-	staged     trigPart       // what Program staged last
+	parts      [2]trigPart    // what Program staged last (parts[cur]) and the next one's buffer
+	cur        int
+	kept       keptSpec // the spec and inputs parts[cur] was planned from
 	eventEpoch uint32
 	events     []sramcapture.DecodedEvent
 	pending    []sramcapture.DecodedEvent // read, not yet handed out
@@ -57,13 +59,23 @@ type triggerFacet Board
 // TRLC-LINKS: REQ-SDS-011, REQ-SDS-013, REQ-SDS-014
 func (t *triggerFacet) Program(s hal.TriggerSpec) error {
 	b := (*Board)(t)
-	tp, err := b.trigConfig(s)
-	if err != nil {
+	in := b.trigInputs()
+	if b.trig.kept.matches(&s, &in) {
+		return nil // staged from the same spec and inputs: the same trigger
+	}
+	next := 1 - b.trig.cur
+	if err := b.trigConfig(&s, &in, &b.trig.parts[next]); err != nil {
 		return err
 	}
-	b.trig.staged = tp
+	b.trig.cur = next
+	b.trig.kept.keep(&s, &in)
+	b.restaged()
 	return nil
 }
+
+// stagedPart is the programmed trigger.
+// TRLC-LINKS: REQ-SDS-011
+func (ts *trigState) stagedPart() *trigPart { return &ts.parts[ts.cur] }
 
 // levelScale is channel ch's record codes in volts at the probe tip: the
 // front end's V/div and offset, or without a front end (no SPI to it, the
@@ -86,19 +98,41 @@ func (b *Board) levelScale(ch int) sample.Scale {
 // TRLC-LINKS: REQ-SDS-011
 func (b *Board) CodeVolts(ch int, code float64) float64 { return b.levelScale(ch).Volts(code) }
 
+// trigInputs is what the board plans a trigger spec at besides the spec:
+// both channels' scales (the front end's V/div and offset), the loaded
+// image's capabilities and the converters' offsets the re-arm band spans.
+// It is comparable: a spec programmed again at the same inputs plans the
+// same trigger.
+type trigInputs struct {
+	scale       [2]sample.Scale
+	caps        Caps
+	offsets     [2][5]float64
+	haveOffsets bool
+}
+
+// trigInputs is the board's inputs now.
+// TRLC-LINKS: REQ-SDS-011
+func (b *Board) trigInputs() trigInputs {
+	in := trigInputs{scale: [2]sample.Scale{b.levelScale(0), b.levelScale(1)}, caps: b.trig.caps}
+	if b.trig.offsets != nil {
+		in.offsets, in.haveOffsets = *b.trig.offsets, true
+	}
+	return in
+}
+
 // code is volts v at channel ch's tip as a record code.
 // TRLC-LINKS: REQ-SDS-011
-func (b *Board) code(ch int, v float64) uint8 {
-	return uint8(math.Round(math.Max(0, math.Min(255, b.levelScale(ch).Word(v)))))
+func (in *trigInputs) code(ch int, v float64) uint8 {
+	return uint8(math.Round(math.Max(0, math.Min(255, in.scale[ch&1].Word(v)))))
 }
 
 // codes is a band of volts dv on channel ch in codes, at least minimum.
 // TRLC-LINKS: REQ-SDS-011
-func (b *Board) codes(ch int, dv float64, minimum uint8) uint8 {
+func (in *trigInputs) codes(ch int, dv float64, minimum uint8) uint8 {
 	if dv <= 0 {
 		return minimum
 	}
-	return uint8(math.Min(255, math.Max(float64(minimum), math.Ceil(dv/b.levelScale(ch).PerCode))))
+	return uint8(math.Min(255, math.Max(float64(minimum), math.Ceil(dv/in.scale[ch&1].PerCode))))
 }
 
 // nanos is a time in seconds as the nanoseconds the fabric's counters are
@@ -115,39 +149,41 @@ func nanos(s float64) float64 {
 	return ns
 }
 
-// trigConfig is s as the fabric's trigger fields.
+// trigConfig plans s into tp as the fabric's trigger fields, at the
+// board's inputs in (trigInputs). tp is left in an unspecified state when
+// s is refused.
 // TRLC-LINKS: REQ-SDS-011, REQ-SDS-014
-func (b *Board) trigConfig(s hal.TriggerSpec) (trigPart, error) {
-	var tp trigPart
+func (b *Board) trigConfig(s *hal.TriggerSpec, in *trigInputs, tp *trigPart) error {
 	switch {
 	case len(s.Stages) != 1:
-		return tp, hal.Refuse("trigger sequence", "the fabric's trigger is one stage")
+		return hal.Refuse("trigger sequence", "the fabric's trigger is one stage")
 	case s.Reset != nil:
-		return tp, hal.Refuse("trigger reset", "the fabric's trigger is one stage")
+		return hal.Refuse("trigger reset", "the fabric's trigger is one stage")
 	case s.HoldoffEv != 0:
-		return tp, hal.Refuse("holdoff by events", "the holdoff is a time the owner paces")
+		return hal.Refuse("holdoff by events", "the holdoff is a time the owner paces")
 	case s.Coupling != hal.TrigDC:
-		return tp, hal.Refuse("trigger coupling", "the fabric compares the record's DC codes")
+		return hal.Refuse("trigger coupling", "the fabric compares the record's DC codes")
 	case s.NoiseReject:
-		return tp, hal.Refuse("noise reject", "the fabric's band is the converters' offsets")
+		return hal.Refuse("noise reject", "the fabric's band is the converters' offsets")
 	}
-	g := s.Stages[0]
+	g := &s.Stages[0]
 	if g.Source.Kind != hal.Analog || g.Source.Index < 0 || g.Source.Index > 1 {
-		return tp, hal.Refuse("trigger source", "the fabric triggers on C1 or C2")
+		return hal.Refuse("trigger source", "the fabric triggers on C1 or C2")
 	}
 	ch := g.Source.Index
+	*tp = trigPart{}
 	c := &tp.cfg
 	c.TriggerChannel = uint8(ch)
 	c.Normal = true
 	c.Falling = g.Levels.Slope == hal.Falling
-	c.TriggerLevel = b.code(ch, g.Levels.High)
-	if err := b.nodeConfig(g, ch, c, s.FreeRun); err != nil {
-		return tp, err
+	c.TriggerLevel = in.code(ch, g.Levels.High)
+	if err := b.nodeConfig(g, in, ch, c, s.FreeRun); err != nil {
+		return err
 	}
 	if len(g.Zones) != 0 {
-		z, delayS, why := b.PlanZones(g.Zones)
+		z, delayS, why := b.planZones(g.Zones, in)
 		if why != "" && !s.FreeRun {
-			return tp, hal.Refuse("zone trigger", why)
+			return hal.Refuse("zone trigger", why)
 		}
 		if why == "" {
 			c.Zones, tp.zoneDelayS = z, delayS
@@ -156,14 +192,14 @@ func (b *Board) trigConfig(s hal.TriggerSpec) (trigPart, error) {
 	if s.FreeRun {
 		c.Normal = false
 	}
-	b.planHysteresis(c, b.codes(ch, g.Levels.Hysteresis, minHysteresis))
-	return tp, nil
+	b.planHysteresis(c, in.codes(ch, g.Levels.Hysteresis, minHysteresis))
+	return nil
 }
 
 // nodeConfig is stage g's node as the fabric's trigger fields of c; free
 // keeps what the fabric takes of a receiver it cannot plan whole.
 // TRLC-LINKS: REQ-SDS-011, REQ-SDS-013
-func (b *Board) nodeConfig(g hal.TrigStage, ch int, c *sramcapture.Config, free bool) error {
+func (b *Board) nodeConfig(g *hal.TrigStage, in *trigInputs, ch int, c *sramcapture.Config, free bool) error {
 	caps := b.trig.caps
 	switch g.Node { //nolint:exhaustive // the nodes the fabric programs; every other node is refused below
 	case hal.NodeEdge:
@@ -178,15 +214,15 @@ func (b *Board) nodeConfig(g hal.TrigStage, ch int, c *sramcapture.Config, free 
 		if !caps.Qualifier {
 			return hal.Refuse(g.Node.String()+" trigger", "this FPGA image has no pulse, slope or video trigger")
 		}
-		return b.qualConfig(g, ch, c)
+		return b.qualConfig(g, in, ch, c)
 	case hal.NodeProtocol, hal.NodeSymbol, hal.NodeSequence, hal.NodeFrameStart:
 		if bus, ok := busOf(g.Proto); ok {
-			return b.busConfig(bus, c, free)
+			return b.busConfig(bus, in, c, free)
 		}
 		if g.Node != hal.NodeProtocol {
 			return hal.Refuse(g.Node.String()+" trigger", "the fabric's generic receivers take a bus request")
 		}
-		return b.protoConfig(g, ch, c)
+		return b.protoConfig(g, in, ch, c)
 	}
 	return hal.Refuse(g.Node.String()+" trigger", "not programmable through the HAL on this scope")
 }
@@ -207,17 +243,17 @@ func busOf(p hal.ProtoTrigger) (*prototrig.Bus, bool) {
 // as record codes on its lines, then the serial planner. A request no
 // receiver takes is refused, or with free kept as far as the planner went.
 // TRLC-LINKS: REQ-SDS-013
-func (b *Board) busConfig(bus *prototrig.Bus, c *sramcapture.Config, free bool) error {
+func (b *Board) busConfig(bus *prototrig.Bus, in *trigInputs, c *sramcapture.Config, free bool) error {
 	if !b.trig.caps.Serial() {
 		return hal.Refuse("serial trigger", "this FPGA image has no matcher for any bus")
 	}
 	p := bus.Request
-	p.Threshold = b.levelScale(p.ChA).Word(bus.Levels[0])
-	p.ThresholdB = b.levelScale(p.ChB).Word(bus.Levels[1])
+	p.Threshold = in.scale[p.ChA&1].Word(bus.Levels[0])
+	p.ThresholdB = in.scale[p.ChB&1].Word(bus.Levels[1])
 	var arinc uint32
 	if len(bus.ARINCSlicer) == 4 {
 		for _, v := range bus.ARINCSlicer {
-			arinc = arinc<<8 | uint32(b.code(p.ChA, v))
+			arinc = arinc<<8 | uint32(in.code(p.ChA, v))
 		}
 	}
 	c.Normal = false
@@ -233,7 +269,7 @@ func (b *Board) busConfig(bus *prototrig.Bus, c *sramcapture.Config, free bool) 
 // compares is the fabric's minimum for Shorter (under the minimum), its
 // maximum for Longer (over the maximum).
 // TRLC-LINKS: REQ-SDS-011
-func (b *Board) qualConfig(g hal.TrigStage, ch int, c *sramcapture.Config) error {
+func (b *Board) qualConfig(g *hal.TrigStage, in *trigInputs, ch int, c *sramcapture.Config) error {
 	q := sramcapture.QualifierConfig{Enabled: true, Channel: c.TriggerChannel, Negative: c.Falling}
 	var minNs, maxNs float64
 	if g.Qual != nil {
@@ -258,7 +294,7 @@ func (b *Board) qualConfig(g hal.TrigStage, ch int, c *sramcapture.Config) error
 		q.Kind = sramcapture.QualPulse
 	case hal.NodeSlope:
 		q.Kind = sramcapture.QualSlope
-		lo := b.code(ch, g.Levels.Low)
+		lo := in.code(ch, g.Levels.Low)
 		q.LevelA, q.LevelB = lo, c.TriggerLevel
 		c.TriggerLevel = lo
 	case hal.NodeVideo:
@@ -287,7 +323,7 @@ func (b *Board) qualConfig(g hal.TrigStage, ch int, c *sramcapture.Config) error
 
 // protoConfig is a protocol stage as the image's receiver.
 // TRLC-LINKS: REQ-SDS-011
-func (b *Board) protoConfig(g hal.TrigStage, ch int, c *sramcapture.Config) error {
+func (b *Board) protoConfig(g *hal.TrigStage, in *trigInputs, ch int, c *sramcapture.Config) error {
 	caps := b.trig.caps
 	p := core.SerialParams{ChA: ch, ChB: 1 - ch, Threshold: float64(c.TriggerLevel), HaveThr: true, Addr: -1, RW: 2}
 	switch pt := g.Proto.(type) {
@@ -330,7 +366,7 @@ func (b *Board) protoConfig(g hal.TrigStage, ch int, c *sramcapture.Config) erro
 		for _, d := range pt.Data {
 			p.Bytes = append(p.Bytes, int(d))
 		}
-		p.ThresholdB, p.HaveThrB = float64(b.code(p.ChB, pt.SDA.Level)), true
+		p.ThresholdB, p.HaveThrB = float64(in.code(p.ChB, pt.SDA.Level)), true
 		c.I2C = PlanHardwareI2C(&p, caps.SampleI2C)
 		if !c.I2C.Enabled {
 			return hal.Refuse("I2C trigger", "the receiver does not take this match")
@@ -356,7 +392,7 @@ func (b *Board) protoConfig(g hal.TrigStage, ch int, c *sramcapture.Config) erro
 			}
 			p.Bytes = append(p.Bytes, v)
 		}
-		p.ThresholdB, p.HaveThrB = float64(b.code(p.ChB, pt.Data.Level)), true
+		p.ThresholdB, p.HaveThrB = float64(in.code(p.ChB, pt.Data.Level)), true
 		c.SPI = PlanHardwareSPI(&p, caps.SampleSPI)
 		if !c.SPI.Enabled {
 			return hal.Refuse("SPI trigger", "the receiver does not take this match")

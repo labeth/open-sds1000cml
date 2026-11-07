@@ -115,7 +115,7 @@ func (b *Board) PlanSerial(c *sramcapture.Config, serial core.SerialParams, fall
 		c.TriggerChannel = c.I2C.ClockChannel
 		c.TriggerLevel, c.SecondLevel = uint8(math.Round(serial.Threshold)), SecondLevel(serial)
 	}
-	if needSequence && HardwareSerialName(*c) != "" {
+	if needSequence && HardwareSerialName(c) != "" {
 		if c.Sequence = PlanSequence(request); c.Sequence.Length == 0 {
 			// Unplannable in hardware: back to software qualification.
 			c.Packet, c.Manchester, c.USBLS, c.MIL1553, c.SENT = sramcapture.PacketTriggerConfig{}, sramcapture.ManchesterTriggerConfig{}, sramcapture.USBLSTriggerConfig{}, sramcapture.MIL1553TriggerConfig{}, sramcapture.SENTTriggerConfig{}
@@ -187,7 +187,14 @@ func (b *Board) planHysteresis(c *sramcapture.Config, minCodes uint8) {
 // ("" when there is one).
 // TRLC-LINKS: REQ-SDS-014
 func (b *Board) PlanZones(zs []hal.Zone) (z sramcapture.ZoneConfig, delayS float64, why string) {
-	if !b.trig.caps.Qualifier {
+	in := b.trigInputs()
+	return b.planZones(zs, &in)
+}
+
+// planZones is PlanZones at the board's inputs in.
+// TRLC-LINKS: REQ-SDS-014
+func (b *Board) planZones(zs []hal.Zone, in *trigInputs) (z sramcapture.ZoneConfig, delayS float64, why string) {
+	if !in.caps.Qualifier {
 		return z, 0, "this FPGA image has no zone trigger"
 	}
 	if len(zs) > len(z.Zones) {
@@ -203,7 +210,7 @@ func (b *Board) PlanZones(zs []hal.Zone) (z sramcapture.ZoneConfig, delayS float
 			start, end := int(math.Floor(lo/bs)), int(math.Ceil(hi/bs))
 			minStart, maxEnd = min(minStart, start), max(maxEnd, end)
 			ch := zn.Source.Index & 1
-			cl, chi := b.zoneCode(ch, zn.Low), b.zoneCode(ch, zn.High)
+			cl, chi := in.zoneCode(ch, zn.Low), in.zoneCode(ch, zn.High)
 			ws[i] = sramcapture.ZoneWindow{
 				Enabled: true, Channel: uint8(ch), Lo: uint8(min(cl, chi)), Hi: uint8(max(cl, chi)), //nolint:gosec // G115: zoneCode clamps to 0..255
 				Start: int16(max(start, -1024)), End: int16(min(end, 1024)), Avoid: zn.Avoid, //nolint:gosec // G115: a bucket is refused below unless both lie within ±1000
@@ -222,6 +229,6 @@ func (b *Board) PlanZones(zs []hal.Zone) (z sramcapture.ZoneConfig, delayS float
 // zoneCode is a zone's level v on channel ch as a record code, clamped to
 // the codes.
 // TRLC-LINKS: REQ-SDS-014
-func (b *Board) zoneCode(ch int, v float64) int {
-	return min(max(int(math.Round(b.levelScale(ch).Word(v))), 0), 255)
+func (in *trigInputs) zoneCode(ch int, v float64) int {
+	return min(max(int(math.Round(in.scale[ch&1].Word(v))), 0), 255)
 }
