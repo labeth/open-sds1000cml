@@ -69,12 +69,12 @@ type statusReply struct {
 	CmdLog   []engine.CmdNote   `json:"cmd_log"`   // last ≤16 web set-control calls
 }
 
-// Status is the /api/status document: everything the page polls once a
+// status is the /api/status document: everything the page polls once a
 // second — the engine's stats, the timebase ladder, the trigger level's
 // calibration, each channel's front end, the panel snapshot, the decoded
 // stream and super-res state, and the acquisition checker's logs.
 // TRLC-LINKS: REQ-SDS-164
-func (s *Scope) Status() any {
+func (s *Scope) status() any {
 	st := s.sc.Snapshot()
 	rep := statusReply{
 		Stats:         st,
