@@ -67,7 +67,7 @@ func TestSoundTakeView(t *testing.T) {
 		func(t float64) float64 { return 0.3 * math.Sin(2*math.Pi*1000*t) },
 	}, 5)
 	e := &takeEng{soundEng: se, mode: "live"}
-	c := New(e, &fakeFE{idx: [2]int{8, 8}}, -1, engine.SupportedTdivs(), 500e-6, t.Logf)
+	c := newCtl(e, &fakeFE{idx: [2]int{8, 8}}, -1, engine.SupportedTdivs(), 500e-6, t.Logf)
 	c.decode(idle(), true)
 	press(t, c, "f3", "f3", "f3", "f3")
 	now := time.Now()

@@ -74,7 +74,7 @@ func (c *Controller) DefaultSetup() {
 		}
 		// the level at 0 V (here, not under the invert below: that runs only with
 		// an inverter wired)
-		c.eng.SetTrigLevelCode(uint16(c.fe.TrigCode(0, 0)))
+		c.lv.ResetTrigLevel()
 	}
 	if c.inverter != nil { // the traces the right way up
 		for ch := range 2 {
@@ -143,15 +143,14 @@ func (c *Controller) resetQualifiers() {
 // a 1x probe, no offset and full bandwidth.
 // TRLC-LINKS: REQ-SDS-136
 func (c *Controller) defaultChannel(ch int) {
-	c.vIdx[ch] = analog.BootDetent // 1 V/div
-	if err := c.fe.SetVdiv(ch, analog.BootDetent); err != nil {
+	if err := c.fe.SetVdivV(ch, defaultVdivV); err != nil {
 		c.logf("panel: default setup V/div: %v", err)
 	}
 	if err := c.fe.SetCoupling(ch, analog.CplDC); err != nil {
 		c.logf("panel: default setup coupling: %v", err)
 	}
 	c.fe.SetProbe(ch, 1)
-	c.fe.SetOffset(ch, 0)
+	c.lv.SetOffset(ch, 0)
 	b, ok := c.fe.(bwLimiter)
 	if !ok {
 		return

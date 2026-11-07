@@ -10,6 +10,7 @@ import (
 	"github.com/labeth/open-dso-core/sample"
 	"github.com/labeth/open-dso-core/uimodel"
 	"github.com/labeth/open-sds1000cml/app/internal/analog"
+	"github.com/labeth/open-sds1000cml/app/internal/board"
 )
 
 // RefCols is a reference's width: one point per screen column.
@@ -76,13 +77,12 @@ func (c *Controller) captureRefFrom(f *sample.Frame, slot int) {
 	r := refWave{has: true, show: true, vdiv: [2]float64{1, 1}, tdiv: st.TdivS, probe: [2]float64{1, 1}}
 	cpl := [2]int{}
 	if c.fe != nil {
-		idx, _ := c.fe.Snapshot()
-		for ch, code := range [2]uint16{st.OffC1, st.OffC2} {
-			r.vdiv[ch] = analog.Vdiv(idx[ch])
+		for ch := range 2 {
+			r.vdiv[ch] = c.fe.RangeV(ch)
 			r.probe[ch] = max(c.fe.ProbeFactor(ch), 1)
 			cpl[ch] = c.fe.Coupling(ch)
-			if code != 0 && cpl[ch] != analog.CplAC { // as the HUD's offset
-				r.off[ch] = c.fe.OffsetVolts(ch, code)
+			if cpl[ch] != analog.CplAC { // as the HUD's offset
+				r.off[ch] = c.lv.OffsetIn(ch, st)
 			}
 		}
 	}
@@ -173,7 +173,7 @@ func (c *Controller) RefsExport() [2]RefExport {
 			if s := r.setup; s.has {
 				e.Setup = &RefSetup{TdivS: s.tdiv, PosFrac: s.posFrac, TrigSrc: s.trigSrc, Rising: s.rising}
 				for ch := range e.Setup.Vdiv {
-					e.Setup.Vdiv[ch] = analog.Vdiv(s.vidx[ch]) * e.Probe[ch]
+					e.Setup.Vdiv[ch] = s.vert[ch].rng * e.Probe[ch]
 				}
 			}
 			out[i] = e
@@ -231,15 +231,15 @@ func (c *Controller) RefView() [2]RefWave {
 // COMPARE (REQ-SDS-224) can put the live trace back on it: the timebase and
 // trigger position, each channel's detent and offset, and the trigger.
 type cmpSetup struct {
-	has      bool
-	tdiv     float64
-	posFrac  float64
-	vidx     [2]int
-	offReq   [2]float64
-	trigCode uint16
-	trigSrc  int
-	rising   bool
-	trigType int // a hardware type (edge, pulse, slope, video); a serial trigger is kept as an edge
+	has       bool
+	tdiv      float64
+	posFrac   float64
+	vert      [2]vstep // each channel's V/div step
+	offReq    [2]float64
+	trigLevel board.TrigLevelSaved
+	trigSrc   int
+	rising    bool
+	trigType  int // a hardware type (edge, pulse, slope, video); a serial trigger is kept as an edge
 }
 
 // takeSetup reads the setup in use.
@@ -247,14 +247,14 @@ type cmpSetup struct {
 func (c *Controller) takeSetup() cmpSetup {
 	st := c.eng.Snapshot()
 	s := cmpSetup{
-		has: true, tdiv: st.TdivSet(), posFrac: st.TrigPosFrac, trigCode: st.TrigCode,
+		has: true, tdiv: st.TdivSet(), posFrac: st.TrigPosFrac, trigLevel: board.SaveTrigLevelIn(st),
 		trigSrc: st.TrigSource & 1, rising: st.TrigRising, trigType: st.TrigType & 3,
 	}
 	if st.SerialMode != 0 {
 		s.trigType = 0
 	}
 	if c.fe != nil {
-		s.vidx, _ = c.fe.Snapshot()
+		s.vert = [2]vstep{c.vstepOf(0), c.vstepOf(1)}
 		s.offReq = [2]float64{c.fe.OffsetReqV(0), c.fe.OffsetReqV(1)}
 	}
 	return s
@@ -278,18 +278,13 @@ func (c *Controller) applySetup(s cmpSetup) {
 	}
 	if c.fe != nil {
 		for ch := range 2 {
-			c.setVdiv(ch, s.vidx[ch])
-			c.fe.SetOffset(ch, s.offReq[ch])
+			c.setVdivV(ch, s.vert[ch].vdiv)
+			c.lv.SetOffset(ch, s.offReq[ch])
 		}
 	}
 	c.eng.SetTrigSource(s.trigSrc)
 	c.eng.SetTrigSlope(s.rising)
-	if s.trigCode != 0 {
-		c.eng.SetTrigLevelCode(s.trigCode)
-		c.mu.Lock()
-		c.trigCode = s.trigCode
-		c.mu.Unlock()
-	}
+	c.lv.RestoreTrigLevel(s.trigLevel)
 	c.pushLEDs()
 }
 

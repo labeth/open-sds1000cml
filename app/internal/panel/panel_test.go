@@ -9,7 +9,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/labeth/open-dso-core/hal"
 	"github.com/labeth/open-sds1000cml/app/internal/analog"
+	"github.com/labeth/open-sds1000cml/app/internal/board"
 	"github.com/labeth/open-sds1000cml/app/internal/engine"
 )
 
@@ -551,7 +553,7 @@ func newC(t *testing.T) (*Controller, *fakeEng, *fakeFE) {
 	t.Helper()
 	fe := &fakeFE{idx: [2]int{8, 8}} // boot detent
 	eng := newEng()
-	c := New(eng, fe, -1, engine.SupportedTdivs(), 500e-6, t.Logf)
+	c := newCtl(eng, fe, -1, engine.SupportedTdivs(), 500e-6, t.Logf)
 	c.decode(idle(), true) // seed baseline
 	return c, eng, fe
 }
@@ -723,3 +725,72 @@ func TestLEDMap(t *testing.T) {
 		t.Errorf("C1 off: lamps %#x", w)
 	}
 }
+
+// TRLC-LINKS: REQ-SDS-135
+func (f *fakeFE) SetVdivV(ch int, v float64) error {
+	idx, ok := analog.PlanVdiv(v)
+	if !ok {
+		return hal.Refuse("V/div", "not a ladder step")
+	}
+	return f.SetVdiv(ch, idx)
+}
+
+// TRLC-LINKS: REQ-SDS-135
+func (f *fakeFE) VdivV(ch int) float64 {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return analog.Detents[f.idx[ch&1]].VdivV
+}
+
+// TRLC-LINKS: REQ-SDS-135
+func (f *fakeFE) RangeV(ch int) float64 {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return analog.Vdiv(f.idx[ch&1])
+}
+
+// TRLC-LINKS: REQ-SDS-135
+func (f *fakeFE) OffsetRangeV(ch int) float64 {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if analog.Detents[f.idx[ch&1]].Atten {
+		return 40
+	}
+	return 1.6
+}
+
+// TRLC-LINKS: REQ-SDS-135
+func (f *fakeFE) Ladder(ch int) []hal.Step {
+	p := f.ProbeFactor(ch)
+	l := make([]hal.Step, len(analog.Detents))
+	for i, d := range analog.Detents {
+		l[i] = hal.Step{VoltsDiv: d.VdivV * p, Zoom: float64(d.Zoom)}
+	}
+	return l
+}
+
+// levelsFor is the board's levels over a test engine and front end, as the
+// app wires them.
+// TRLC-LINKS: REQ-SDS-135
+func levelsFor(eng Engine, fe Analog) Levels {
+	be, _ := eng.(board.Engine)
+	if bf, ok := fe.(board.FrontEnd); ok {
+		return board.New(be, bf)
+	}
+	return board.New(be, nil)
+}
+
+// newCtl is New with the board's levels over eng and fe.
+// TRLC-LINKS: REQ-SDS-135
+func newCtl(eng Engine, fe Analog, keyFD int, tdivs []float64, startTdiv float64, logf func(string, ...any)) *Controller {
+	return New(eng, fe, levelsFor(eng, fe), keyFD, tdivs, startTdiv, logf)
+}
+
+// testLadder is the front end's V/div ladder at the BNC.
+var testLadder = func() []vstep {
+	l := make([]vstep, len(analog.Detents))
+	for i, d := range analog.Detents {
+		l[i] = vstep{vdiv: d.VdivV, rng: analog.Vdiv(i), zoom: d.Zoom}
+	}
+	return l
+}()

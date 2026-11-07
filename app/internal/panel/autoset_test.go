@@ -261,11 +261,11 @@ func TestAutosetKeepsABurstsSwing(t *testing.T) {
 	c.runAutoset(make(chan struct{}))
 	vidx, _ := fe.Snapshot()
 	got := fe.offReqV
-	want := detentFor(160*analog.Vdiv(nearestDetent(2.0))/25, goalScope.fill) // the burst read at the sweep's 2 V/div
+	want := ladderStepFor(testLadder, 160*analog.Vdiv(nearestLadderStep(testLadder, 2.0))/25, goalScope.fill) // the burst read at the sweep's 2 V/div
 	// the midpoint the burst reads at that scale: the offset centres it (an
 	// idle-only capture's midpoint, its rail, must not re-centre it)
 	for ch := range 2 {
-		c.setVdiv(ch, nearestDetent(2.0))
+		c.setVdiv(ch, nearestLadderStep(testLadder, 2.0))
 	}
 	e.stats.TdivS = 1e-6
 	m, _ := c.measureChans()
@@ -332,7 +332,7 @@ func TestAutosetFindsALogicSignalThroughA10xProbe(t *testing.T) {
 func TestAutosetLooksAgainForASparseBus(t *testing.T) {
 	_, base, fe := newC(t)
 	e := &searchViewEng{fakeEng: base}
-	c := New(e, fe, -1, engine.SupportedTdivs(), 500e-6, t.Logf)
+	c := newCtl(e, fe, -1, engine.SupportedTdivs(), 500e-6, t.Logf)
 	c.decode(idle(), true)
 	base.stats.TdivS = 1e-6
 	fe.SetProbe(0, 1)

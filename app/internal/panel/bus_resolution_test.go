@@ -353,7 +353,7 @@ func newEnvRig(t *testing.T) (*Controller, *envEng, *recStream) {
 	t.Helper()
 	_, base, fe := newC(t)
 	eng := &envEng{fakeEng: base}
-	c := New(eng, fe, -1, engine.SupportedTdivs(), 500e-6, t.Logf)
+	c := newCtl(eng, fe, -1, engine.SupportedTdivs(), 500e-6, t.Logf)
 	c.decode(idle(), true)
 	c.detectSync = true
 	uart := uartFrame([]string{"Hi U\\x55\\xaa"}, 115200, 300e-6, 20e-9, 200000)
@@ -757,7 +757,7 @@ func (e *waitEng) SincePublish() time.Duration { return e.since }
 func TestBusSearchSaysTheScopeWaits(t *testing.T) {
 	_, base, fe := newC(t)
 	eng := &waitEng{fakeEng: base, since: 10 * time.Second}
-	c := New(eng, fe, -1, engine.SupportedTdivs(), 500e-6, t.Logf)
+	c := newCtl(eng, fe, -1, engine.SupportedTdivs(), 500e-6, t.Logf)
 	c.decode(idle(), true)
 	c.detectSync = true
 	eng.set(func(st *engine.Stats) { st.Norm, st.Running = true, true })

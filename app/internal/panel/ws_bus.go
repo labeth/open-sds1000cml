@@ -1916,7 +1916,7 @@ func (c *Controller) eyeFrame(a *anaState, s *sv, f *sample.Frame) {
 	if measured {
 		keyBit = 0
 	}
-	key := fmt.Sprint(ch, s.decProto, keyBit, s.vidx[ch], s.offV[ch], s.probe[ch], s.cpl[ch], s.inv[ch], f.SampleS, s.zoom,
+	key := fmt.Sprint(ch, s.decProto, keyBit, s.vert[ch], s.offV[ch], s.probe[ch], s.cpl[ch], s.inv[ch], f.SampleS, s.zoom,
 		s.zoomOff, s.st.AcqMode, s.st.TdivS, s.st.TrigPosFrac)
 	if a.eye == nil {
 		a.eye = anaNewEye(eyeCols, eyeRows())
@@ -2228,7 +2228,7 @@ func displayCodes(f *sample.Frame, s *sv, ch, lo, n, stride int) []float64 {
 		q = f.Precision(1)
 	}
 	fine := cpl == analog.CplDC && len(q) >= valid
-	z := float64(max(analog.Detents[s.vidx[ch]].Zoom, 1))
+	z := float64(max(s.vert[ch].zoom, 1))
 	out := make([]float64, 0, n)
 	for k := range n {
 		i := lo + k*stride
@@ -2250,7 +2250,7 @@ func displayCodes(f *sample.Frame, s *sv, ch, lo, n, stride int) []float64 {
 // dispVoltsPerCode is a channel's volts per displayed code at the tip.
 // TRLC-LINKS: REQ-SDS-215
 func dispVoltsPerCode(s *sv, ch int) float64 {
-	return analog.Detents[s.vidx[ch&1]].VdivV / 25 * s.probe[ch&1]
+	return s.vert[ch&1].vdiv / 25 * s.probe[ch&1]
 }
 
 // eyeClear is the Adjust push in the eye: start over, folding again from

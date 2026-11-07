@@ -23,6 +23,7 @@ import (
 	"github.com/labeth/open-dso-core/vxi11srv"
 	"github.com/labeth/open-dso-core/webserver"
 	"github.com/labeth/open-sds1000cml/app/internal/analog"
+	"github.com/labeth/open-sds1000cml/app/internal/board"
 	"github.com/labeth/open-sds1000cml/app/internal/buildinfo"
 	"github.com/labeth/open-sds1000cml/app/internal/bus"
 	"github.com/labeth/open-sds1000cml/app/internal/cal"
@@ -171,10 +172,14 @@ func Run() {
 	// Front-panel controller: SIGIO off the inherited /dev/fpga_key fd,
 	// matrix reads via the engine's request/reply channel.
 	var pfe panel.Analog
+	var bfe board.FrontEnd
 	if fe != nil {
-		pfe = fe
+		pfe, bfe = fe, fe
 	}
-	pc := panel.New(e, pfe, keyFD, engine.SupportedTdivs(), 500e-6, logf)
+	// The trigger level and the offsets in volts over the DACs the engine
+	// stages: the controllers' side of the board's levels.
+	levels := board.New(e, bfe)
+	pc := panel.New(e, pfe, levels, keyFD, engine.SupportedTdivs(), 500e-6, logf)
 	pc.SetFrameSource(fo.WithFrame) // let the AUTO button measure the live signal
 	// Decoded stream (ADR-PANEL-DECODED-STREAM): the panel starts it from the
 	// BUS sheet's decoder settings (typed in, or filled in by Auto).
@@ -198,7 +203,7 @@ func Run() {
 		sfe = fe
 	}
 	shot := func() []byte { return lcd.EncodeBMP(renderScreen(e, fe, fo)) }
-	scpiH := scpi.New(scopeSource{e, fo}, sfe, pc, shot, logf)
+	scpiH := scpi.New(scopeSource{e, fo}, sfe, levels, pc, shot, logf)
 	scpiCtrl.Store(scpiH) // publish for the LCD render loop + screenshot paths
 	pc.SetInverter(scpiH) // the CH tabs' Invert rows: the same INVS shadow
 	// Settings persistence: restore the last user setup now that the engine is
@@ -211,23 +216,24 @@ func Run() {
 	if fe != nil {
 		setFE = fe
 	}
+	setExt := board.SettingsExtension{Levels: levels}
 	setPath := settings.PathIn(otaDir)
 	if st, ok := settings.Load(setPath, logf); ok {
-		settings.Apply(st, e, setFE, pc, logf)
+		settings.Apply(st, e, setFE, pc, setExt, logf)
 		logf("settings: restored %s", setPath)
 	} else {
 		logf("settings: no saved setup at %s — defaults", setPath)
 	}
 	saver := settings.NewSaver(setPath, func() settings.Settings {
-		return settings.Collect(e, setFE, pc)
+		return settings.Collect(e, setFE, pc, setExt)
 	}, logf)
 	go saver.Run(stopFo)
 	// *SAV/*RCL: numbered setups beside the persisted one, through the same
 	// Collect/Apply paths as the boot restore.
 	setupSlots := settings.Slots{
 		Dir:     filepath.Dir(setPath),
-		Collect: func() settings.Settings { return settings.Collect(e, setFE, pc) },
-		Apply:   func(st settings.Settings) { settings.Apply(st, e, setFE, pc, logf) },
+		Collect: func() settings.Settings { return settings.Collect(e, setFE, pc, setExt) },
+		Apply:   func(st settings.Settings) { settings.Apply(st, e, setFE, pc, setExt, logf) },
 	}
 	pc.SetSetupMemory(setupSlots) // SAVE/RECALL key: the same slots as *SAV/*RCL
 	// SCPI and the web save and recall through the panel, so its FILE rows and
@@ -251,7 +257,7 @@ func Run() {
 	// kill every parked request. Slow-peer writes are bounded per-response
 	// inside the handler (SetWriteDeadline). Don't "harden" this without
 	// moving that contract.
-	sc := webscope.New(scopeSource{e, fo}, feIface, pc, screenPNG)
+	sc := webscope.New(scopeSource{e, fo}, feIface, levels, pc, screenPNG)
 	sc.SetInvertSource(scpiH.Inverted)         // display-level INVS: SCPI shadow → /api/status
 	sc.SetSetupMemory(webSetups{sharedSetups}) // the web top bar's Setups: the same slots as *SAV/*RCL
 	ws := webserver.New(sc, webserver.WithPprof())

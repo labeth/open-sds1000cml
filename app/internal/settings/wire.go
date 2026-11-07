@@ -3,8 +3,10 @@
 package settings
 
 import (
+	"errors"
 	"math"
 
+	"github.com/labeth/open-dso-core/hal"
 	"github.com/labeth/open-sds1000cml/app/internal/analog"
 	"github.com/labeth/open-sds1000cml/app/internal/engine"
 )
@@ -20,7 +22,6 @@ type Engine interface {
 	SetTrigSlope(rising bool)
 	SetTrigSource(ch int)
 	SetTrigType(t int)
-	SetTrigLevelCode(code uint16) uint16
 	SetHoldoff(sec float64) float64
 	SetTrigPosFrac(frac float64)
 	SetAcqMode(m int)
@@ -33,14 +34,24 @@ type Engine interface {
 // vertical setup is then neither collected nor restored.
 // TRLC-LINKS: REQ-SDS-072, REQ-SDS-089
 type Analog interface {
-	Snapshot() (idx [2]int, emitted bool)
-	SetVdiv(ch, idx int) error
+	Emitted() bool
+	VdivV(ch int) float64
+	SetVdivV(ch int, v float64) error
 	SetOffset(ch int, volts float64) uint16
 	OffsetReqV(ch int) float64
 	SetCoupling(ch, mode int) error
 	Coupling(ch int) int
 	SetProbe(ch int, x float64)
 	ProbeFactor(ch int) float64
+}
+
+// Extension is the board's part of the setup: the trigger level, which the
+// file keeps as the board stores it (the SDS1000CML+'s comparator DAC code,
+// level_code). May be nil: the level is then neither collected nor restored.
+// TRLC-LINKS: REQ-SDS-072, REQ-SDS-089
+type Extension interface {
+	CollectTrigger(t *Trigger)
+	ApplyTrigger(t Trigger)
 }
 
 // ViewState is the controller-owned slice of the setup: the device decode
@@ -70,20 +81,22 @@ type Panel interface {
 // view state. Cheap (mutex-guarded copies, zero bus access) — safe to call
 // from the saver's poll goroutine.
 // TRLC-LINKS: REQ-SDS-089
-func Collect(eng Engine, fe Analog, pc Panel) Settings {
+func Collect(eng Engine, fe Analog, pc Panel, ext Extension) Settings {
 	s := Settings{Version: Version}
 	if eng != nil {
 		st := eng.Snapshot()
 		s.TdivS = st.TdivSet()
 		s.Trigger = Trigger{
 			Qualifiers: st.TrigQual,
-			LevelCode:  int(st.TrigCode),
 			Rising:     st.TrigRising,
 			Source:     st.TrigSource,
 			Type:       st.TrigType,
 			Norm:       st.Norm,
 			HoldoffS:   st.HoldoffS,
 			PosFrac:    st.TrigPosFrac,
+		}
+		if ext != nil {
+			ext.CollectTrigger(&s.Trigger)
 		}
 		s.Acq = Acq{Mode: st.AcqMode, AvgCount: st.AvgCount, EresLen: st.EresLen, PrecisionRateHz: st.PrecisionRateHz}
 		if md, ok := eng.(interface{ MemDepth() int }); ok {
@@ -100,17 +113,14 @@ func Collect(eng Engine, fe Analog, pc Panel) Settings {
 		}
 	}
 	if fe != nil {
-		idx, emitted := fe.Snapshot()
-		s.VertSet = emitted
+		s.VertSet = fe.Emitted()
 		bwl, hasBWL := fe.(interface{ BWL(ch int) bool })
 		// One lock a channel where the front end reads them together.
 		all, hasAll := fe.(interface {
 			ChannelState(ch int) (offV float64, cpl int, probe float64, bwl bool)
 		})
 		for ch := range 2 {
-			if idx[ch] >= 0 && idx[ch] < len(analog.Detents) {
-				s.Ch[ch].VdivV = analog.Detents[idx[ch]].VdivV
-			}
+			s.Ch[ch].VdivV = fe.VdivV(ch)
 			c := &s.Ch[ch]
 			if hasAll {
 				c.OffsetV, c.Coupling, c.Probe, c.BWL = all.ChannelState(ch)
@@ -143,12 +153,12 @@ func Collect(eng Engine, fe Analog, pc Panel) Settings {
 // clamped by the setters or skipped with a log line; Apply never panics on a
 // hostile Settings value.
 // TRLC-LINKS: REQ-SDS-072
-func Apply(s Settings, eng Engine, fe Analog, pc Panel, logf func(string, ...any)) {
+func Apply(s Settings, eng Engine, fe Analog, pc Panel, ext Extension, logf func(string, ...any)) {
 	if logf == nil {
 		logf = func(string, ...any) {}
 	}
 	if eng != nil {
-		applyEngine(s, eng, logf)
+		applyEngine(s, eng, ext, logf)
 	}
 	if fe != nil {
 		applyChannels(s, fe, logf)
@@ -170,7 +180,7 @@ func Apply(s Settings, eng Engine, fe Analog, pc Panel, logf func(string, ...any
 
 // applyEngine restores the acquisition and trigger settings.
 // TRLC-LINKS: REQ-SDS-072
-func applyEngine(s Settings, eng Engine, logf func(string, ...any)) {
+func applyEngine(s Settings, eng Engine, ext Extension, logf func(string, ...any)) {
 	if finite(s.TdivS) && s.TdivS > 0 {
 		if _, ok := eng.SetTdiv(s.TdivS); !ok {
 			logf("settings: tdiv %g not in ladder — skipped", s.TdivS)
@@ -180,11 +190,8 @@ func applyEngine(s Settings, eng Engine, logf func(string, ...any)) {
 	eng.SetTrigSlope(s.Trigger.Rising)
 	eng.SetTrigSource(s.Trigger.Source) // clamps to 0/1
 	eng.SetTrigType(s.Trigger.Type)     // clamps to edge on out-of-range
-	// Level code 0 = "boot comparator untouched" — never stage it. The
-	// uint16 conversion is guarded in float-free int space (an
-	// out-of-range conversion is implementation-defined on ARMv7).
-	if c := s.Trigger.LevelCode; c > 0 && c <= 0xFFFF {
-		eng.SetTrigLevelCode(uint16(c)) // clamps to the operational window
+	if ext != nil {
+		ext.ApplyTrigger(s.Trigger)
 	}
 	if p := s.Trigger.PosFrac; finite(p) && p > 0 && p <= 1 {
 		eng.SetTrigPosFrac(p)
@@ -240,12 +247,12 @@ func applyChannels(s Settings, fe Analog, logf func(string, ...any)) {
 		// break the seed-don't-emit startup rule (spec 06 §4.4) for no
 		// gain. Coupling/probe are software-only and always safe.
 		if s.VertSet {
-			if idx, ok := analog.PlanVdiv(cs.VdivV); ok {
-				if err := fe.SetVdiv(ch, idx); err != nil {
-					logf("settings: SetVdiv C%d: %v", ch+1, err)
-				}
-			} else {
+			var refused *hal.Refusal
+			switch err := fe.SetVdivV(ch, cs.VdivV); {
+			case errors.As(err, &refused):
 				logf("settings: C%d vdiv %g not in ladder — skipped", ch+1, cs.VdivV)
+			case err != nil:
+				logf("settings: SetVdiv C%d: %v", ch+1, err)
 			}
 		}
 		if cs.OffsetSet && finite(cs.OffsetV) {

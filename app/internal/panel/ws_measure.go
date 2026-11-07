@@ -86,8 +86,8 @@ func (c *Controller) seedMeas() {
 // statKey is what the statistics depend on: a change starts them again.
 // TRLC-LINKS: REQ-SDS-217
 func statKey(s *sv) string {
-	return fmt.Sprint(s.vidx, s.probe, s.cpl, s.offV, s.st.TdivS, s.st.TrigSource, s.st.TrigRising, s.st.TrigType,
-		s.st.TrigCode, s.st.AcqMode, s.st.AvgCount, s.st.EresLen, s.meas, s.inv)
+	return fmt.Sprint(s.vert, s.probe, s.cpl, s.offV, s.st.TdivS, s.st.TrigSource, s.st.TrigRising, s.st.TrigType,
+		s.trigSaved, s.st.AcqMode, s.st.AvgCount, s.st.EresLen, s.meas, s.inv)
 }
 
 // statsResetLocked zeroes the statistics (c.amu held).

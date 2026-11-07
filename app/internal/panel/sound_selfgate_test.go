@@ -34,7 +34,7 @@ func TestSelfGatedEnvelopeEndsAboveTheFloor(t *testing.T) {
 		},
 		func(float64) float64 { return 0 },
 	}, 20)
-	c := New(e, &fakeFE{idx: [2]int{8, 8}}, -1, engine.SupportedTdivs(), 500e-6, t.Logf)
+	c := newCtl(e, &fakeFE{idx: [2]int{8, 8}}, -1, engine.SupportedTdivs(), 500e-6, t.Logf)
 	c.SetSoundSettings(SoundSettings{A4: 440, Ref: "dbu", Cycles: 2, Gate: -1, GateV: 0.5, Page: soundPageADSR})
 	now := time.Now()
 	e.next = int(1.2 * e.fs) // between two notes

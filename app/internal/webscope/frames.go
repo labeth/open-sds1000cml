@@ -23,17 +23,11 @@ func (s *Scope) vertScales() (off, vpc [2]float64) {
 	vpc = [2]float64{1.0 / 25, 1.0 / 25} // nominal 1 V/div when no front end
 	st := s.sc.Snapshot()
 	if s.fe != nil {
-		idx, _ := s.fe.Snapshot()
 		// Volts per code on the ANALOG range: the 2 and 5 mV detents are display
 		// zooms of the 10 mV range (spec 06), and the page applies the zoom.
-		vpc[0] = analog.Vdiv(idx[0]) / 25
-		vpc[1] = analog.Vdiv(idx[1]) / 25
-		if st.OffC1 != 0 {
-			off[0] = s.fe.OffsetVolts(0, st.OffC1)
-		}
-		if st.OffC2 != 0 {
-			off[1] = s.fe.OffsetVolts(1, st.OffC2)
-		}
+		vpc[0] = s.fe.RangeV(0) / 25
+		vpc[1] = s.fe.RangeV(1) / 25
+		off[0], off[1] = s.lv.OffsetIn(0, st), s.lv.OffsetIn(1, st)
 		// Probe attenuation is input-referred: it scales both the per-code
 		// volts and the offset so every downstream readout (measurements,
 		// cursors, CSV, ground marker) reports the signal at the probe tip.

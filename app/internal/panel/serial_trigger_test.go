@@ -101,7 +101,7 @@ func TestSerialTriggerArmsOnWhatAutoFilledIn(t *testing.T) {
 // TRLC-LINKS: REQ-SDS-013
 func TestSerialTriggerAbsent(t *testing.T) {
 	_, base, fe := newC(t)
-	c := New(plainEng{base}, fe, -1, engine.SupportedTdivs(), 500e-6, t.Logf)
+	c := newCtl(plainEng{base}, fe, -1, engine.SupportedTdivs(), 500e-6, t.Logf)
 	c.SheetSet("bus.protocol", nil, "UART")
 	if res := c.SheetSet("trig.type", nil, "Serial"); res.OK || !strings.Contains(res.Error, "no serial trigger") {
 		t.Fatalf("Serial without a serial trigger: %+v", res)

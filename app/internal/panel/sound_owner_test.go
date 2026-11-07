@@ -37,7 +37,7 @@ func (e *soundEng) leaseActive() bool { return time.Now().Before(e.lease) }
 func TestSoundDriftEndsWithSound(t *testing.T) {
 	tone := func(float64) float64 { return 0 }
 	e := newSoundEng([2]func(float64) float64{tone, tone}, 30)
-	c := New(e, &fakeFE{idx: [2]int{8, 8}}, -1, engine.SupportedTdivs(), 500e-6, t.Logf)
+	c := newCtl(e, &fakeFE{idx: [2]int{8, 8}}, -1, engine.SupportedTdivs(), 500e-6, t.Logf)
 	c.decode(idle(), true)
 
 	// Power-on with a setup that kept Drift on: it comes back off.
@@ -94,7 +94,7 @@ func TestSoundDriftEndsWithSound(t *testing.T) {
 func TestSoundLCDTakesTheScopeBack(t *testing.T) {
 	quiet := func(float64) float64 { return 0 }
 	e := newSoundEng([2]func(float64) float64{quiet, quiet}, 1)
-	c := New(e, &fakeFE{idx: [2]int{8, 8}}, -1, engine.SupportedTdivs(), 500e-6, t.Logf)
+	c := newCtl(e, &fakeFE{idx: [2]int{8, 8}}, -1, engine.SupportedTdivs(), 500e-6, t.Logf)
 	c.decode(idle(), true)
 	lease := func() { e.LeaseSound(3 * time.Second) }
 
@@ -261,7 +261,7 @@ func TestSoundAutoTakesTheScopeFirst(t *testing.T) {
 func TestSoundNoticeNamesBothPages(t *testing.T) {
 	quiet := func(float64) float64 { return 0 }
 	e := newSoundEng([2]func(float64) float64{quiet, quiet}, 1)
-	c := New(e, &fakeFE{idx: [2]int{8, 8}}, -1, engine.SupportedTdivs(), 500e-6, t.Logf)
+	c := newCtl(e, &fakeFE{idx: [2]int{8, 8}}, -1, engine.SupportedTdivs(), 500e-6, t.Logf)
 	c.decode(idle(), true)
 	lease := func() { e.LeaseSound(3 * time.Second) }
 	for _, who := range []string{"", "phone", "", "phone"} {

@@ -204,7 +204,7 @@ func (f *stateFE) ChannelState(ch int) (offV float64, cpl int, probe float64, bw
 func stateC(t *testing.T) (*Controller, *stateFE) {
 	t.Helper()
 	fe := &stateFE{fakeFE: &fakeFE{idx: [2]int{8, 8}}, bwl: [2]bool{false, true}}
-	c := New(newEng(), fe, -1, engine.SupportedTdivs(), 500e-6, t.Logf)
+	c := newCtl(newEng(), fe, -1, engine.SupportedTdivs(), 500e-6, t.Logf)
 	c.decode(idle(), true)
 	return c, fe
 }
@@ -795,7 +795,7 @@ func BenchmarkScreenExtremes(b *testing.B) {
 		f.Codes8(0)[i] = uint8(128 + 60*((i/90)%2*2-1) + i%5)
 		f.Codes8(1)[i] = f.Codes8(0)[i]
 	}
-	s := &sv{probe: [2]float64{1, 1}, vidx: [2]int{10, 10}}
+	s := &sv{probe: [2]float64{1, 1}, vert: [2]vstep{testLadder[10], testLadder[10]}}
 	for b.Loop() {
 		screenExtremes(f, s, 0, stabCols)
 		screenExtremes(f, s, 1, stabCols)

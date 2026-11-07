@@ -42,7 +42,7 @@ func TestSuperresFPGARun(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		_, base, fe := newC(t)
 		eng := &fpgaFakeEng{fakeEng: base, requests: make(chan engine.FPGAStackRequest, 1)}
-		c := New(eng, fe, -1, engine.SupportedTdivs(), 500e-6, t.Logf)
+		c := newCtl(eng, fe, -1, engine.SupportedTdivs(), 500e-6, t.Logf)
 		c.decode(idle(), true)
 		n := 256
 		sig := make([]uint8, n)
@@ -107,7 +107,7 @@ func TestSuperresFPGAMatchRun(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		_, base, fe := newC(t)
 		eng := &fpgaFakeEng{fakeEng: base, requests: make(chan engine.FPGAStackRequest, 1)}
-		c := New(eng, fe, -1, engine.SupportedTdivs(), 500e-6, t.Logf)
+		c := newCtl(eng, fe, -1, engine.SupportedTdivs(), 500e-6, t.Logf)
 		c.decode(idle(), true)
 		n := 256
 		sig := make([]uint8, n)
@@ -173,7 +173,7 @@ func TestSuperresFPGACancel(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		_, base, fe := newC(t)
 		eng := &cancellableFPGAEng{base, make(chan context.Context, 1)}
-		c := New(eng, fe, -1, engine.SupportedTdivs(), 500e-6, t.Logf)
+		c := newCtl(eng, fe, -1, engine.SupportedTdivs(), 500e-6, t.Logf)
 		c.SetFrameSource(func(fn func(*sample.Frame)) {
 			fn(&sample.Frame{TriggerAt: 4, SampleS: 2e-9, Traces: []sample.Trace{{Codes8: []uint8{40, 200, 40, 200, 40, 200, 40, 200}, Valid: 8}, {Ch: 1, Valid: 8}}})
 		})
@@ -214,7 +214,7 @@ func TestSuperresFPGACancel(t *testing.T) {
 func TestSuperresOnInFPGAModeRunsTheFPGA(t *testing.T) {
 	_, base, fe := newC(t)
 	eng := &fpgaFakeEng{fakeEng: base, requests: make(chan engine.FPGAStackRequest, 1)}
-	c := New(eng, fe, -1, engine.SupportedTdivs(), 500e-6, t.Logf)
+	c := newCtl(eng, fe, -1, engine.SupportedTdivs(), 500e-6, t.Logf)
 	c.decode(idle(), true)
 	n := 200000 // a deep window, past the software stack's limit
 	sig := make([]uint8, n)

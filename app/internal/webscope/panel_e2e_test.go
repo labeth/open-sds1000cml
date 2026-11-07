@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/labeth/open-sds1000cml/app/internal/board"
 	"github.com/labeth/open-sds1000cml/app/internal/engine"
 	"github.com/labeth/open-sds1000cml/app/internal/panel"
 )
@@ -66,7 +67,7 @@ func (p *panelScope) SetRunning(on bool) {
 // TRLC-LINKS: REQ-SDS-162, REQ-SDS-164, REQ-SDS-211, REQ-SDS-212
 func TestPanelRemoteEndToEnd(t *testing.T) {
 	ps := &panelScope{fakeScope: &fakeScope{stats: engine.Stats{Running: true, TdivS: 500e-6, TrigCode: 31437, TrigPosFrac: 0.5}}}
-	pc := panel.New(ps, nil, -1, engine.SupportedTdivs(), 500e-6, t.Logf)
+	pc := panel.New(ps, nil, board.New(ps, nil), -1, engine.SupportedTdivs(), 500e-6, t.Logf)
 	stop := make(chan struct{})
 	defer close(stop)
 	go pc.Run(stop)

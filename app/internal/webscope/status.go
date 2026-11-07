@@ -126,15 +126,10 @@ func (s *Scope) Status() any {
 	rep.AcqLog, rep.HalfRate = s.sc.AcqLog(24)
 	rep.CmdLog = s.sc.CmdLog(16)
 	if s.fe != nil {
-		idx, emitted := s.fe.Snapshot()
-		for _, d := range analog.Detents {
-			rep.Vdivs = append(rep.Vdivs, d.VdivV)
-		}
-		rep.Vdiv1 = analog.Detents[idx[0]].VdivV
-		rep.Vdiv2 = analog.Detents[idx[1]].VdivV
-		rep.Zoom1 = analog.Detents[idx[0]].Zoom
-		rep.Zoom2 = analog.Detents[idx[1]].Zoom
-		rep.VdivLive = emitted
+		rep.Vdivs = analog.VdivsV()
+		rep.Vdiv1, rep.Vdiv2 = s.fe.VdivV(0), s.fe.VdivV(1)
+		rep.Zoom1, rep.Zoom2 = s.fe.Zoom(0), s.fe.Zoom(1)
+		rep.VdivLive = s.fe.Emitted()
 		rep.Probe1 = s.fe.ProbeFactor(0)
 		rep.Probe2 = s.fe.ProbeFactor(1)
 		rep.Cpl1 = s.fe.Coupling(0)
@@ -146,9 +141,7 @@ func (s *Scope) Status() any {
 		rep.TrigVolts = s.fe.TrigVolts(st.TrigCode, st.TrigSource)
 		rep.TrigZero, rep.TrigCpv = s.fe.TrigCalActive(st.TrigSource)
 	}
-	offVolts := analog.OffsetVolts
 	if s.fe != nil {
-		offVolts = s.fe.OffsetVolts
 		rep.CalSource = s.fe.CalSource()
 		// Calibrated DC diagnostic over the latest frame's record means. The
 		// GAIN/110 mapping is for the deep 50-codes/div scale; roll codes are
@@ -169,12 +162,7 @@ func (s *Scope) Status() any {
 			rep.DC2V = s.fe.DCVolts(1, mean(f.Codes8(1)))
 		})
 	}
-	if st.OffC1 != 0 {
-		rep.Off1V = offVolts(0, st.OffC1)
-	}
-	if st.OffC2 != 0 {
-		rep.Off2V = offVolts(1, st.OffC2)
-	}
+	rep.Off1V, rep.Off2V = s.lv.OffsetIn(0, st), s.lv.OffsetIn(1, st)
 	if s.fe != nil { // report offsets at the probe tip, matching the frame's off_v
 		rep.Off1V *= s.fe.ProbeFactor(0)
 		rep.Off2V *= s.fe.ProbeFactor(1)

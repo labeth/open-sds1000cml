@@ -477,20 +477,17 @@ func chanRows(ch int) []*row {
 		val:  func(s *sv) float64 { return s.vdivTip(ch) },
 		fmtN: siFmt("V"),
 		lim: func(s *sv) (float64, float64) {
-			return analog.Detents[0].VdivV * s.probe[ch], analog.Detents[len(analog.Detents)-1].VdivV * s.probe[ch]
+			l := s.ladder[ch]
+			return l[0], l[len(l)-1]
 		},
-		step: constStep(0),
-		ladder: func(s *sv) []float64 {
-			l := make([]float64, len(analog.Detents))
-			for i, d := range analog.Detents {
-				l[i] = d.VdivV * s.probe[ch]
-			}
-			return l
+		step:   constStep(0),
+		ladder: func(s *sv) []float64 { return s.ladder[ch] },
+		stepN:  func(c *Controller, n int) error { return c.stepVdiv(ch, n) },
+		def: func(c *Controller) error {
+			return c.setVdivPos(ch, ladderPos(c.ladder(ch), defaultVdivV))
 		},
-		stepN: func(c *Controller, n int) error { return c.stepVdiv(ch, n) },
-		def:   func(c *Controller) error { return c.setVdivIdx(ch, analog.BootDetent) },
 	}
-	vdiv.setN = func(c *Controller, v float64) error { return c.setVdivIdx(ch, nearestLadder(vdiv.ladder(c.snap()), v)) }
+	vdiv.setN = func(c *Controller, v float64) error { return c.setVdivPos(ch, nearestLadder(vdiv.ladder(c.snap()), v)) }
 	offset := &row{
 		id: p + "offset", label: "Offset", kind: wsview.Number, unit: "V",
 		help: "Vertical position of the channel (volts).", knob: "Also the " + C + " Position knob; its push = 0 V.",
@@ -498,7 +495,7 @@ func chanRows(ch int) []*row {
 		val:  func(s *sv) float64 { return s.offV[ch] * s.probe[ch] },
 		fmtN: func(v float64) string { return sgnSI(v, "V") },
 		lim: func(s *sv) (float64, float64) {
-			r := offsetRangeV(s.vidx[ch]) * s.probe[ch]
+			r := s.offRange[ch] * s.probe[ch]
 			return -r, r
 		},
 		step:    func(s *sv) float64 { return panelOffsetStepDiv * s.vdivTip(ch) },

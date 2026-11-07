@@ -13,6 +13,7 @@ import (
 	"github.com/labeth/open-dso-core/dsp"
 	"github.com/labeth/open-dso-core/sample"
 	"github.com/labeth/open-sds1000cml/app/internal/analog"
+	"github.com/labeth/open-sds1000cml/app/internal/board"
 	"github.com/labeth/open-sds1000cml/app/internal/engine"
 	"github.com/labeth/open-sds1000cml/app/internal/panel/framecalc"
 	"github.com/labeth/open-sds1000cml/app/internal/panel/wsview"
@@ -69,7 +70,7 @@ func screenExtremes(f *sample.Frame, s *sv, ch, cols int) (lows, highs []float64
 	if s.cpl[ch] != analog.CplDC {
 		sig = analog.CoupleDisplay(sig, s.cpl[ch])
 	}
-	z := float64(max(analog.Detents[s.vidx[ch]].Zoom, 1)) / 25
+	z := float64(max(s.vert[ch].zoom, 1)) / 25
 	lows, highs = make([]float64, cols), make([]float64, cols)
 	// Column x ends where x+1 starts: one floor a column, and from a
 	// non-negative left the floor is the conversion's truncation (no float
@@ -125,7 +126,7 @@ func screenPoints(f *sample.Frame, s *sv, ch int) []float64 {
 	if s.cpl[ch] != analog.CplDC {
 		sig = analog.CoupleDisplay(sig, s.cpl[ch])
 	}
-	z := float64(max(analog.Detents[s.vidx[ch]].Zoom, 1))
+	z := float64(max(s.vert[ch].zoom, 1))
 	out := make([]float64, RefCols)
 	for x := range out {
 		pos := min(max(left+float64(x)*float64(win)/RefCols, 0), float64(valid-1))
@@ -143,11 +144,11 @@ func screenPoints(f *sample.Frame, s *sv, ch int) []float64 {
 // their bits): built each frame, it formats nothing.
 type stabK struct {
 	src, trigType, acq, zoom, serial int
-	vidx, cpl                        [2]int
-	offV, probe                      [2]uint64
+	cpl                              [2]int
+	vdiv, offV, probe                [2]uint64
 	tdiv, pos, zoomOff, holdoff      uint64
 	rising                           bool
-	trigCode                         uint16
+	trigLevel                        board.TrigLevelSaved
 }
 
 // stabKey is the repeat test's dependencies now.
@@ -156,9 +157,9 @@ func stabKey(s *sv) stabK {
 	b := math.Float64bits
 	return stabK{
 		src: s.st.TrigSource & 1, trigType: s.st.TrigType, acq: s.st.AcqMode, zoom: s.zoom, serial: s.st.SerialMode,
-		vidx: s.vidx, cpl: s.cpl, offV: [2]uint64{b(s.offV[0]), b(s.offV[1])}, probe: [2]uint64{b(s.probe[0]), b(s.probe[1])},
+		vdiv: [2]uint64{b(s.vert[0].vdiv), b(s.vert[1].vdiv)}, cpl: s.cpl, offV: [2]uint64{b(s.offV[0]), b(s.offV[1])}, probe: [2]uint64{b(s.probe[0]), b(s.probe[1])},
 		tdiv: b(s.st.TdivS), pos: b(s.st.TrigPosFrac), zoomOff: b(s.zoomOff), holdoff: b(s.st.HoldoffS),
-		rising: s.st.TrigRising, trigCode: s.st.TrigCode,
+		rising: s.st.TrigRising, trigLevel: s.trigSaved,
 	}
 }
 
@@ -240,7 +241,7 @@ func (c *Controller) refDiffFrame(a *anaState, s *sv, f *sample.Frame) {
 				d.why = "no trace"
 				break
 			}
-			vdivLive := analog.Vdiv(s.vidx[src])
+			vdivLive := s.vert[src].rng
 			offLive := s.offV[src]
 			// compared at the probe tip, each through its own probe (as the
 			// web's difference): the reference's tip volts at the live probe
@@ -251,7 +252,7 @@ func (c *Controller) refDiffFrame(a *anaState, s *sv, f *sample.Frame) {
 				ref[x] = (volts + offLive) / vdivLive
 			}
 			for x := range live { // live in divisions of the analog range
-				live[x] /= float64(max(analog.Detents[s.vidx[src]].Zoom, 1))
+				live[x] /= float64(max(s.vert[src].zoom, 1))
 			}
 			mx, rms, pct := anaRefDiff(live, ref, 0.5)
 			vt := vdivLive * s.probe[src]

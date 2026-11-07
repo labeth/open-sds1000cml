@@ -84,19 +84,10 @@ func (h *Handler) pava(ch int, arg string) []byte {
 	if _, ok := pavaParam[arg]; !ok && arg != "ALL" {
 		return errTok(errHeader)
 	}
-	vdiv := 1.0
+	vdiv, offV := 1.0, 0.0
 	if h.fe != nil {
-		idx, _ := h.fe.Snapshot()
-		vdiv = analog.Vdiv(idx[ch&1]) // codes are on the analog range
-	}
-	st := h.sc.Snapshot()
-	offCode := st.OffC1
-	if ch == 1 {
-		offCode = st.OffC2
-	}
-	offV := 0.0
-	if offCode != 0 && h.fe != nil {
-		offV = h.fe.OffsetVolts(ch, offCode)
+		vdiv = h.fe.RangeV(ch & 1) // codes are on the analog range
+		offV = h.lv.OffsetIn(ch, h.sc.Snapshot())
 	}
 	probe := h.probe(ch)
 	cpl := h.coupling(ch)

@@ -55,7 +55,7 @@ func (e *maskRecordingEng) SetMask(m *engine.Mask) { e.mask = m }
 func TestMaskBuildAtLeftTriggerPosition(t *testing.T) {
 	_, base, fe := newC(t)
 	e := &maskRecordingEng{fakeEng: base}
-	c := New(e, fe, -1, engine.SupportedTdivs(), 500e-6, t.Logf)
+	c := newCtl(e, fe, -1, engine.SupportedTdivs(), 500e-6, t.Logf)
 	var seq uint64
 	c.SetFrameSource(func(fn func(*sample.Frame)) {
 		seq++

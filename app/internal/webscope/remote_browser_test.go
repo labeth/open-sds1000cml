@@ -17,6 +17,7 @@ import (
 	"github.com/labeth/open-dso-core/testenv"
 	"github.com/labeth/open-dso-core/webserver"
 	"github.com/labeth/open-sds1000cml/app/internal/analog"
+	"github.com/labeth/open-sds1000cml/app/internal/board"
 	"github.com/labeth/open-sds1000cml/app/internal/engine"
 	"github.com/labeth/open-sds1000cml/app/internal/panel"
 	"github.com/labeth/open-sds1000cml/app/internal/settings"
@@ -312,7 +313,7 @@ func newRemoteRig(tb testing.TB, before ...func(*panel.Controller, *remoteEngine
 	eng := newRemoteEngine()
 	fe := analog.New(remoteSPI{}, func(time.Duration) {}, nil)
 	fe.OnOffset(eng.SetOffsetDAC)
-	pc := panel.New(eng, fe, -1, engine.SupportedTdivs(), 500e-6, func(string, ...any) {})
+	pc := panel.New(eng, fe, board.New(eng, fe), -1, engine.SupportedTdivs(), 500e-6, func(string, ...any) {})
 	pc.SetSetupMemory(&remoteSetups{
 		eng: eng, slots: map[int]settings.Settings{},
 		ws: func() int {

@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/labeth/open-sds1000cml/app/internal/analog"
+	"github.com/labeth/open-sds1000cml/app/internal/board"
 	"github.com/labeth/open-sds1000cml/app/internal/engine"
 	"github.com/labeth/open-sds1000cml/app/internal/panel"
 	"github.com/labeth/open-sds1000cml/app/internal/settings"
@@ -59,8 +60,17 @@ func rig(tb testing.TB) (*engine.Engine, *analog.FrontEnd, *panel.Controller, *n
 	fe := analog.New(spi, func(time.Duration) {}, nil)
 	fe.OnOffset(e.SetOffsetDAC)
 	fe.OnVdiv(e.SetChannelVdiv)
-	pc := panel.New(e, fe, -1, engine.SupportedTdivs(), 500e-6, tb.Logf)
+	pc := panel.New(e, fe, board.New(e, fe), -1, engine.SupportedTdivs(), 500e-6, tb.Logf)
 	return e, fe, pc, spi
+}
+
+// ext is the board's settings extension over e and fe (fe may be nil).
+// TRLC-LINKS: REQ-SDS-072
+func ext(e *engine.Engine, fe *analog.FrontEnd) settings.Extension {
+	if fe == nil {
+		return board.SettingsExtension{Levels: board.New(e, nil)}
+	}
+	return board.SettingsExtension{Levels: board.New(e, fe)}
 }
 
 // TRLC-LINKS: REQ-SDS-072
@@ -107,8 +117,8 @@ func TestApplyRestoreCollectFidelity(t *testing.T) {
 			EnvCV: true, Gate: 0, GateV: 1.5, VOctAuto: true, PreS: 2.5, PostS: 6, TrigGate: true,
 		},
 	}
-	settings.Apply(want, e, fe, pc, t.Logf)
-	got := settings.Collect(e, fe, pc)
+	settings.Apply(want, e, fe, pc, ext(e, fe), t.Logf)
+	got := settings.Collect(e, fe, pc, ext(e, fe))
 
 	// The tdiv is staged for the next frame boundary; without running the
 	// engine the stats keep the pre-restore value. Everything else must
@@ -138,12 +148,11 @@ func TestApplyRestoreCollectFidelity(t *testing.T) {
 	if st.OffC1 == 0 || st.OffC2 == 0 {
 		t.Fatal("offsets were not staged to the engine DAC shadow")
 	}
-	idx, emitted := fe.Snapshot()
-	if !emitted {
+	if !fe.Emitted() {
 		t.Fatal("V/div restore did not drive the front end")
 	}
-	if analog.Detents[idx[0]].VdivV != 0.5 || analog.Detents[idx[1]].VdivV != 2 {
-		t.Fatalf("vdiv detents wrong: %v", idx)
+	if fe.VdivV(0) != 0.5 || fe.VdivV(1) != 2 {
+		t.Fatalf("vdiv wrong: %v %v", fe.VdivV(0), fe.VdivV(1))
 	}
 	if fe.Coupling(0) != 1 || fe.Coupling(1) != 2 || fe.ProbeFactor(0) != 10 || fe.ProbeFactor(1) != 100 {
 		t.Fatal("coupling/probe not applied")
@@ -171,7 +180,7 @@ func TestApplyHostileValuesClampThroughSetters(t *testing.T) {
 		ViewMode: -7,
 		UI:       settings.UI{Set: true, Workspace: 77, Views: [5]int{-3, 9, 99, -1, 5}, Meas: [12]int{-5, 9999, 33}, FFTSource: -3, MasterDepth: 7},
 	}
-	settings.Apply(hostile, e, fe, pc, t.Logf)
+	settings.Apply(hostile, e, fe, pc, ext(e, fe), t.Logf)
 
 	st := e.Snapshot()
 	if st.TrigCode != 0 {
@@ -232,8 +241,8 @@ func TestApplyVirginVerticalStaysUntouched(t *testing.T) {
 		},
 		VertSet: false,
 	}
-	settings.Apply(s, e, fe, pc, t.Logf)
-	if _, emitted := fe.Snapshot(); emitted {
+	settings.Apply(s, e, fe, pc, ext(e, fe), t.Logf)
+	if fe.Emitted() {
 		t.Fatal("restore emitted onto a virgin front end")
 	}
 	if spi.relays != 0 || spi.gains != 0 {
@@ -249,10 +258,10 @@ func TestApplyVirginVerticalStaysUntouched(t *testing.T) {
 func TestApplyNilOwners(t *testing.T) {
 	// fe==nil (no SPI front end) and pc==nil must be tolerated everywhere.
 	e, _, _, _ := rig(t)
-	settings.Apply(sampleValid(), e, nil, nil, t.Logf)
-	settings.Apply(sampleValid(), nil, nil, nil, nil)
-	_ = settings.Collect(e, nil, nil)
-	_ = settings.Collect(nil, nil, nil)
+	settings.Apply(sampleValid(), e, nil, nil, ext(e, nil), t.Logf)
+	settings.Apply(sampleValid(), nil, nil, nil, nil, nil)
+	_ = settings.Collect(e, nil, nil, ext(e, nil))
+	_ = settings.Collect(nil, nil, nil, nil)
 }
 
 // TRLC-LINKS: REQ-SDS-072
@@ -272,18 +281,18 @@ func sampleValid() settings.Settings {
 func TestApplyRestoresBodeChannels(t *testing.T) {
 	e, fe, pc, _ := rig(t)
 	e.SetBodeMode(true, 1, 0)
-	s := settings.Collect(e, fe, pc)
+	s := settings.Collect(e, fe, pc, ext(e, fe))
 	if !s.Bode.Set || s.Bode.Ref != 1 || s.Bode.Dut != 0 {
 		t.Fatalf("collected %+v", s.Bode)
 	}
 	e.SetBodeMode(false, 0, 1)
-	settings.Apply(s, e, fe, pc, t.Logf)
+	settings.Apply(s, e, fe, pc, ext(e, fe), t.Logf)
 	if st := e.Snapshot(); st.BodeRef != 1 || st.BodeDut != 0 || st.BodeMode != 0 {
 		t.Fatalf("restored ref %d dut %d mode %d, want 1 0 disarmed", st.BodeRef, st.BodeDut, st.BodeMode)
 	}
 	s.Bode = settings.Bode{}
 	e.SetBodeMode(false, 1, 0)
-	settings.Apply(s, e, fe, pc, t.Logf)
+	settings.Apply(s, e, fe, pc, ext(e, fe), t.Logf)
 	if st := e.Snapshot(); st.BodeRef != 1 || st.BodeDut != 0 {
 		t.Fatalf("an older file moved the channels: ref %d dut %d", st.BodeRef, st.BodeDut)
 	}

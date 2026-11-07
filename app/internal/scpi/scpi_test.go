@@ -5,6 +5,7 @@ package scpi
 import (
 	"bytes"
 	"encoding/binary"
+	"errors"
 	"math"
 	"strings"
 	"testing"
@@ -12,6 +13,7 @@ import (
 
 	"github.com/labeth/open-dso-core/sample"
 	"github.com/labeth/open-sds1000cml/app/internal/analog"
+	"github.com/labeth/open-sds1000cml/app/internal/board"
 	"github.com/labeth/open-sds1000cml/app/internal/engine"
 )
 
@@ -129,7 +131,20 @@ type fakeFE struct {
 }
 
 // TRLC-LINKS: REQ-SDS-024
-func (f *fakeFE) SetVdiv(ch, idx int) error { f.idx[ch] = idx; return nil }
+func (f *fakeFE) SetVdivV(ch int, v float64) error {
+	idx, ok := analog.PlanVdiv(v)
+	if !ok {
+		return errors.New("not a ladder step")
+	}
+	f.idx[ch] = idx
+	return nil
+}
+
+// TRLC-LINKS: REQ-SDS-024
+func (f *fakeFE) VdivV(ch int) float64 { return analog.Detents[f.idx[ch]].VdivV }
+
+// TRLC-LINKS: REQ-SDS-024
+func (f *fakeFE) RangeV(ch int) float64 { return analog.Vdiv(f.idx[ch]) }
 
 // TRLC-LINKS: REQ-SDS-024
 func (f *fakeFE) Snapshot() ([2]int, bool) { return f.idx, true }
@@ -194,7 +209,7 @@ func newH(tb testing.TB) (*Handler, *fakeScope) {
 		stats: engine.Stats{Running: true, TdivS: 500e-6, AvgCount: 16, TrigRising: true, TrigPosFrac: .5},
 		frame: f,
 	}
-	return New(fs, nil, nil, nil, tb.Logf), fs
+	return New(fs, nil, board.New(fs, nil), nil, nil, tb.Logf), fs
 }
 
 // newHFE is newH plus a truthful fake front end (VDIV/OFST round-trips) and a
@@ -204,7 +219,7 @@ func newHFE(tb testing.TB) (*Handler, *fakeScope, *fakeFE) {
 	tb.Helper()
 	h, fs := newH(tb)
 	fe := &fakeFE{fs: fs, probe: [2]float64{1, 1}}
-	h.fe = fe
+	h.fe, h.lv = fe, board.New(fs, fe)
 	h.disp = &fakeDisplay{}
 	return h, fs, fe
 }

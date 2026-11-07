@@ -125,7 +125,7 @@ func TestSoundView(t *testing.T) {
 		func(t float64) float64 { return 2 * math.Sin(2*math.Pi*f0*t) },
 		func(t float64) float64 { return 0.5*math.Sin(2*math.Pi*1000*t) + 0.2 },
 	}, 6)
-	c := New(e, &fakeFE{idx: [2]int{8, 8}}, -1, engine.SupportedTdivs(), 500e-6, t.Logf)
+	c := newCtl(e, &fakeFE{idx: [2]int{8, 8}}, -1, engine.SupportedTdivs(), 500e-6, t.Logf)
 	c.decode(idle(), true)
 	press(t, c, "f3", "f3", "f3", "f3")
 	if c.viewMode != viewSound {
@@ -214,7 +214,7 @@ func TestSoundEnvelopeCapture(t *testing.T) {
 		func(t float64) float64 { return 3 * env(t) * math.Sin(2*math.Pi*330*t) },
 		gate,
 	}, 6)
-	c := New(e, &fakeFE{idx: [2]int{8, 8}}, -1, engine.SupportedTdivs(), 500e-6, t.Logf)
+	c := newCtl(e, &fakeFE{idx: [2]int{8, 8}}, -1, engine.SupportedTdivs(), 500e-6, t.Logf)
 	c.SetSoundSettings(SoundSettings{A4: 440, Ref: "dbu", Cycles: 2, Gate: 1, GateV: 1.5, Page: soundPageADSR})
 	now := time.Now()
 	e.run(c, 300*time.Millisecond, &now)
@@ -287,7 +287,7 @@ func (e *busySoundEng) SoundInfo() engine.SoundInfo {
 func TestSoundAutoFitNoStream(t *testing.T) {
 	quiet := func(float64) float64 { return 0 }
 	e := &busySoundEng{newSoundEng([2]func(float64) float64{quiet, quiet}, 1)}
-	c := New(e, &fakeFE{idx: [2]int{8, 8}}, -1, engine.SupportedTdivs(), 500e-6, t.Logf)
+	c := newCtl(e, &fakeFE{idx: [2]int{8, 8}}, -1, engine.SupportedTdivs(), 500e-6, t.Logf)
 	c.soundAutoFit(make(chan struct{}))
 	c.mu.Lock()
 	msg := c.ui.notice

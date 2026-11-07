@@ -44,7 +44,7 @@ func (e *namedLeaseEng) take() []string {
 // TRLC-LINKS: REQ-SDS-215
 func TestLeavingTheEyeEndsItsRawLease(t *testing.T) {
 	eng := &namedLeaseEng{fakeEng: newEng()}
-	c := New(eng, &fakeFE{idx: [2]int{8, 8}}, -1, engine.SupportedTdivs(), 500e-6, t.Logf)
+	c := newCtl(eng, &fakeFE{idx: [2]int{8, 8}}, -1, engine.SupportedTdivs(), 500e-6, t.Logf)
 	c.decode(idle(), true)
 	c.mu.Lock()
 	c.decProto = 2 // UART: no detection on entering BUS

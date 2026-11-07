@@ -7,7 +7,6 @@ import (
 	"math"
 
 	"github.com/labeth/open-dso-core/sample"
-	"github.com/labeth/open-sds1000cml/app/internal/analog"
 )
 
 // edges holds a channel's interpolated 50 % crossings (sample positions).
@@ -188,22 +187,11 @@ func (h *Handler) crva(ch int, arg string) []byte {
 	}
 	probe := h.probe(ch)
 	vdiv, dispVdiv := 1.0, 1.0
-	if h.fe != nil {
-		idx, _ := h.fe.Snapshot()
-		i := idx[ch&1]
-		vdiv = analog.Vdiv(i)
-		if i >= 0 && i < len(analog.Detents) {
-			dispVdiv = analog.Detents[i].VdivV
-		}
-	}
 	st := h.sc.Snapshot()
-	offCode := st.OffC1
-	if ch == 1 {
-		offCode = st.OffC2
-	}
 	offV := 0.0
-	if offCode != 0 && h.fe != nil {
-		offV = h.fe.OffsetVolts(ch, offCode)
+	if h.fe != nil {
+		vdiv, dispVdiv = h.fe.RangeV(ch&1), h.fe.VdivV(ch&1)
+		offV = h.lv.OffsetIn(ch, st)
 	}
 	if arg == "VREL" {
 		level := func(fy float64) float64 { return (0.5-fy)*8*dispVdiv*probe - offV*probe }

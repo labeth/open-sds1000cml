@@ -44,7 +44,7 @@ func TestSuperresFinalStackReleasesRawLease(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		_, base, fe := newC(t)
 		eng := &leaseEng{fakeEng: base}
-		c := New(eng, fe, -1, engine.SupportedTdivs(), 500e-6, t.Logf)
+		c := newCtl(eng, fe, -1, engine.SupportedTdivs(), 500e-6, t.Logf)
 		var seq uint64
 		c.frameFn = func(fn func(*sample.Frame)) {
 			seq++
@@ -75,7 +75,7 @@ func TestSuperresTimebaseChangeFreezesStack(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		_, base, fe := newC(t)
 		eng := &leaseEng{fakeEng: base}
-		c := New(eng, fe, -1, engine.SupportedTdivs(), 500e-6, t.Logf)
+		c := newCtl(eng, fe, -1, engine.SupportedTdivs(), 500e-6, t.Logf)
 		var seq uint64
 		c.frameFn = func(fn func(*sample.Frame)) {
 			seq++

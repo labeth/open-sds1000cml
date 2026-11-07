@@ -8,7 +8,6 @@ import (
 	"math"
 
 	"github.com/labeth/open-dso-core/sample"
-	"github.com/labeth/open-sds1000cml/app/internal/analog"
 	"github.com/labeth/open-sds1000cml/app/internal/engine"
 )
 
@@ -127,20 +126,14 @@ func (h *Handler) wavedesc(ch int, f *sample.Frame) []byte {
 
 	vdiv := 1.0
 	if h.fe != nil {
-		idx, _ := h.fe.Snapshot()
-		vdiv = analog.Vdiv(idx[ch&1]) // codes are on the analog range (zoomed detents)
+		vdiv = h.fe.RangeV(ch & 1) // codes are on the analog range (zoomed detents)
 	}
 	gain := float32(vdiv / 25 * h.probe(ch)) // WF? scale: 25 codes/div (spec 11 §4)
 	f32(156, gain)
 
 	off := 0.0
-	st := h.sc.Snapshot()
-	code := st.OffC1
-	if ch == 1 {
-		code = st.OffC2
-	}
-	if code != 0 && h.fe != nil {
-		off = h.fe.OffsetVolts(ch, code) * h.probe(ch) // tip volts, like the gain
+	if h.fe != nil {
+		off = h.lv.OffsetIn(ch, h.sc.Snapshot()) * h.probe(ch) // tip volts, like the gain
 	}
 	f32(160, float32(off))
 	f32(164, 127)

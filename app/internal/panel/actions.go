@@ -6,10 +6,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"math"
 	"time"
 
-	"github.com/labeth/open-sds1000cml/app/internal/analog"
 	"github.com/labeth/open-sds1000cml/app/internal/engine"
 	"github.com/labeth/open-sds1000cml/app/internal/panel/framecalc"
 )
@@ -21,16 +19,7 @@ import (
 // setTrigLevelV puts the trigger level at v volts (probe tip).
 // TRLC-LINKS: REQ-SDS-212
 func (c *Controller) setTrigLevelV(v float64) error {
-	src := c.eng.Snapshot().TrigSource & 1
-	codeF := 31437 - 911*v
-	if c.fe != nil {
-		codeF = c.fe.TrigCode(v, src)
-	}
-	code := uint16(min(max(math.Round(codeF), engine.TrigCodeMin), engine.TrigCodeMax))
-	c.mu.Lock()
-	c.trigCode = code
-	c.mu.Unlock()
-	c.eng.SetTrigLevelCode(code)
+	c.lv.SetTrigLevel(v, c.eng.Snapshot().TrigSource&1)
 	return nil
 }
 
@@ -38,19 +27,16 @@ func (c *Controller) setTrigLevelV(v float64) error {
 // TRLC-LINKS: REQ-SDS-212, REQ-SDS-213
 func (c *Controller) stepTrigLevel(n int) error {
 	var st engine.Stats
-	idx, ok := c.resyncInto(&st)
-	step := int(panelTrigStepCodesPerVdiv)
+	vd, ok := c.resyncInto(&st)
+	step := int(panelTrigStepsPerVdiv)
 	switch {
 	case !ok: // nothing read: the step reads them itself
-		step = c.trigStepCodes()
-	case c.fe != nil: // trigStepCodes on what resync read
-		step = trigStepCodesAt(idx, st.TrigSource&1)
+		step = c.trigSteps()
+		st = c.eng.Snapshot()
+	case c.fe != nil: // trigSteps on what resync read
+		step = trigStepsAt(vd, st.TrigSource&1)
 	}
-	nc := uint16(clampInt(int(c.trigCode)-n*step, engine.TrigCodeMin, engine.TrigCodeMax)) //nolint:gosec // G115: clamped to the trigger code range
-	c.mu.Lock()
-	c.trigCode = nc
-	c.mu.Unlock()
-	c.eng.SetTrigLevelCode(nc)
+	c.lv.StepTrigLevel(n*step, st.TrigSource&1)
 	return nil
 }
 
@@ -165,41 +151,22 @@ func (c *Controller) editVideo(fn func()) error {
 
 // ---- vertical ----
 
-// setVdivIdx puts a channel on a V/div detent.
+// setVdivPos puts a channel on step pos of its V/div ladder.
 // TRLC-LINKS: REQ-SDS-212
-func (c *Controller) setVdivIdx(ch, idx int) error {
+func (c *Controller) setVdivPos(ch, pos int) error {
 	if c.fe == nil {
 		return errors.New("no analog front end")
 	}
-	idx = clampInt(idx, 0, len(analog.Detents)-1)
-	if err := c.fe.SetVdiv(ch, idx); err != nil {
-		return err
-	}
-	c.mu.Lock()
-	c.vIdx[ch] = idx
-	c.mu.Unlock()
-	return nil
+	return c.setVpos(ch, clampInt(pos, 0, len(c.ladder(ch))-1))
 }
 
-// stepVdiv moves a channel n detents (positive = larger V/div).
+// stepVdiv moves a channel n ladder steps (positive = larger V/div).
 // TRLC-LINKS: REQ-SDS-212
 func (c *Controller) stepVdiv(ch, n int) error {
 	if c.fe == nil {
 		return errors.New("no analog front end")
 	}
-	idx, _ := c.fe.Snapshot()
-	return c.setVdivIdx(ch, idx[ch]+n)
-}
-
-// offsetRangeV is the offset's input-referred range on a detent: the coarse
-// attenuator sets it (analog offsetTierRangeV: ±1.6 V sensitive, ±40 V
-// attenuated).
-// TRLC-LINKS: REQ-SDS-212
-func offsetRangeV(idx int) float64 {
-	if idx >= 0 && idx < len(analog.Detents) && analog.Detents[idx].Atten {
-		return 40
-	}
-	return 1.6
+	return c.setVdivPos(ch, c.vpos(ch)+n)
 }
 
 // setOffsetTip puts a channel's offset at v volts (probe tip).
@@ -208,7 +175,7 @@ func (c *Controller) setOffsetTip(ch int, v float64) error {
 	if c.fe == nil {
 		return errors.New("no analog front end")
 	}
-	c.fe.SetOffset(ch, v/c.fe.ProbeFactor(ch))
+	c.lv.SetOffset(ch, v/c.fe.ProbeFactor(ch))
 	return nil
 }
 
@@ -218,9 +185,8 @@ func (c *Controller) stepOffset(ch, n int) error {
 	if c.fe == nil {
 		return nil
 	}
-	idx, _ := c.fe.Snapshot()
-	v := c.fe.OffsetReqV(ch) + float64(n)*panelOffsetStepDiv*analog.Detents[idx[ch]].VdivV
-	c.fe.SetOffset(ch, v)
+	v := c.fe.OffsetReqV(ch) + float64(n)*panelOffsetStepDiv*c.fe.VdivV(ch)
+	c.lv.SetOffset(ch, v)
 	return nil
 }
 

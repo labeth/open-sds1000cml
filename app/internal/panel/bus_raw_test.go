@@ -21,7 +21,7 @@ import (
 // TRLC-LINKS: REQ-SDS-214
 func TestBusLeasesSampledFramesToDecode(t *testing.T) {
 	eng := &namedLeaseEng{fakeEng: newEng()}
-	c := New(eng, &fakeFE{idx: [2]int{8, 8}}, -1, engine.SupportedTdivs(), 500e-6, t.Logf)
+	c := newCtl(eng, &fakeFE{idx: [2]int{8, 8}}, -1, engine.SupportedTdivs(), 500e-6, t.Logf)
 	c.decode(idle(), true)
 	c.mu.Lock()
 	c.decProto = framecalc.ProtoUART
@@ -104,7 +104,7 @@ func (e *namedLeaseEng) LeaseBusSamples(sampleS float64, d time.Duration) {
 // TRLC-LINKS: REQ-SDS-214
 func TestBusLeasesRecordsSampledForTheBus(t *testing.T) {
 	eng := &namedLeaseEng{fakeEng: newEng()}
-	c := New(eng, &fakeFE{idx: [2]int{8, 8}}, -1, engine.SupportedTdivs(), 500e-6, t.Logf)
+	c := newCtl(eng, &fakeFE{idx: [2]int{8, 8}}, -1, engine.SupportedTdivs(), 500e-6, t.Logf)
 	c.decode(idle(), true)
 	c.mu.Lock()
 	c.decProto = framecalc.ProtoUART
@@ -149,7 +149,7 @@ func TestBusLeasesRecordsSampledForTheBus(t *testing.T) {
 // TRLC-LINKS: REQ-SDS-214
 func TestBusLeasesTheFullRateForAFastBus(t *testing.T) {
 	eng := &namedLeaseEng{fakeEng: newEng()}
-	c := New(eng, &fakeFE{idx: [2]int{8, 8}}, -1, engine.SupportedTdivs(), 500e-6, t.Logf)
+	c := newCtl(eng, &fakeFE{idx: [2]int{8, 8}}, -1, engine.SupportedTdivs(), 500e-6, t.Logf)
 	c.decode(idle(), true)
 	c.mu.Lock()
 	c.decProto = framecalc.ProtoFlexRay
@@ -176,7 +176,7 @@ func TestBusLeasesTheFullRateForAFastBus(t *testing.T) {
 // TRLC-LINKS: REQ-SDS-214
 func TestBusLeasesWhereTheViewIsTooCoarseForTheBus(t *testing.T) {
 	eng := &namedLeaseEng{fakeEng: newEng()}
-	c := New(eng, &fakeFE{idx: [2]int{8, 8}}, -1, engine.SupportedTdivs(), 500e-6, t.Logf)
+	c := newCtl(eng, &fakeFE{idx: [2]int{8, 8}}, -1, engine.SupportedTdivs(), 500e-6, t.Logf)
 	c.decode(idle(), true)
 	c.mu.Lock()
 	c.decProto = framecalc.ProtoSENT

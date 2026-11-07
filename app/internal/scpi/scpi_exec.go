@@ -279,36 +279,21 @@ func (h *Handler) execGlobal(head, arg string) []byte { //nolint:gocyclo,funlen 
 		if h.sc.Snapshot().TrigSource == 1 {
 			src = 1
 		}
-		codeF := 31437 - 911*v // measured global fit; overridden by the front-end cal below
-		if h.fe != nil {
-			codeF = h.fe.TrigCode(v, src)
-		}
-		code := min(max(int(math.Round(codeF)), engine.TrigCodeMin), engine.TrigCodeMax)
 		// The shadow holds the EFFECTIVE level — the volts the (possibly
-		// clamped, always quantized) DAC code the engine accepted maps back
-		// to — so TRLV? never echoes a level the comparator isn't at.
-		if eff := h.sc.SetTrigLevelCode(uint16(code)); eff != 0 {
-			if h.fe != nil {
-				h.trlvV = h.fe.TrigVolts(eff, src)
-			} else {
-				h.trlvV = engine.TrigLevelVolts(eff)
-			}
-		}
+		// clamped, always quantized) DAC step the board applied — so TRLV?
+		// never echoes a level the comparator isn't at.
+		h.trlvV = h.lv.SetTrigLevel(v, src)
 		return nil
 	case "TRLV?":
 		// Answer from the engine's live code: the level also changes from the
 		// panel and the web UI, which never touch this handler's shadow.
 		v := h.trlvV
-		if st.TrigCode != 0 {
-			src := 0
-			if st.TrigSource == 1 {
-				src = 1
-			}
-			if h.fe != nil {
-				v = h.fe.TrigVolts(st.TrigCode, src)
-			} else {
-				v = engine.TrigLevelVolts(st.TrigCode)
-			}
+		src := 0
+		if st.TrigSource == 1 {
+			src = 1
+		}
+		if lv, ok := h.lv.TrigLevel(src); ok {
+			v = lv
 		}
 		return h.reply("TRLV", sciV(v))
 	case "TRSL":
@@ -609,19 +594,14 @@ func (h *Handler) execChannel(ch int, head, arg string) []byte { //nolint:gocycl
 		}
 		// VDIV and OFST are probe-tip volts, like TRLV, PAVA? and the WF?
 		// descriptor: with ATTN 10, "VDIV 5" is the 0.5 V/div BNC range.
-		idx, ok := analog.PlanVdiv(v / h.probe(ch))
-		if !ok {
-			return errTok(errOutOfRange)
-		}
-		if err := h.fe.SetVdiv(ch, idx); err != nil {
+		if err := h.fe.SetVdivV(ch, v/h.probe(ch)); err != nil {
 			return errTok(errOutOfRange)
 		}
 		return nil
 	case "VDIV?":
 		v := 1.0
 		if h.fe != nil {
-			idx, _ := h.fe.Snapshot()
-			v = analog.Detents[idx[ch]].VdivV
+			v = h.fe.VdivV(ch)
 		}
 		return h.reply(fmt.Sprintf("C%d:VDIV", ch+1), sciV(v*h.probe(ch)))
 	case "OFST":
@@ -636,26 +616,10 @@ func (h *Handler) execChannel(ch int, head, arg string) []byte { //nolint:gocycl
 		if v < -40 || v > 40 {
 			return errTok(errOutOfRange)
 		}
-		if h.fe != nil {
-			h.fe.SetOffset(ch, v) // stages the DAC + re-anchors on V/div change
-		} else {
-			h.sc.SetOffsetDAC(ch, analog.OffsetCode(ch, v))
-		}
+		h.lv.SetOffset(ch, v) // stages the DAC; the front end re-anchors it on V/div changes
 		return nil
 	case "OFST?":
-		st := h.sc.Snapshot()
-		code := st.OffC1
-		if ch == 1 {
-			code = st.OffC2
-		}
-		v := 0.0
-		if code != 0 {
-			if h.fe != nil {
-				v = h.fe.OffsetVolts(ch, code)
-			} else {
-				v = analog.OffsetVolts(ch, code)
-			}
-		}
+		v := h.lv.OffsetIn(ch, h.sc.Snapshot())
 		return h.reply(fmt.Sprintf("C%d:OFST", ch+1), sciV(v*h.probe(ch)))
 	case "TRA":
 		// The trace's visibility is the panel's (CH1/CH2 keys): set and

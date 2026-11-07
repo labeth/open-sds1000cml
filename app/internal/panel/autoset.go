@@ -11,7 +11,7 @@ import (
 
 	"github.com/labeth/open-dso-core/measure"
 	"github.com/labeth/open-dso-core/sample"
-	"github.com/labeth/open-sds1000cml/app/internal/analog"
+	"github.com/labeth/open-sds1000cml/app/internal/board"
 	"github.com/labeth/open-sds1000cml/app/internal/engine"
 	"github.com/labeth/open-sds1000cml/app/internal/panel/framecalc"
 	"github.com/labeth/open-sds1000cml/app/internal/panel/wsview"
@@ -113,12 +113,12 @@ func (c *Controller) runAutosetFor(stop chan struct{}, ws wsview.WS, view int) {
 // and the trigger an edge too).
 type autoEntry struct {
 	tdiv          float64
-	vidx          [2]int
+	vdiv          [2]float64 // at the BNC
 	off           [2]float64
 	trig          int // the TRIG sheet's type: Serial for an armed serial trigger
 	src           int
 	rising        bool
-	code          uint16
+	level         board.TrigLevelSaved
 	norm, running bool
 	proto, mode   int
 	auto          autoWatch
@@ -131,14 +131,14 @@ type autoEntry struct {
 func (c *Controller) autoEntryNow() autoEntry {
 	st := c.eng.Snapshot()
 	e := autoEntry{
-		tdiv: st.TdivSet(), trig: st.TrigType, src: st.TrigSource, rising: st.TrigRising, code: st.TrigCode,
+		tdiv: st.TdivSet(), trig: st.TrigType, src: st.TrigSource, rising: st.TrigRising, level: board.SaveTrigLevelIn(st),
 		norm: st.Norm, running: st.Running,
 	}
 	if st.SerialMode != 0 {
 		e.trig = trigSerial
 	}
 	if c.fe != nil {
-		e.vidx, _ = c.fe.Snapshot()
+		e.vdiv = [2]float64{c.fe.VdivV(0), c.fe.VdivV(1)}
 		e.off = [2]float64{c.fe.OffsetReqV(0), c.fe.OffsetReqV(1)}
 	}
 	c.mu.Lock()
@@ -177,8 +177,8 @@ func (c *Controller) cancelledAuto(stop chan struct{}, e autoEntry) {
 	}
 	if c.fe != nil {
 		for ch := range 2 {
-			c.setVdiv(ch, e.vidx[ch])
-			c.fe.SetOffset(ch, e.off[ch])
+			c.setVdivV(ch, e.vdiv[ch])
+			c.lv.SetOffset(ch, e.off[ch])
 		}
 	}
 	c.mu.Lock()
@@ -193,9 +193,7 @@ func (c *Controller) cancelledAuto(stop chan struct{}, e autoEntry) {
 	}
 	c.eng.SetTrigSource(e.src)
 	c.eng.SetTrigSlope(e.rising)
-	if e.code != 0 {
-		c.eng.SetTrigLevelCode(e.code)
-	}
+	c.lv.RestoreTrigLevel(e.level)
 	if st := c.eng.Snapshot(); e.trig != st.TrigType || (e.trig == trigSerial) != (st.SerialMode != 0) {
 		c.setTrigTypeIndex(st, e.trig)
 	}
@@ -354,10 +352,9 @@ func autoNotice(g autoGoal, r autoResult, vdivAt func(ch int) float64) string {
 // TRLC-LINKS: REQ-SDS-224
 func (c *Controller) vdivAt(ch int) float64 {
 	if c.fe == nil {
-		return analog.Detents[analog.BootDetent].VdivV
+		return noFrontEnd.vdiv
 	}
-	idx, _ := c.fe.Snapshot()
-	return analog.Detents[idx[ch]].VdivV * c.fe.ProbeFactor(ch)
+	return c.fe.VdivV(ch) * c.fe.ProbeFactor(ch)
 }
 
 // displayTdiv is the ladder timebase g shows a signal of frequency f on: the
@@ -454,8 +451,8 @@ func (c *Controller) autosetSweep(stop chan struct{}, g autoGoal) (autoResult, b
 			// 2 V/div at the probe tip: ±8 V unclipped. The detents are the
 			// BNC's: with a 10x probe 2 V/div there was 20 V/div at the tip,
 			// a 3.3 V logic swing four codes, and AUTO found no signal.
-			c.setVdiv(ch, nearestDetent(2.0/c.fe.ProbeFactor(ch)))
-			c.fe.SetOffset(ch, 0)
+			c.setVdiv(ch, nearestLadderStep(c.ladder(ch), 2.0/c.fe.ProbeFactor(ch)))
+			c.lv.SetOffset(ch, 0)
 		}
 	}
 	// If we START on an envelope/roll band (≥5 ms/div), the direct jump to
@@ -518,7 +515,7 @@ func (c *Controller) autosetSweep(stop chan struct{}, g autoGoal) (autoResult, b
 	if c.fe != nil {
 		for ch := range 2 {
 			if has(m[ch]) && !timed[ch] && swing[ch].Vpp < refineMinVpp {
-				c.fe.SetOffset(ch, 0)
+				c.lv.SetOffset(ch, 0)
 				m[ch], swing[ch] = nil, nil
 			}
 		}
@@ -611,10 +608,9 @@ func (c *Controller) autosetSweep(stop chan struct{}, g autoGoal) (autoResult, b
 // TRLC-LINKS: REQ-SDS-137
 func (c *Controller) entryScale(entry engine.Stats) (restore func()) {
 	entryTdiv := entry.TdivS
-	var entryVidx [2]int
-	var entryOff [2]float64
+	var entryVdiv, entryOff [2]float64
 	if c.fe != nil {
-		entryVidx, _ = c.fe.Snapshot()
+		entryVdiv = [2]float64{c.fe.VdivV(0), c.fe.VdivV(1)}
 		entryOff[0] = c.fe.OffsetReqV(0)
 		entryOff[1] = c.fe.OffsetReqV(1)
 	}
@@ -624,8 +620,8 @@ func (c *Controller) entryScale(entry engine.Stats) (restore func()) {
 		}
 		if c.fe != nil {
 			for ch := range 2 {
-				c.setVdiv(ch, entryVidx[ch])
-				c.fe.SetOffset(ch, entryOff[ch])
+				c.setVdivV(ch, entryVdiv[ch])
+				c.lv.SetOffset(ch, entryOff[ch])
 			}
 		}
 	}
@@ -664,8 +660,8 @@ func (c *Controller) autoFitVertical(stop chan struct{}, m, swing [2]*measure.Re
 			continue
 		}
 		p := c.fe.ProbeFactor(ch)
-		c.setVdiv(ch, detentFor(m[ch].Vpp/p, g.fill))
-		c.fe.SetOffset(ch, -(m[ch].Vmax+m[ch].Vmin)/2/p)
+		c.setVdiv(ch, ladderStepFor(c.ladder(ch), m[ch].Vpp/p, g.fill))
+		c.lv.SetOffset(ch, -(m[ch].Vmax+m[ch].Vmin)/2/p)
 	}
 	if !c.waitFrame(stop) {
 		return false
@@ -722,8 +718,8 @@ func (c *Controller) autoSweepFind(stop chan struct{}) (autoSweep, bool) {
 			}
 			sw = autoSweep{foundTd: sw.foundTd}
 			for ch := range 2 {
-				c.setVdiv(ch, nearestDetent(tip/c.fe.ProbeFactor(ch)))
-				c.fe.SetOffset(ch, 0)
+				c.setVdiv(ch, nearestLadderStep(c.ladder(ch), tip/c.fe.ProbeFactor(ch)))
+				c.lv.SetOffset(ch, 0)
 			}
 		}
 		for _, td := range autoSweepTdivs {
@@ -835,7 +831,7 @@ func (c *Controller) autoCoarsenOffScreen(stop chan struct{}, m [2]*measure.Resu
 		if !has(m[ch]) {
 			continue
 		}
-		for range len(analog.Detents) {
+		for range len(c.ladder(ch)) {
 			clip := c.clipped(ch)
 			if !clip && !c.offScreenFor(ch, swing[ch]) {
 				break // trace is on-screen AND centred — nothing to coarsen
@@ -904,7 +900,7 @@ func (c *Controller) autoClipCheck(stop chan struct{}, swing *[2]*measure.Result
 			// the signal goes, and one whose own span is more than the screen
 			// cannot fit (an ARINC 429 line left at 200mV/div spanning 9.8
 			// div): those step on past the two
-			for ; steps[ch] < len(analog.Detents) && c.clipped(ch) && (steps[ch] < autoClipSteps || c.railing(ch) || c.overScreen(ch)); steps[ch]++ {
+			for ; steps[ch] < len(c.ladder(ch)) && c.clipped(ch) && (steps[ch] < autoClipSteps || c.railing(ch) || c.overScreen(ch)); steps[ch]++ {
 				fixed, ok := c.recentreClipped(stop, ch, g)
 				if !ok {
 					return again, false
@@ -1019,10 +1015,10 @@ func (c *Controller) refineVertical(stop chan struct{}, m, swing [2]*measure.Res
 			continue
 		}
 		p := c.fe.ProbeFactor(ch)
-		snap, _ := c.fe.Snapshot()
-		if d := detentFor(refineMargin*mf[ch].Vpp/p, g.fill); d < snap[ch] {
+		snap := c.vposs()
+		if d := ladderStepFor(c.ladder(ch), refineMargin*mf[ch].Vpp/p, g.fill); d < snap[ch] {
 			c.setVdiv(ch, d)
-			c.fe.SetOffset(ch, -(mf[ch].Vmax+mf[ch].Vmin)/2/p)
+			c.lv.SetOffset(ch, -(mf[ch].Vmax+mf[ch].Vmin)/2/p)
 			moved = true
 		}
 	}
@@ -1047,9 +1043,8 @@ func (c *Controller) nudgeCentre(ch int, swing *measure.Result, g autoGoal) bool
 	if !full || math.Abs(errDiv) <= tol {
 		return false
 	}
-	snap, _ := c.fe.Snapshot()
-	vdiv := analog.Vdiv(snap[ch]) // raw-code divisions are on the analog range
-	c.fe.SetOffset(ch, c.fe.OffsetReqV(ch)-errDiv*vdiv)
+	vdiv := c.fe.RangeV(ch) // raw-code divisions are on the analog range
+	c.lv.SetOffset(ch, c.fe.OffsetReqV(ch)-errDiv*vdiv)
 	return true
 }
 
@@ -1074,8 +1069,7 @@ func (c *Controller) recentreClipped(stop chan struct{}, ch int, g autoGoal) (fi
 	if span <= 0 || float64(span) > g.fill*25 || math.Abs(errDiv) < 0.2 {
 		return false, true
 	}
-	snap, _ := c.fe.Snapshot()
-	c.fe.SetOffset(ch, c.fe.OffsetReqV(ch)-errDiv*analog.Vdiv(snap[ch]))
+	c.lv.SetOffset(ch, c.fe.OffsetReqV(ch)-errDiv*c.fe.RangeV(ch))
 	if !c.waitFrame(stop) {
 		return false, false
 	}
@@ -1089,8 +1083,8 @@ func (c *Controller) recentreClipped(stop chan struct{}, ch int, g autoGoal) (fi
 // at the coarsest detent or with the signal gone; ok false when cancelled.
 // TRLC-LINKS: REQ-SDS-137, REQ-SDS-225
 func (c *Controller) coarsen(stop chan struct{}, ch int, sw *[2]*measure.Result, g autoGoal) (stepped, ok bool) {
-	snap, _ := c.fe.Snapshot()
-	if snap[ch] >= len(analog.Detents)-1 {
+	snap := c.vposs()
+	if snap[ch] >= len(c.ladder(ch))-1 {
 		return false, true // already the coarsest detent — can't fit it any better
 	}
 	m0, _ := c.measureChans()
@@ -1106,7 +1100,7 @@ func (c *Controller) coarsen(stop chan struct{}, ch int, sw *[2]*measure.Result,
 	}
 	sw[ch] = mc[ch]
 	p := c.fe.ProbeFactor(ch)
-	c.fe.SetOffset(ch, -(mc[ch].Vmax+mc[ch].Vmin)/2/p) // re-centre on midpoint
+	c.lv.SetOffset(ch, -(mc[ch].Vmax+mc[ch].Vmin)/2/p) // re-centre on midpoint
 	if !c.waitFrame(stop) {
 		return false, false
 	}
@@ -1140,19 +1134,10 @@ func (c *Controller) autoTrigger(stop chan struct{}, m *[2]*measure.Result, swin
 	if !has(m[src]) {
 		return src, true
 	}
+	// The board maps tip volts to its DAC with the source's calibration at
+	// this V/div (the global fit without a front end).
 	mid := (m[src].Vmax + m[src].Vmin) / 2
-	// Per-detent cal maps tip-volts→code correctly at this V/div; fall back to
-	// the global fit if no front end. (mid is tip-referred; TrigCode divides by
-	// the source probe internally.)
-	codeF := 31437 - 911*mid
-	if c.fe != nil {
-		codeF = c.fe.TrigCode(mid, src)
-	}
-	code := min(max(int(codeF+0.5), engine.TrigCodeMin), engine.TrigCodeMax)
-	c.eng.SetTrigLevelCode(uint16(code))
-	c.mu.Lock()
-	c.trigCode = uint16(code) // guarded — the panel goroutine also touches trigCode
-	c.mu.Unlock()
+	c.lv.SetTrigLevel(mid, src)
 	c.eng.SetTrigSource(src)
 	c.eng.SetTrigType(0) // EDGE
 	if g.centre {
@@ -1167,7 +1152,7 @@ func (c *Controller) autoTrigger(stop chan struct{}, m *[2]*measure.Result, swin
 	// not what AUTO promises). Rather than model every detent, probe the
 	// hardware: if the comparator isn't firing, scan the code range and centre
 	// on the band that fires (WYSIWYG — same discipline as the level recommit).
-	if !c.verifyTrigLevel(stop, uint16(code)) {
+	if !c.verifyTrigLevel(stop, mid) {
 		return src, false
 	}
 	select {
@@ -1196,36 +1181,35 @@ func (c *Controller) trigFiring() bool {
 	return n >= 2 && len(log) >= 2
 }
 
-// verifyTrigLevel checks the committed level fires; if not, it scans the DAC
-// range and centres the level on the empirically-firing band. Returns false
-// only when cancelled; a no-fire-anywhere signal keeps the computed code (a
-// quiet or non-repetitive input legitimately never fires — AUTO free-runs).
+// verifyTrigLevel checks the committed level fires; if not, it scans the
+// level's range and centres the level on the empirically-firing band.
+// Returns false only when cancelled; a no-fire-anywhere signal keeps the
+// computed level (a quiet or non-repetitive input legitimately never fires —
+// AUTO free-runs).
 // TRLC-LINKS: REQ-SDS-137
-func (c *Controller) verifyTrigLevel(stop chan struct{}, computed uint16) bool {
+func (c *Controller) verifyTrigLevel(stop chan struct{}, computed float64) bool {
 	if !c.waitFrames(stop, 2) {
 		return false
 	}
 	if c.trigFiring() {
 		return true // the fit was right at this detent — nothing to do
 	}
-	var fires []uint16
-	for _, code := range c.trigScanCodes() {
-		c.eng.SetTrigLevelCode(code)
+	src := c.eng.Snapshot().TrigSource & 1
+	var fires []float64
+	for _, v := range c.trigScanLevels() {
+		c.lv.SetTrigLevel(v, src)
 		if !c.waitFrame(stop) {
 			return false
 		}
 		if c.trigFiring() {
-			fires = append(fires, code)
+			fires = append(fires, v)
 		}
 	}
 	pick := computed
 	if len(fires) > 0 {
 		pick = fires[len(fires)/2] // centre of the firing band
 	}
-	c.eng.SetTrigLevelCode(pick)
-	c.mu.Lock()
-	c.trigCode = pick
-	c.mu.Unlock()
+	c.lv.SetTrigLevel(pick, src)
 	return true
 }
 
@@ -1304,7 +1288,6 @@ func (c *Controller) measureChans() ([2]*measure.Result, bool) {
 		}
 		ok = true
 		valid := min(max(f.Len(), 1), len(f.Codes8(0)))
-		off := [2]uint16{st.OffC1, st.OffC2}
 		for ch := range 2 {
 			var sig []uint8
 			switch {
@@ -1315,15 +1298,12 @@ func (c *Controller) measureChans() ([2]*measure.Result, bool) {
 			default:
 				continue
 			}
-			idx := analog.BootDetent
-			probe, offV := 1.0, 0.0
+			vdiv, probe, offV := noFrontEnd.rng, 1.0, 0.0 // volts per code on the analog range
 			if c.fe != nil {
-				snap, _ := c.fe.Snapshot()
-				idx = snap[ch]
+				vdiv = c.fe.RangeV(ch)
 				probe = c.fe.ProbeFactor(ch)
-				offV = c.fe.OffsetVolts(ch, off[ch]) // calibrated per-detent zero, not the fixed fallback
+				offV = c.lv.OffsetStagedIn(ch, st) // calibrated per-detent zero, not the fixed fallback
 			}
-			vdiv := analog.Vdiv(idx) // volts per code on the analog range
 			q := f.Precision(0)
 			if ch == 1 {
 				q = f.Precision(1)
@@ -1448,8 +1428,7 @@ func (c *Controller) centreErrOver(ch int, swing *measure.Result) (errDiv float6
 	if !has(swing) || c.fe == nil {
 		return errDiv, true
 	}
-	snap, _ := c.fe.Snapshot()
-	volts := float64(span) * analog.Vdiv(snap[ch]) / 25 * c.fe.ProbeFactor(ch)
+	volts := float64(span) * c.fe.RangeV(ch) / 25 * c.fe.ProbeFactor(ch)
 	return errDiv, volts >= 0.7*swing.Vpp
 }
 
@@ -1733,18 +1712,26 @@ func (c *Controller) AutosetBusy() bool {
 	return c.autosetBusy
 }
 
-// setVdiv applies a vertical detent and keeps the shadow in sync (guarded).
+// setVdiv puts a channel on step pos of its V/div ladder.
 // TRLC-LINKS: REQ-SDS-137
-func (c *Controller) setVdiv(ch, idx int) {
+func (c *Controller) setVdiv(ch, pos int) {
 	if c.fe == nil {
 		return
 	}
-	if err := c.fe.SetVdiv(ch, idx); err != nil {
+	if err := c.setVpos(ch, pos); err != nil {
 		c.logf("panel: autoset V/div: %v", err)
 	}
-	c.mu.Lock()
-	c.vIdx[ch] = idx
-	c.mu.Unlock()
+}
+
+// setVdivV puts a channel at v V/div at the BNC, a step of its ladder.
+// TRLC-LINKS: REQ-SDS-137
+func (c *Controller) setVdivV(ch int, v float64) {
+	if c.fe == nil {
+		return
+	}
+	if err := c.fe.SetVdivV(ch, v); err != nil {
+		c.logf("panel: autoset V/div: %v", err)
+	}
 }
 
 // setTdivNearest snaps the timebase ladder to the detent nearest target and
@@ -1818,28 +1805,28 @@ func (c *Controller) waitBandFrame(stop chan struct{}, wantSampleS float64) bool
 	return true // best-effort: don't stall autoset on a stubborn transition
 }
 
-// detentFor picks the most sensitive V/div whose 8-division window still
+// ladderStepFor picks the most sensitive V/div whose 8-division window still
 // fits Vpp within fill divisions — so autoset never lands on a range that
 // clips (a clipped trace measures a too-small Vpp, which would pick an even
-// more sensitive range: a trap). Detents are ascending, so the first that
-// fits wins.
+// more sensitive range: a trap). The steps of l (at the BNC) ascend, so the
+// first that fits wins.
 // TRLC-LINKS: REQ-SDS-137, REQ-SDS-224
-func detentFor(vpp, fill float64) int {
-	for i := range analog.Detents {
-		if vpp/analog.Detents[i].VdivV <= fill {
+func ladderStepFor(l []vstep, vpp, fill float64) int {
+	for i := range l {
+		if vpp/l[i].vdiv <= fill {
 			return i
 		}
 	}
-	return len(analog.Detents) - 1
+	return len(l) - 1
 }
 
-// nearestDetent returns the vertical detent index whose V/div is nearest the
+// nearestLadderStep returns the step of ladder l whose V/div is nearest the
 // (electrical, pre-probe) target.
 // TRLC-LINKS: REQ-SDS-137
-func nearestDetent(target float64) int {
-	best, bd := analog.BootDetent, 1e30
-	for i, d := range analog.Detents {
-		diff := d.VdivV - target
+func nearestLadderStep(l []vstep, target float64) int {
+	best, bd := ladderPos(l, defaultVdivV), 1e30
+	for i, d := range l {
+		diff := d.vdiv - target
 		if diff < 0 {
 			diff = -diff
 		}
@@ -1850,25 +1837,21 @@ func nearestDetent(target float64) int {
 	return best
 }
 
-// trigScanCodes is verifyTrigLevel's scan: ten levels across the trigger
-// source's screen (-4.5 to +4.5 div about the offset). Ten steps across the
-// fixed 27000-35000 code window were 0.88 V apart, 88 div at 10 mV/div.
+// trigScanLevels is verifyTrigLevel's scan: ten levels at the probe tip
+// across the trigger source's screen (-4.5 to +4.5 div about the offset).
+// Ten steps across a fixed window of the level DAC were 0.88 V apart, 88 div
+// at 10 mV/div.
 // TRLC-LINKS: REQ-SDS-137
-func (c *Controller) trigScanCodes() []uint16 {
+func (c *Controller) trigScanLevels() []float64 {
 	src := c.eng.Snapshot().TrigSource & 1
 	vdiv, off, probe := 1.0, 0.0, 1.0
 	if c.fe != nil {
-		idx, _ := c.fe.Snapshot()
-		vdiv, off, probe = analog.Detents[idx[src]].VdivV, c.fe.OffsetReqV(src), c.fe.ProbeFactor(src)
+		vdiv, off, probe = c.fe.VdivV(src), c.fe.OffsetReqV(src), c.fe.ProbeFactor(src)
 	}
-	codes := make([]uint16, 0, 10)
+	levels := make([]float64, 0, 10)
 	for i := range 10 {
 		v := (float64(i)-4.5)*vdiv - off // BNC volts at this screen height
-		codeF := 31437 - 911*v
-		if c.fe != nil {
-			codeF = c.fe.TrigCode(v*probe, src)
-		}
-		codes = append(codes, uint16(min(max(math.Round(codeF), engine.TrigCodeMin), engine.TrigCodeMax)))
+		levels = append(levels, v*probe)
 	}
-	return codes
+	return levels
 }

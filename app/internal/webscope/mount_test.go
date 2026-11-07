@@ -15,7 +15,7 @@ type Server struct {
 // screen as the app does.
 // TRLC-LINKS: REQ-SDS-161
 func newServer(sc Engine, fe Analog, p Panel, screen func() []byte) *Server {
-	scope := New(sc, fe, p, screen)
+	scope := New(sc, fe, levelsFor(sc, fe), p, screen)
 	return &Server{Scope: scope, Server: webserver.New(scope, webserver.WithPprof())}
 }
 

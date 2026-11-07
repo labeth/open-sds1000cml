@@ -132,7 +132,7 @@ func searchFlash(t *testing.T, fx flash104, named bool, quiet []uint8) {
 	t.Helper()
 	_, base, fe := newC(t)
 	eng := &searchLeaseEng{fakeEng: base}
-	ctl := New(eng, fe, -1, engine.SupportedTdivs(), 500e-6, t.Logf)
+	ctl := newCtl(eng, fe, -1, engine.SupportedTdivs(), 500e-6, t.Logf)
 	ctl.decode(idle(), true)
 	ctl.detectSync = true
 	raws := map[float64]int{}
@@ -358,7 +358,7 @@ func TestBusSearchSkipsAFrameInFlight(t *testing.T) {
 	}
 	_, base, fe := newC(t)
 	eng := &searchLeaseEng{fakeEng: base}
-	ctl := New(eng, fe, -1, engine.SupportedTdivs(), 500e-6, t.Logf)
+	ctl := newCtl(eng, fe, -1, engine.SupportedTdivs(), 500e-6, t.Logf)
 	ctl.decode(idle(), true)
 	ctl.detectSync = true
 	looks := 0
@@ -407,7 +407,7 @@ func TestBusSearchLooksPastAFewDenseSPIBytes(t *testing.T) {
 	}
 	_, base, fe := newC(t)
 	eng := &searchLeaseEng{fakeEng: base}
-	ctl := New(eng, fe, -1, engine.SupportedTdivs(), 500e-6, t.Logf)
+	ctl := newCtl(eng, fe, -1, engine.SupportedTdivs(), 500e-6, t.Logf)
 	ctl.decode(idle(), true)
 	ctl.detectSync = true
 	ctl.SetFrameSource(func(fn func(*sample.Frame)) {

@@ -4,9 +4,11 @@ package webscope
 
 import (
 	"context"
+	"errors"
 	"log"
 	"time"
 
+	"github.com/labeth/open-dso-core/hal"
 	"github.com/labeth/open-dso-core/webserver"
 	"github.com/labeth/open-dso-core/webserver/wire"
 	"github.com/labeth/open-sds1000cml/app/internal/analog"
@@ -64,7 +66,7 @@ func (s *Scope) set(ctx context.Context, req webserver.Control) webserver.Applie
 			ok, errStr = false, "triglevelcode out of range"
 			break
 		}
-		applied = float64(s.sc.SetTrigLevelCode(uint16(req.Value)))
+		applied = float64(s.lv.SetTrigLevelCode(uint16(req.Value)))
 	case "trigslope":
 		s.sc.SetTrigSlope(req.Value != 0)
 	case "ets":
@@ -147,20 +149,19 @@ func (s *Scope) set(ctx context.Context, req webserver.Control) webserver.Applie
 			ok, errStr = false, "vertical front end unavailable"
 			break
 		}
-		idx, found := analog.PlanVdiv(req.Value)
-		if !found {
-			ok, errStr = false, "vdiv not in ladder"
-			break
-		}
 		ch := 0
 		if req.Name == "vdiv2" {
 			ch = 1
 		}
-		if err := s.fe.SetVdiv(ch, idx); err != nil {
+		var refused *hal.Refusal
+		if err := s.fe.SetVdivV(ch, req.Value); errors.As(err, &refused) {
+			ok, errStr = false, "vdiv not in ladder"
+			break
+		} else if err != nil {
 			ok, errStr = false, err.Error()
 			break
 		}
-		applied = analog.Detents[idx].VdivV
+		applied = s.fe.VdivV(ch)
 	case "offset1", "offset2":
 		// Outer sanity guard only; the per-tier offset law clamps to the real
 		// ±1.6 V (×1) / ±40 V (×25) authority and readback reports the applied V.
@@ -172,15 +173,9 @@ func (s *Scope) set(ctx context.Context, req webserver.Control) webserver.Applie
 		if req.Name == "offset2" {
 			ch = 1
 		}
-		if s.fe != nil {
-			// The front end stages the DAC (re-anchoring on V/div changes).
-			code := s.fe.SetOffset(ch, req.Value)
-			applied = s.fe.OffsetVolts(ch, code)
-		} else {
-			code := analog.OffsetCode(ch, req.Value)
-			applied = analog.OffsetVolts(ch, code)
-			s.sc.SetOffsetDAC(ch, code)
-		}
+		// The board stages the DAC; the front end re-anchors it on V/div
+		// changes.
+		applied = s.lv.SetOffset(ch, req.Value)
 	case "probe1", "probe2":
 		if s.fe == nil {
 			ok, errStr = false, "vertical front end unavailable"

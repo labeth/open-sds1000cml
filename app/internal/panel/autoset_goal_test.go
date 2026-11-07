@@ -54,7 +54,7 @@ func newSimBench(t *testing.T, sig func(t, tdiv float64, ch int) float64) *simBe
 	t.Helper()
 	eng := newEng()
 	fe := &simFE{fakeFE: &fakeFE{idx: [2]int{8, 8}}, eng: eng}
-	c := New(eng, fe, -1, engine.SupportedTdivs(), 500e-6, t.Logf)
+	c := newCtl(eng, fe, -1, engine.SupportedTdivs(), 500e-6, t.Logf)
 	c.decode(idle(), true)
 	b := &simBench{c: c, eng: eng, fe: fe}
 	c.SetFrameSource(func(fn func(*sample.Frame)) { fn(b.capture(sig)) })
@@ -186,7 +186,7 @@ func TestAutoMeasureFramesTenCycles(t *testing.T) {
 	if !strings.HasPrefix(note, "AUTO (MEASURE): 10 cycles, C1 200mV/div") {
 		t.Fatalf("notice %q", note)
 	}
-	if got := detentFor(1.45, goalScope.fill); analog.Detents[got].VdivV != 0.5 {
+	if got := ladderStepFor(testLadder, 1.45, goalScope.fill); analog.Detents[got].VdivV != 0.5 {
 		t.Fatalf("SCOPE fits 1.45 V at %g V/div, want 0.5", analog.Detents[got].VdivV)
 	}
 }
@@ -280,7 +280,7 @@ func TestAutoCompareTakesTheReference(t *testing.T) {
 	}
 	// the reference, at a setup of its own
 	b.c.setTdivNearest(1e-6)
-	b.c.setVdiv(0, nearestDetent(1.0))
+	b.c.setVdiv(0, nearestLadderStep(testLadder, 1.0))
 	b.fe.SetOffset(0, -1.2)
 	b.eng.SetTrigLevelCode(30000)
 	b.eng.SetTrigSlope(false)
@@ -289,7 +289,7 @@ func TestAutoCompareTakesTheReference(t *testing.T) {
 	want := b.c.takeSetup()
 	// moved off it, then AUTO
 	b.c.setTdivNearest(20e-6)
-	b.c.setVdiv(0, nearestDetent(5.0))
+	b.c.setVdiv(0, nearestLadderStep(testLadder, 5.0))
 	b.fe.SetOffset(0, 0)
 	b.eng.SetTrigSlope(true)
 	note = b.run(wsview.Compare, -1)
@@ -489,7 +489,7 @@ func TestClippedTraceThatFitsIsCentred(t *testing.T) {
 	sq := square(1e6, 0, 3.3)
 	b := newSimBench(t, func(tt, _ float64, _ int) float64 { return sq(tt) })
 	b.c.setTdivNearest(1e-6)
-	b.c.setVdiv(1, nearestDetent(0.5))
+	b.c.setVdiv(1, nearestLadderStep(testLadder, 0.5))
 	b.fe.SetOffset(1, -1.06) // the 0..3.3 V square from code 75 to 240: past the top, short of the rail
 	if !b.c.clipped(1) {
 		t.Fatal("the rig's trace is not clipped: the test proves nothing")
@@ -545,7 +545,7 @@ func TestOverScreen(t *testing.T) {
 	})
 	b.c.setTdivNearest(1e-6)
 	for ch := range 2 {
-		b.c.setVdiv(ch, nearestDetent(0.5))
+		b.c.setVdiv(ch, nearestLadderStep(testLadder, 0.5))
 		b.fe.SetOffset(ch, 0)
 	}
 	if !b.c.overScreen(0) || b.c.railing(0) {
@@ -589,7 +589,7 @@ func TestAutoCancelPutsTheSettingsBack(t *testing.T) {
 	t.Parallel()
 	sq := square(1e6, 0, 3.3)
 	b := newSimBench(t, func(tt, _ float64, _ int) float64 { return sq(tt) })
-	b.c.setVdiv(0, nearestDetent(0.2))
+	b.c.setVdiv(0, nearestLadderStep(testLadder, 0.2))
 	b.fe.SetOffset(0, -0.3)
 	b.eng.SetTrigSource(1)
 	vidx0, _ := b.fe.Snapshot()

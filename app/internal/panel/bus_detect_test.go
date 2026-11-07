@@ -47,7 +47,7 @@ func TestBusSearchTakesADecimatedRecordFirst(t *testing.T) {
 	}{{115200, false}, {921600, true}} {
 		_, base, fe := newC(t)
 		eng := &searchLeaseEng{fakeEng: base}
-		ctl := New(eng, fe, -1, engine.SupportedTdivs(), 200e-6, t.Logf)
+		ctl := newCtl(eng, fe, -1, engine.SupportedTdivs(), 200e-6, t.Logf)
 		ctl.decode(idle(), true)
 		ctl.detectSync = true
 		msgs := []string{"Hi U\x55\xaa\x0f\xf0"}
@@ -98,7 +98,7 @@ func TestBusSearchTakesADecimatedRecordFirst(t *testing.T) {
 func TestBusSearchReadsAShortFullRateRecord(t *testing.T) {
 	_, base, fe := newC(t)
 	eng := &searchLeaseEng{fakeEng: base}
-	ctl := New(eng, fe, -1, engine.SupportedTdivs(), 500e-6, t.Logf)
+	ctl := newCtl(eng, fe, -1, engine.SupportedTdivs(), 500e-6, t.Logf)
 	ctl.decode(idle(), true)
 	ctl.detectSync = true
 	msgs := []string{"Hi U\x55\xaa\x0f\xf0"}
@@ -268,7 +268,7 @@ func TestBusSearchSkipsAFullRateRecordTheDecimatedOneResolves(t *testing.T) {
 	}{{"resolved", 300, false}, {"edges too close", 4, true}} {
 		_, base, fe := newC(t)
 		eng := &searchLeaseEng{fakeEng: base}
-		ctl := New(eng, fe, -1, engine.SupportedTdivs(), 10e-6, t.Logf)
+		ctl := newCtl(eng, fe, -1, engine.SupportedTdivs(), 10e-6, t.Logf)
 		ctl.decode(idle(), true)
 		ctl.detectSync = true
 		// edges c.run to 2*c.run samples apart, irregular (no clock); C2 idles
@@ -404,7 +404,7 @@ func TestBusSearchLooksSlowerFirstForAFewByteUART(t *testing.T) {
 	} {
 		_, base, fe := newC(t)
 		eng := &searchLeaseEng{fakeEng: base}
-		ctl := New(eng, fe, -1, engine.SupportedTdivs(), 500e-6, t.Logf)
+		ctl := newCtl(eng, fe, -1, engine.SupportedTdivs(), 500e-6, t.Logf)
 		ctl.decode(idle(), true)
 		ctl.detectSync = true
 		ctl.SetFrameSource(func(fn func(*sample.Frame)) {

@@ -115,7 +115,7 @@ func newViewRig(t *testing.T) *viewRig {
 	t.Helper()
 	fe := &fakeFE{idx: [2]int{8, 8}}
 	eng := &bodeEng{fakeEng: newEng()}
-	c := New(eng, bwlFE{fe}, -1, engine.SupportedTdivs(), 500e-6, t.Logf)
+	c := newCtl(eng, bwlFE{fe}, -1, engine.SupportedTdivs(), 500e-6, t.Logf)
 	c.decode(idle(), true)
 	c.detectSync = true
 	r := &viewRig{t: t, c: c, eng: eng, fe: fe, clk: withClock(c), spect: lcd.NewSpectrogram()}

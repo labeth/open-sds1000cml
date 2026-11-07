@@ -12,6 +12,7 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/labeth/open-dso-core/hal"
 	"github.com/labeth/open-dso-core/sample"
 	"github.com/labeth/open-dso-core/testenv"
 	"github.com/labeth/open-sds1000cml/app/internal/analog"
@@ -503,3 +504,39 @@ func (a *fuzzAnalog) TrigVolts(code uint16, _ int) float64 { return (31437 - flo
 
 // TRLC-LINKS: REQ-SDS-180
 func (a *fuzzAnalog) TrigCalActive(_ int) (float64, float64) { return 31437, 911 }
+
+// TRLC-LINKS: REQ-SDS-180
+func (a *fuzzAnalog) SetVdivV(ch int, v float64) error {
+	idx, ok := analog.PlanVdiv(v)
+	if !ok {
+		return hal.Refuse("V/div", "not a ladder step")
+	}
+	return a.SetVdiv(ch, idx)
+}
+
+// TRLC-LINKS: REQ-SDS-180
+func (a *fuzzAnalog) VdivV(ch int) float64 {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	return analog.Detents[a.idx[ch&1]].VdivV
+}
+
+// TRLC-LINKS: REQ-SDS-180
+func (a *fuzzAnalog) RangeV(ch int) float64 {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	return analog.Vdiv(a.idx[ch&1])
+}
+
+// TRLC-LINKS: REQ-SDS-180
+func (a *fuzzAnalog) Zoom(ch int) int {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	return analog.Detents[a.idx[ch&1]].Zoom
+}
+
+// TRLC-LINKS: REQ-SDS-180
+func (a *fuzzAnalog) Emitted() bool { return true }
+
+// TRLC-LINKS: REQ-SDS-180
+func (a *fuzzAnalog) TrigCode(v float64, _ int) float64 { return 31437 - 911*v }

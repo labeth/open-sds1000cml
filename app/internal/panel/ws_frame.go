@@ -293,8 +293,8 @@ func windowOf(g geom, s *sv) (left float64, win int) {
 // voltsPerCode is a channel's volts per display code at the probe tip.
 // TRLC-LINKS: REQ-SDS-216, REQ-SDS-217
 func voltsPerCode(s *sv, ch int) float64 {
-	d := analog.Detents[s.vidx[ch&1]]
-	return d.VdivV * float64(max(d.Zoom, 1)) / 25 * s.probe[ch&1]
+	d := s.vert[ch&1]
+	return d.vdiv * float64(max(d.zoom, 1)) / 25 * s.probe[ch&1]
 }
 
 // measureCh measures one channel of the frame as the LCD's readouts do:
