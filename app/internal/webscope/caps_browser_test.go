@@ -95,12 +95,15 @@ func TestCapsBrowserSamePage(t *testing.T) {
 	if plain["capsServed"] != false || served["capsServed"] != true || plain["wire"] != 1.0 || served["wire"] != 1.0 {
 		t.Fatalf("caps served %v/%v, wire %v/%v; with caps the page asked %v", plain["capsServed"], served["capsServed"], plain["wire"], served["wire"], served["requests"])
 	}
+	// A request is its method and path: a body built from a live frame (the
+	// mask) differs between the two pages because the frames move on.
 	reqs := func(r map[string]any) []string {
 		var out []string
 		qs, _ := r["requests"].([]any)
 		for _, q := range qs {
 			if q, ok := q.(string); ok {
-				out = append(out, q)
+				f := strings.Fields(q)
+				out = append(out, strings.Join(f[:min(2, len(f))], " "))
 			}
 		}
 		return out

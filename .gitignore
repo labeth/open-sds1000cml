@@ -31,3 +31,5 @@ __pycache__/
 node_modules/
 # Boot-anchor execution markers (startup.sh writes them where it runs)
 BOOT_MARKER.txt
+# The demo site (make demo)
+/build/demo/
