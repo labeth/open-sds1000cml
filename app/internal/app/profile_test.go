@@ -39,6 +39,11 @@ func TestProfileMatchesTheApp(t *testing.T) {
 	if p.Channels != 2 || p.Format.Bits != 8 {
 		t.Errorf("channels %d bits %d", p.Channels, p.Format.Bits)
 	}
+	for _, part := range []string{"logic-probe", "generator"} {
+		if p.Absent[part] == "" {
+			t.Errorf("no reason for the absent %s", part)
+		}
+	}
 	if _, err := profile.Load(data, hal.Identity{Model: "SDS1102CML"}); err == nil {
 		t.Error("the original CML (no +) is not this firmware's unit, and must be refused")
 	}

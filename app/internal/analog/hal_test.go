@@ -3,6 +3,7 @@
 package analog
 
 import (
+	"context"
 	"errors"
 	"testing"
 	"time"
@@ -49,5 +50,21 @@ func TestFrontEndAsHAL(t *testing.T) {
 	_ = f.SetVdivV(0, 0.005)
 	if f.RangeV(0) != 0.01 || f.VdivV(0) != 0.005 {
 		t.Fatalf("5 mV/div: range %v", f.RangeV(0))
+	}
+}
+
+// The front end names the factory table's author and refuses a
+// self-calibration it does not have.
+// TRLC-LINKS: REQ-SDS-015
+func TestFrontEndCalibrationAsHAL(t *testing.T) {
+	f := New(&fakeTr{}, func(time.Duration) {}, nil)
+	c := f.Calibration()
+	if c.Valid != (c.Author == "vendor") {
+		t.Errorf("calibration %+v: a valid table is the vendor's, the defaults have no author", c)
+	}
+	if _, err := f.SelfCal(context.Background(), nil); err == nil {
+		t.Error("self-calibration accepted")
+	} else if _, ok := hal.AsRefusal(err); !ok {
+		t.Errorf("self-calibration: %v, want a refusal", err)
 	}
 }
