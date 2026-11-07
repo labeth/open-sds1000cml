@@ -727,7 +727,7 @@ func BenchmarkSRAMFrameWrite(b *testing.B) {
 
 // TRLC-LINKS: REQ-SDS-007
 func BenchmarkArenaConsume(b *testing.B) {
-	a := newArena(16)
+	a := newFrameArena(16)
 	for b.Loop() {
 		a.Publish()
 		a.Consume()

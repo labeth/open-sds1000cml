@@ -92,9 +92,18 @@ type arena struct {
 	dirty bool
 }
 
+// newArena is an arena of three frames mk makes: the producer's frame
+// format and buffer sizes are its own.
 // TRLC-LINKS: REQ-SDS-007
-func newArena(capacity int) *arena {
-	mk := func() *sample.Frame {
+func newArena(mk func() *sample.Frame) *arena {
+	return &arena{write: mk(), ready: mk(), read: mk()}
+}
+
+// newFrameArena is the engine's arena: frames of two traces of capacity
+// codes each, reset to the converters' format.
+// TRLC-LINKS: REQ-SDS-007
+func newFrameArena(capacity int) *arena {
+	return newArena(func() *sample.Frame {
 		f := &sample.Frame{Traces: make([]sample.Trace, 2)}
 		for ch := range f.Traces {
 			f.Traces[ch] = sample.Trace{
@@ -104,8 +113,7 @@ func newArena(capacity int) *arena {
 		}
 		resetFrame(f)
 		return f
-	}
-	return &arena{write: mk(), ready: mk(), read: mk()}
+	})
 }
 
 // Write returns the producer's private slot. Owner-only.

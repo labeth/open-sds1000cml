@@ -642,7 +642,7 @@ func New(cfg Config) *Engine {
 		clk:                   cfg.Clock,
 		logf:                  cfg.Logf,
 		bode:                  bodeState{dutCh: 1}, // the frequency response's reference on C1, the DUT on C2
-		arena:                 newArena(capacity),
+		arena:                 newFrameArena(capacity),
 		interleaveCalibration: cfg.InterleaveCalibration,
 		armSettle:             cfg.ArmSettle,
 		armBusy:               realTime,

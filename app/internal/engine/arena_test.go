@@ -6,7 +6,7 @@ import "testing"
 
 // TRLC-LINKS: REQ-SDS-007
 func TestArenaPublishConsume(t *testing.T) {
-	a := newArena(16)
+	a := newFrameArena(16)
 
 	// Nothing published yet: consumer gets its (empty) held slot, not fresh.
 	if _, fresh := a.Consume(); fresh {
