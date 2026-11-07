@@ -2,12 +2,12 @@
 status 200
 header Accept-Ranges: bytes
 header Cache-Control: no-cache
-header Content-Length: 73640
+header Content-Length: 73792
 header Content-Security-Policy: default-src 'self'; script-src 'self'; connect-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; object-src 'none'; base-uri 'none'
 header Content-Type: text/html; charset=utf-8
-header Etag: "09bac2e1b2f69adb"
+header Etag: "7834c39896eb8989"
 header Vary: Accept-Encoding
-body: 73640 bytes, sha256 05c6ac352d09a0e96b94c1daa79cd22f35e7a8f28833d0dd97a6a92cc82571d7
+body: 73792 bytes, sha256 06a65b584de64d936e9ac0084d3916d45e050e55802f261149d2cbadc023091f
 
 === GET /remote
 status 200
@@ -145,11 +145,11 @@ body: 30 bytes, sha256 b7419965e3b91642ef8efe43a592b3b4e0b6d4fb4c5eb416f8bc11ad4
 status 200
 header Accept-Ranges: bytes
 header Cache-Control: no-cache
-header Content-Length: 41327
+header Content-Length: 41379
 header Content-Type: text/javascript; charset=utf-8
-header Etag: "d01d667bfece3268"
+header Etag: "3f8f1c3442bf13de"
 header Vary: Accept-Encoding
-body: 41327 bytes, sha256 a20b75597b44f1bd894b6e99b604e3f77b32abe52229105a64ed1256053d4b5b
+body: 41379 bytes, sha256 775e11e9de34e0b381c97f09f521f807714378687a6a985352e558195ee9cb06
 
 === GET /base.css
 status 200
@@ -497,9 +497,9 @@ header Accept-Ranges: bytes
 header Cache-Control: no-cache
 header Content-Encoding: gzip
 header Content-Type: text/javascript; charset=utf-8
-header Etag: "d01d667bfece3268-gz"
+header Etag: "3f8f1c3442bf13de-gz"
 header Vary: Accept-Encoding
-gzip body: 41327 bytes, sha256 a20b75597b44f1bd894b6e99b604e3f77b32abe52229105a64ed1256053d4b5b
+gzip body: 41379 bytes, sha256 775e11e9de34e0b381c97f09f521f807714378687a6a985352e558195ee9cb06
 
 === GET /remote-awake.mp4
 request header Range: bytes=0-15
@@ -518,12 +518,12 @@ request header If-None-Match: "x"
 status 200
 header Accept-Ranges: bytes
 header Cache-Control: no-cache
-header Content-Length: 73640
+header Content-Length: 73792
 header Content-Security-Policy: default-src 'self'; script-src 'self'; connect-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; object-src 'none'; base-uri 'none'
 header Content-Type: text/html; charset=utf-8
-header Etag: "09bac2e1b2f69adb"
+header Etag: "7834c39896eb8989"
 header Vary: Accept-Encoding
-body: 73640 bytes, sha256 05c6ac352d09a0e96b94c1daa79cd22f35e7a8f28833d0dd97a6a92cc82571d7
+body: 73792 bytes, sha256 06a65b584de64d936e9ac0084d3916d45e050e55802f261149d2cbadc023091f
 
 === GET /debug/pprof/
 status 200
