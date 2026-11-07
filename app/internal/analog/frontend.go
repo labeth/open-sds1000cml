@@ -8,6 +8,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/labeth/open-dso-core/dsp"
 	"github.com/labeth/open-sds1000cml/app/internal/cal"
 )
 
@@ -65,11 +66,11 @@ func Vdiv(idx int) float64 {
 // but the calibration and the trigger mapping are made with the relay in DC,
 // and its GND bit does not ground the input (the factory firmware grounds in its
 // FPGA). So the relay stays DC; AC = software DC-removal, GND = a flat ground
-// trace. See CoupleDisplay.
+// trace. See dsp.CoupleDisplay.
 const (
-	CplDC  = 0
-	CplAC  = 1
-	CplGND = 2
+	CplDC  = dsp.CoupleDC
+	CplAC  = dsp.CoupleAC
+	CplGND = dsp.CoupleGND
 )
 
 // channelByte builds a relay channel byte (spec 06 §4.2): bit0 BWL(1=off,
@@ -160,7 +161,7 @@ func (f *FrontEnd) ProbeFactor(ch int) float64 {
 
 // SetCoupling records a channel's input coupling (CplDC/CplAC/CplGND). It never
 // touches the relay — coupling is a pure display transform on this clone (see
-// the Coupling constants and CoupleDisplay), so it is always safe and takes
+// the Coupling constants and dsp.CoupleDisplay), so it is always safe and takes
 // effect on the next served/rendered frame.
 // TRLC-LINKS: REQ-SDS-096
 func (f *FrontEnd) SetCoupling(ch, mode int) error {
@@ -198,82 +199,6 @@ func (f *FrontEnd) Coupling(ch int) int {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	return f.cpl[ch&1]
-}
-
-// CoupleDisplay applies a coupling mode's software transform to a copy of sig
-// for the display and measurements: DC passes through unchanged; AC removes the
-// DC component (mean → mid-scale: the relay stays in DC, spec 06 §6);
-// GND shows a flat trace at mid-scale (the ground reference). The input is never
-// mutated (it is shared with trigger/decode). Callers zero the channel's offset
-// for AC/GND so the ground marker sits at the centred baseline.
-// TRLC-LINKS: REQ-SDS-096
-func CoupleDisplay(sig []uint8, mode int) []uint8 {
-	switch mode {
-	case CplAC:
-		return RemoveDC(sig)
-	case CplGND:
-		out := make([]uint8, len(sig))
-		for i := range out {
-			out[i] = 128
-		}
-		return out
-	default:
-		return sig
-	}
-}
-
-// CoupleDisplayBy is CoupleDisplay for part, a stretch of sig drawn on its own
-// (a zoom's detail): AC moves it by what takes sig's DC away, so it sits where
-// the whole trace does. part is never mutated.
-// TRLC-LINKS: REQ-SDS-096
-func CoupleDisplayBy(part, sig []uint8, mode int) []uint8 {
-	switch mode {
-	case CplAC:
-		if len(sig) == 0 {
-			return part
-		}
-		return shifted(part, dcShift(sig))
-	case CplGND:
-		return CoupleDisplay(part, CplGND)
-	default:
-		return part
-	}
-}
-
-// RemoveDC returns a copy of sig with its DC component removed: the record mean
-// is shifted to mid-scale (code 128), clamped to [0,255]. The input is never
-// mutated.
-// TRLC-LINKS: REQ-SDS-096
-func RemoveDC(sig []uint8) []uint8 {
-	if len(sig) == 0 {
-		return sig
-	}
-	return shifted(sig, dcShift(sig))
-}
-
-// dcShift is what moves sig's mean to mid-scale (code 128).
-// TRLC-LINKS: REQ-SDS-096
-func dcShift(sig []uint8) int {
-	var sum int
-	for _, v := range sig {
-		sum += int(v)
-	}
-	return 128 - int(math.Round(float64(sum)/float64(len(sig))))
-}
-
-// shifted is a copy of sig moved by shift codes, clamped to [0,255]: through
-// a table of the 256 codes, a lookup a sample in place of a clamp.
-// TRLC-LINKS: REQ-SDS-096
-func shifted(sig []uint8, shift int) []uint8 {
-	var lut [256]uint8
-	for v := range lut {
-		lut[v] = uint8(min(max(v+shift, 0), 255))
-	}
-	out := make([]uint8, len(sig))
-	for i, v := range sig {
-		out[i] = lut[v]
-	}
-	return out
 }
 
 // OnOffset wires the offset-DAC stager (engine.SetOffsetDAC). Until set,

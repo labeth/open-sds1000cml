@@ -4,8 +4,8 @@ import (
 	"math"
 	"testing"
 
+	"github.com/labeth/open-dso-core/render"
 	"github.com/labeth/open-dso-core/sample"
-	"github.com/labeth/open-sds1000cml/app/internal/lcd"
 )
 
 // The scope's zoom leases its stretch of a live envelope at full detail in
@@ -13,7 +13,7 @@ import (
 // TRLC-LINKS: REQ-SDS-021
 func TestScopeViewLeaseOnlyInYT(t *testing.T) {
 	f := &sample.Frame{WinPoints: 1024, Content: sample.PeakPairs, Traces: []sample.Trace{{Valid: 4096}, {Ch: 1, Valid: 4096}}}
-	hud := lcd.HUD{Zoom: 10, ZoomOff: 0.01}
+	hud := render.HUD{Zoom: 10, ZoomOff: 0.01}
 	a, b, ok := scopeViewLease(hud, f)
 	if !ok || math.Abs(a-(0.04-0.05)) > 1e-12 || math.Abs(b-(0.04+0.05)) > 1e-12 {
 		t.Fatalf("Y-T zoomed: lease %v %g..%g, want -0.01..0.09 screen widths", ok, a, b)

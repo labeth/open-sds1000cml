@@ -2,7 +2,7 @@
 
 package panel
 
-import "github.com/labeth/open-sds1000cml/app/internal/panel/wsview"
+import "github.com/labeth/open-dso-core/uimodel/wsview"
 
 // View is the UI snapshot alone.
 // TRLC-LINKS: REQ-SDS-211

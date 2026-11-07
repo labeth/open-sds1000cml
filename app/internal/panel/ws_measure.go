@@ -8,11 +8,11 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/labeth/open-dso-core/framecalc"
 	"github.com/labeth/open-dso-core/measure"
 	"github.com/labeth/open-dso-core/sample"
+	"github.com/labeth/open-dso-core/uimodel/wsview"
 	"github.com/labeth/open-sds1000cml/app/internal/engine"
-	"github.com/labeth/open-sds1000cml/app/internal/panel/framecalc"
-	"github.com/labeth/open-sds1000cml/app/internal/panel/wsview"
 )
 
 // MEASURE (REQ-SDS-217): running statistics of the chosen measurements (now,

@@ -11,9 +11,9 @@ import (
 
 	"github.com/labeth/open-dso-core/measure"
 	"github.com/labeth/open-dso-core/sample"
+	"github.com/labeth/open-dso-core/uimodel/wsview"
 	"github.com/labeth/open-sds1000cml/app/internal/analog"
 	"github.com/labeth/open-sds1000cml/app/internal/engine"
-	"github.com/labeth/open-sds1000cml/app/internal/panel/wsview"
 )
 
 // simFE is the fake front end with the offset reaching the engine's offset

@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/labeth/open-sds1000cml/app/internal/panel/wsview"
+	"github.com/labeth/open-dso-core/uimodel/wsview"
 )
 
 // The TRIG tab says whether the FPGA decides a pulse, slope, video or zone

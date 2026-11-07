@@ -7,163 +7,40 @@ import (
 	"math"
 
 	"github.com/labeth/open-dso-core/sample"
+	core "github.com/labeth/open-dso-core/scpi"
+	"github.com/labeth/open-dso-core/scpi/meas"
 )
 
-// edges holds a channel's interpolated 50 % crossings (sample positions).
-type edges struct{ rise, fall []float64 }
-
-// findEdges slices a channel at mid-swing with 10 % hysteresis, so converter
-// noise on a flat level is no edge; nil when the channel has no swing.
+// findEdges is a channel's mid-swing crossings on the 8-bit view.
 // TRLC-LINKS: REQ-SDS-024
-func findEdges(c []uint8) *edges {
-	if len(c) < 4 {
-		return nil
-	}
-	lo, hi := 255, 0
-	for _, v := range c {
-		lo, hi = min(lo, int(v)), max(hi, int(v))
-	}
-	if hi-lo < 8 {
-		return nil
-	}
-	mid := float64(lo+hi) / 2
-	hy := float64(hi-lo) / 10
-	// The bands as whole codes: a code is past mid+hy exactly when it is at
-	// least its ceiling, so the loop compares bytes, not floats.
-	up, down := int(math.Ceil(mid+hy)), int(math.Floor(mid-hy))
-	e := &edges{}
-	state := 0 // unknown until the first excursion past a hysteresis band
-	for i := 1; i < len(c); i++ {
-		v := int(c[i])
-		switch {
-		case v >= up && state <= 0:
-			if state < 0 {
-				e.rise = append(e.rise, crossing(c, i, mid))
-			}
-			state = 1
-		case v <= down && state >= 0:
-			if state > 0 {
-				e.fall = append(e.fall, crossing(c, i, mid))
-			}
-			state = -1
-		}
-	}
-	return e
-}
-
-// crossing walks back from i to the sample pair straddling level and
-// interpolates the crossing position.
-// TRLC-LINKS: REQ-SDS-024
-func crossing(c []uint8, i int, level float64) float64 {
-	for j := i; j > 0; j-- {
-		a, b := float64(c[j-1]), float64(c[j])
-		if (a-level)*(b-level) <= 0 && a != b {
-			return float64(j-1) + (level-a)/(b-a)
-		}
-	}
-	return float64(i)
-}
-
-// meadParams are the C1-C2:MEAD? parameters: source A edge -> source B edge.
-var meadParams = map[string]struct {
-	aRise, bRise, last bool
-}{
-	"FRR": {true, true, false}, "FRF": {true, false, false}, "FFR": {false, true, false}, "FFF": {false, false, false},
-	"LRR": {true, true, true}, "LRF": {true, false, true}, "LFR": {false, true, true}, "LFF": {false, false, true},
-}
+func findEdges(c []uint8) *meas.Edges { return meas.FindEdges(c) }
 
 // mead answers Ca-Cb:MEAD? <param>: edge delays between the two channels on
 // the published frame (PHA in degrees over A's period, SKEW between the
 // rising edges nearest the trigger).
 // TRLC-LINKS: REQ-SDS-024
-func (h *Handler) mead(a, b int, arg string) []byte {
-	header := fmt.Sprintf("C%d-C%d:MEAD", a+1, b+1)
-	p, known := meadParams[arg]
-	if !known && arg != "PHA" && arg != "SKEW" {
-		return errTok(errHeader)
+func (h *Handler) mead(c *core.Call, a, b int, arg string) error {
+	if !meas.IsDelay(arg) {
+		return c.Error(core.ErrHeader)
 	}
-	value, unit := math.NaN(), "S"
+	value, ok := 0.0, false
 	h.sc.WithFrame(func(f *sample.Frame) {
-		if f == nil || f.Len() < 4 || a >= len(f.Traces) || b >= len(f.Traces) || !(f.SampleS > 0) {
+		if f == nil || a >= len(f.Traces) || b >= len(f.Traces) {
 			return
 		}
 		// Both channels' edges on the 8-bit view.
-		va, vb := view8(&f.Traces[a]), view8(&f.Traces[b])
-		if len(va) < f.Len() || len(vb) < f.Len() {
-			return
-		}
-		ea, eb := findEdges(va[:f.Len()]), findEdges(vb[:f.Len()])
-		if ea == nil || eb == nil {
-			return
-		}
-		pick := func(xs []float64, last bool) (float64, bool) {
-			if len(xs) == 0 {
-				return 0, false
-			}
-			if last {
-				return xs[len(xs)-1], true
-			}
-			return xs[0], true
-		}
-		switch arg {
-		case "PHA":
-			unit = ""
-			if len(ea.rise) < 2 || len(eb.rise) == 0 {
-				return
-			}
-			period := (ea.rise[len(ea.rise)-1] - ea.rise[0]) / float64(len(ea.rise)-1)
-			ta := ea.rise[0]
-			for _, tb := range eb.rise {
-				if tb >= ta-period/2 {
-					ph := math.Mod((tb-ta)/period*360, 360)
-					if ph > 180 {
-						ph -= 360
-					} else if ph <= -180 {
-						ph += 360
-					}
-					value = ph
-					return
-				}
-			}
-		case "SKEW":
-			centre := f.TriggerAt
-			if centre < 0 {
-				centre = float64(f.Len()) / 2
-			}
-			nearest := func(xs []float64) (float64, bool) {
-				best, ok := 0.0, false
-				for _, x := range xs {
-					if !ok || math.Abs(x-centre) < math.Abs(best-centre) {
-						best, ok = x, true
-					}
-				}
-				return best, ok
-			}
-			ta, okA := nearest(ea.rise)
-			tb, okB := nearest(eb.rise)
-			if okA && okB {
-				value = (tb - ta) * f.SampleS
-			}
-		default:
-			xa, xb := ea.fall, eb.fall
-			if p.aRise {
-				xa = ea.rise
-			}
-			if p.bRise {
-				xb = eb.rise
-			}
-			ta, okA := pick(xa, p.last)
-			tb, okB := pick(xb, p.last)
-			if okA && okB {
-				value = (tb - ta) * f.SampleS
-			}
-		}
+		value, ok = meas.Delay(arg, view8(&f.Traces[a]), view8(&f.Traces[b]), f.Len(), f.SampleS, f.TriggerAt)
 	})
-	v := noReading
-	if !math.IsNaN(value) {
+	unit := "S"
+	if arg == "PHA" {
+		unit = ""
+	}
+	v := meas.NoReading
+	if ok {
 		v = fmt.Sprintf("%.6E%s", value, unit)
 	}
-	return h.reply(header, arg+","+v)
+	c.Reply(fmt.Sprintf("C%d-C%d:MEAD", a+1, b+1), arg+","+v)
+	return nil
 }
 
 // cursorReader is a Display whose manual cursors can be read (CRVA?).
@@ -176,18 +53,19 @@ type cursorReader interface {
 // displayed V/div): HREL = dt, 1/dt and the channel's volts at both time
 // cursors; VREL = dV and both cursor levels. OFF when the cursors are off.
 // TRLC-LINKS: REQ-SDS-024
-func (h *Handler) crva(ch int, arg string) []byte {
-	header := fmt.Sprintf("C%d:CRVA", ch+1)
+func (h *Handler) crva(c *core.Call, ch int, arg string) error {
+	header := chHeader(ch, "CRVA")
 	if arg != "HREL" && arg != "VREL" {
-		return errTok(errHeader)
+		return c.Error(core.ErrHeader)
 	}
 	cr, ok := h.disp.(cursorReader)
 	if !ok {
-		return errTok(errOutOfRange)
+		return c.Error(core.ErrDataOutOfRange)
 	}
 	on, _, x, y := cr.CursorState()
 	if !on {
-		return h.reply(header, "OFF")
+		c.Reply(header, "OFF")
+		return nil
 	}
 	probe := h.probe(ch)
 	vdiv, dispVdiv := 1.0, 1.0
@@ -200,14 +78,15 @@ func (h *Handler) crva(ch int, arg string) []byte {
 	if arg == "VREL" {
 		level := func(fy float64) float64 { return (0.5-fy)*8*dispVdiv*probe - offV*probe }
 		v0, v1 := level(y[0]), level(y[1])
-		return h.reply(header, fmt.Sprintf("VREL,%s,%s,%s", sciV(v1-v0), sciV(v0), sciV(v1)))
+		c.Reply(header, fmt.Sprintf("VREL,%s,%s,%s", sciV(v1-v0), sciV(v0), sciV(v1)))
+		return nil
 	}
 	tdiv, posFrac := st.TdivS, st.TrigPosFrac
 	if !(posFrac >= 0 && posFrac <= 1) {
 		posFrac = .5
 	}
 	dt := (x[1] - x[0]) * 10 * tdiv
-	val := [2]string{noReading, noReading}
+	val := [2]string{meas.NoReading, meas.NoReading}
 	h.sc.WithFrame(func(f *sample.Frame) {
 		if f == nil || f.Len() < 2 || f.WinPoints < 2 || ch >= len(f.Traces) {
 			return
@@ -228,11 +107,12 @@ func (h *Handler) crva(ch int, arg string) []byte {
 			}
 		}
 	})
-	inv := noReading
+	inv := meas.NoReading
 	if dt != 0 {
 		inv = fmt.Sprintf("%.2EHz", 1/math.Abs(dt))
 	}
-	return h.reply(header, fmt.Sprintf("HREL,%s,%s,%s,%s", sciS(dt), inv, val[0], val[1]))
+	c.Reply(header, fmt.Sprintf("HREL,%s,%s,%s,%s", sciS(dt), inv, val[0], val[1]))
+	return nil
 }
 
 // view8 is trace t's codes on the 8-bit view: 8-bit codes as they are (their

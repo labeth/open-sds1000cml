@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/labeth/open-sds1000cml/app/internal/panel/wsview"
+	"github.com/labeth/open-dso-core/uimodel/wsview"
 )
 
 // Settings sheets (REQ-SDS-212): full screen, every option written out.

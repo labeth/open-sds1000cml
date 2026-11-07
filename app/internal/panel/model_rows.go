@@ -9,10 +9,10 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/labeth/open-dso-core/framecalc"
+	"github.com/labeth/open-dso-core/uimodel/wsview"
 	"github.com/labeth/open-sds1000cml/app/internal/analog"
 	"github.com/labeth/open-sds1000cml/app/internal/engine"
-	"github.com/labeth/open-sds1000cml/app/internal/panel/framecalc"
-	"github.com/labeth/open-sds1000cml/app/internal/panel/wsview"
 )
 
 // The sheet tabs and their rows (REQ-SDS-212): every setting the instrument

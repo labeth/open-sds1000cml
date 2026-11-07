@@ -11,12 +11,12 @@ import (
 
 	"github.com/labeth/open-dso-core/analysis"
 	"github.com/labeth/open-dso-core/dsp"
+	"github.com/labeth/open-dso-core/framecalc"
 	"github.com/labeth/open-dso-core/sample"
+	"github.com/labeth/open-dso-core/uimodel/wsview"
 	"github.com/labeth/open-sds1000cml/app/internal/analog"
 	"github.com/labeth/open-sds1000cml/app/internal/board"
 	"github.com/labeth/open-sds1000cml/app/internal/engine"
-	"github.com/labeth/open-sds1000cml/app/internal/panel/framecalc"
-	"github.com/labeth/open-sds1000cml/app/internal/panel/wsview"
 )
 
 // COMPARE (REQ-SDS-218): rows MASTER, REF A, REF B, MASK and MATH with a
@@ -68,7 +68,7 @@ func screenExtremes(f *sample.Frame, s *sv, ch, cols int) (lows, highs []float64
 	left, win := windowOf(g, s)
 	sig := framecalc.Channel(f, ch, valid)
 	if s.cpl[ch] != analog.CplDC {
-		sig = analog.CoupleDisplay(sig, s.cpl[ch])
+		sig = dsp.CoupleDisplay(sig, s.cpl[ch])
 	}
 	z := float64(max(s.vert[ch].zoom, 1)) / 25
 	lows, highs = make([]float64, cols), make([]float64, cols)
@@ -124,7 +124,7 @@ func screenPoints(f *sample.Frame, s *sv, ch int) []float64 {
 	left, win := windowOf(g, s)
 	sig := framecalc.Channel(f, ch, valid)
 	if s.cpl[ch] != analog.CplDC {
-		sig = analog.CoupleDisplay(sig, s.cpl[ch])
+		sig = dsp.CoupleDisplay(sig, s.cpl[ch])
 	}
 	z := float64(max(s.vert[ch].zoom, 1))
 	out := make([]float64, RefCols)

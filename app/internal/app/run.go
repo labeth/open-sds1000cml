@@ -20,7 +20,8 @@ import (
 	"time"
 
 	"github.com/labeth/open-dso-core/engine/fanout"
-	"github.com/labeth/open-dso-core/vxi11srv"
+	"github.com/labeth/open-dso-core/render"
+	scpihost "github.com/labeth/open-dso-core/scpi/host"
 	"github.com/labeth/open-dso-core/webserver"
 	"github.com/labeth/open-sds1000cml/app/internal/analog"
 	"github.com/labeth/open-sds1000cml/app/internal/board"
@@ -196,7 +197,7 @@ func Run() {
 	startMark("panel up")
 
 	// Device-screen PNG for the web /api/screen.png endpoint: the exact LCD render.
-	screenPNG := func() []byte { return lcd.EncodePNG(renderScreen(e, fe, fo)) }
+	screenPNG := func() []byte { return render.EncodePNG(renderScreen(e, fe, fo)) }
 	// SCPI over VXI-11 (spec 11): the host instrument-control interface.
 	// SCDP renders a fresh headless frame — works with or without the LCD.
 	// Created BEFORE the web server so its INVS shadow (the display-invert
@@ -250,10 +251,11 @@ func Run() {
 		}
 		return saveHardcopy(uDisk, screenPNG())
 	})
-	if _, port, err := vxi11srv.Start(scpiH.HandleLine, true, logf); err != nil {
+	// VXI-11 is this scope's only LAN SCPI path (spec 11 §1: no raw socket,
+	// no telnet).
+	if _, err := scpihost.Serve(context.Background(), scpiH.HandleLine,
+		scpihost.Config{VXI11: true, Register: true}, logf); err != nil {
 		logf("WARNING: VXI-11 server failed: %v", err)
-	} else {
-		logf("scpi: VXI-11 DEVICE_CORE on tcp/%d", port)
 	}
 
 	// Deliberately NO Read/Write timeouts (see newWebServer): /api/frame.bin

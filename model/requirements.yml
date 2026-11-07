@@ -683,8 +683,8 @@ requirements:
     output. Shared rendering, FFT, spectrogram and super-resolution display helpers are reviewed; LCD source review
     is complete at the function level; physical display qualification remains incomplete. Measurement-cache reuse
     can retain results across changed samples, precision codes and filter guard for equal sequence values. Negative
-    frame validity/decoder selectors and direct zero-window masks can panic. Persistence composites only to a concrete
-    MemSurface. The network label selects the first global-unicast IPv4 address, not a proven reachable endpoint.
+    frame validity/decoder selectors and direct zero-window masks can panic. Persistence composites only onto a
+    memory canvas of the same format. The network label selects the first global-unicast IPv4 address, not a proven reachable endpoint.
     Enumeration failures cache an empty label for five seconds; typed-nil address pointers panic. Super-resolution
     review tiles the time trace but FFT resampling consumes the stored fine-grid array. Negative bins are interpolated
     for FFT; XY lifts the pen over invalid samples. Leading or trailing NaN bins can panic during gap filling. Review

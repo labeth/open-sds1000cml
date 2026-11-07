@@ -3,8 +3,8 @@ package app
 import (
 	"testing"
 
-	"github.com/labeth/open-sds1000cml/app/internal/lcd"
-	"github.com/labeth/open-sds1000cml/app/internal/panel/wsview"
+	"github.com/labeth/open-dso-core/render"
+	"github.com/labeth/open-dso-core/uimodel/wsview"
 )
 
 // The SOUND view repaints when its pane changes (a new tuner reading, a
@@ -19,7 +19,7 @@ func TestSoundViewRepaintsOnlyOnChange(t *testing.T) {
 			Meter: [2]wsview.SoundMeter{{On: true}}, Traces: [][]float32{{0, 1, 0}},
 		}
 	}
-	h := lcd.HUD{ViewMode: lcdSoundView, UI: wsview.View{Sound: pane(3)}}
+	h := render.HUD{ViewMode: lcdSoundView, UI: wsview.View{Sound: pane(3)}}
 	if lcdForceRepaint(h) {
 		t.Fatal("the SOUND view bypasses the repaint cache")
 	}
@@ -31,7 +31,7 @@ func TestSoundViewRepaintsOnlyOnChange(t *testing.T) {
 		t.Fatal("a new tuner reading left the render signature unchanged")
 	}
 	for _, v := range []int{3, 4} {
-		if !lcdForceRepaint(lcd.HUD{ViewMode: v}) {
+		if !lcdForceRepaint(render.HUD{ViewMode: v}) {
 			t.Fatalf("view %d (a sweep or a waterfall) uses the repaint cache", v)
 		}
 	}

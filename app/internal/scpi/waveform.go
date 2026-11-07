@@ -3,23 +3,22 @@
 package scpi
 
 import (
-	"encoding/binary"
 	"fmt"
-	"math"
 
 	"github.com/labeth/open-dso-core/sample"
+	core "github.com/labeth/open-dso-core/scpi"
+	"github.com/labeth/open-dso-core/scpi/wave"
 	"github.com/labeth/open-sds1000cml/app/internal/engine"
 )
 
 // waveform implements Cn:WF? DAT2|DESC (spec 11 §4): the byte-exact LeCroy
-// block. Reply shape: "Cn:WF ALL,#9<9-digit count><payload>\n".
+// block. Reply shape: "Cn:WF ALL,#9<9-digit count><payload>\n", whatever
+// CHDR says.
 // TRLC-LINKS: REQ-SDS-024
-func (h *Handler) waveform(ch int, arg string) []byte {
-	sel := arg
+func (h *Handler) waveform(c *core.Call, ch int, sel string) error {
 	if sel != "DAT2" && sel != "DESC" && sel != "ALL" {
-		return errTok(errHeader)
+		return c.Error(core.ErrHeader)
 	}
-
 	var payload []byte
 	var ok bool
 	h.sc.WithFrame(func(f *sample.Frame) {
@@ -34,66 +33,49 @@ func (h *Handler) waveform(ch int, arg string) []byte {
 			payload = h.dat2(ch, f)
 		}
 	})
-	if !ok {
-		return errTok(errOutOfRange)
+	if !ok || payload == nil {
+		// FP beyond the record: the factory firmware CRASHES here — we
+		// reject instead (spec 11 §3.5 trap).
+		return c.Error(core.ErrDataOutOfRange)
 	}
-	if payload == nil {
-		// FP beyond the record (the factory firmware CRASHES here — we
-		// reject instead, spec 11 §3.5 trap).
-		return errTok(errOutOfRange)
-	}
-	head := fmt.Sprintf("C%d:WF ALL,#9%09d", ch+1, len(payload))
-	out := make([]byte, 0, len(head)+len(payload)+1)
-	out = append(out, head...)
-	out = append(out, payload...)
-	out = append(out, '\n')
-	return out
+	c.Raw(append(wave.Block9(fmt.Sprintf("C%d:WF ALL,", ch+1), payload), '\n'))
+	return nil
 }
 
-// dat2 extracts the (sparsed, windowed) 8-bit codes. Deep-frame scale
-// (centred 128); roll-ring codes are half-scale and must be rescaled before
-// export (spec 11 §4 code-scale trap).
+// window is WFSU's selection.
+// TRLC-LINKS: REQ-SDS-024
+func (h *Handler) window() wave.Window {
+	return wave.Window{First: h.wfFP, Sparse: h.wfSP, Points: h.wfNP}
+}
+
+// dat2 extracts the (sparsed, windowed) 8-bit codes as signed bytes about
+// the grid centre: COMM_TYPE 0 is a signed byte, and LeCroy/Siglent hosts
+// read volts = code·gain − offset with codes above 127 taken as negative.
+// Deep-frame scale (centred 128); roll-ring codes are half-scale and must
+// be rescaled before export (spec 11 §4 code-scale trap).
 // TRLC-LINKS: REQ-SDS-024
 func (h *Handler) dat2(ch int, f *sample.Frame) []byte {
 	sig := f.Codes8(0)
 	if ch == 1 {
 		sig = f.Codes8(1)
 	}
-	valid := max(
-		// Valid>len invariant slip must not panic the VXI readout
-		min(f.Len(),
-
-			len(sig)), 0)
-	sig = sig[:valid]
-	if h.wfFP >= len(sig) {
+	// A Valid>len invariant slip must not panic the VXI readout.
+	sig = sig[:max(min(f.Len(), len(sig)), 0)]
+	first, step, n, ok := h.window().Span(len(sig))
+	if !ok {
 		return nil // reject at readout time; never index past the record
 	}
-	sp := max(h.wfSP, 1)
-	most := (len(sig) - h.wfFP + sp - 1) / sp
-	np := h.wfNP
-	if np == 0 || np > most {
-		np = most
-	}
-	out := make([]byte, np)
 	if !engine.HalfScale(f) {
-		// The common case without the roll branch in the loop.
-		for i := range out {
-			out[i] = sig[h.wfFP+i*sp] ^ 0x80
-		}
-		return out
+		return wave.Signed8(sig, first, step, n)
 	}
-	for i := range np {
-		v := sig[h.wfFP+i*sp]
+	out := make([]byte, n)
+	for i := range out {
+		v := sig[first+i*step]
 		// Legacy roll FIFO codes are half-scale, so a roll deviation d
 		// represents 2·d deep codes. Double the deviation (clamped) so it
 		// reads correctly under the DESC's Vdiv/25 gain (spec 11 §4). No
 		// current engine path makes half-scale frames.
-		v = uint8(min(max(128+(int(v)-128)*2, 0), 255))
-		// Two's-complement code about the grid centre: COMM_TYPE 0 is a
-		// signed byte, and LeCroy/Siglent hosts read volts = code·gain −
-		// offset with codes above 127 taken as negative. Sending the raw
-		// unsigned code (0 V = 128) read 5.12 div off and wrapped there.
-		out[i] = v ^ 0x80
+		out[i] = uint8(min(max(128+(int(v)-128)*2, 0), 255)) ^ 0x80
 	}
 	return out
 }
@@ -101,54 +83,43 @@ func (h *Handler) dat2(ch int, f *sample.Frame) []byte {
 // wavedesc builds the 346-byte WAVEDESC (little-endian, COMM_ORDER=1).
 // TRLC-LINKS: REQ-SDS-024
 func (h *Handler) wavedesc(ch int, f *sample.Frame) []byte {
-	d := make([]byte, 346)
-	copy(d[0:], "WAVEDESC")
-	copy(d[16:], "DSO")
-	// The descriptor's fields are 16- and 32-bit two's complement.
-	le16 := func(off, v int) { binary.LittleEndian.PutUint16(d[off:], uint16(v&0xffff)) }
-	le32 := func(off, v int) { binary.LittleEndian.PutUint32(d[off:], uint32(int64(v)&0xffffffff)) }
-	f32 := func(off int, v float32) { binary.LittleEndian.PutUint32(d[off:], math.Float32bits(v)) }
-	f64 := func(off int, v float64) { binary.LittleEndian.PutUint64(d[off:], math.Float64bits(v)) }
-
-	le16(32, 0) // COMM_TYPE: 8-bit
-	le16(34, 1) // COMM_ORDER: LOFIRST
-	le32(36, 346)
 	n := f.Len()
-	le32(60, n) // WAVE_ARRAY_1 = count × 1 byte
-	le32(116, n)
-	le32(120, f.WinPoints)
-	le32(124, 0)
-	le32(128, n-1)
-	le32(132, h.wfFP)
-	le32(136, h.wfSP)
-	le32(140, h.wfSN)
-	le32(144, 1)
-
 	vdiv := 1.0
 	if h.fe != nil {
 		vdiv = h.fe.RangeV(ch & 1) // codes are on the analog range (zoomed detents)
 	}
-	gain := float32(vdiv / 25 * h.probe(ch)) // WF? scale: 25 codes/div (spec 11 §4)
-	f32(156, gain)
-
 	off := 0.0
 	if h.fe != nil {
 		off = h.lv.OffsetIn(ch, h.sc.Snapshot()) * h.probe(ch) // tip volts, like the gain
 	}
-	f32(160, float32(off))
-	f32(164, 127)
-	f32(168, -128)
-	f32(176, float32(f.SampleS)) // HORIZ_INTERVAL = 1/SARA
 	// HORIZ_OFFSET: time of sample 0 from the trigger, at its exact
 	// (sub-sample) position; a record without a trigger keeps the centre.
-	trig := float64(f.Len()) / 2
-	if f.TriggerAt >= 0 && f.TriggerAt < float64(f.Len()) {
+	trig := float64(n) / 2
+	if f.TriggerAt >= 0 && f.TriggerAt < float64(n) {
 		trig = f.TriggerAt
 	}
-	f64(180, -trig*f.SampleS)
-	f64(188, -(float64(f.Len()) * f.SampleS / 2)) // first-pixel offset
-	copy(d[196:], "V")                            // VERTUNIT
-	copy(d[244:], "s")                            // HORUNIT
-	le16(344, ch)                                 // WAVE_SOURCE (0-based)
-	return d
+	d := wave.Desc{
+		Template:        "DSO",
+		CommType:        0, // 8-bit
+		CommOrder:       1,
+		WaveArray1:      int32(n), // count × 1 byte
+		WaveArrayCount:  int32(n),
+		PointsPerScreen: int32(f.WinPoints),
+		LastValid:       int32(n - 1),
+		FirstPoint:      int32(h.wfFP),
+		Sparsing:        int32(h.wfSP),
+		SegmentIndex:    int32(h.wfSN),
+		SweepsPerAcq:    1,
+		VerticalGain:    float32(vdiv / 25 * h.probe(ch)), // WF? scale: 25 codes/div (spec 11 §4)
+		VerticalOffset:  float32(off),
+		MaxValue:        127,
+		MinValue:        -128,
+		HorizInterval:   float32(f.SampleS), // 1/SARA
+		HorizOffset:     -trig * f.SampleS,
+		PixelOffset:     -(float64(n) * f.SampleS / 2), // first-pixel offset
+		VertUnit:        "V",
+		HorUnit:         "s",
+		WaveSource:      int16(ch), // 0-based
+	}
+	return d.Encode()
 }

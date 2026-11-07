@@ -655,7 +655,7 @@ channels' trace volts there.
 ### 10.3 Task workspaces, settings sheets and the F-key column
 
 The panel's UI (spec 08 §7, ADR-TASK-WORKSPACES) is drawn by the overlay from a **view snapshot**
-(`panel/wsview.View`) the panel controller builds: plain data (texts, semantic colours, layout
+(`open-dso-core/uimodel/wsview.View`) the panel controller builds: plain data (texts, semantic colours, layout
 numbers), no logic. The renderer maps the semantic colours onto the generated palette (§8) and draws
 with flat 1-px lines and filled rectangles and the 5×7 font only; no colour is hard-coded (the
 channel colours are always `colC1`/`colC2`).

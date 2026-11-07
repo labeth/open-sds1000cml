@@ -77,8 +77,9 @@ func BuildMaskFromEnvelope(lo []uint8, hi []uint8, winCols int, tolCols int, tol
 // EdgeRead is core.EdgeRead.
 func EdgeRead(f *sample.Frame) uint64 { return core.EdgeRead(f) }
 
-// EdgeWindows is core.EdgeWindows.
-func EdgeWindows(f *sample.Frame, ch int) []measure.EdgeWindow { return core.EdgeWindows(f, ch) }
+// EdgeWindows is measure.EdgeWindows: channel ch's samples of frame f's
+// edge windows.
+func EdgeWindows(f *sample.Frame, ch int) []measure.EdgeWindow { return measure.EdgeWindows(f, ch) }
 
 // EresLenForBits is core.EresLenForBits.
 func EresLenForBits(bits float64) int { return core.EresLenForBits(bits) }
@@ -86,8 +87,9 @@ func EresLenForBits(bits float64) int { return core.EresLenForBits(bits) }
 // ErrClientFramesBody is the core error value itself, so errors.Is matches either name.
 var ErrClientFramesBody = core.ErrClientFramesBody
 
-// MeasureRange is core.MeasureRange.
-func MeasureRange(f *sample.Frame) (int, int) { return core.MeasureRange(f) }
+// MeasureRange is measure.Range: the stretch of the record measurements
+// read.
+func MeasureRange(f *sample.Frame) (int, int) { return measure.Range(f) }
 
 // SerialDecoderList is core.SerialDecoderList.
 func SerialDecoderList() []core.SerialDecoder { return core.SerialDecoderList() }
