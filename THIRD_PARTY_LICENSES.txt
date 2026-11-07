@@ -8,6 +8,9 @@ here as its authors publish it.
 * Every program (the scope app, the OTA agent, otactl and the emergency
   backstop) is built with Go and contains the Go standard library and
   runtime (The Go Authors, BSD 3-Clause).
+* The OTA agent, otactl and the diagnostics collector are built on
+  open-dso-core, the family's shared core, which is this project's own code
+  under the same MIT License (LICENSE).
 * The OTA agent and otactl contain the Go modules listed below; otactl also
   embeds the NATS server for `otactl serve`. The scope app uses no Go
   module beyond the standard library.

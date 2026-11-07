@@ -12,7 +12,8 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/labeth/open-sds1000cml/ota/internal/fdinherit"
+	core "github.com/labeth/open-dso-core/supervisor/diag"
+	"github.com/labeth/open-dso-core/supervisor/fdinherit"
 )
 
 // The probe image's control word (register 0x19): hold D1, D2, G2 and A11 at
@@ -298,7 +299,7 @@ func ledWalk(b regBus, sleep func(time.Duration)) error {
 func armInventory(root string) []string {
 	var out []string
 	add := func(f string, args ...any) { out = append(out, fmt.Sprintf(f, args...)) }
-	rd := func(p string) string { return strings.TrimSpace(readStr(filepath.Join(root, p))) }
+	rd := func(p string) string { return strings.TrimSpace(core.ReadStr(filepath.Join(root, p))) }
 	each := func(dir string, fn func(name, path string)) {
 		ents, _ := os.ReadDir(filepath.Join(root, dir))
 		for _, e := range ents {
@@ -340,17 +341,17 @@ func armInventory(root string) []string {
 		drv, _ := os.Readlink(filepath.Join(root, p, "driver"))
 		add("platform %s %s", n, filepath.Base(drv))
 	})
-	for _, l := range strings.Split(readStr(filepath.Join(root, "proc/mtd")), "\n")[1:] {
+	for _, l := range strings.Split(core.ReadStr(filepath.Join(root, "proc/mtd")), "\n")[1:] {
 		if l = strings.TrimSpace(l); l != "" {
 			add("mtd %s", l)
 		}
 	}
-	for l := range strings.SplitSeq(readStr(filepath.Join(root, "proc/bus/input/devices")), "\n") {
+	for l := range strings.SplitSeq(core.ReadStr(filepath.Join(root, "proc/bus/input/devices")), "\n") {
 		if n, ok := strings.CutPrefix(l, "N: Name="); ok {
 			add("input %s", n)
 		}
 	}
-	for l := range strings.SplitSeq(readStr(filepath.Join(root, "proc/asound/cards")), "\n") {
+	for l := range strings.SplitSeq(core.ReadStr(filepath.Join(root, "proc/asound/cards")), "\n") {
 		if strings.Contains(l, "]:") {
 			add("sound %s", strings.TrimSpace(l))
 		}

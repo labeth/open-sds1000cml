@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/labeth/open-sds1000cml/ota/internal/vxi11"
+	"github.com/labeth/open-dso-core/supervisor/vxi11"
 )
 
 // stateQueries read the factory app's settings: the identity first, then

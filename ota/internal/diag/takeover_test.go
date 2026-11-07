@@ -9,6 +9,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	core "github.com/labeth/open-dso-core/supervisor/diag"
 )
 
 // fakeBoard is the probe image on a board: each ball open, held at a level,
@@ -376,7 +378,7 @@ func TestTakeoverGate(t *testing.T) {
 		sweepDone: true, alive: true, cfg: 0x00c2, factoryRBF: []int64{factoryRBFLen},
 		files: map[string]bool{probeRBF: true, probePullRBF: true, stickApp: true},
 	}
-	if ok, why := passed(TakeoverGate(good)); !ok {
+	if ok, why := core.Passed(TakeoverGate(good)); !ok {
 		t.Fatal(why)
 	}
 	for name, in := range map[string]takeoverInput{
@@ -386,7 +388,7 @@ func TestTakeoverGate(t *testing.T) {
 		"fpga part":          {sweepDone: true, alive: true, cfg: 0xc0, factoryRBF: []int64{580000}, files: good.files},
 		"stick files":        {sweepDone: true, alive: true, cfg: 0xc0, factoryRBF: good.factoryRBF, files: map[string]bool{probeRBF: true}},
 	} {
-		ok, why := passed(TakeoverGate(in))
+		ok, why := core.Passed(TakeoverGate(in))
 		if ok || !strings.HasPrefix(why, name+":") {
 			t.Errorf("%s: passed=%v %s", name, ok, why)
 		}
@@ -430,5 +432,13 @@ func TestCensusOfTheSDS1102CMLPlus(t *testing.T) {
 				t.Errorf("session %q: %s: %s %s", run, v.Part, v.Verdict, v.Detail)
 			}
 		}
+	}
+}
+
+// The probe census writes the FPGA: the read-only first contact is refused.
+// TRLC-LINKS: REQ-SDS-288
+func TestProbeCensusRefusesReadOnly(t *testing.T) {
+	if _, err := (&probeCensus{}).Run(t.Context(), false); err == nil {
+		t.Fatal("a read-only census loaded the probe images")
 	}
 }

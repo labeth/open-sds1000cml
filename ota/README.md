@@ -11,6 +11,15 @@ this file is for working on the OTA system and for every `otactl` command.
 | `cmd/otactl` | on your computer | host controller: status/probe/exec, logs, chunked file transfer, app + agent OTA, factory takeover, raw SCPI, and Shelly mains power control. Can run an embedded NATS broker (`otactl serve`). |
 | `boot/startup.sh` | on the scope, from the USB stick | the never-OTA'd boot anchor: runs the stick's `commands` file, then the agent A/B respawn loop with crash-loop revert. |
 
+The agent, otactl and the diagnostics collector are built on the core's supervisor module
+(`open-dso-core/supervisor`: the agent, its RPC and transports, A/B slots, health rollback, otactl,
+the diagnostics framework), required with a `replace` to `../../open-dso-core/supervisor`. This
+module holds the SDS1102CML+'s side: `internal/board` (the inherited descriptors, the factory
+takeover over VXI-11 with the GPMC idle landing, the device fingerprint), `internal/watchdog` (the
+AM335x watchdog device), `internal/gpmc`, `internal/diag` (the diagnostics stages of this family:
+SCPI sweep with the GPMC register trace, probe-image census, board tests), `internal/buildinfo`
+and `boot/`.
+
 There is **no on-device shell/login service**. All control is through the agent and `otactl`; recovery
 of last resort is a mains power-cycle.
 

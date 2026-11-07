@@ -195,27 +195,6 @@ func TestARMInventory(t *testing.T) {
 	}
 }
 
-// TestBannerDrawsTheWord: the DONE screen's word is white on its colour.
-// TRLC-LINKS: REQ-SDS-292
-func TestBannerDrawsTheWord(t *testing.T) {
-	b := newBanner(800, 480, doneGreen, "DONE", []string{"switch the scope off"})
-	white, green := 0, 0
-	for _, p := range b.px {
-		switch p {
-		case 0xffff:
-			white++
-		case doneGreen:
-			green++
-		}
-	}
-	if white < 4*12*12*10 || green < 800*480/2 || white+green != len(b.px) {
-		t.Fatalf("white %d green %d of %d", white, green, len(b.px))
-	}
-	if _, ok := glyphs5x7['D']; !ok {
-		t.Fatal("no D")
-	}
-}
-
 // TestBoardReferenceParses: the embedded SDS1102CML+ values parse.
 // TRLC-LINKS: REQ-SDS-290
 func TestBoardReferenceParses(t *testing.T) {

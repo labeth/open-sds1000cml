@@ -63,6 +63,13 @@ jobs:
           DSO_SCOPE_DIR: ${{ github.workspace }}
         run: go vet ./... && go test -skip 'TopRTL' ./...
 
+      # The core's supervisor module, which the ota module's agent, otactl
+      # and sdsdiag are built on.
+      - name: test open-dso-core's supervisor
+        if: matrix.module == 'ota'
+        working-directory: ${{ github.workspace }}/../open-dso-core/supervisor
+        run: go vet ./... && go test ./...
+
   # golangci-lint with the repository's .golangci.yml (the linters, their
   # thresholds and each exception's reason live there).
   lint:

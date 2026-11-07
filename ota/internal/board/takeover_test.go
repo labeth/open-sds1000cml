@@ -1,18 +1,17 @@
 // ENGMODEL-OWNER-UNIT: FU-OTA-AGENT
 
-package agent
+package board
 
 import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"strings"
 	"syscall"
 	"testing"
 	"time"
 
-	"github.com/labeth/open-sds1000cml/ota/internal/fdinherit"
-	"github.com/labeth/open-sds1000cml/ota/internal/slots"
+	"github.com/labeth/open-dso-core/supervisor/fdinherit"
+	"github.com/labeth/open-dso-core/supervisor/slots"
 )
 
 // TRLC-LINKS: REQ-SDS-027
@@ -44,8 +43,8 @@ func TestSplitCIDR(t *testing.T) {
 
 // TRLC-LINKS: REQ-SDS-027
 func TestMatchesFactoryName(t *testing.T) {
-	a := testAgent(t)
-	a.cfg.FactoryNames = []string{"SDS1000", "phoenix"}
+	_, b := testBoard(t)
+	b.bc.FactoryNames = []string{"SDS1000", "phoenix"}
 	cases := []struct {
 		h    fdinherit.Holder
 		want bool
@@ -57,12 +56,12 @@ func TestMatchesFactoryName(t *testing.T) {
 		{fdinherit.Holder{}, false},
 	}
 	for _, tc := range cases {
-		if got := a.matchesFactoryName(tc.h); got != tc.want {
+		if got := b.matchesFactoryName(tc.h); got != tc.want {
 			t.Errorf("matchesFactoryName(%+v) = %v, want %v", tc.h, got, tc.want)
 		}
 	}
-	a.cfg.FactoryNames = nil
-	if a.matchesFactoryName(fdinherit.Holder{Comm: "SDS1000_arm.app"}) {
+	b.bc.FactoryNames = nil
+	if b.matchesFactoryName(fdinherit.Holder{Comm: "SDS1000_arm.app"}) {
 		t.Error("no configured names must match nothing")
 	}
 }
@@ -72,78 +71,9 @@ func TestFactoryCandidatesEmptyWhenNobodyHoldsDevice(t *testing.T) {
 	// cfg.GpmcDev points into a fresh TempDir; no process on this machine can
 	// hold it, so the /proc scan must come back empty — the gate that keeps
 	// the supervisor from ever reclaiming a bus nobody owns.
-	a := testAgent(t)
-	if cands := a.factoryCandidates(); len(cands) != 0 {
+	_, b := testBoard(t)
+	if cands := b.factoryCandidates(); len(cands) != 0 {
 		t.Errorf("factoryCandidates = %v, want none", cands)
-	}
-}
-
-// TRLC-LINKS: REQ-SDS-027
-func TestTakeoverResultSteps(t *testing.T) {
-	r := &TakeoverResult{}
-	r.step("gate: inherited gpmc fd=%d", 7)
-	r.step("plain")
-	if len(r.Steps) != 2 || r.Steps[0] != "gate: inherited gpmc fd=7" {
-		t.Errorf("Steps = %v", r.Steps)
-	}
-	if got := r.Summary(); got != "gate: inherited gpmc fd=7; plain" {
-		t.Errorf("Summary = %q", got)
-	}
-}
-
-// TRLC-LINKS: REQ-SDS-027
-func TestTakeoverIdempotentWhenAlreadyTakenOver(t *testing.T) {
-	a := testAgent(t)
-	if err := a.st.update(func(s *State) { s.TakenOver = true }); err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(a.wd.Disarm)
-	res := a.Takeover(TakeoverOpts{})
-	if !res.OK {
-		t.Fatalf("second takeover must be idempotent: %+v", res)
-	}
-	if !strings.Contains(res.Summary(), "already taken over") {
-		t.Errorf("summary = %q", res.Summary())
-	}
-	// It re-arms the watchdog in the background (against the temp-file device
-	// from testAgent).
-	deadline := time.Now().Add(5 * time.Second)
-	for !a.wd.Status().Armed {
-		if time.Now().After(deadline) {
-			t.Fatal("the idempotent takeover did not re-arm the watchdog")
-		}
-		time.Sleep(10 * time.Millisecond)
-	}
-}
-
-// TRLC-LINKS: REQ-SDS-104
-func TestUntakeoverReleasesControl(t *testing.T) {
-	a := testAgent(t)
-	if err := a.st.update(func(s *State) { s.TakenOver = true; s.AutoTakeover = true }); err != nil {
-		t.Fatal(err)
-	}
-	_ = a.store.Init()
-	// Run the real supervisor so untakeover's internal ctl "stop" is served.
-	// No slot has a binary and no factory process holds the temp GpmcDev, so
-	// the loop just idles.
-	go a.superviseLoop()
-	defer a.Stop()
-
-	resp := a.Dispatch([]byte(`{"cmd":"untakeover"}`))
-	if !resp.OK {
-		t.Fatalf("untakeover failed: %s", resp.Err)
-	}
-	st := a.st.get()
-	if st.TakenOver || st.AutoTakeover {
-		t.Errorf("state after untakeover = %+v, want both flags cleared", st)
-	}
-	if !pausedOf(a) {
-		t.Error("untakeover must pause the supervisor")
-	}
-	// The cleared state must be persisted for the next agent generation.
-	a2 := New(a.cfg)
-	if got := a2.st.get(); got.TakenOver || got.AutoTakeover {
-		t.Errorf("persisted state = %+v, want cleared", got)
 	}
 }
 
@@ -153,9 +83,10 @@ func TestUntakeoverReleasesControl(t *testing.T) {
 // a healthy app mid-acquisition on every update-agent).
 // TRLC-LINKS: REQ-SDS-027, REQ-SDS-028
 func TestFactoryCandidatesSkipOurOrphanApp(t *testing.T) {
-	a := testAgent(t)
-	_ = a.store.Init()
-	if err := os.WriteFile(a.cfg.GpmcDev, nil, 0o644); err != nil {
+	_, b := testBoard(t)
+	store := slots.New(b.SlotsDir())
+	_ = store.Init()
+	if err := os.WriteFile(b.bc.GpmcDev, nil, 0o644); err != nil {
 		t.Fatal(err)
 	}
 	sleepBin, err := exec.LookPath("sleep")
@@ -166,10 +97,10 @@ func TestFactoryCandidatesSkipOurOrphanApp(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := os.MkdirAll(a.store.SlotDir(slots.SlotB), 0o755); err != nil {
+	if err := os.MkdirAll(store.SlotDir(slots.SlotB), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	app := a.store.BinPath(slots.SlotB)
+	app := store.BinPath(slots.SlotB)
 	if err := os.WriteFile(app, data, 0o755); err != nil {
 		t.Fatal(err)
 	}
@@ -179,25 +110,25 @@ func TestFactoryCandidatesSkipOurOrphanApp(t *testing.T) {
 	}
 	// Both detach (the shell exits): not descendants of this process.
 	for _, bin := range []string{app, other} {
-		cmd := exec.CommandContext(t.Context(), "/bin/sh", "-c", bin+" 20 3<"+a.cfg.GpmcDev+" >/dev/null 2>&1 &")
+		cmd := exec.CommandContext(t.Context(), "/bin/sh", "-c", bin+" 20 3<"+b.bc.GpmcDev+" >/dev/null 2>&1 &")
 		if err := cmd.Run(); err != nil {
 			t.Fatal(err)
 		}
 	}
 	defer func() {
-		for _, h := range fdinherit.HoldersOf(a.cfg.GpmcDev) {
+		for _, h := range fdinherit.HoldersOf(b.bc.GpmcDev) {
 			_ = syscall.Kill(h.PID, syscall.SIGKILL)
 		}
 	}()
 	var cands []fdinherit.Holder
 	deadline := time.Now().Add(3 * time.Second)
 	for time.Now().Before(deadline) {
-		if len(fdinherit.HoldersOf(a.cfg.GpmcDev)) == 2 {
+		if len(fdinherit.HoldersOf(b.bc.GpmcDev)) == 2 {
 			break
 		}
 		time.Sleep(20 * time.Millisecond)
 	}
-	cands = a.factoryCandidates()
+	cands = b.factoryCandidates()
 	if len(cands) != 1 || filepath.Base(cands[0].Exe) != "factory_app" {
 		t.Fatalf("factoryCandidates = %+v, want only the factory_app (the slot's app is ours)", cands)
 	}

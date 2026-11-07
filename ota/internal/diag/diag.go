@@ -1,230 +1,143 @@
 // ENGMODEL-OWNER-UNIT: FU-OTA-DIAG
 
-// Package diag is the diagnostics stick's collector: booted by the factory
-// firmware on another SDS1000 variant, it leaves one archive of what that
-// board is and does, for a port of this firmware to its population. The
-// passive stage only reads; the active stage traces the factory app's
-// register traffic while it steps the factory app through its settings over
-// SCPI, and puts the settings back; the takeover stage stops the factory app,
-// takes a census of every FPGA ball with the probe image, and runs this
-// firmware's app on the board. Each runs only when the checks before it
-// pass. Nothing writes the instrument's flash; the FPGA images are volatile.
+// Package diag is the SDS1000 diagnostics stick's board: booted by the
+// factory firmware on another SDS1000 variant, the core collector
+// (open-dso-core/supervisor/diag) leaves one archive of what that board is
+// and does, for a port of this firmware to its population. This package is
+// what its stages do on this family: the passive stage reads the ARM's
+// devices, the factory firmware, the FPGA over the inherited /dev/Gpmc and
+// the factory app's settings over SCPI; the active stage traces the factory
+// app's register traffic while it steps the factory app through its settings
+// over SCPI, and puts the settings back; the takeover stage stops the factory
+// app, takes a census of every FPGA ball with the probe image, and runs this
+// firmware's app on the board. Nothing writes the instrument's flash; the
+// FPGA images are volatile.
 package diag
 
 import (
 	"bufio"
 	"errors"
-	"flag"
 	"fmt"
 	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
-	"runtime"
 	"strconv"
 	"strings"
 	"syscall"
 	"time"
 
+	core "github.com/labeth/open-dso-core/supervisor/diag"
+	"github.com/labeth/open-dso-core/supervisor/vxi11"
+
 	"github.com/labeth/open-sds1000cml/ota/internal/buildinfo"
-	"github.com/labeth/open-sds1000cml/ota/internal/vxi11"
 )
 
-// The modes a stick runs in: MODE on the stick names one. Auto (the
-// default) runs the passive stage, then the active stage when the gate finds
-// the scope is one it understands, then the takeover stage when its own gate
-// passes; active runs the active stage after passive without the gate, and
-// stops there; passive runs neither.
-const (
-	ModeAuto    = "auto"
-	ModePassive = "passive"
-	ModeActive  = "active"
-)
+// Run is the program: the core collector on this board.
+// TRLC-LINKS: REQ-SDS-284
+func Run(args []string, stderr io.Writer) int { return core.Run(args, stderr, &stick{}) }
 
-// archiveMax caps the archive's stored bytes (the trace is the big member).
-const archiveMax = 512 << 20
-
-// Run is the program: no subcommand collects; "trace" and "memread" are the
-// collector's own child processes. It returns the exit code.
-// TRLC-LINKS: REQ-SDS-284, REQ-SDS-285, REQ-SDS-286
-func Run(args []string, stderr io.Writer) int {
-	if len(args) > 0 {
-		switch args[0] {
-		case "trace":
-			return traceChild(args[1:], stderr)
-		case "memread":
-			return memChild(args[1:], stderr)
-		}
-	}
-	fs := flag.NewFlagSet("sdsdiag", flag.ContinueOnError)
-	fs.SetOutput(stderr)
-	mode := fs.String("mode", "", "auto (every stage, each gated), active (passive and active) or passive (empty: the MODE file next to the program; auto if none)")
-	out := fs.String("out", "", "where the archive goes (empty: the stick's root, above the program's directory)")
-	wait := fs.Duration("wait", 150*time.Second, "how long to wait for the factory app's SCPI server")
-	dwell := fs.Duration("dwell", 700*time.Millisecond, "how long each sweep step is held (active)")
-	steps := fs.Int("steps", 0, "run only the first steps of the sweep (active; 0: all)")
-	limit := fs.Duration("limit", 30*time.Minute, "the longest the active sweep runs before it puts the settings back")
-	pid := fs.Int("pid", 0, "trace this process instead of the factory app (active)")
-	hold := fs.Duration("hold", 30*time.Minute, "how long the DONE screen is kept over the factory app's")
-	if err := fs.Parse(args); err != nil {
-		return 2
-	}
-	self, err := os.Executable()
-	if err != nil {
-		_, _ = fmt.Fprintln(stderr, "sdsdiag:", err)
-		return 1
-	}
-	dir := filepath.Dir(self)
-	if *mode == "" {
-		*mode = strings.TrimSpace(readStr(filepath.Join(dir, "MODE")))
-	}
-	if *mode != ModeActive && *mode != ModePassive {
-		*mode = ModeAuto
-	}
-	if *out == "" {
-		*out = filepath.Dir(dir)
-	}
-	c := &collection{
-		self: self, mode: *mode, outDir: *out, wait: *wait, dwell: *dwell, steps: *steps, limit: *limit, pid: *pid, hold: *hold,
-		status: filepath.Join(*out, "sds-diag-status.txt"),
-	}
-	if err := c.run(); err != nil {
-		c.say("FAILED: %v", err)
-		_, _ = fmt.Fprintln(stderr, "sdsdiag:", err)
-		c.doneScreen(false, []string{err.Error(), "see sds-diag-status.txt on the stick"})
-		return 1
-	}
-	return 0
+// stick is one run's board state, shared by its stages.
+type stick struct {
+	c         *core.Collection
+	vx        *vxi11.Client // the factory app's SCPI, nil until reached
+	ps        []core.Proc
+	pid       int    // the factory app (or -pid)
+	fpgaOK    bool   // the inherited /dev/Gpmc answered a register read
+	fpgaVer   uint16 // the version register's value
+	st        scpiState
+	sweepDone bool     // the factory app ran on through the sweep and answered after the restore
+	inventory []string // the ARM's devices (armInventory)
 }
 
-// collection is one run of the collector.
-type collection struct {
-	self, mode, outDir, status string
-	wait, dwell, limit         time.Duration
-	steps                      int  // the sweep's first steps only (0: all)
-	pid                        int  // the process to trace (0: the factory app)
-	sweepDone                  bool // the factory app ran on through the sweep and answered after the restore
-	tookOver                   bool // the takeover stage stopped the factory app
-	hold                       time.Duration
-	inventory                  []string // the ARM's devices (armInventory)
-	summary                    []string
+var _ core.Board = (*stick)(nil)
+
+// Version is the build on the summary's first line.
+// TRLC-LINKS: REQ-SDS-284
+func (s *stick) Version() string { return buildinfo.Version }
+
+// Child runs the collector's own child processes: "trace" and "memread".
+// TRLC-LINKS: REQ-SDS-285
+func (s *stick) Child(name string, args []string, stderr io.Writer) (int, bool) {
+	switch name {
+	case "trace":
+		return traceChild(args, stderr), true
+	case "memread":
+		return memChild(args, stderr), true
+	}
+	return 0, false
 }
 
-// say writes a progress line to the status file on the stick: the person who
-// booted the stick sees what it is doing when they take it out.
-// TRLC-LINKS: REQ-SDS-286
-func (c *collection) say(format string, args ...any) {
-	line := fmt.Sprintf("%s  %s\n", time.Now().Format("15:04:05"), fmt.Sprintf(format, args...))
-	f, err := os.OpenFile(c.status, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644) //nolint:gosec // G302,G304: a text file the owner reads on the stick
-	if err != nil {
-		return
+// Passive reads the ARM's devices, the factory firmware, the processes, the
+// FPGA and the screen, then waits for the factory app's SCPI server and reads
+// its settings. Without SCPI no later stage runs.
+// TRLC-LINKS: REQ-SDS-284
+func (s *stick) Passive(c *core.Collection, a *Archive) bool {
+	s.c = c
+	s.inventory = armInventory("/")
+	a.AddText("system/arm_inventory.txt", strings.Join(s.inventory, "\n")+"\n")
+	av := armVerdict(s.inventory, loadBoardReference().ARM)
+	c.Note("arm devices: %s: %s", av.Verdict, av.Detail)
+	c.Say("firmware files")
+	core.CollectFirmware(a, firmwareRoots, firmwareSkip)
+	c.Say("processes")
+	s.ps = core.CollectProcs(a)
+	s.pid = factoryPID(s.ps)
+	c.Note("factory app pid: %d", s.pid)
+	if c.PID != 0 {
+		s.pid = c.PID
+		c.Note("traced instead: pid %d", s.pid)
 	}
-	_, _ = f.WriteString(line)
-	_ = f.Close()
-}
+	var fpgaNote string
+	fpgaNote, s.fpgaVer, s.fpgaOK = collectFPGA(a)
+	c.Note("fpga: %s", fpgaNote)
+	c.Note("screen: %s", core.CollectScreen(a, "start"))
 
-// note adds a line to the summary.
-// TRLC-LINKS: REQ-SDS-286
-func (c *collection) note(format string, args ...any) {
-	c.summary = append(c.summary, fmt.Sprintf(format, args...))
-}
-
-// run collects into a new archive on the stick.
-// TRLC-LINKS: REQ-SDS-284, REQ-SDS-285, REQ-SDS-286
-func (c *collection) run() error {
-	name := archiveName(c.outDir, c.mode)
-	path := filepath.Join(c.outDir, name)
-	c.say("collecting (%s) into %s - leave the scope on until DONE", c.mode, name)
-	f, err := os.Create(path) //nolint:gosec // G304: the archive on the stick
-	if err != nil {
-		return err
-	}
-	a := NewArchive(f, archiveMax)
-	c.note("sdsdiag %s, mode %s", buildinfo.Version, c.mode)
-	c.note("kernel: %s", strings.TrimSpace(readStr("/proc/version")))
-	c.note("cpu: %s", cpuLine())
-	c.note("mac: %s", strings.TrimSpace(readStr("/sys/class/net/eth0/address")))
-
-	c.say("system")
-	collectSystem(a)
-	c.inventory = armInventory("/")
-	a.AddText("system/arm_inventory.txt", strings.Join(c.inventory, "\n")+"\n")
-	av := armVerdict(c.inventory, loadBoardReference().ARM)
-	c.note("arm devices: %s: %s", av.Verdict, av.Detail)
-	c.say("firmware files")
-	collectFirmware(a, firmwareRoots)
-	c.say("processes")
-	ps := collectProcs(a)
-	pid := factoryPID(ps)
-	c.note("factory app pid: %d", pid)
-	if c.pid != 0 {
-		pid = c.pid
-		c.note("traced instead: pid %d", pid)
-	}
-	fpgaNote, fpgaVer, fpgaOK := collectFPGA(a)
-	c.note("fpga: %s", fpgaNote)
-	c.note("screen: %s", collectScreen(a, "start"))
-
-	c.say("waiting for the factory app's SCPI server")
-	c.scpiStages(a, ps, pid, fpgaOK, fpgaVer)
-	errs := a.Errors()
-	c.note("collector errors: %d (errors.txt)", len(errs))
-	a.AddText("summary.txt", strings.Join(c.summary, "\n")+"\n")
-	if err := a.Close(); err != nil {
-		_ = f.Close()
-		return err
-	}
-	if err := f.Close(); err != nil {
-		return err
-	}
-	_ = os.WriteFile(filepath.Join(c.outDir, strings.TrimSuffix(name, ".tar.gz")+".txt"), []byte(strings.Join(c.summary, "\n")+"\n"), 0o644) //nolint:gosec // G306: the summary the owner reads on the stick
-	c.say("DONE: send %s to the project (it holds this scope's firmware files: send it privately)", name)
-	c.doneScreen(true, []string{name, "switch the scope off", "and take the stick out"})
-	return nil
-}
-
-// scpiStages reads the factory app's settings over SCPI and, when the mode
-// and the gate allow it, runs the active stage.
-// TRLC-LINKS: REQ-SDS-284, REQ-SDS-285, REQ-SDS-287
-func (c *collection) scpiStages(a *Archive, ps []Proc, pid int, fpgaOK bool, fpgaVer uint16) {
-	vx, err := dialFactory(c.wait)
+	c.Say("waiting for the factory app's SCPI server")
+	vx, err := dialFactory(c.Wait)
 	if err != nil {
 		a.Errorf("scpi: %v", err)
-		c.note("scpi: %v", err)
-		return
+		c.Note("scpi: %v", err)
+		return false
 	}
-	defer vx.Close()
-	st := readState(vx)
-	a.AddJSON("scpi/state.json", st)
-	c.note("identity: %s", st.Answers["*IDN?"])
-	active := c.mode == ModeActive
-	if c.mode == ModeAuto {
-		checks := Gate(gateInput{cpuinfo: readStr("/proc/cpuinfo"), procs: ps, pid: pid, fpgaOK: fpgaOK, fpgaVer: fpgaVer, scpi: &st})
-		a.AddJSON("gate.json", checks)
-		ok, why := passed(checks)
-		if ok {
-			c.note("gate: every check passed - the active stage runs")
-		} else {
-			c.note("gate: the active stage does not run (%s)", why)
-			c.say("passive only: %s", why)
-		}
-		active = ok
-	}
-	if !active {
-		return
-	}
-	c.say("active: SoC registers")
-	collectMem(a, c.self)
-	c.say("active: the settings sweep with the register trace (about %d minutes)", int(c.sweepTime().Minutes()+0.5))
-	if err := c.sweep(a, vx, pid, st); err != nil {
+	s.vx = vx
+	s.st = readState(vx)
+	a.AddJSON("scpi/state.json", s.st)
+	c.Note("identity: %s", s.st.Answers["*IDN?"])
+	return true
+}
+
+// ActiveGate is Gate on what the passive stage found.
+// TRLC-LINKS: REQ-SDS-287
+func (s *stick) ActiveGate(*core.Collection) []core.Check {
+	return Gate(gateInput{cpuinfo: core.ReadStr("/proc/cpuinfo"), procs: s.ps, pid: s.pid, fpgaOK: s.fpgaOK, fpgaVer: s.fpgaVer, scpi: &s.st})
+}
+
+// Active reads the SoC's registers and runs the settings sweep under the
+// register trace.
+// TRLC-LINKS: REQ-SDS-285
+func (s *stick) Active(c *core.Collection, a *Archive) {
+	c.Say("active: SoC registers")
+	collectMem(a, c.Self)
+	c.Say("active: the settings sweep with the register trace (about %d minutes)", int(s.sweepTime().Minutes()+0.5))
+	if err := s.sweep(a, s.vx, s.pid, s.st); err != nil {
 		a.Errorf("sweep: %v", err)
-		c.note("sweep: %v", err)
+		c.Note("sweep: %v", err)
 	}
-	c.note("screen after: %s", collectScreen(a, "end"))
-	if c.mode == ModeAuto {
-		c.takeoverStage(a, vx, pid)
+	c.Note("screen after: %s", core.CollectScreen(a, "end"))
+}
+
+// Close ends the SCPI link.
+// TRLC-LINKS: REQ-SDS-284
+func (s *stick) Close() {
+	if s.vx != nil {
+		s.vx.Close()
 	}
 }
+
+// ScreenOn turns the backlight on (gpio7, spec 08 §10.1).
+// TRLC-LINKS: REQ-SDS-292
+func (s *stick) ScreenOn() error { return writeSys("/sys/class/gpio/gpio7/value", "1") }
 
 // stepTime is about how long one traced step takes on the SDS1102CML+: the
 // factory app takes a step slowly while traced (136 steps took 21 minutes).
@@ -232,12 +145,12 @@ const stepTime = 9 * time.Second
 
 // sweepTime is about how long the active sweep takes, at most the limit.
 // TRLC-LINKS: REQ-SDS-285
-func (c *collection) sweepTime() time.Duration {
+func (s *stick) sweepTime() time.Duration {
 	n := len(SweepSteps())
-	if c.steps > 0 {
-		n = min(n, c.steps)
+	if s.c.Steps > 0 {
+		n = min(n, s.c.Steps)
 	}
-	return min(time.Duration(n)*(stepTime+c.dwell-700*time.Millisecond), c.limit)
+	return min(time.Duration(n)*(stepTime+s.c.Dwell-700*time.Millisecond), s.c.Limit)
 }
 
 // sweep steps the factory app through SweepSteps, each step in a register
@@ -249,58 +162,59 @@ func (c *collection) sweepTime() time.Duration {
 // read-back query and the restore of the saved settings run untraced, and the
 // settings are read again at the end to show they are back.
 // TRLC-LINKS: REQ-SDS-285
-func (c *collection) sweep(a *Archive, vx *vxi11.Client, pid int, st scpiState) error {
+func (s *stick) sweep(a *Archive, vx *vxi11.Client, pid int, st scpiState) error {
+	c := s.c
 	if pid == 0 {
 		return errors.New("no factory app running: nothing to trace")
 	}
 	var log strings.Builder
 	fmt.Fprintf(&log, "# step t_us cmd | the factory app's answer to the step's query | ms | trace window\n")
 	steps := SweepSteps()
-	if c.steps > 0 && c.steps < len(steps) {
-		steps = steps[:c.steps]
+	if c.Steps > 0 && c.Steps < len(steps) {
+		steps = steps[:c.Steps]
 	}
 	regs := regMap{}
-	end := time.Now().Add(c.limit)
+	end := time.Now().Add(c.Limit)
 	ranOn := true // the factory app ran on after every window
-	for i, s := range steps {
+	for i, step := range steps {
 		if time.Now().After(end) {
-			fmt.Fprintf(&log, "# the sweep's %v ran out after %d of %d steps\n", c.limit, i, len(steps))
-			c.note("sweep: cut short after %d of %d steps (the %v limit)", i, len(steps), c.limit)
+			fmt.Fprintf(&log, "# the sweep's %v ran out after %d of %d steps\n", c.Limit, i, len(steps))
+			c.Note("sweep: cut short after %d of %d steps (the %v limit)", i, len(steps), c.Limit)
 			break
 		}
 		if i%10 == 0 {
-			c.say("active: step %d of %d", i, len(steps))
+			c.Say("active: step %d of %d", i, len(steps))
 		}
-		file := filepath.Join(c.outDir, fmt.Sprintf(".sds-diag-step-%03d.gz", i))
+		file := filepath.Join(c.OutDir, fmt.Sprintf(".sds-diag-step-%03d.gz", i))
 		t0 := time.Now()
-		t := monoMicros()
+		t := core.MonoMicros()
 		var ans string
 		var qerr error
-		werr := c.window(pid, file, func() error { return vx.Send(s.Cmd) })
-		time.Sleep(c.dwell)
-		ans, qerr = vx.Query(queryOf(s.Cmd))
-		fmt.Fprintf(&log, "%03d %d %s | %s %s | %d | %s\n", i, t, s.Cmd, strings.TrimSpace(ans), errText(qerr),
-			time.Since(t0).Milliseconds(), errText(werr))
-		a.AddFile(fmt.Sprintf("trace/steps/%03d-%s.txt.gz", i, s.Group), file, 64<<20)
+		werr := s.window(pid, file, func() error { return vx.Send(step.Cmd) })
+		time.Sleep(c.Dwell)
+		ans, qerr = vx.Query(queryOf(step.Cmd))
+		fmt.Fprintf(&log, "%03d %d %s | %s %s | %d | %s\n", i, t, step.Cmd, strings.TrimSpace(ans), core.ErrText(qerr),
+			time.Since(t0).Milliseconds(), core.ErrText(werr))
+		a.AddFile(fmt.Sprintf("trace/steps/%03d-%s.txt.gz", i, step.Group), file, 64<<20)
 		if err := regs.addTrace(i, file); err != nil {
 			a.Errorf("register map, step %d: %v", i, err)
 		}
 		_ = os.Remove(file)
 		if errors.Is(werr, errStopped) {
 			fmt.Fprintf(&log, "# the factory app did not run on after step %d: the sweep ends here\n", i)
-			c.note("sweep: ended after step %d: %v", i, werr)
+			c.Note("sweep: ended after step %d: %v", i, werr)
 			ranOn = false
 			break
 		}
 	}
 	fmt.Fprintf(&log, "# restore\n")
 	for _, cmd := range restoreCmds(st) {
-		fmt.Fprintf(&log, "%d %s %s\n", monoMicros(), cmd, errText(vx.Send(cmd)))
+		fmt.Fprintf(&log, "%d %s %s\n", core.MonoMicros(), cmd, core.ErrText(vx.Send(cmd)))
 		time.Sleep(200 * time.Millisecond)
 	}
 	a.AddText("trace/steps.txt", log.String())
 	a.AddText("trace/register_map.txt", regs.text(steps))
-	c.note("registers the factory app used: %d (trace/register_map.txt)", len(regs))
+	c.Note("registers the factory app used: %d (trace/register_map.txt)", len(regs))
 	a.AddJSON("trace/sweep.json", SweepSteps())
 	after := readState(vx)
 	a.AddJSON("scpi/state_after.json", after)
@@ -310,8 +224,8 @@ func (c *collection) sweep(a *Archive, vx *vxi11.Client, pid int, st scpiState) 
 			diff = append(diff, fmt.Sprintf("%s %q -> %q", q, st.Answers[q], after.Answers[q]))
 		}
 	}
-	c.note("settings after the sweep: %d differ from before %v", len(diff), diff)
-	c.sweepDone = ranOn && after.Answers["*IDN?"] == st.Answers["*IDN?"]
+	c.Note("settings after the sweep: %d differ from before %v", len(diff), diff)
+	s.sweepDone = ranOn && after.Answers["*IDN?"] == st.Answers["*IDN?"]
 	return nil
 }
 
@@ -322,8 +236,8 @@ func (c *collection) sweep(a *Archive, vx *vxi11.Client, pid int, st scpiState) 
 // a V/div step slowly; the rest of the step, and its answer, run untraced.
 // The child's exit detaches the factory app; resume makes it run on.
 // TRLC-LINKS: REQ-SDS-285
-func (c *collection) window(pid int, file string, send func() error) error {
-	tr := exec.Command(c.self, "trace", strconv.Itoa(pid), "5000", file, "1000") //nolint:gosec,noctx // G204: this program as the tracer; it ends by itself within 5 s
+func (s *stick) window(pid int, file string, send func() error) error {
+	tr := exec.Command(s.c.Self, "trace", strconv.Itoa(pid), "5000", file, "1000") //nolint:gosec,noctx // G204: this program as the tracer; it ends by itself within 5 s
 	in, err := tr.StdinPipe()
 	if err != nil {
 		return err
@@ -406,7 +320,7 @@ var errStopped = errors.New("the factory app did not run on after the trace wind
 func resume(pid int) error {
 	for range 20 {
 		_ = syscall.Kill(pid, syscall.SIGCONT)
-		switch procState(pid) {
+		switch core.ProcState(pid) {
 		case "":
 			return errStopped // gone
 		case "T", "t":
@@ -418,51 +332,11 @@ func resume(pid int) error {
 	return errStopped
 }
 
-// procState is the state letter of /proc/pid/stat ("R", "S", "T", ...), or
-// "" when the process is gone.
-// TRLC-LINKS: REQ-SDS-285
-func procState(pid int) string {
-	st := readStr(fmt.Sprintf("/proc/%d/stat", pid))
-	i := strings.LastIndexByte(st, ')') // the name in parentheses can hold spaces
-	if i < 0 || i+2 >= len(st) {
-		return ""
-	}
-	return st[i+2 : i+3]
-}
-
 // queryOf is the query that reads back what cmd set: its header with a "?".
 // TRLC-LINKS: REQ-SDS-285
 func queryOf(cmd string) string {
 	h, _, _ := strings.Cut(cmd, " ")
 	return h + "?"
-}
-
-// archiveName is the next free archive name in dir for this scope and mode:
-// the MAC (the clock is not set on these scopes) and a sequence number.
-// TRLC-LINKS: REQ-SDS-286
-func archiveName(dir, mode string) string {
-	mac := strings.ReplaceAll(strings.TrimSpace(readStr("/sys/class/net/eth0/address")), ":", "")
-	if mac == "" {
-		mac = "nomac"
-	}
-	for n := 1; ; n++ {
-		name := fmt.Sprintf("sds-diag-%s-%s-%d.tar.gz", mac, mode, n)
-		if _, err := os.Stat(filepath.Join(dir, name)); errors.Is(err, os.ErrNotExist) {
-			return name
-		}
-	}
-}
-
-// cpuLine is the processor and hardware lines of /proc/cpuinfo.
-// TRLC-LINKS: REQ-SDS-284
-func cpuLine() string {
-	var parts []string
-	for l := range strings.SplitSeq(readStr("/proc/cpuinfo"), "\n") {
-		if strings.HasPrefix(l, "Processor") || strings.HasPrefix(l, "Hardware") || strings.HasPrefix(l, "model name") {
-			parts = append(parts, strings.TrimSpace(l[strings.Index(l, ":")+1:]))
-		}
-	}
-	return strings.Join(parts, ", ") + " (" + runtime.GOARCH + ")"
 }
 
 // traceChild is "sdsdiag trace pid millis file quiet-millis": one trace

@@ -1,4 +1,6 @@
-// Package watchdog owns /dev/watchdog after the factory takeover.
+// Package watchdog is the SDS1102CML+'s /dev/watchdog as a hal.Watchdog; the
+// core supervisor's keeper (open-dso-core/supervisor/watchdog) acquires it
+// after the factory takeover and pets it.
 //
 // Contract (spec 01 §4.1, trap 17): the AM335x has a ~60 s hardware watchdog
 // the factory firmware services. Once the factory app is killed, the agent —
@@ -14,141 +16,77 @@ package watchdog
 import (
 	"fmt"
 	"sync"
-	"time"
 
 	"golang.org/x/sys/unix"
 )
 
 const wdiocKeepalive = 0x80045705 // WDIOC_KEEPALIVE (spec 01 §4.1)
 
-// Device is the agent's hold on the watchdog device: unarmed from New,
-// armed and petted from Acquire, disarmed by Disarm.
+// Device is the watchdog device node: closed from New, held from Open until
+// Close.
 // TRLC-LINKS: REQ-SDS-026, REQ-SDS-086
 type Device struct {
 	dev string
 
-	mu      sync.Mutex
-	fd      int
-	stop    chan struct{}
-	lastPet time.Time
-	petErr  error
+	mu sync.Mutex
+	fd int
 }
 
-// New returns an unarmed watchdog for the device node dev.
+// New is the watchdog at the device node dev, not yet opened.
 // TRLC-LINKS: REQ-SDS-086
 func New(dev string) *Device {
 	return &Device{dev: dev, fd: -1}
 }
 
-// Acquire opens the device with O_RDWR, retrying until timeout (the factory
-// app's inherited fd needs a moment to drain after the kill), pets once so
-// the countdown is fresh, and starts the pet loop.
+// Open opens the device with O_RDWR, which arms it. The descriptor is
+// close-on-exec: an app holding it would keep the next agent generation
+// from acquiring the watchdog after an agent self-update (EBUSY) while
+// nobody pets it.
 // TRLC-LINKS: REQ-SDS-086
-func (w *Device) Acquire(timeout, petEvery time.Duration) error {
+func (w *Device) Open() error {
 	w.mu.Lock()
+	defer w.mu.Unlock()
 	if w.fd >= 0 {
-		w.mu.Unlock()
-		return nil // already armed
+		return nil
 	}
-	w.mu.Unlock()
-
-	deadline := time.Now().Add(timeout)
-	var lastErr error
-	for {
-		fd, err := unix.Open(w.dev, unix.O_RDWR|unix.O_CLOEXEC, 0) // never inherited by the app or a shell
-		if err == nil {
-			w.mu.Lock()
-			if w.fd >= 0 {
-				// Another Acquire armed it while this one opened: one
-				// descriptor and one pet loop, or Disarm closes only one.
-				w.mu.Unlock()
-				_ = unix.Close(fd)
-				return nil
-			}
-			w.fd = fd
-			w.stop = make(chan struct{})
-			w.mu.Unlock()
-			w.pet() // fresh countdown immediately on acquire
-			go w.loop(petEvery)
-			return nil
-		}
-		lastErr = err
-		if time.Now().After(deadline) {
-			return fmt.Errorf("watchdog: open %s: %w", w.dev, lastErr)
-		}
-		time.Sleep(200 * time.Millisecond)
+	fd, err := unix.Open(w.dev, unix.O_RDWR|unix.O_CLOEXEC, 0)
+	if err != nil {
+		return fmt.Errorf("open %s: %w", w.dev, err)
 	}
+	w.fd = fd
+	return nil
 }
 
+// Pet issues both keepalives: the write is the primary, the ioctl is
+// belt-and-suspenders across driver variants (spec 01 §4.1). It fails only
+// when both do.
 // TRLC-LINKS: REQ-SDS-026, REQ-SDS-086
-func (w *Device) loop(every time.Duration) {
-	t := time.NewTicker(every)
-	defer t.Stop()
-	for {
-		w.mu.Lock()
-		stop := w.stop
-		w.mu.Unlock()
-		select {
-		case <-t.C:
-			w.pet()
-		case <-stop:
-			return
-		}
-	}
-}
-
-// pet issues both keepalives: the write is the primary, the ioctl is
-// belt-and-suspenders across driver variants (spec 01 §4.1).
-// TRLC-LINKS: REQ-SDS-026, REQ-SDS-086
-func (w *Device) pet() {
+func (w *Device) Pet() error {
 	w.mu.Lock()
 	defer w.mu.Unlock()
 	if w.fd < 0 {
-		return
+		return fmt.Errorf("pet %s: not open", w.dev)
 	}
 	_, werr := unix.Write(w.fd, []byte{0x01})
 	_, _, ierrno := unix.Syscall(unix.SYS_IOCTL, uintptr(w.fd), wdiocKeepalive, 0)
-	w.lastPet = time.Now()
 	if werr != nil && ierrno != 0 {
-		w.petErr = fmt.Errorf("write: %w, ioctl: %w", werr, ierrno)
-	} else {
-		w.petErr = nil
+		return fmt.Errorf("write: %w, ioctl: %w", werr, ierrno)
 	}
+	return nil
 }
 
-// Disarm writes the magic byte 'V' then closes, so the driver disarms instead
-// of resetting (no-op if never acquired). Used only on a clean agent stop —
-// the respawned agent re-acquires and re-arms.
+// Close writes the magic byte 'V' then closes, so the driver disarms instead
+// of resetting (no-op when not open). Used only on a clean agent stop — the
+// respawned agent re-opens and re-arms.
 // TRLC-LINKS: REQ-SDS-086
-func (w *Device) Disarm() {
+func (w *Device) Close() error {
 	w.mu.Lock()
 	defer w.mu.Unlock()
 	if w.fd < 0 {
-		return
+		return nil
 	}
-	close(w.stop)
 	_, _ = unix.Write(w.fd, []byte{'V'})
-	_ = unix.Close(w.fd)
+	err := unix.Close(w.fd)
 	w.fd = -1
-}
-
-// Status is the watchdog's state for the agent's status and heartbeat.
-// TRLC-LINKS: REQ-SDS-086
-type Status struct {
-	Armed   bool      `json:"armed"`
-	LastPet time.Time `json:"last_pet,omitzero"`
-	PetErr  string    `json:"pet_err,omitempty"`
-}
-
-// Status reports whether the watchdog is armed, its last pet and the last
-// pet's failure.
-// TRLC-LINKS: REQ-SDS-086
-func (w *Device) Status() Status {
-	w.mu.Lock()
-	defer w.mu.Unlock()
-	s := Status{Armed: w.fd >= 0, LastPet: w.lastPet}
-	if w.petErr != nil {
-		s.PetErr = w.petErr.Error()
-	}
-	return s
+	return err
 }

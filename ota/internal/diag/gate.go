@@ -6,19 +6,14 @@ import (
 	"fmt"
 	"slices"
 	"strings"
-)
 
-// Check is one condition the active stage needs, as the passive stage found it.
-type Check struct {
-	Name   string `json:"name"`
-	OK     bool   `json:"ok"`
-	Detail string `json:"detail"`
-}
+	core "github.com/labeth/open-dso-core/supervisor/diag"
+)
 
 // gateInput is what the passive stage learned that the gate judges.
 type gateInput struct {
 	cpuinfo string
-	procs   []Proc
+	procs   []core.Proc
 	pid     int    // the factory app, 0 if none runs
 	fpgaOK  bool   // the inherited /dev/Gpmc answered a register read
 	fpgaVer uint16 // the version register's value
@@ -31,12 +26,12 @@ type gateInput struct {
 // the form the sweep reads back), so it drives nothing it was not made for.
 // The FPGA version itself is not checked: another population has its own.
 // TRLC-LINKS: REQ-SDS-287
-func Gate(in gateInput) []Check {
-	var cs []Check
+func Gate(in gateInput) []core.Check {
+	var cs []core.Check
 	add := func(name string, ok bool, f string, args ...any) {
-		cs = append(cs, Check{Name: name, OK: ok, Detail: fmt.Sprintf(f, args...)})
+		cs = append(cs, core.Check{Name: name, OK: ok, Detail: fmt.Sprintf(f, args...)})
 	}
-	add("cpu", strings.Contains(strings.ToLower(in.cpuinfo), "am335"), "an AM335x (the factory GPMC driver, the trace's ARM syscalls): %s", cpuLine())
+	add("cpu", strings.Contains(strings.ToLower(in.cpuinfo), "am335"), "an AM335x (the factory GPMC driver, the trace's ARM syscalls): %s", core.CPULine())
 	add("factory app", in.pid != 0, "%s running: pid %d", factoryApp, in.pid)
 	holds := false
 	for _, p := range in.procs {
@@ -66,15 +61,4 @@ func Gate(in gateInput) []Check {
 	}
 	add("scpi form", form, "the settings answer in the form the sweep reads back and restores %v", bad)
 	return cs
-}
-
-// passed reports whether every check passed, and the first that did not.
-// TRLC-LINKS: REQ-SDS-287
-func passed(cs []Check) (bool, string) {
-	for _, c := range cs {
-		if !c.OK {
-			return false, c.Name + ": " + c.Detail
-		}
-	}
-	return true, ""
 }

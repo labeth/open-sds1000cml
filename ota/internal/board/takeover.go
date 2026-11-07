@@ -1,6 +1,6 @@
 // ENGMODEL-OWNER-UNIT: FU-OTA-AGENT
 
-package agent
+package board
 
 import (
 	"fmt"
@@ -10,40 +10,13 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/labeth/open-sds1000cml/ota/internal/fdinherit"
+	"github.com/labeth/open-dso-core/supervisor/agent"
+	"github.com/labeth/open-dso-core/supervisor/fdinherit"
+	"github.com/labeth/open-dso-core/supervisor/sysinfo"
+	"github.com/labeth/open-dso-core/supervisor/vxi11"
+
 	"github.com/labeth/open-sds1000cml/ota/internal/gpmc"
-	"github.com/labeth/open-sds1000cml/ota/internal/sysinfo"
-	"github.com/labeth/open-sds1000cml/ota/internal/vxi11"
 )
-
-// TakeoverOpts are the takeover RPC's arguments.
-// TRLC-LINKS: REQ-SDS-027
-type TakeoverOpts struct {
-	DryRun bool `json:"dry_run"`
-	// Force skips the VXI-11 STOP + idle-confirm gates. Only for a unit whose
-	// factory app is already dead/hung and unreachable. The engine may be
-	// mid-frame: expect a possible wedge; have the power plug ready.
-	Force bool `json:"force"`
-}
-
-// TakeoverResult is a takeover's outcome: each step it took, the factory
-// processes it found, and why it stopped when it did not finish.
-// TRLC-LINKS: REQ-SDS-027
-type TakeoverResult struct {
-	OK         bool               `json:"ok"`
-	Steps      []string           `json:"steps"`
-	Candidates []fdinherit.Holder `json:"candidates"`
-	Err        string             `json:"err,omitempty"`
-}
-
-// TRLC-LINKS: REQ-SDS-027
-func (r *TakeoverResult) step(format string, args ...any) {
-	r.Steps = append(r.Steps, fmt.Sprintf(format, args...))
-}
-
-// Summary is the steps on one line, for the log.
-// TRLC-LINKS: REQ-SDS-027
-func (r *TakeoverResult) Summary() string { return strings.Join(r.Steps, "; ") }
 
 // Test seams: production values are the real implementations and every call
 // site behaves exactly as before. They exist because the factory SCPI service
@@ -53,7 +26,7 @@ func (r *TakeoverResult) Summary() string { return strings.Join(r.Steps, "; ") }
 var (
 	vxi11Dial           = vxi11.Dial
 	takeoverIdleTimeout = 12 * time.Second
-	reassertNetworkFn   = (*Agent).reassertNetwork
+	reassertNetworkFn   = (*Board).reassertNetwork
 )
 
 // shellish exe basenames are infrastructure (our own boot chain / shells)
@@ -67,19 +40,19 @@ var shellish = map[string]bool{
 // firmware: not us, not our descendants, not pid 1, not shells. The vendor
 // launcher may be our ancestor (it ran startup.sh) — ancestors are included.
 // TRLC-LINKS: REQ-SDS-027
-func (a *Agent) factoryCandidates() []fdinherit.Holder {
+func (b *Board) factoryCandidates() []fdinherit.Holder {
 	self := os.Getpid()
 	ourExe, _ := os.Executable()
 	ourExe, _ = filepath.EvalSymlinks(ourExe)
 	// Our own apps run from the slot root (A, B): one a previous
 	// agent generation left running is adopted (superviseLoop), not killed.
-	slotRoot, err := filepath.EvalSymlinks(a.store.Root())
+	slotRoot, err := filepath.EvalSymlinks(b.cfg.SlotRoot)
 	if err != nil {
-		slotRoot = filepath.Clean(a.store.Root())
+		slotRoot = filepath.Clean(b.cfg.SlotRoot)
 	}
 
 	var out []fdinherit.Holder
-	for _, h := range fdinherit.HoldersOf(a.cfg.GpmcDev) {
+	for _, h := range fdinherit.HoldersOf(b.bc.GpmcDev) {
 		if h.PID == self || h.PID == 1 || descendsFrom(h.PID, self) {
 			continue
 		}
@@ -91,7 +64,7 @@ func (a *Agent) factoryCandidates() []fdinherit.Holder {
 				continue // our app, left by another agent generation
 			}
 		}
-		if shellish[base] && !a.matchesFactoryName(h) {
+		if shellish[base] && !b.matchesFactoryName(h) {
 			continue
 		}
 		out = append(out, h)
@@ -113,8 +86,8 @@ func descendsFrom(pid, anc int) bool {
 }
 
 // TRLC-LINKS: REQ-SDS-027
-func (a *Agent) matchesFactoryName(h fdinherit.Holder) bool {
-	for _, n := range a.cfg.FactoryNames {
+func (b *Board) matchesFactoryName(h fdinherit.Holder) bool {
+	for _, n := range b.bc.FactoryNames {
 		if n != "" && (strings.Contains(h.Comm, n) || strings.Contains(h.Exe, n)) {
 			return true
 		}
@@ -122,12 +95,16 @@ func (a *Agent) matchesFactoryName(h fdinherit.Holder) bool {
 	return false
 }
 
-// Takeover implements the spec 01 §2.2 inherit-then-kill sequence. The engine
-// must never be killed mid-frame (that freezes it on the GPMC WAIT line —
-// power-cycle only), so the landing is manufactured:
+// VendorHolders is the factory processes holding /dev/Gpmc.
+// TRLC-LINKS: REQ-SDS-027
+func (b *Board) VendorHolders() []fdinherit.Holder { return b.factoryCandidates() }
+
+// Land is the spec 01 §2.2 inherit-then-kill sequence up to its point of no
+// return. The engine must never be killed mid-frame (that freezes it on the
+// GPMC WAIT line — power-cycle only), so the landing is manufactured:
 //
-//  1. guards: inherited /dev/Gpmc fd present (we are the fd holder that keeps
-//     the chip select alive across the kill), not already done
+//  1. guard: inherited /dev/Gpmc fd present (we are the fd holder that keeps
+//     the chip select alive across the kill)
 //  2. identify the factory processes holding /dev/Gpmc (dry-run reports this
 //     and stops)
 //  3. drive the factory app to STOP over its own VXI-11 SCPI service — STOP
@@ -135,148 +112,96 @@ func (a *Agent) matchesFactoryName(h fdinherit.Holder) bool {
 //  4. confirm the idle landing on the inherited fd: version 0x12 == 0x0052
 //     AND fill counter 0x46 frozen across consecutive reads. These reads
 //     happen while the factory app is still alive, post-STOP.
-//  5. persist taken_over=true BEFORE the kill (a crashed agent's successor
-//     must re-acquire the watchdog immediately, or the SoC warm-resets in
-//     ~60 s and the USB/OTA path is lost until a physical power-cycle)
-//  6. SIGKILL the factory tree; re-kill respawns for a few rounds
-//  7. acquire + pet /dev/watchdog (retrying while the factory fd drains)
-//  8. re-assert the LAN address if the kill dropped it
 //
-// After this returns the supervisor loop launches the app slot (if any).
+// The supervisor then persists taken_over, calls Takeover (the kill and the
+// network re-assert) and acquires the watchdog.
 // TRLC-LINKS: REQ-SDS-027
-func (a *Agent) Takeover(opts TakeoverOpts) *TakeoverResult {
-	a.tkMu.Lock()
-	defer a.tkMu.Unlock()
-	res := &TakeoverResult{}
-
-	if a.st.get().TakenOver {
-		res.OK = true
-		res.step("already taken over (idempotent)")
-		// Make sure the watchdog side is running (restart path does this too).
-		go a.keepWatchdog()
-		return res
-	}
-
+func (b *Board) Land(res *agent.TakeoverResult, opts agent.TakeoverOpts) bool {
 	// Gate 1: we must hold the inherited fd or the chip select dies with the
 	// factory app (release() frees the CS on the last close).
-	if a.gpmcFD < 0 {
+	if b.gpmcFD < 0 {
 		res.Err = "no inherited /dev/Gpmc fd in this process — takeover would drop the chip select; check the boot chain"
-		res.step("gate: inherited fd MISSING")
-		return res
+		res.Step("gate: inherited fd MISSING")
+		return false
 	}
-	res.step("gate: inherited gpmc fd=%d", a.gpmcFD)
+	res.Step("gate: inherited gpmc fd=%d", b.gpmcFD)
 
-	res.Candidates = a.factoryCandidates()
+	res.Candidates = b.factoryCandidates()
 	for _, h := range res.Candidates {
-		res.step("candidate pid=%d comm=%s exe=%s", h.PID, h.Comm, h.Exe)
+		res.Step("candidate pid=%d comm=%s exe=%s", h.PID, h.Comm, h.Exe)
 	}
 	if opts.DryRun {
 		res.OK = true
-		res.step("dry-run: stopping here (no STOP sent, nothing killed)")
-		return res
+		res.Step("dry-run: stopping here (no STOP sent, nothing killed)")
+		return false
 	}
 
 	// Pre-kill network snapshot for post-kill re-assertion.
-	preIPs := sysinfo.IPv4s()
-	res.step("pre-kill IPs: %v", preIPs)
+	b.preIPs = sysinfo.IPv4s()
+	res.Step("pre-kill IPs: %v", b.preIPs)
 
 	// Gate 2: drive the factory app to STOP via its own SCPI service.
-	if !a.stopGate(res, opts.Force) {
-		return res
+	if !b.stopGate(res, opts.Force) {
+		return false
 	}
 
 	// Gate 3: idle landing confirmed on the inherited fd (post-STOP reads).
-	if err := a.confirmIdle(res, takeoverIdleTimeout); err != nil {
+	if err := b.confirmIdle(res, takeoverIdleTimeout); err != nil {
 		if !opts.Force {
 			res.Err = "idle landing not confirmed: " + err.Error()
-			return res
+			return false
 		}
-		res.step("force: continuing without idle confirm (%v)", err)
+		res.Step("force: continuing without idle confirm (%v)", err)
 	}
-
-	// Point of no return: persist first (see doc comment).
-	if err := a.st.update(func(s *State) { s.TakenOver = true }); err != nil {
-		res.Err = "persist state: " + err.Error()
-		return res
-	}
-	res.step("state persisted: taken_over=true")
-
-	// Kill the factory tree; fight init respawns for a few rounds.
-	killed := a.killFactory(res)
-	res.step("killed %d factory processes", killed)
-
-	// Watchdog: from this moment nothing else pets it.
-	if err := a.wd.Acquire(15*time.Second, a.cfg.WdPet); err != nil {
-		res.step("watchdog acquire failed (%v) — background retry armed", err)
-		go a.keepWatchdog()
-	} else {
-		res.step("watchdog acquired, petting every %s", a.cfg.WdPet)
-	}
-
-	// Network re-assert (async): the kill may take the vendor's network
-	// management with it; the address usually persists in the kernel, but if
-	// it drops, remote access dies with it.
-	go reassertNetworkFn(a, preIPs)
-
-	a.event("takeover.done", map[string]any{"killed": killed})
-	res.OK = true
-	res.step("takeover complete — supervisor will launch the app slot if present")
-	return res
+	return true
 }
 
 // stopGate sends the factory app STOP when it holds the bus, and reports
 // whether the takeover may go on: a failed STOP stops it unless forced.
 // TRLC-LINKS: REQ-SDS-027
-func (a *Agent) stopGate(res *TakeoverResult, force bool) bool {
+func (b *Board) stopGate(res *agent.TakeoverResult, force bool) bool {
 	if len(res.Candidates) == 0 {
-		res.step("no factory candidates hold %s — engine assumed idle/absent", a.cfg.GpmcDev)
+		res.Step("no factory candidates hold %s — engine assumed idle/absent", b.bc.GpmcDev)
 		return true
 	}
-	err := a.factoryStop()
+	err := b.factoryStop()
 	if err == nil {
-		res.step("factory STOP sent")
+		res.Step("factory STOP sent")
 		return true
 	}
-	res.step("VXI-11 STOP failed: %v", err)
+	res.Step("VXI-11 STOP failed: %v", err)
 	if !force {
 		res.Err = "could not command factory STOP (use force only if the factory app is dead): " + err.Error()
 		return false
 	}
-	res.step("force: continuing without STOP")
+	res.Step("force: continuing without STOP")
 	return true
 }
 
-// reclaimBus re-drives the takeover kill sequence when a factory process is
-// found still holding /dev/Gpmc after the device is already marked taken_over
-// (a crash in the persist→kill window, or an init-respawned factory app). It
-// is the idempotent tail of Takeover: STOP → idle-confirm → kill. Serialized
-// with Takeover via tkMu so the two never race.
+// Reclaim re-drives the takeover kill sequence when a factory process is
+// found still holding /dev/Gpmc after the device is already marked
+// taken_over (a crash in the persist→kill window, or an init-respawned
+// factory app). It is the idempotent tail of the takeover: STOP →
+// idle-confirm → kill.
 // TRLC-LINKS: REQ-SDS-027
-func (a *Agent) reclaimBus() {
-	a.tkMu.Lock()
-	defer a.tkMu.Unlock()
-	res := &TakeoverResult{Candidates: a.factoryCandidates()}
-	if len(res.Candidates) == 0 {
-		return
-	}
-	if a.gpmcFD < 0 {
-		a.log.Printf("reclaimBus: no inherited gpmc fd; killing factory holders without idle-confirm")
+func (b *Board) Reclaim(res *agent.TakeoverResult) {
+	if b.gpmcFD < 0 {
+		b.logf("reclaimBus: no inherited gpmc fd; killing factory holders without idle-confirm")
 	} else {
-		if err := a.factoryStop(); err != nil {
-			a.log.Printf("reclaimBus: factory STOP failed: %v", err)
+		if err := b.factoryStop(); err != nil {
+			b.logf("reclaimBus: factory STOP failed: %v", err)
 		}
-		if err := a.confirmIdle(res, 8*time.Second); err != nil {
-			a.log.Printf("reclaimBus: idle-confirm: %v (killing anyway — already taken over)", err)
+		if err := b.confirmIdle(res, 8*time.Second); err != nil {
+			b.logf("reclaimBus: idle-confirm: %v (killing anyway — already taken over)", err)
 		}
 	}
-	a.killFactory(res)
-	a.event("bus.reclaimed", map[string]any{"summary": res.Summary()})
+	b.killFactory(res)
 }
 
 // factoryStop speaks the factory app's own VXI-11 SCPI (spec 11): both the
 // momentary STOP verb and TRMD STOP for good measure. Always destroy_link.
 // TRLC-LINKS: REQ-SDS-027
-func (a *Agent) factoryStop() error {
+func (b *Board) factoryStop() error {
 	cl, err := vxi11Dial("127.0.0.1", 5*time.Second)
 	if err != nil {
 		return err
@@ -288,7 +213,7 @@ func (a *Agent) factoryStop() error {
 	_ = cl.Send("TRMD STOP") // belt-and-suspenders; harmless if redundant
 	// Read the acquisition status back if possible (diagnostic only).
 	if s, err := cl.Query("SAST?"); err == nil {
-		a.log.Printf("factory SAST? -> %q", strings.TrimSpace(s))
+		b.logf("factory SAST? -> %q", strings.TrimSpace(s))
 	}
 	return nil
 }
@@ -297,27 +222,27 @@ func (a *Agent) factoryStop() error {
 // 0x46 is frozen across 3 consecutive pairs 50 ms apart (spec 01 §6: the
 // reliable halted signal is the frozen fill counter, not a status bit).
 // TRLC-LINKS: REQ-SDS-027
-func (a *Agent) confirmIdle(res *TakeoverResult, timeout time.Duration) error {
+func (b *Board) confirmIdle(res *agent.TakeoverResult, timeout time.Duration) error {
 	deadline := time.Now().Add(timeout)
 	var lastErr error
 	for time.Now().Before(deadline) {
-		v, ok := a.gpmc.VerifyVersion()
+		v, ok := b.gpmc.VerifyVersion()
 		if !ok {
 			lastErr = fmt.Errorf("version 0x12 read 0x%04x, want 0x%04x", v, gpmc.VersionMagic)
 			time.Sleep(300 * time.Millisecond)
 			continue
 		}
-		frozen, seen, err := a.gpmc.FillFrozen(3, 50*time.Millisecond)
+		frozen, seen, err := b.gpmc.FillFrozen(3, 50*time.Millisecond)
 		if err != nil {
 			lastErr = err
 			time.Sleep(300 * time.Millisecond)
 			continue
 		}
 		if frozen {
-			if st, err := a.gpmc.Read(gpmc.PlaneCS1, gpmc.SelStatus); err == nil {
-				res.step("idle confirmed: version=0x0052 fill frozen at %v status38=0x%04x", seen, st)
+			if st, err := b.gpmc.Read(gpmc.PlaneCS1, gpmc.SelStatus); err == nil {
+				res.Step("idle confirmed: version=0x0052 fill frozen at %v status38=0x%04x", seen, st)
 			} else {
-				res.step("idle confirmed: version=0x0052 fill frozen at %v", seen)
+				res.Step("idle confirmed: version=0x0052 fill frozen at %v", seen)
 			}
 			return nil
 		}
@@ -330,10 +255,10 @@ func (a *Agent) confirmIdle(res *TakeoverResult, timeout time.Duration) error {
 // killFactory SIGKILLs the candidates and re-scans a few rounds in case init
 // respawns the vendor app.
 // TRLC-LINKS: REQ-SDS-027
-func (a *Agent) killFactory(res *TakeoverResult) int {
+func (b *Board) killFactory(res *agent.TakeoverResult) int {
 	killed := 0
 	for round := range 4 {
-		cands := a.factoryCandidates()
+		cands := b.factoryCandidates()
 		if round == 0 {
 			cands = res.Candidates // use the reported set for the first pass
 		}
@@ -343,13 +268,13 @@ func (a *Agent) killFactory(res *TakeoverResult) int {
 		for _, h := range cands {
 			if err := syscall.Kill(h.PID, syscall.SIGKILL); err == nil {
 				killed++
-				res.step("SIGKILL pid=%d comm=%s (round %d)", h.PID, h.Comm, round+1)
+				res.Step("SIGKILL pid=%d comm=%s (round %d)", h.PID, h.Comm, round+1)
 			}
 		}
 		time.Sleep(400 * time.Millisecond)
 	}
-	if left := a.factoryCandidates(); len(left) > 0 {
-		res.step("WARNING: %d factory holder(s) survived/respawned: %v", len(left), left)
+	if left := b.factoryCandidates(); len(left) > 0 {
+		res.Step("WARNING: %d factory holder(s) survived/respawned: %v", len(left), left)
 	}
 	return killed
 }
@@ -358,7 +283,7 @@ func (a *Agent) killFactory(res *TakeoverResult) int {
 // the factory kill (the vendor app may own network management). Uses busybox
 // ifconfig from the device's BusyBox userland.
 // TRLC-LINKS: REQ-SDS-027
-func (a *Agent) reassertNetwork(preIPs []string) {
+func (b *Board) reassertNetwork(preIPs []string) {
 	for _, wait := range []time.Duration{2 * time.Second, 10 * time.Second, 30 * time.Second} {
 		time.Sleep(wait)
 		now := map[string]bool{}
@@ -378,10 +303,10 @@ func (a *Agent) reassertNetwork(preIPs []string) {
 			if !ok {
 				continue
 			}
-			a.log.Printf("network re-assert: %s lost %s — reconfiguring", ifname, cidr)
-			out, err := a.runShell(fmt.Sprintf("ifconfig %s %s netmask %s up", ifname, ip, mask), 10*time.Second)
-			a.log.Printf("ifconfig: err=%v out=%s", err, strings.TrimSpace(string(out)))
-			a.event("net.reassert", map[string]any{"if": ifname, "ip": ip, "err": fmt.Sprint(err)})
+			b.logf("network re-assert: %s lost %s — reconfiguring", ifname, cidr)
+			out, err := agent.RunShell(fmt.Sprintf("ifconfig %s %s netmask %s up", ifname, ip, mask), 10*time.Second)
+			b.logf("ifconfig: err=%v out=%s", err, strings.TrimSpace(string(out)))
+			b.event("net.reassert", map[string]any{"if": ifname, "ip": ip, "err": fmt.Sprint(err)})
 		}
 	}
 }

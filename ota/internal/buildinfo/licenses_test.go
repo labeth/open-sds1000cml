@@ -10,6 +10,9 @@ import (
 	"testing"
 )
 
+// firstParty is the module path prefix of the project's own core.
+const firstParty = "github.com/labeth/open-dso-core"
+
 // TestThirdPartyLicensesCoverLinkedModules checks that THIRD_PARTY_LICENSES.txt,
 // which ships with every release, carries the license of each module the
 // agent and otactl link: a dependency added or
@@ -37,6 +40,11 @@ func TestThirdPartyLicensesCoverLinkedModules(t *testing.T) {
 	seen := map[string]bool{}
 	for m := range strings.FieldsSeq(string(out)) {
 		if seen[m] {
+			continue
+		}
+		// open-dso-core, the family's shared core, is this project's own code
+		// under the same MIT licence as LICENSE: not third-party.
+		if strings.HasPrefix(m, firstParty) {
 			continue
 		}
 		seen[m] = true

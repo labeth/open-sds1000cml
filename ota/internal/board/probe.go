@@ -1,15 +1,17 @@
 // ENGMODEL-OWNER-UNIT: FU-OTA-AGENT
 
-package agent
+package board
 
 import (
 	"strings"
 	"sync"
 	"time"
 
-	"github.com/labeth/open-sds1000cml/ota/internal/fdinherit"
+	"github.com/labeth/open-dso-core/supervisor/agent"
+	"github.com/labeth/open-dso-core/supervisor/fdinherit"
+	"github.com/labeth/open-dso-core/supervisor/sysinfo"
+
 	"github.com/labeth/open-sds1000cml/ota/internal/gpmc"
-	"github.com/labeth/open-sds1000cml/ota/internal/sysinfo"
 )
 
 // ProbeReport is the first-session, read-only device fingerprint. It answers
@@ -32,22 +34,22 @@ type ProbeReport struct {
 	TakenOver   bool               `json:"taken_over"`
 }
 
-// Probe is the exported entry for the `agent probe` subcommand.
+// Probe is the device fingerprint for the probe RPC and `agent probe`.
 // TRLC-LINKS: REQ-SDS-114
-func (a *Agent) Probe(readGpmc bool) ProbeReport { return a.probe(readGpmc) }
+func (b *Board) Probe(readGpmc, takenOver bool) any { return b.probe(readGpmc, takenOver) }
 
 // TRLC-LINKS: REQ-SDS-114
-func (a *Agent) probe(readGpmc bool) ProbeReport {
+func (b *Board) probe(readGpmc, takenOver bool) ProbeReport {
 	r := ProbeReport{
-		Device:      a.cfg.DeviceID,
+		Device:      b.cfg.DeviceID,
 		Uname:       sysinfo.Uname(),
-		Sys:         sysinfo.Collect(a.cfg.OTADir),
-		InheritedFD: a.bootFDs(),
-		FactoryCand: a.factoryCandidates(),
-		TakenOver:   a.st.get().TakenOver,
+		Sys:         sysinfo.Collect(b.cfg.OTADir),
+		InheritedFD: b.BootFDs(),
+		FactoryCand: b.factoryCandidates(),
+		TakenOver:   takenOver,
 		Cmds:        map[string]string{},
 	}
-	held := fdinherit.HoldersOfEach(a.cfg.GpmcDev, a.cfg.FpgaKeyDev, a.cfg.WatchdogDev)
+	held := fdinherit.HoldersOfEach(b.bc.GpmcDev, b.bc.FpgaKeyDev, b.bc.WatchdogDev)
 	r.GpmcHolders, r.KeyHolders, r.WdHolders = held[0], held[1], held[2]
 	// Read-only environment queries, surfaced through `otactl probe`. Each is
 	// bounded and best-effort; missing applets simply yield an error string.
@@ -68,7 +70,7 @@ func (a *Agent) probe(readGpmc bool) ProbeReport {
 		"devmem":   "cat /sys/kernel/security/lsm 2>/dev/null; grep -i strict /proc/config.gz 2>/dev/null; echo done",
 	} {
 		wg.Go(func() {
-			out, _ := a.runShell(script, 6*time.Second)
+			out, _ := agent.RunShell(script, 6*time.Second)
 			mu.Lock()
 			r.Cmds[name] = strings.TrimSpace(string(out))
 			mu.Unlock()
@@ -76,7 +78,7 @@ func (a *Agent) probe(readGpmc bool) ProbeReport {
 	}
 	wg.Wait()
 
-	if g := a.reader(); readGpmc && g.OK() {
+	if g := b.reader(); readGpmc && g.OK() {
 		if v, ok := g.VerifyVersion(); ok {
 			r.GpmcVersion = "0x0052 (verified)"
 		} else {
