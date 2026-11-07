@@ -7,7 +7,7 @@ name: Pages
 # site works at /open-sds1000cml/.
 on:
   push:
-    branches: [core-split]
+    branches: [main]
   workflow_dispatch:
 
 permissions:
