@@ -102,13 +102,13 @@ func (h *Handler) wavedesc(ch int, f *sample.Frame) []byte {
 		Template:        "DSO",
 		CommType:        0, // 8-bit
 		CommOrder:       1,
-		WaveArray1:      int32(n), // count × 1 byte
-		WaveArrayCount:  int32(n),
-		PointsPerScreen: int32(f.WinPoints),
-		LastValid:       int32(n - 1),
-		FirstPoint:      int32(h.wfFP),
-		Sparsing:        int32(h.wfSP),
-		SegmentIndex:    int32(h.wfSN),
+		WaveArray1:      descLong(n), // count × 1 byte
+		WaveArrayCount:  descLong(n),
+		PointsPerScreen: descLong(f.WinPoints),
+		LastValid:       descLong(n - 1),
+		FirstPoint:      descLong(h.wfFP),
+		Sparsing:        descLong(h.wfSP),
+		SegmentIndex:    descLong(h.wfSN),
 		SweepsPerAcq:    1,
 		VerticalGain:    float32(vdiv / 25 * h.probe(ch)), // WF? scale: 25 codes/div (spec 11 §4)
 		VerticalOffset:  float32(off),
@@ -119,7 +119,14 @@ func (h *Handler) wavedesc(ch int, f *sample.Frame) []byte {
 		PixelOffset:     -(float64(n) * f.SampleS / 2), // first-pixel offset
 		VertUnit:        "V",
 		HorUnit:         "s",
-		WaveSource:      int16(ch), // 0-based
+		WaveSource:      int16(ch), //nolint:gosec // G115: 0-based channel index (C1, C2)
 	}
 	return d.Encode()
+}
+
+// descLong is v as a WAVEDESC long field. The fields are record lengths and
+// the WFSU setup values, which setWFSU bounds to 0..2^31-1.
+// TRLC-LINKS: REQ-SDS-024
+func descLong(v int) int32 {
+	return int32(v) //nolint:gosec // G115: record lengths and WFSU values (bounded by setWFSU) fit 32 bits
 }

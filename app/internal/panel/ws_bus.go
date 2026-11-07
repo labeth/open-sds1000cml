@@ -2030,7 +2030,7 @@ func (c *Controller) busRawFrames(a *anaState, s *sv, f *sample.Frame) {
 		// BUS's lease decisions in the log, as they change
 		if now := [3]string{a.rawKey, a.rawFull, a.rawNo}; now != before {
 			c.logf("panel: bus lease: sampled %v full-rate %v refused %v (frame %s a sample, decimation %d, live %v: %s) key %q was %q",
-				a.rawKey == key, a.rawFull == key, a.rawNo == key, si(f.SampleS, "s"), uint32(f.AcqDecim), live, a.res.Error, key, before[0])
+				a.rawKey == key, a.rawFull == key, a.rawNo == key, si(f.SampleS, "s"), uint32(f.AcqDecim), live, a.res.Error, key, before[0]) //nolint:gosec // G115: AcqDecim holds the fabric's 32-bit decimation word
 		}
 	}()
 	switch {
@@ -2039,7 +2039,7 @@ func (c *Controller) busRawFrames(a *anaState, s *sv, f *sample.Frame) {
 	case live && (framecalc.Unresolved(a.res) || tooFewSamples(a.res) || coarseFor(a, bus, f)):
 		a.rawKey = key
 		a.res.Error = decode.Names[a.res.Proto] + ": the live view is too coarse - reading sampled records (slower frames)"
-	case !live && a.rawKey == key && tooFewSamples(a.res) && uint32(f.AcqDecim) > own:
+	case !live && a.rawKey == key && tooFewSamples(a.res) && uint32(f.AcqDecim) > own: //nolint:gosec // G115: AcqDecim holds the fabric's 32-bit decimation word
 		a.rawFull, want = key, 0 // sampled too coarsely: the full rate
 	case !live && a.rawKey == key && tooFewSamples(a.res):
 		a.rawKey, a.rawNo = "", key

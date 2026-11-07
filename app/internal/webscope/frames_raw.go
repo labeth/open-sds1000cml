@@ -54,7 +54,7 @@ func (s *Scope) rawFrame(since uint64) wire.RawFrame {
 		hdr.StreamSeq, hdr.WindowNs, hdr.GapNs = f.Stream.Seq, int64(math.Round(f.Stream.WindowS*1e9)), int64(math.Round(f.Stream.GapS*1e9))
 		hdr.BandwidthHz, hdr.FilterGuard, hdr.Filter = f.Cond.BandwidthHz, f.Cond.Guard, f.Cond.Filter
 		hdr.NoiseGainIdeal, hdr.PassbandHz = f.Cond.NoiseGain, f.Cond.PassbandHz
-		hdr.Decimation, hdr.CaptureDepth, hdr.TriggerKind = uint32(f.AcqDecim), f.Depth, f.TriggerName()
+		hdr.Decimation, hdr.CaptureDepth, hdr.TriggerKind = uint32(f.AcqDecim), f.Depth, f.TriggerName() //nolint:gosec // G115: AcqDecim holds the fabric's 32-bit decimation word
 		hdr.FullRate = f.Content == sample.RawFullRate
 		if len(f.Precision(0)) == n && len(f.Precision(1)) == n {
 			hdr.FractionBits = 8

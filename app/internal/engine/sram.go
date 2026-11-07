@@ -1544,7 +1544,7 @@ func (e *Engine) symbolCount(cfg sramcapture.Config) int {
 	if !ok {
 		return -1
 	}
-	return int(st.Matches)
+	return int(st.Matches & 0xffff)
 }
 
 // noteSymbolMatches publishes the symbol trigger's matches during the record

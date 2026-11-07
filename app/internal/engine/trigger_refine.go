@@ -17,7 +17,7 @@ import (
 // TRLC-LINKS: REQ-SDS-011
 func (e *Engine) placeEdgeTrigger(f *sample.Frame, disc []uint8, q []uint16, level float64, rising bool) bool {
 	confirmed := core.ConfirmTriggerEdge(disc, q, f.Len(), f.TriggerAt, level, rising, f.Content == sample.PeakPairs)
-	if !confirmed && uint32(f.AcqDecim) > 1 {
+	if !confirmed && uint32(f.AcqDecim) > 1 { //nolint:gosec // G115: AcqDecim holds the fabric's 32-bit decimation word
 		// the comparators read the raw samples, with a re-arm band past the
 		// converters' spread (planHysteresis), and decimated a crossing holds
 		// for a sample of every converter (ADR-EDGE-TRIGGER-RAW): no

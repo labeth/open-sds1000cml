@@ -258,7 +258,7 @@ func (e *Engine) noteARINCLevels(f *sample.Frame) {
 	if planned, _ := e.serialPlanParams(p); p.Proto != core.SerARINC || !acq.SerialThresholdOK(&planned) || f.Len() < 8 {
 		return
 	}
-	resolves := uint32(f.AcqDecim) <= 1 || p.Baud > 0 && f.SampleS > 0 && f.SampleS*acq.ArincBitSamples <= 1/float64(p.Baud)
+	resolves := uint32(f.AcqDecim) <= 1 || p.Baud > 0 && f.SampleS > 0 && f.SampleS*acq.ArincBitSamples <= 1/float64(p.Baud) //nolint:gosec // G115: AcqDecim holds the fabric's 32-bit decimation word
 	switch {
 	case (f.Content == sample.PeakPairs || f.Flags.Has(sample.Envelope)) && p.Baud > 0:
 		e.lease(&e.sampleLease, time.Second)

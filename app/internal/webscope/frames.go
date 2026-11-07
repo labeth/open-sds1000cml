@@ -92,7 +92,7 @@ func (s *Scope) buildReply(f *sample.Frame, cols int, full bool, since uint64, o
 		Seq:            f.Seq,
 		WinCols:        min(f.WinPoints, f.Len()),
 		SampleS:        f.SampleS,
-		NoiseGainIdeal: f.Cond.NoiseGain, PassbandHz: f.Cond.PassbandHz, BandwidthHz: f.Cond.BandwidthHz, FilterGuard: f.Cond.Guard, Filter: f.Cond.Filter, Decimation: uint32(f.AcqDecim), FullRate: f.Content == sample.RawFullRate, CaptureDepth: f.Depth, TriggerKind: f.TriggerName(),
+		NoiseGainIdeal: f.Cond.NoiseGain, PassbandHz: f.Cond.PassbandHz, BandwidthHz: f.Cond.BandwidthHz, FilterGuard: f.Cond.Guard, Filter: f.Cond.Filter, Decimation: uint32(f.AcqDecim), FullRate: f.Content == sample.RawFullRate, CaptureDepth: f.Depth, TriggerKind: f.TriggerName(), //nolint:gosec // G115: AcqDecim holds the fabric's 32-bit decimation word
 		EdgeX:          f.TriggerAt,
 		Ptp:            f.SourcePtp,
 		TdivS:          f.Snapshot.TdivS,
