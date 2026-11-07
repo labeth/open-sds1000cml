@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/labeth/open-dso-core/decode"
+	core "github.com/labeth/open-dso-core/engine"
 	"github.com/labeth/open-sds1000cml/app/internal/sramcapture"
 )
 
@@ -94,13 +95,13 @@ func TestSoftStreamPaceFrameOrdinals(t *testing.T) {
 		add(true, 300)
 	}
 	add(true, 600)
-	name := softProtoNames[serLIN]
+	name := softProtoNames[core.SerLIN]
 	_, longest, quiet, _ := decode.StreamTiming(name, baud)
 	for _, period := range []int{16, 64, 13, 90, 166, 251} {
 		raw := bitsWords(levels, 2*period)
-		d, _ := lookupSerialDecoder(serLIN)
+		d, _ := core.LookupSerialDecoder(core.SerLIN)
 		s := &softStream{
-			p: SerialParams{Proto: serLIN, Baud: baud, Threshold: 128, HaveThr: true}, proto: name, decoder: d,
+			p: SerialParams{Proto: core.SerLIN, Baud: baud, Threshold: 128, HaveThr: true}, proto: name, decoder: d,
 			mask: 0xff, gapFree: true, quiet: quiet, bits: true, trig: StreamManual,
 			id: sramcapture.RecordIdentity{Epoch: softEpochBase | 1},
 		}

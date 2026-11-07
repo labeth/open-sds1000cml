@@ -5,7 +5,7 @@ package engine
 import (
 	"testing"
 
-	"github.com/labeth/open-dso-core/decode"
+	core "github.com/labeth/open-dso-core/engine"
 	"github.com/labeth/open-dso-core/sample"
 )
 
@@ -104,7 +104,7 @@ func TestSerialQualifyUART(t *testing.T) {
 	e := &Engine{}
 
 	// byte present → match, anchored inside the record.
-	e.SetSerialParams(SerialParams{Proto: serUART, ChA: 0, Bytes: []int{0x55}})
+	e.SetSerialParams(SerialParams{Proto: core.SerUART, ChA: 0, Bytes: []int{0x55}})
 	ok, anchor := e.serialQualify(f, f.Len(), f.SampleS)
 	if !ok {
 		t.Fatal("UART 0x55 should match")
@@ -118,23 +118,23 @@ func TestSerialQualifyUART(t *testing.T) {
 	}
 
 	// absent byte → no match.
-	e.SetSerialParams(SerialParams{Proto: serUART, ChA: 0, Bytes: []int{0x99}})
+	e.SetSerialParams(SerialParams{Proto: core.SerUART, ChA: 0, Bytes: []int{0x99}})
 	if ok, _ := e.serialQualify(f, f.Len(), f.SampleS); ok {
 		t.Fatal("UART 0x99 should NOT match")
 	}
 
 	// a 2-byte sequence in order → match; reversed → no match.
-	e.SetSerialParams(SerialParams{Proto: serUART, ChA: 0, Bytes: []int{0x22, 0x55}})
+	e.SetSerialParams(SerialParams{Proto: core.SerUART, ChA: 0, Bytes: []int{0x22, 0x55}})
 	if ok, _ := e.serialQualify(f, f.Len(), f.SampleS); !ok {
 		t.Fatal("sequence 22 55 should match")
 	}
-	e.SetSerialParams(SerialParams{Proto: serUART, ChA: 0, Bytes: []int{0x55, 0x22}})
+	e.SetSerialParams(SerialParams{Proto: core.SerUART, ChA: 0, Bytes: []int{0x55, 0x22}})
 	if ok, _ := e.serialQualify(f, f.Len(), f.SampleS); ok {
 		t.Fatal("reversed sequence 55 22 should NOT match")
 	}
 
 	// empty pattern → any decodable byte matches.
-	e.SetSerialParams(SerialParams{Proto: serUART, ChA: 0})
+	e.SetSerialParams(SerialParams{Proto: core.SerUART, ChA: 0})
 	if ok, _ := e.serialQualify(f, f.Len(), f.SampleS); !ok {
 		t.Fatal("empty pattern should match any UART traffic")
 	}
@@ -145,11 +145,11 @@ func TestSerialQualifySPI(t *testing.T) {
 	clk, data := spiWave([]int{0xA5, 0x3C, 0x55}, 20)
 	f := &sample.Frame{SampleS: 2e-7, Traces: []sample.Trace{{Codes8: clk, Valid: len(clk)}, {Ch: 1, Codes8: data, Valid: len(clk)}}}
 	e := &Engine{}
-	e.SetSerialParams(SerialParams{Proto: serSPI, ChA: 0, ChB: 1, MSB: true, Bytes: []int{0x3C}})
+	e.SetSerialParams(SerialParams{Proto: core.SerSPI, ChA: 0, ChB: 1, MSB: true, Bytes: []int{0x3C}})
 	if ok, a := e.serialQualify(f, f.Len(), f.SampleS); !ok || a < 0 {
 		t.Fatalf("SPI 0x3C should match (ok=%v anchor=%d)", ok, a)
 	}
-	e.SetSerialParams(SerialParams{Proto: serSPI, ChA: 0, ChB: 1, MSB: true, Bytes: []int{0x77}})
+	e.SetSerialParams(SerialParams{Proto: core.SerSPI, ChA: 0, ChB: 1, MSB: true, Bytes: []int{0x77}})
 	if ok, _ := e.serialQualify(f, f.Len(), f.SampleS); ok {
 		t.Fatal("SPI 0x77 should NOT match")
 	}
@@ -162,7 +162,7 @@ func TestSerialQualifyI2C(t *testing.T) {
 	e := &Engine{}
 
 	// address 0x50 WRITE → match, anchored on the transaction start.
-	e.SetSerialParams(SerialParams{Proto: serI2C, ChA: 0, ChB: 1, Addr: 0x50, RW: 0})
+	e.SetSerialParams(SerialParams{Proto: core.SerI2C, ChA: 0, ChB: 1, Addr: 0x50, RW: 0})
 	ok, anchor := e.serialQualify(f, f.Len(), f.SampleS)
 	if !ok {
 		t.Fatal("I2C write to 0x50 should match")
@@ -172,29 +172,29 @@ func TestSerialQualifyI2C(t *testing.T) {
 	}
 
 	// same address but READ direction → no match (this transaction is a write).
-	e.SetSerialParams(SerialParams{Proto: serI2C, ChA: 0, ChB: 1, Addr: 0x50, RW: 1})
+	e.SetSerialParams(SerialParams{Proto: core.SerI2C, ChA: 0, ChB: 1, Addr: 0x50, RW: 1})
 	if ok, _ := e.serialQualify(f, f.Len(), f.SampleS); ok {
 		t.Fatal("I2C read qualifier should NOT match a write transaction")
 	}
 
 	// different address → no match.
-	e.SetSerialParams(SerialParams{Proto: serI2C, ChA: 0, ChB: 1, Addr: 0x22, RW: 2})
+	e.SetSerialParams(SerialParams{Proto: core.SerI2C, ChA: 0, ChB: 1, Addr: 0x22, RW: 2})
 	if ok, _ := e.serialQualify(f, f.Len(), f.SampleS); ok {
 		t.Fatal("I2C addr 0x22 should NOT match a 0x50 transaction")
 	}
 
 	// address + required data byte present → match; absent data → no match.
-	e.SetSerialParams(SerialParams{Proto: serI2C, ChA: 0, ChB: 1, Addr: 0x50, RW: 0, Bytes: []int{0xAD}})
+	e.SetSerialParams(SerialParams{Proto: core.SerI2C, ChA: 0, ChB: 1, Addr: 0x50, RW: 0, Bytes: []int{0xAD}})
 	if ok, _ := e.serialQualify(f, f.Len(), f.SampleS); !ok {
 		t.Fatal("I2C 0x50 write containing 0xAD should match")
 	}
-	e.SetSerialParams(SerialParams{Proto: serI2C, ChA: 0, ChB: 1, Addr: 0x50, RW: 0, Bytes: []int{0xBE}})
+	e.SetSerialParams(SerialParams{Proto: core.SerI2C, ChA: 0, ChB: 1, Addr: 0x50, RW: 0, Bytes: []int{0xBE}})
 	if ok, _ := e.serialQualify(f, f.Len(), f.SampleS); ok {
 		t.Fatal("I2C 0x50 write NOT containing 0xBE should not match")
 	}
 
 	// any-address (Addr<0, RW any) → match.
-	e.SetSerialParams(SerialParams{Proto: serI2C, ChA: 0, ChB: 1, Addr: -1, RW: 2})
+	e.SetSerialParams(SerialParams{Proto: core.SerI2C, ChA: 0, ChB: 1, Addr: -1, RW: 2})
 	if ok, _ := e.serialQualify(f, f.Len(), f.SampleS); !ok {
 		t.Fatal("I2C any-address should match a transaction")
 	}
@@ -210,7 +210,7 @@ func TestSerialQualifyPassAndReject(t *testing.T) {
 		t.Fatalf("unconfigured serial must pass through (ok=%v a=%d)", ok, a)
 	}
 	// too few samples → reject.
-	e.SetSerialParams(SerialParams{Proto: serUART, ChA: 0, Bytes: []int{0x55}})
+	e.SetSerialParams(SerialParams{Proto: core.SerUART, ChA: 0, Bytes: []int{0x55}})
 	if ok, _ := e.serialQualify(f, 4, f.SampleS); ok {
 		t.Fatal("valid<8 must reject")
 	}
@@ -241,84 +241,6 @@ func TestSetSerialModeResetsCount(t *testing.T) {
 // ---- match-logic units on hand-built spans (no decoding) ---------------------
 
 // TRLC-LINKS: REQ-SDS-013
-func TestMatchBytesUnit(t *testing.T) {
-	// contiguous bytes ~10 samples wide, abutting (like a continuous UART stream)
-	spans := []decode.Span{
-		{Kind: "data", Val: 0x11, I0: 10, I1: 19},
-		{Kind: "data", Val: 0x22, I0: 20, I1: 29},
-		{Kind: "data", Val: 0x33, I0: 30, I1: 39},
-	}
-	if ok, a := matchBytes(spans, []int{0x22}); !ok || a != 20 {
-		t.Fatalf("single byte: ok=%v a=%d want 20", ok, a)
-	}
-	if ok, a := matchBytes(spans, []int{0x22, 0x33}); !ok || a != 20 {
-		t.Fatalf("contiguous sequence anchors on first byte: ok=%v a=%d want 20", ok, a)
-	}
-	if ok, _ := matchBytes(spans, []int{0x33, 0x22}); ok {
-		t.Fatal("out-of-order sequence must not match")
-	}
-	if ok, a := matchBytes(spans, nil); !ok || a != 10 {
-		t.Fatalf("empty pattern → first byte: ok=%v a=%d", ok, a)
-	}
-	if ok, _ := matchBytes(nil, nil); ok {
-		t.Fatal("no bytes at all must not match")
-	}
-
-	// error bytes are NOT matchable data (must not fire on corrupted traffic)
-	errSpans := []decode.Span{{Kind: "frame-error", Val: 0x55, I0: 5, I1: 14}, {Kind: "parity-error", Val: 0x33, I0: 15, I1: 24}}
-	if ok, _ := matchBytes(errSpans, []int{0x55}); ok {
-		t.Fatal("frame-error byte must NOT satisfy a data trigger")
-	}
-	if ok, _ := matchBytes(errSpans, nil); ok {
-		t.Fatal("empty pattern must NOT fire on a record of only error bytes")
-	}
-	for _, kind := range []string{"gap", "frame-error", "parity-error"} {
-		broken := []decode.Span{
-			{Kind: "data", Val: 0x41, I0: 0, I1: 9},
-			{Kind: kind, I0: 10, I1: 19},
-			{Kind: "data", Val: 0x42, I0: 20, I1: 29},
-			{Kind: "data", Val: 0x43, I0: 30, I1: 39},
-		}
-		if ok, _ := matchBytes(broken, []int{0x41, 0x42}); ok {
-			t.Fatalf("pattern bridged %s", kind)
-		}
-		if ok, anchor := matchBytes(broken, []int{0x42, 0x43}); !ok || anchor != 20 {
-			t.Fatalf("valid sequence after %s rejected: %v %d", kind, ok, anchor)
-		}
-	}
-
-	// CONTIGUITY: two matching bytes separated by a large idle gap must NOT form
-	// a sequence (different transmissions), but MUST still match individually.
-	gapped := []decode.Span{
-		{Kind: "data", Val: 0x41, I0: 100, I1: 190},   // width ~90
-		{Kind: "data", Val: 0x42, I0: 9000, I1: 9090}, // thousands of samples later
-	}
-	if ok, _ := matchBytes(gapped, []int{0x41, 0x42}); ok {
-		t.Fatal("a 2-byte pattern must NOT bridge a large idle gap")
-	}
-	if ok, a := matchBytes(gapped, []int{0x42}); !ok || a != 9000 {
-		t.Fatalf("single byte across a gap still matches: ok=%v a=%d", ok, a)
-	}
-}
-
-// TRLC-LINKS: REQ-SDS-013
-func TestIndexSeqUnit(t *testing.T) {
-	hay := []int{1, 2, 3, 2, 3, 4}
-	if indexSeq(hay, []int{2, 3, 4}) != 3 {
-		t.Fatal("should find at 3")
-	}
-	if indexSeq(hay, []int{9}) != -1 {
-		t.Fatal("absent → -1")
-	}
-	if indexSeq(hay, nil) != 0 {
-		t.Fatal("empty needle → 0")
-	}
-	if indexSeq([]int{1}, []int{1, 2}) != -1 {
-		t.Fatal("needle longer than hay → -1")
-	}
-}
-
-// TRLC-LINKS: REQ-SDS-013
 func TestSerialRegistryUnknownFailsClosed(t *testing.T) {
 	e := New(Config{Bus: newFakeBus()})
 	w := uartWave([]int{0x55}, 16)
@@ -326,28 +248,6 @@ func TestSerialRegistryUnknownFailsClosed(t *testing.T) {
 	e.SetSerialParams(SerialParams{Proto: 987654})
 	if ok, _ := e.serialQualify(f, f.Len(), f.SampleS); ok {
 		t.Fatal("unknown protocol qualified a trigger")
-	}
-}
-
-// TRLC-LINKS: REQ-SDS-013
-func TestSerialRegistryCapabilities(t *testing.T) {
-	ds := SerialDecoderList()
-	if len(ds) < 10 {
-		t.Fatalf("lost existing decoders: %d", len(ds))
-	}
-	for i, d := range ds {
-		if i > 0 && d.ID <= ds[i-1].ID {
-			t.Fatal("capabilities not sorted")
-		}
-		if d.Decode == nil || d.Match == nil || d.Name == "" {
-			t.Fatal("incomplete decoder")
-		}
-	}
-	if err := RegisterSerialDecoder(ds[0]); err == nil {
-		t.Fatal("replaced saved protocol ID")
-	}
-	if err := RegisterSerialDecoder(SerialDecoder{}); err == nil {
-		t.Fatal("accepted invalid decoder")
 	}
 }
 
@@ -364,7 +264,7 @@ func TestSerialQualifyPicksCentredMatch(t *testing.T) {
 	w := uartWave(bytes, 40)
 	f := &sample.Frame{SampleS: 1e-6, Traces: []sample.Trace{{Codes8: w, Valid: len(w)}, {Ch: 1, Codes8: make([]uint8, len(w)), Valid: len(w)}}}
 	e := &Engine{}
-	e.SetSerialParams(SerialParams{Proto: serUART, ChA: 0, Bytes: []int{0x55, 0xAA}})
+	e.SetSerialParams(SerialParams{Proto: core.SerUART, ChA: 0, Bytes: []int{0x55, 0xAA}})
 	_, first := e.serialQualify(f, f.Len(), f.SampleS)
 	screen := len(w) / 2
 	ok, anchor := e.serialQualifyAt(f, f.Len(), f.SampleS, softAnchor(f.Len(), screen, .5, -1))
@@ -377,7 +277,7 @@ func TestSerialQualifyPicksCentredMatch(t *testing.T) {
 	// No match fits the span (a record little longer than the screen) → the
 	// match nearest the target still triggers, leaving the least off-record.
 	mid := f.Len() / 2
-	ok, anchor = e.serialQualifyAt(f, f.Len(), f.SampleS, anchorSpan{target: mid, lo: mid - 1, hi: mid + 1})
+	ok, anchor = e.serialQualifyAt(f, f.Len(), f.SampleS, core.AnchorSpan{Target: mid, Lo: mid - 1, Hi: mid + 1})
 	if !ok || anchor == first {
 		t.Fatalf("fallback ok=%v anchor=%d, want the match nearest %d (not the first, %d)", ok, anchor, mid, first)
 	}
@@ -427,14 +327,14 @@ func TestAutoGateLiveness(t *testing.T) {
 			} else {
 				e.SetSerialMode(SerialOff)
 			}
-		}, serialFallback},
+		}, core.SerialFallback},
 		{"zone", func(on bool) {
 			if on {
 				e.SetZoneMode(ZoneTrigger)
 			} else {
 				e.SetZoneMode(ZoneOff)
 			}
-		}, zoneFallback},
+		}, core.ZoneFallback},
 	} {
 		gate.arm(true)
 		// a frame just published: the holds count to the fallback
@@ -453,10 +353,10 @@ func TestAutoGateLiveness(t *testing.T) {
 		}
 		// a slow timebase: captures seconds apart; a second after the last frame one is due, whatever the count
 		e.mu.Lock()
-		e.lastPublish = e.clk.Now().Add(-2 * autoLiveMax)
+		e.lastPublish = e.clk.Now().Add(-2 * core.AutoLiveMax)
 		e.mu.Unlock()
 		if !e.autoGateLiveness() {
-			t.Fatalf("%s: no liveness frame %v after the last one", gate.name, 2*autoLiveMax)
+			t.Fatalf("%s: no liveness frame %v after the last one", gate.name, 2*core.AutoLiveMax)
 		}
 		gate.arm(false)
 	}

@@ -8,6 +8,7 @@ import (
 	"runtime/debug"
 	"time"
 
+	core "github.com/labeth/open-dso-core/engine"
 	"github.com/labeth/open-dso-core/sample"
 	"github.com/labeth/open-sds1000cml/app/internal/iface"
 )
@@ -223,7 +224,7 @@ func (e *Engine) oneFrame(norm bool) { //nolint:gocyclo,funlen // one native-fas
 	// loop gate (they used to scan the same bytes twice); re-scanned only after a
 	// re-drain actually changes the data. loC1/hiC1/pC1 stay valid for the final
 	// record and seed the single canonical scan below.
-	loC1, hiC1, pC1 := ptp(f.Codes8(0)[:cols])
+	loC1, hiC1, pC1 := core.Ptp(f.Codes8(0)[:cols])
 	rd := realDepthP(f.Codes8(0)[:cols], pC1)
 	e.lastFirstHalf = nativeFast && rd*4 < cols*3 // raw half-record rate (before re-capture)
 	maxRetry := int(e.tuneMaxRetry.Load())
@@ -240,7 +241,7 @@ func (e *Engine) oneFrame(norm bool) { //nolint:gocyclo,funlen // one native-fas
 		}
 		e.haltSettle(nativeFast)
 		e.drainQuiet(f, cols)
-		loC1, hiC1, pC1 = ptp(f.Codes8(0)[:cols])
+		loC1, hiC1, pC1 = core.Ptp(f.Codes8(0)[:cols])
 		rd = realDepthP(f.Codes8(0)[:cols], pC1)
 	}
 	drainTime := e.clk.Now().Sub(drainStart)
@@ -280,9 +281,9 @@ func (e *Engine) oneFrame(norm bool) { //nolint:gocyclo,funlen // one native-fas
 	// anchor and the display see the same enhanced samples (spec 03 §7.4).
 	mode := int(e.acqMode.Load())
 	if mode == AcqEres {
-		if l := clampEresLen(int(e.eresLen.Load())); l > 1 {
-			eresBoxcar(f.Codes8(0)[:cols], l, e.eresScratch)
-			eresBoxcar(f.Codes8(1)[:cols], l, e.eresScratch)
+		if l := core.ClampEresLen(int(e.eresLen.Load())); l > 1 {
+			core.EresBoxcar(f.Codes8(0)[:cols], l, e.eresScratch)
+			core.EresBoxcar(f.Codes8(1)[:cols], l, e.eresScratch)
 		}
 	}
 
@@ -299,8 +300,8 @@ func (e *Engine) oneFrame(norm bool) { //nolint:gocyclo,funlen // one native-fas
 	// scan unless the data differs (C2 source, a clamped untriggered record) or
 	// ERES just rewrote the samples.
 	lo, hi, p := loC1, hiC1, pC1
-	if discIsC2 || usable != cols || (mode == AcqEres && clampEresLen(int(e.eresLen.Load())) > 1) {
-		lo, hi, p = ptp(disc)
+	if discIsC2 || usable != cols || (mode == AcqEres && core.ClampEresLen(int(e.eresLen.Load())) > 1) {
+		lo, hi, p = core.Ptp(disc)
 	}
 	rising := e.trigRising.Load()
 
@@ -319,7 +320,7 @@ func (e *Engine) oneFrame(norm bool) { //nolint:gocyclo,funlen // one native-fas
 	nf := -1.0 // disc's noiseFloor, taken once for the presence test and the edge
 	noise := func() float64 {
 		if nf < 0 {
-			nf = noiseFloor(disc)
+			nf = core.NoiseFloor(disc)
 		}
 		return nf
 	}
@@ -335,13 +336,13 @@ func (e *Engine) oneFrame(norm bool) { //nolint:gocyclo,funlen // one native-fas
 	interval := e.band.CaptureIntervalNs()
 	edgeX := -1.0
 	lvlOffSig := false // EDGE: trigger level is set but sits off the signal band
-	switch tp.typ {
+	switch tp.Typ {
 	case TrigPulse:
-		edgeX = qualifyPulse(disc, interval, tp, rising)
+		edgeX = core.QualifyPulse(disc, interval, tp, rising)
 	case TrigSlope:
-		edgeX = qualifySlope(disc, interval, tp, rising)
+		edgeX = core.QualifySlope(disc, interval, tp, rising)
 	case TrigVideo:
-		edgeX = qualifyVideo(disc, interval, tp)
+		edgeX = core.QualifyVideo(disc, interval, tp)
 	case TrigEdge:
 		// EDGE: anchor on the user's HW trigger level (WYSIWYG — the display
 		// crosses where the level is set). A lock requires a right-slope crossing
@@ -397,7 +398,7 @@ func (e *Engine) oneFrame(norm bool) { //nolint:gocyclo,funlen // one native-fas
 	// HOLDING — not free-running — between fallbacks re-presents the last edge, so an
 	// intermittent-edge sub-period band (2–20 µs) shows a stable held edge, never an edge↔flat
 	// flicker.
-	qualifier := tp.typ != TrigEdge
+	qualifier := tp.Typ != TrigEdge
 
 	lock := edgeX >= 0 && (qualifier || sigPresent)
 	if !nativeFast {
@@ -496,7 +497,7 @@ func (e *Engine) oneFrame(norm bool) { //nolint:gocyclo,funlen // one native-fas
 				edgeX = float64(anchor) // centre the matched byte
 				f.Status.Triggered = true
 			}
-		case norm || !e.autoLivenessDue(&e.serialHeld, serialFallback):
+		case norm || !e.autoLivenessDue(&e.serialHeld, core.SerialFallback):
 			publish = false // (an AUTO liveness frame is displayed, but not observed)
 		}
 	}
@@ -513,7 +514,7 @@ func (e *Engine) oneFrame(norm bool) { //nolint:gocyclo,funlen // one native-fas
 		qualified := lock && e.zonesQualify(f, cols, edgeX, f.SampleS)
 		if qualified {
 			e.zoneHeld = 0
-		} else if norm || !e.autoLivenessDue(&e.zoneHeld, zoneFallback) {
+		} else if norm || !e.autoLivenessDue(&e.zoneHeld, core.ZoneFallback) {
 			publish = false // (AUTO lets a liveness frame through)
 		}
 	}
@@ -563,11 +564,11 @@ func (e *Engine) oneFrame(norm bool) { //nolint:gocyclo,funlen // one native-fas
 			gen := e.avgGen.Load()
 			width := e.band.WinCols()
 			if e.avgKey.gen != gen || e.avgKey.width != width || e.avgKey.norm != norm {
-				e.avg.reset(n, width)
+				e.avg.Reset(n, width)
 				e.avgKey.gen, e.avgKey.width, e.avgKey.norm = gen, width, norm
 			}
-			e.avg.push(f, edgeX)
-			e.avg.meanInto(f) // rewrites samples, Valid and EdgeX (centre)
+			e.avg.Push(f, edgeX)
+			e.avg.MeanInto(f) // rewrites samples, Valid and EdgeX (centre)
 			edgeX = f.TriggerAt
 		}
 	}
@@ -575,8 +576,8 @@ func (e *Engine) oneFrame(norm bool) { //nolint:gocyclo,funlen // one native-fas
 	// Cross-frame uniformity telemetry over published frames (spec 03 §11).
 	// observeOK excludes serial liveness frames whose anchor differs from a match.
 	if publish && observeOK {
-		e.uni.push(disc, e.band.WinCols(), edgeX)
-		std, raw, worst := e.uni.stats()
+		e.uni.Push(disc, e.band.WinCols(), edgeX)
+		std, raw, worst := e.uni.Stats()
 		e.mu.Lock()
 		e.stats.WinColStd, e.stats.WinColRaw, e.stats.WinColMax = std, raw, worst
 		e.mu.Unlock()

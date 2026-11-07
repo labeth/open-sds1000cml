@@ -5,12 +5,13 @@ package engine
 import (
 	"testing"
 
+	core "github.com/labeth/open-dso-core/engine"
 	"github.com/labeth/open-sds1000cml/app/internal/sramcapture"
 )
 
 // TRLC-LINKS: REQ-SDS-013
 func TestPlanHardwareSPI(t *testing.T) {
-	p := SerialParams{Proto: serSPI, HaveThr: true, Threshold: 128, SPIClockHz: 200000, ChA: 1, ChB: 0, MSB: true, CPOL: true, CPHA: true, Inverted: true, Bytes: []int{0x48, 0xa5}}
+	p := SerialParams{Proto: core.SerSPI, HaveThr: true, Threshold: 128, SPIClockHz: 200000, ChA: 1, ChB: 0, MSB: true, CPOL: true, CPHA: true, Inverted: true, Bytes: []int{0x48, 0xa5}}
 	c := planHardwareSPI(&p, false)
 	if !c.Enabled || c.GapTicks != 938 || c.Pattern != 0x48a5 || c.Length != 2 || c.ClockChannel != 1 || !c.CPOL || !c.CPHA || !c.MSB || !c.Inverted {
 		t.Fatalf("plan: %+v", c)
@@ -36,7 +37,7 @@ func TestPlanHardwareSPI(t *testing.T) {
 // sampling phases.
 // TRLC-LINKS: REQ-SDS-229
 func TestPlanHardwareSampleSPI(t *testing.T) {
-	p := SerialParams{Proto: serSPI, HaveThr: true, Threshold: 128, SPIClockHz: 104000000, ChA: 1, ChB: 0, MSB: true, Bytes: []int{0x4f, 0x50}}
+	p := SerialParams{Proto: core.SerSPI, HaveThr: true, Threshold: 128, SPIClockHz: 104000000, ChA: 1, ChB: 0, MSB: true, Bytes: []int{0x4f, 0x50}}
 	if planHardwareSPI(&p, false).Enabled {
 		t.Fatal("104 MHz planned on the level receiver")
 	}
@@ -60,7 +61,7 @@ func TestPlanHardwareSampleSPI(t *testing.T) {
 // (to about 20 MHz: half a period of 24 ns or more).
 // TRLC-LINKS: REQ-SDS-229, REQ-SDS-230
 func TestPlanHardwareSPIDelay(t *testing.T) {
-	p := SerialParams{Proto: serSPI, HaveThr: true, Threshold: 128, SPIClockHz: 104000000, ChA: 0, ChB: 1, MSB: true, SPIDelayNs: 7}
+	p := SerialParams{Proto: core.SerSPI, HaveThr: true, Threshold: 128, SPIClockHz: 104000000, ChA: 0, ChB: 1, MSB: true, SPIDelayNs: 7}
 	if c := planHardwareSPI(&p, true); !c.Enabled || c.Delay != -23+112 {
 		t.Fatalf("7 ns, clock on C1: %+v", c)
 	}

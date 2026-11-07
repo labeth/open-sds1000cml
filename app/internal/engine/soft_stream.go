@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/labeth/open-dso-core/decode"
+	core "github.com/labeth/open-dso-core/engine"
 	"github.com/labeth/open-sds1000cml/app/internal/bus"
 	"github.com/labeth/open-sds1000cml/app/internal/decodedlines"
 	"github.com/labeth/open-sds1000cml/app/internal/sramcapture"
@@ -137,10 +138,10 @@ type softStream struct {
 	subframes bool
 	// Client decode (soft_client.go): a web page decodes the words.
 	client      bool
-	clientBreak bool          // words were lost since the last chunk the page was handed
-	overBudget  bool          // the plan carries more than the scope decodes: only a page keeps up
-	cliFrames   []clientFrame // the page's frames taken from the ring (soft_client.go)
-	cliSpans    []clientSpan
+	clientBreak bool               // words were lost since the last chunk the page was handed
+	overBudget  bool               // the plan carries more than the scope decodes: only a page keeps up
+	cliFrames   []core.ClientFrame // the page's frames taken from the ring (soft_client.go)
+	cliSpans    []core.ClientSpan
 
 	// Captures mode.
 	capCfg    sramcapture.Config
@@ -186,13 +187,13 @@ const softOneWire = "onewire"
 
 // softProtoNames are the decode package's names of the symbol protocols.
 var softProtoNames = map[int]string{
-	serLIN: "lin", serDMX: "dmx512", serModbus: "modbus", serOneWire: softOneWire,
-	serWS281x: "ws281x", serDHT: "dht", serCEC: "cec", serJ1850: "j1850", serIRNEC: "irnec", serIRSIRC: "irsirc",
-	serIRRC5: "irrc5", serIRRC6: "irrc6", serDALI: "dali", serUSBPD: "usbpd", serSPDIF: "spdif", serPS2: "ps2",
-	serSWD: "swd", serMDIO: "mdio", serWiegand: "wiegand", serQuad: "quad", serStepper: "stepper", serPWM: "pwm",
-	serRCEncode: "rcencode", serOOK: "ook", serMiller: "miller", serMorse: "morse", serDCF77: "dcf77", serEM4100: "em4100",
-	serEM4305: "em4305", serT55xx: "t55xx", serSWIM: "swim", serSDQ: "sdq", serPJDL: "pjdl", serDSI: "dsi", serQi: "qi",
-	serSDCard: "sdcard", serPDI: "pdi", serCJTAG: "cjtag", serMaple: "maple", serCaliper: "caliper", serIRMP: "irmp",
+	core.SerLIN: "lin", core.SerDMX: "dmx512", core.SerModbus: "modbus", core.SerOneWire: softOneWire,
+	core.SerWS281x: "ws281x", core.SerDHT: "dht", core.SerCEC: "cec", core.SerJ1850: "j1850", core.SerIRNEC: "irnec", core.SerIRSIRC: "irsirc",
+	core.SerIRRC5: "irrc5", core.SerIRRC6: "irrc6", core.SerDALI: "dali", core.SerUSBPD: "usbpd", core.SerSPDIF: "spdif", core.SerPS2: "ps2",
+	core.SerSWD: "swd", core.SerMDIO: "mdio", core.SerWiegand: "wiegand", core.SerQuad: "quad", core.SerStepper: "stepper", core.SerPWM: "pwm",
+	core.SerRCEncode: "rcencode", core.SerOOK: "ook", core.SerMiller: "miller", core.SerMorse: "morse", core.SerDCF77: "dcf77", core.SerEM4100: "em4100",
+	core.SerEM4305: "em4305", core.SerT55xx: "t55xx", core.SerSWIM: "swim", core.SerSDQ: "sdq", core.SerPJDL: "pjdl", core.SerDSI: "dsi", core.SerQi: "qi",
+	core.SerSDCard: "sdcard", core.SerPDI: "pdi", core.SerCJTAG: "cjtag", core.SerMaple: "maple", core.SerCaliper: "caliper", core.SerIRMP: "irmp",
 }
 
 // softProtoName is softProtoNames[proto] from a table by id, built once
@@ -246,7 +247,7 @@ const softBitsBudget = 4e6
 // softLines is the lines a protocol's stream decodes: a clocked bus's two.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
 func softLines(proto int) int {
-	if clockedTwoLine(proto) {
+	if core.ClockedTwoLine(proto) {
 		return 2
 	}
 	return 1
@@ -380,7 +381,7 @@ func softCaptureLog(feature float64) uint8 {
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
 func (e *Engine) beginSoftStream(ctx context.Context, p SerialParams, trig StreamTrigger, value int) (sramcapture.RecordIdentity, error) {
 	name, _ := softProtoName(p.Proto)
-	d, ok := lookupSerialDecoder(p.Proto)
+	d, ok := core.LookupSerialDecoder(p.Proto)
 	if name == "" || !ok {
 		return sramcapture.RecordIdentity{}, fmt.Errorf("no software stream for protocol %d", p.Proto)
 	}
@@ -404,13 +405,13 @@ func (e *Engine) beginSoftStream(ctx context.Context, p SerialParams, trig Strea
 		// Captures stop on a record the symbol trigger fired on; the value
 		// must be one it matches wherever it comes.
 		q := p
-		q.Bytes, q.Pattern = nil, []PatternElem{{Kind: patternData, Value: value & unitMask(p), Mask: unitMask(p)}}
+		q.Bytes, q.Pattern = nil, []PatternElem{{Kind: core.PatternData, Value: value & core.UnitMask(p), Mask: core.UnitMask(p)}}
 		if !planHardwareSymbol(&q).Enabled {
-			return sramcapture.RecordIdentity{}, fmt.Errorf("%s streams as captures, and the FPGA's symbol trigger matches %X only at a fixed place in a frame: stop it by hand", d.Name, value&unitMask(p))
+			return sramcapture.RecordIdentity{}, fmt.Errorf("%s streams as captures, and the FPGA's symbol trigger matches %X only at a fixed place in a frame: stop it by hand", d.Name, value&core.UnitMask(p))
 		}
 	}
 	s := &softStream{
-		p: p, proto: name, decoder: d, trig: trig, value: value & unitMask(p), mask: unitMask(p),
+		p: p, proto: name, decoder: d, trig: trig, value: value & core.UnitMask(p), mask: core.UnitMask(p),
 		gapFree: gapFree, quiet: quiet, bits: bits, byHand: onError, ring: bits && trig == StreamOnValue, subframes: name == "spdif",
 	}
 	if bits {
@@ -479,7 +480,7 @@ func (e *Engine) beginSoftStream(ctx context.Context, p SerialParams, trig Strea
 		}
 		return s.id, nil
 	})
-	return ownerResult[sramcapture.RecordIdentity](v, err)
+	return core.OwnerResult[sramcapture.RecordIdentity](v, err)
 }
 
 // decodeFunc is the registry decoder at the stream's sample time and the
@@ -904,7 +905,7 @@ func (e *Engine) softFeed(s *softStream, raw []byte) {
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
 func (e *Engine) feedBitsQuiet(s *softStream, raw []byte) {
 	ch := s.p.ChA & 1
-	two := clockedTwoLine(s.p.Proto)
+	two := core.ClockedTwoLine(s.p.Proto)
 	n := len(raw) / 4
 	from := 0 // the first word not yet queued or left out
 	for i := range n {
@@ -983,7 +984,7 @@ func appendLevel(dst []uint8, word uint16, n int) []uint8 {
 func (s *softStream) feedPeak(raw []byte, cal *InterleaveCalibration) {
 	n := len(raw) / 4
 	lines := 1
-	if clockedTwoLine(s.p.Proto) {
+	if core.ClockedTwoLine(s.p.Proto) {
 		lines = 2
 	}
 	// One pass a line, appending to the queued samples: at 2^9 the stream
@@ -1009,7 +1010,7 @@ func (s *softStream) feedPeak(raw []byte, cal *InterleaveCalibration) {
 				if cal != nil {
 					x = debiasQ(x, off[k])
 				}
-				t[k][b] = int32(x)<<8 | int32(roundQ8(uint16(x)))
+				t[k][b] = int32(x)<<8 | int32(core.RoundQ8(uint16(x)))
 			}
 		}
 		at := len(*dst)
@@ -1056,17 +1057,17 @@ func (s *softStream) feedBits(raw []byte) {
 	ch := s.p.ChA & 1
 	if s.edges {
 		s.pendEA.AppendWords(raw, ch)
-		if clockedTwoLine(s.p.Proto) {
+		if core.ClockedTwoLine(s.p.Proto) {
 			s.pendEB.AppendWords(raw, 1-ch)
 			s.learnBWords(raw, 1-ch)
 		}
 		s.haveLast = s.haveLast || len(raw) >= 4
 		return
 	}
-	s.pendA = unpackBits(s.pendA, raw, ch)
-	if clockedTwoLine(s.p.Proto) {
+	s.pendA = core.UnpackBits(s.pendA, raw, ch)
+	if core.ClockedTwoLine(s.p.Proto) {
 		at := len(s.pendB)
-		s.pendB = unpackBits(s.pendB, raw, 1-ch)
+		s.pendB = core.UnpackBits(s.pendB, raw, 1-ch)
 		s.learnB(s.pendB[at:])
 	}
 	s.haveLast = s.haveLast || len(raw) >= 4
@@ -1227,7 +1228,7 @@ func (s *softStream) emit(frames []decode.StreamFrame, ord func(uint64) uint64) 
 		hit, unit := false, 0
 		for _, sp := range f.Spans {
 			switch sp.Kind {
-			case spanData:
+			case core.SpanData:
 				v := sp.Val & s.mask
 				s.addEvent(sramcapture.DecodedEvent{Kind: sramcapture.EventData, Sample: ord(sp.I0), Value: uint32(v), Valid: true}) //nolint:gosec // G115: v is masked to the unit width
 				if !hit && s.trig == StreamOnValue && v == s.value {
@@ -1237,7 +1238,7 @@ func (s *softStream) emit(frames []decode.StreamFrame, ord func(uint64) uint64) 
 					}
 				}
 				unit++
-			case spanFrameError, spanParityError, spanGap:
+			case core.SpanFrameError, core.SpanParityError, core.SpanGap:
 				s.addEvent(sramcapture.DecodedEvent{Kind: sramcapture.EventError, Sample: ord(sp.I0)})
 			}
 		}
@@ -1248,7 +1249,7 @@ func (s *softStream) emit(frames []decode.StreamFrame, ord func(uint64) uint64) 
 			s.stopFirst, s.stopLast = ord(f.I0), ord(f.I1)
 			if decodedlines.StartNoteCode(frameStart(f)) == 0 {
 				for _, sp := range f.Spans {
-					if sp.Kind == spanData || sp.Kind == spanFrameError || sp.Kind == spanParityError || sp.Kind == spanGap {
+					if sp.Kind == core.SpanData || sp.Kind == core.SpanFrameError || sp.Kind == core.SpanParityError || sp.Kind == core.SpanGap {
 						s.stopFirst = ord(sp.I0)
 						break
 					}
@@ -1264,7 +1265,7 @@ func (s *softStream) emit(frames []decode.StreamFrame, ord func(uint64) uint64) 
 // frameStart is a frame's start-of-frame text ("" none).
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
 func frameStart(f decode.StreamFrame) string {
-	if len(f.Spans) > 0 && f.Spans[0].Kind == spanSOF {
+	if len(f.Spans) > 0 && f.Spans[0].Kind == core.SpanSOF {
 		return f.Spans[0].Text
 	}
 	return ""
@@ -1305,13 +1306,13 @@ func (s *softStream) addEvent(ev sramcapture.DecodedEvent) {
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
 func (s *softStream) valuePattern(at int) []PatternElem {
 	if at < 0 {
-		return []PatternElem{{Kind: patternData, Value: s.value, Mask: s.mask}}
+		return []PatternElem{{Kind: core.PatternData, Value: s.value, Mask: s.mask}}
 	}
-	pat := []PatternElem{{Kind: patternStart}}
+	pat := []PatternElem{{Kind: core.PatternStart}}
 	for range at {
-		pat = append(pat, PatternElem{Kind: patternData})
+		pat = append(pat, PatternElem{Kind: core.PatternData})
 	}
-	pat = append(pat, PatternElem{Kind: patternData, Value: s.value, Mask: s.mask})
+	pat = append(pat, PatternElem{Kind: core.PatternData, Value: s.value, Mask: s.mask})
 	// The unit at that place may be narrower than the transcript's (an IR
 	// address of 5 bits): the mask its width takes, the widest that plans.
 	for w := bitsLen(s.mask); w > 0 && s.value>>w == 0; w-- {
@@ -1528,7 +1529,7 @@ func (e *Engine) softCapture(s *softStream) {
 	if s.p.ChA&1 == 1 {
 		a, b = f.Codes8(1), f.Codes8(0)
 	}
-	if !clockedTwoLine(s.p.Proto) {
+	if !core.ClockedTwoLine(s.p.Proto) {
 		b = nil
 	} else {
 		s.learnB(b)

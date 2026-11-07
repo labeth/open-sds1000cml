@@ -4,9 +4,8 @@ package engine
 
 import (
 	"math"
-	"sync"
-	"time"
 
+	core "github.com/labeth/open-dso-core/engine"
 	"github.com/labeth/open-dso-core/sample"
 )
 
@@ -24,92 +23,13 @@ import (
 //   into a ring (with the first violating point + a monotonic timestamp), and
 //   stop-on-fail freezes acquisition on the offending frame.
 
-// Zone is one qualification rectangle. Times are SECONDS RELATIVE TO THE
-// TRIGGER EDGE (portable across bands); codes are display codes (0..255).
-// TRLC-LINKS: REQ-SDS-014
-type Zone struct {
-	DtLoS, DtHiS   float64
-	CodeLo, CodeHi int
-	Avoid          bool // true: the frame must NOT enter the zone
-	Ch             int  // 0 = C1, 1 = C2
-}
-
-// Mask is a per-display-column envelope: a frame FAILS if any sample in
-// column j falls outside [Lo[j], Hi[j]]. Columns are the same edge-anchored
-// display window the renderer uses (WinCols samples, edge at PosFrac).
-// TRLC-LINKS: REQ-SDS-014
-type Mask struct {
-	Lo, Hi  []uint8
-	WinCols int
-	Ch      int
-	// identity captured at install time: the mask is only comparable while the
-	// band (time geometry) and the channel's vertical mapping are unchanged.
-	// WinCols alone is NOT an identity — every ≥200 µs/div band clamps to the
-	// same 2048 columns while seconds/column differ 10× (review finding).
-	TdivS   float64
-	SampleS float64
-	// FrameIdent marks an identity taken from the published frames (the SRAM
-	// engine has no band geometry): the mask compares only with frames of the
-	// same window, sample interval, timebase and kind (PeakDetect).
-	FrameIdent bool
-	PeakDetect bool
-	VdivKey    uint64 // channel V/div bits at install (0 = unknown/don't guard)
-	OffKey     uint16 // channel offset DAC shadow at install
-}
-
-// zone/mask modes
-const (
-	ZoneOff     = 0
-	ZoneTrigger = 1
-
-	MaskOff      = 0
-	MaskTest     = 1
-	MaskStopFail = 2
-
-	zoneFallback = 60 // AUTO liveness: publish an unqualified frame every N holds
-	maskRingCap  = 8
-)
-
-// MaskFail is one captured failing frame (ring entry).
-// TRLC-LINKS: REQ-SDS-014
-type MaskFail struct {
-	C1, C2 []uint8
-	Valid  int
-	// Seq is the mask CAPTURE ordinal (the Nth tested frame), not the publish
-	// sequence: held frames are tested too, and stamping them with the next
-	// publish seq gave every hold-window failure the same — and wrong —
-	// identity (found by the publish-policy breaker).
-	Seq        uint64
-	EdgeX      float64
-	SampleS    float64
-	WinCols    int
-	AtNs       int64 // monotonic capture time (engine clock)
-	FailCol    int   // first violating display column
-	FailCode   int   // the violating sample value
-	FailSample int   // raw sample index of the violation
-}
-
-// TRLC-LINKS: REQ-SDS-014
-type zoneMaskState struct {
-	// LOCK ORDER: e.mu is acquired BEFORE zm.mu (Snapshot nests that way).
-	// Never take e.mu while holding zm.mu — that is an ABBA deadlock against
-	// any status poll (found by the concurrency chaos test).
-	mu      sync.Mutex
-	zones   []Zone
-	mask    *Mask
-	maskGen uint64 // each install or clear of the mask counts one (Stats.MaskGen)
-	ring    []MaskFail
-	t0      time.Time // engine-clock epoch for AtNs
-	epochOK bool
-}
-
 // SetZones installs the qualification zones (nil/empty disables the test but
 // not the mode). Copies the slice.
 // TRLC-LINKS: REQ-SDS-014
 func (e *Engine) SetZones(z []Zone) {
-	e.zm.mu.Lock()
-	e.zm.zones = append([]Zone(nil), z...)
-	e.zm.mu.Unlock()
+	e.zm.Mu.Lock()
+	e.zm.Zones = append([]Zone(nil), z...)
+	e.zm.Mu.Unlock()
 }
 
 // SetZoneMode switches the zone trigger (ZoneOff/ZoneTrigger).
@@ -141,17 +61,17 @@ func (e *Engine) SetMask(m *Mask) {
 			// built from the latest ones, so it compares with frames like them.
 			id := e.pubIdent
 			if m.FrameIdent {
-				id = frameIdent{m.TdivS, m.SampleS, m.PeakDetect}
+				id = core.FrameIdent{TdivS: m.TdivS, SampleS: m.SampleS, PeakDetect: m.PeakDetect}
 			}
 			cp.FrameIdent, cp.TdivS, cp.SampleS, cp.PeakDetect = true, id.TdivS, id.SampleS, id.PeakDetect
 		}
 		cp.OffKey = e.offCode[m.Ch&1]
 		e.mu.Unlock()
 	}
-	e.zm.mu.Lock()
-	e.zm.mask = cp
-	e.zm.maskGen++
-	e.zm.mu.Unlock()
+	e.zm.Mu.Lock()
+	e.zm.Mask = cp
+	e.zm.MaskGen++
+	e.zm.Mu.Unlock()
 }
 
 // SetMaskMode switches mask testing (MaskOff/MaskTest/MaskStopFail) and
@@ -175,9 +95,9 @@ func (e *Engine) SetMaskMode(m int) {
 // ClearMaskFails empties the failure ring and counters.
 // TRLC-LINKS: REQ-SDS-014
 func (e *Engine) ClearMaskFails() {
-	e.zm.mu.Lock()
-	e.zm.ring = nil
-	e.zm.mu.Unlock()
+	e.zm.Mu.Lock()
+	e.zm.Ring = nil
+	e.zm.Mu.Unlock()
 	e.maskPass.Store(0)
 	e.maskFail.Store(0)
 	e.maskSkip.Store(0)
@@ -187,31 +107,31 @@ func (e *Engine) ClearMaskFails() {
 // MaskFails returns a snapshot of the failure ring (most recent last).
 // TRLC-LINKS: REQ-SDS-014
 func (e *Engine) MaskFails() []MaskFail {
-	e.zm.mu.Lock()
-	defer e.zm.mu.Unlock()
-	return append([]MaskFail(nil), e.zm.ring...)
+	e.zm.Mu.Lock()
+	defer e.zm.Mu.Unlock()
+	return append([]MaskFail(nil), e.zm.Ring...)
 }
 
 // Zones returns a copy of the installed zones (render/UI readers).
 // TRLC-LINKS: REQ-SDS-014
 func (e *Engine) Zones() []Zone {
-	e.zm.mu.Lock()
-	defer e.zm.mu.Unlock()
-	return append([]Zone(nil), e.zm.zones...)
+	e.zm.Mu.Lock()
+	defer e.zm.Mu.Unlock()
+	return append([]Zone(nil), e.zm.Zones...)
 }
 
 // MaskEnvelope returns a copy of the installed mask (nil if none) for the
 // LCD/web renderers.
 // TRLC-LINKS: REQ-SDS-014
 func (e *Engine) MaskEnvelope() *Mask {
-	e.zm.mu.Lock()
-	defer e.zm.mu.Unlock()
-	if e.zm.mask == nil {
+	e.zm.Mu.Lock()
+	defer e.zm.Mu.Unlock()
+	if e.zm.Mask == nil {
 		return nil
 	}
-	cp := *e.zm.mask
-	cp.Lo = append([]uint8(nil), e.zm.mask.Lo...)
-	cp.Hi = append([]uint8(nil), e.zm.mask.Hi...)
+	cp := *e.zm.Mask
+	cp.Lo = append([]uint8(nil), e.zm.Mask.Lo...)
+	cp.Hi = append([]uint8(nil), e.zm.Mask.Hi...)
 	return &cp
 }
 
@@ -236,9 +156,9 @@ func (e *Engine) zoneMaskUncomparable() {
 // pass (intersect zones must be hit, avoid zones must be missed).
 // TRLC-LINKS: REQ-SDS-014
 func (e *Engine) zonesQualify(f *sample.Frame, valid int, edgeX, sampleS float64) bool {
-	e.zm.mu.Lock()
-	zones := e.zm.zones
-	e.zm.mu.Unlock()
+	e.zm.Mu.Lock()
+	zones := e.zm.Zones
+	e.zm.Mu.Unlock()
 	if len(zones) == 0 {
 		return true
 	}
@@ -286,9 +206,9 @@ func (e *Engine) maskEval(f *sample.Frame, valid, liveDepth int, edgeX, sampleS,
 	if mode == MaskOff {
 		return false, false
 	}
-	e.zm.mu.Lock()
-	m := e.zm.mask
-	e.zm.mu.Unlock()
+	e.zm.Mu.Lock()
+	m := e.zm.Mask
+	e.zm.Mu.Unlock()
 	if m == nil || m.WinCols <= 0 {
 		return false, false
 	}
@@ -377,42 +297,26 @@ func (e *Engine) maskEval(f *sample.Frame, valid, liveDepth int, edgeX, sampleS,
 	e.maskFail.Add(1)
 	// capture the failing frame into the ring (copy NOW — the arena slot is
 	// reused by the next drain)
-	e.zm.mu.Lock()
-	if !e.zm.epochOK {
-		e.zm.t0 = e.clk.Now()
-		e.zm.epochOK = true
+	e.zm.Mu.Lock()
+	if !e.zm.EpochOK {
+		e.zm.T0 = e.clk.Now()
+		e.zm.EpochOK = true
 	}
 	mf := MaskFail{
 		C1: append([]uint8(nil), f.Codes8(0)[:valid]...), Valid: valid,
 		Seq: seq, EdgeX: edgeX, SampleS: sampleS, WinCols: frameWin,
-		AtNs:    int64(e.clk.Now().Sub(e.zm.t0)),
+		AtNs:    int64(e.clk.Now().Sub(e.zm.T0)),
 		FailCol: failCol, FailCode: failCode, FailSample: failSample,
 	}
 	if len(f.Codes8(1)) >= valid {
 		mf.C2 = append([]uint8(nil), f.Codes8(1)[:valid]...)
 	}
-	e.zm.ring = append(e.zm.ring, mf)
-	if len(e.zm.ring) > maskRingCap {
-		e.zm.ring = e.zm.ring[len(e.zm.ring)-maskRingCap:]
+	e.zm.Ring = append(e.zm.Ring, mf)
+	if len(e.zm.Ring) > core.MaskRingCap {
+		e.zm.Ring = e.zm.Ring[len(e.zm.Ring)-core.MaskRingCap:]
 	}
-	e.zm.mu.Unlock()
+	e.zm.Mu.Unlock()
 	return true, mode == MaskStopFail
-}
-
-// maskMapKey is one reading of a mask through time: the mask and the frame
-// window it was read for.
-type maskMapKey struct {
-	m       *Mask
-	w       int
-	sampleS float64
-	peak    bool
-	posFrac float64
-}
-
-// maskMapState caches the last reading, for the engine goroutine.
-type maskMapState struct {
-	key    maskMapKey
-	lo, hi []uint8
 }
 
 // maskFrameWindow is the window of frame f a frame-identified mask m tests,
@@ -459,9 +363,9 @@ func (e *Engine) maskThroughTime(m *Mask, w int, sampleS float64, peak bool, pos
 	if math.Abs(float64(w)*sampleS-span) > 0.01*span+0.5*math.Max(sampleS, m.SampleS) {
 		return nil, nil
 	}
-	key := maskMapKey{m, w, sampleS, peak, posFrac}
-	if e.maskMap.key == key {
-		return e.maskMap.lo, e.maskMap.hi
+	key := core.MaskMapKey{Mask: m, W: w, SampleS: sampleS, Peak: peak, PosFrac: posFrac}
+	if e.maskMap.Key == key {
+		return e.maskMap.Lo, e.maskMap.Hi
 	}
 	ratio := sampleS / m.SampleS // mask columns per frame sample
 	reach := 1.0                 // half a sample of extent and half of left-edge rounding
@@ -479,103 +383,6 @@ func (e *Engine) maskThroughTime(m *Mask, w int, sampleS float64, peak bool, pos
 		}
 		lo[i], hi[i] = l, h
 	}
-	e.maskMap = maskMapState{key: key, lo: lo, hi: hi}
+	e.maskMap = core.MaskMapState{Key: key, Lo: lo, Hi: hi}
 	return lo, hi
-}
-
-// BuildMaskFromEnvelope dilates a per-column [lo,hi] envelope by ±tolCols
-// horizontally and ±tolCodes vertically — the standard mask morphology. The
-// input envelopes must be winCols long.
-// TRLC-LINKS: REQ-SDS-014
-func BuildMaskFromEnvelope(lo, hi []uint8, winCols, tolCols, tolCodes, ch int) *Mask {
-	if len(lo) != winCols || len(hi) != winCols || winCols <= 0 {
-		return nil
-	}
-	// Columns NEVER OBSERVED during the build (per-frame edge position moves the
-	// window; its fringes may go uncovered) still carry the accumulator's
-	// initial lo>hi. Left alone, dilation turns them into inverted-garbage
-	// bounds that fail every sample (found by the 50-wave breaker: env [247,8]).
-	// An unobserved column is UNTESTABLE: normalize to the always-pass [0,255]
-	// before dilating.
-	nLo := make([]uint8, winCols)
-	nHi := make([]uint8, winCols)
-	for j := range winCols {
-		if lo[j] > hi[j] {
-			nLo[j], nHi[j] = 0, 255
-		} else {
-			nLo[j], nHi[j] = lo[j], hi[j]
-		}
-	}
-	// Each column's extremes over the ±tolCols columns about it: a running
-	// minimum and maximum, the same at any tolerance (van Herk/Gil-Werman).
-	wLo, wHi := slideExtreme(nLo, max(tolCols, 0), false), slideExtreme(nHi, max(tolCols, 0), true)
-	outLo := make([]uint8, winCols)
-	outHi := make([]uint8, winCols)
-	for j := range winCols {
-		mn, mx := int(wLo[j]), int(wHi[j])
-		mn -= tolCodes
-		mx += tolCodes
-		if mn < 0 {
-			mn = 0
-		}
-		if mx > 255 {
-			mx = 255
-		}
-		outLo[j] = uint8(mn)
-		outHi[j] = uint8(mx)
-	}
-	return &Mask{Lo: outLo, Hi: outHi, WinCols: winCols, Ch: ch}
-}
-
-// slideExtreme is each x[j]'s window x[j-r..j+r] (clipped to x) reduced to
-// its minimum, or its maximum (high, as 255 less the minimum of 255-x):
-// blocks of the window's width, a running minimum from each block's left and
-// from its right, and the two read at a window's ends - three steps a column
-// whatever r is (van Herk/Gil-Werman).
-// TRLC-LINKS: REQ-SDS-014
-func slideExtreme(x []uint8, r int, high bool) []uint8 {
-	n, w := len(x), 2*r+1
-	m := n + 2*r
-	p := make([]uint8, 3*m) // x padded r either side with 255 (adds nothing), then g and h
-	xp, g, h := p[:m], p[m:2*m], p[2*m:]
-	for i := range xp {
-		xp[i] = 255
-	}
-	flip := uint8(0)
-	if high {
-		flip = 255
-	}
-	for i, v := range x {
-		xp[r+i] = v ^ flip // 255-v for the maximum
-	}
-	for i, k := 0, 0; i < m; i++ { // k: i's place in its block (counted, not i%w)
-		g[i] = xp[i]
-		if k != 0 {
-			g[i] = min(g[i-1], g[i])
-		}
-		if k++; k == w {
-			k = 0
-		}
-	}
-	for i, k := m-1, (m-1)%w; i >= 0; i-- {
-		h[i] = xp[i]
-		if k != w-1 && i+1 < m {
-			h[i] = min(h[i+1], h[i])
-		}
-		if k--; k < 0 {
-			k = w - 1
-		}
-	}
-	out := make([]uint8, n)
-	for j := range out { // the window x[j-r..j+r] is xp[j .. j+2r]
-		out[j] = min(h[j], g[j+2*r]) ^ flip
-	}
-	return out
-}
-
-// frameIdent is the geometry of the latest published frame (guarded by e.mu),
-// the identity a mask installed on the SRAM engine compares against.
-type frameIdent struct {
-	TdivS, SampleS float64
-	PeakDetect     bool
 }

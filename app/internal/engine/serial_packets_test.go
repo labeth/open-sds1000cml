@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/labeth/open-dso-core/decode"
+	core "github.com/labeth/open-dso-core/engine"
 )
 
 // TRLC-LINKS: REQ-SDS-013
@@ -14,14 +15,14 @@ func TestPacketTriggerBoundaries(t *testing.T) {
 		id       int
 		boundary string
 	}{
-		{serSENT, "sync"},
-		{serCAN, "sof"},
-		{serMIL1553, "start"},
-		{serARINC, "gap"},
-		{serUSB, "start"},
-		{serFlexRay, "start"},
+		{core.SerSENT, "sync"},
+		{core.SerCAN, "sof"},
+		{core.SerMIL1553, "start"},
+		{core.SerARINC, "gap"},
+		{core.SerUSB, "start"},
+		{core.SerFlexRay, "start"},
 	} {
-		d, _ := lookupSerialDecoder(tc.id)
+		d, _ := core.LookupSerialDecoder(tc.id)
 		t.Run(d.Name, func(t *testing.T) {
 			a := decode.Span{Kind: "data", Val: 0x41, I0: 10, I1: 19}
 			b := decode.Span{Kind: "data", Val: 0x42, I0: 20, I1: 29}

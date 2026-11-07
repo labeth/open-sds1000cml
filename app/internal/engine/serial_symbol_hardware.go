@@ -7,6 +7,7 @@ import (
 	"sort"
 
 	"github.com/labeth/open-dso-core/decode"
+	core "github.com/labeth/open-dso-core/engine"
 	"github.com/labeth/open-sds1000cml/app/internal/sramcapture"
 )
 
@@ -15,14 +16,14 @@ import (
 // MIDI is plain UART characters and runs on the general image's receiver.
 // TRLC-LINKS: REQ-SDS-013
 func symbolProtocol(proto int) bool {
-	return proto >= serLIN && proto < SerialProtocols && proto != serMIDI
+	return proto >= core.SerLIN && proto < SerialProtocols && proto != core.SerMIDI
 }
 
 // symbolTwoLines reports the protocols of two lines (line B in use): the
 // clocked two-wire buses, the encoder's and the stepper's pairs.
 // TRLC-LINKS: REQ-SDS-013
 func symbolTwoLines(proto int) bool {
-	return clockedTwoLine(proto)
+	return core.ClockedTwoLine(proto)
 }
 
 // symBits is a frame's line bits in arrival order, each either required to
@@ -276,27 +277,27 @@ func symbolSpec(p SerialParams) (symSpec, bool) { //nolint:gocyclo,funlen // one
 		s.tab = newSymTab(longest, decode.SymLeadNone, data)
 	}
 	switch p.Proto {
-	case serLIN, serDMX, serModbus:
-		bits, parity, frame := 8, parityNone, 10
-		if p.Proto == serModbus {
+	case core.SerLIN, core.SerDMX, core.SerModbus:
+		bits, parity, frame := 8, core.ParityNone, 10
+		if p.Proto == core.SerModbus {
 			parity = p.Parity
 			if parity == "" {
 				parity = "even"
 			}
-			if parity != parityNone {
+			if parity != core.ParityNone {
 				frame = 11
 			}
 		}
 		s.cfg.UnitQ8, s.cfg.FrameUnits, s.period = q8(T), uint8(frame), frame
 		s.unit = func(b *symBits, _ int, u symUnit) bool { uartChar(b, u, bits, parity); return true }
 		switch p.Proto {
-		case serLIN:
+		case core.SerLIN:
 			// break: low 11 bit times or more; delimiter; the sync character 0x55
 			set(sramcapture.SymbolLevel, 2, 20*T, decode.SymDataSep)
 			s.tab.both(false, 11*T, inf, leadStep0, decode.SymDataRestart)
 			s.tab.lead(true, 0.5*T, 20*T, leadStep1)
-			s.start = func(b *symBits, _ []symUnit) bool { uartChar(b, symUnit{0x55, 0xff}, 8, parityNone); return true }
-		case serDMX:
+			s.start = func(b *symBits, _ []symUnit) bool { uartChar(b, symUnit{0x55, 0xff}, 8, core.ParityNone); return true }
+		case core.SerDMX:
 			// break of 22 bit times (88 us) or more, mark after break of 1.5 or more
 			set(sramcapture.SymbolLevel, 2, 22*T, decode.SymDataSep)
 			s.tab.both(false, 0.95*22*T, inf, leadStep0, decode.SymDataRestart)
@@ -313,7 +314,7 @@ func symbolSpec(p SerialParams) (symSpec, bool) { //nolint:gocyclo,funlen // one
 		if s.cfg.UnitQ8 < 16*256 {
 			return s, false // framed characters need 16 receiver clocks a bit
 		}
-	case serOneWire:
+	case core.SerOneWire:
 		set(sramcapture.SymbolClass, 2, 410*us, decode.SymDataEnd)
 		reset, presLo, presHi, one, zero := 410*us, 60*us, 300*us, 15*us, 150*us
 		if p.Baud >= 50000 { // overdrive
@@ -326,7 +327,7 @@ func symbolSpec(p SerialParams) (symSpec, bool) { //nolint:gocyclo,funlen // one
 		s.tab.both(false, reset, inf, leadStep0, decode.SymDataRestart)
 		s.unit = func(b *symBits, _ int, u symUnit) bool { b.field(u.value, u.mask, 8, false); return true }
 		s.period = 8
-	case serWS281x:
+	case core.SerWS281x:
 		set(sramcapture.SymbolClass, 1, 9*T, decode.SymDataEnd)
 		s.tab.both(false, 9*T, inf, leadStep0, decode.SymDataRestart)
 		s.tab.data(false, 0, 9*T, decode.SymDataSep)
@@ -334,7 +335,7 @@ func symbolSpec(p SerialParams) (symSpec, bool) { //nolint:gocyclo,funlen // one
 		s.tab.data(true, 0.5*T, 2*T, decode.SymDataBit1)
 		s.unit = func(b *symBits, _ int, u symUnit) bool { b.field(u.value, u.mask, 8, true); return true }
 		s.period = 8
-	case serDHT:
+	case core.SerDHT:
 		set(sramcapture.SymbolClass, 3, 500*us, decode.SymDataEnd)
 		s.tab.both(false, 500*us, inf, leadStep0, decode.SymDataRestart)
 		s.tab.lead(true, 5*us, 60*us, decode.SymLeadSep)
@@ -345,7 +346,7 @@ func symbolSpec(p SerialParams) (symSpec, bool) { //nolint:gocyclo,funlen // one
 		s.tab.data(true, 48*us, 95*us, decode.SymDataBit1)
 		s.unit = func(b *symBits, _ int, u symUnit) bool { b.field(u.value, u.mask, 8, true); return true }
 		s.period = 8
-	case serCEC:
+	case core.SerCEC:
 		set(sramcapture.SymbolClass, 2, 3.9*ms, decode.SymDataEnd)
 		s.tab.both(false, 3.5*ms, 3.9*ms, leadStep0, decode.SymDataRestart)
 		s.tab.lead(true, 0.4*ms, 1.2*ms, leadStep1)
@@ -355,7 +356,7 @@ func symbolSpec(p SerialParams) (symSpec, bool) { //nolint:gocyclo,funlen // one
 		// a block: eight data bits MSB first, end of message, acknowledge
 		s.unit = func(b *symBits, _ int, u symUnit) bool { b.field(u.value, u.mask, 8, true); b.skip(2); return true }
 		s.period = 10
-	case serJ1850:
+	case core.SerJ1850:
 		set(sramcapture.SymbolClass, 1, 239*us, decode.SymDataEnd)
 		s.tab.both(true, 163*us, 239*us, leadStep0, decode.SymDataRestart)
 		s.tab.data(true, 34*us, 96*us, decode.SymDataBit1)
@@ -364,7 +365,7 @@ func symbolSpec(p SerialParams) (symSpec, bool) { //nolint:gocyclo,funlen // one
 		s.tab.data(false, 96*us, 163*us, decode.SymDataBit1)
 		s.unit = func(b *symBits, _ int, u symUnit) bool { b.field(u.value, u.mask, 8, true); return true }
 		s.period = 8
-	case serIRNEC:
+	case core.SerIRNEC:
 		set(sramcapture.SymbolClass, 2, 10*ms, decode.SymDataEnd)
 		s.tab.both(false, 8*ms, 10*ms, leadStep0, decode.SymDataRestart)
 		s.tab.lead(true, 4*ms, 5*ms, leadStep1)
@@ -374,7 +375,7 @@ func symbolSpec(p SerialParams) (symSpec, bool) { //nolint:gocyclo,funlen // one
 		s.tab.data(true, 1.3*ms, 2.0*ms, decode.SymDataBit1)
 		s.unit = func(b *symBits, _ int, u symUnit) bool { b.field(u.value, u.mask, 8, false); return true }
 		s.period = 8
-	case serIRSIRC:
+	case core.SerIRSIRC:
 		set(sramcapture.SymbolClass, 2, 2.7*ms, decode.SymDataEnd)
 		s.tab.both(false, 2.2*ms, 2.7*ms, leadStep0, decode.SymDataRestart)
 		s.tab.lead(true, 0.4*ms, 0.8*ms, leadStep1)
@@ -394,7 +395,7 @@ func symbolSpec(p SerialParams) (symSpec, bool) { //nolint:gocyclo,funlen // one
 			b.field(u.value, u.mask, w, false)
 			return true
 		}
-	case serIRRC5:
+	case core.SerIRRC5:
 		// half bits of 889 us; a 1 is space then mark (high, low on the
 		// receiver's active-low output); a frame opens at S1's mid-bit mark
 		half := T / 2
@@ -423,7 +424,7 @@ func symbolSpec(p SerialParams) (symSpec, bool) { //nolint:gocyclo,funlen // one
 			}
 			return true
 		}
-	case serIRRC6:
+	case core.SerIRRC6:
 		// t = 444 us; leader mark 6t, space 2t; a 1 is mark then space
 		t := T / 2
 		set(sramcapture.SymbolLevel, 2, 6*t*1.25, decode.SymDataSep)
@@ -440,7 +441,7 @@ func symbolSpec(p SerialParams) (symSpec, bool) { //nolint:gocyclo,funlen // one
 			b.manchester(u.value, u.mask, 8, true, [2]int{0, 1})
 			return true
 		}
-	case serDALI:
+	case core.SerDALI:
 		// half bits of 416.7 us; a 1 rises mid-bit; idle high
 		half := T / 2
 		set(sramcapture.SymbolLevel, 1, 1.8*T, decode.SymDataSep)
@@ -451,7 +452,7 @@ func symbolSpec(p SerialParams) (symSpec, bool) { //nolint:gocyclo,funlen // one
 			b.manchester(u.value, u.mask, 8, true, [2]int{0, 1})
 			return true
 		}
-	case serUSBPD:
+	case core.SerUSBPD:
 		// half UI units, edges; SOP is Sync-1 x3, Sync-2, a byte two 4b5b
 		// symbols, low nibble first, each LSB first
 		set(sramcapture.SymbolEdge, 0, T, decode.SymDataSep)
@@ -480,7 +481,7 @@ func symbolSpec(p SerialParams) (symSpec, bool) { //nolint:gocyclo,funlen // one
 			}
 			return true
 		}
-	case serSPDIF:
+	case core.SerSPDIF:
 		// half-cell units, edges; preamble B (3,1,1,3 half cells), then the
 		// 24-bit sample LSB first
 		set(sramcapture.SymbolEdge, 0, T, decode.SymDataSep)
@@ -494,14 +495,14 @@ func symbolSpec(p SerialParams) (symSpec, bool) { //nolint:gocyclo,funlen // one
 			b.bmc(u.value, u.mask, 24, false)
 			return true
 		}
-	case serPS2:
+	case core.SerPS2:
 		// data at the clock's falling edges; a frame after the clock idles
 		set(sramcapture.SymbolClocked, 1, 0.75*T, decode.SymDataSep)
 		s.cfg.ClockFall, s.cfg.TwoLines = true, true
 		s.tab.both(true, 0.75*T, inf, leadStep0, decode.SymDataRestart)
 		s.unit = func(b *symBits, _ int, u symUnit) bool { uartChar(b, u, 8, "odd"); return true }
 		s.period = 11
-	case serSWD:
+	case core.SerSWD:
 		// data at SWCLK's rising edges: request {start 1, APnDP, RnW, A2,
 		// A3, parity, stop 0, park 1}, turnaround, ACK (OK 1,0,0 LSB first)
 		set(sramcapture.SymbolClocked, 0, T, decode.SymDataSep)
@@ -545,7 +546,7 @@ func symbolSpec(p SerialParams) (symSpec, bool) { //nolint:gocyclo,funlen // one
 			}
 			return true
 		}
-	case serMDIO:
+	case core.SerMDIO:
 		// data at MDC's rising edges: 32 preamble ones, ST (0 first), then
 		// the header's 13 further bits; TA, 16 data bits, MSB first
 		set(sramcapture.SymbolClocked, 0, T, decode.SymDataSep)
@@ -573,7 +574,7 @@ func symbolSpec(p SerialParams) (symSpec, bool) { //nolint:gocyclo,funlen // one
 			}
 			return true
 		}
-	case serWiegand:
+	case core.SerWiegand:
 		// line A is D1 and line B is D0: their AND falls at each pulse, and
 		// D0 then reads 0 for a D0 pulse and 1 for a D1 pulse
 		gap := math.Max(5*T, 2*ms)
@@ -624,8 +625,8 @@ func (s *symSpec) units(elems []PatternElem) ([]symUnit, bool) {
 	var units []symUnit
 	for i, e := range elems {
 		switch {
-		case e.Kind == patternStart && i == 0:
-		case e.Kind == patternData:
+		case e.Kind == core.PatternStart && i == 0:
+		case e.Kind == core.PatternData:
 			w := s.width(len(units))
 			if w <= 0 || w > 32 {
 				return nil, false
@@ -688,11 +689,11 @@ func planHardwareSymbol(p *SerialParams) sramcapture.SymbolTriggerConfig {
 	if !ok {
 		return off
 	}
-	elems := patternOf(*p)
+	elems := core.PatternOf(*p)
 	if len(elems) == 0 {
-		elems = []PatternElem{{Kind: patternStart}}
+		elems = []PatternElem{{Kind: core.PatternStart}}
 	}
-	anchored := elems[0].Kind == patternStart
+	anchored := elems[0].Kind == core.PatternStart
 	switch {
 	case s.noFrame:
 		anchored = false

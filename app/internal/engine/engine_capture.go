@@ -6,6 +6,7 @@ import (
 	"math"
 	"time"
 
+	core "github.com/labeth/open-dso-core/engine"
 	"github.com/labeth/open-dso-core/sample"
 	"github.com/labeth/open-sds1000cml/app/internal/iface"
 )
@@ -362,7 +363,7 @@ func (e *Engine) stitchFrame(norm bool) {
 	f.Snapshot.TdivS = e.band.TdivS
 	f.Snapshot.DisplayedS = e.band.DisplayedSdivS()
 	f.SampleS = e.band.CaptureIntervalNs() * 1e-9
-	_, _, p := ptp(f.Codes8(0)[:cols])
+	_, _, p := core.Ptp(f.Codes8(0)[:cols])
 	f.SourcePtp, f.Status.Triggered, f.Status.Coherent, f.Status.Done = p, false, haltOK && e.lastDrainN == cols, haltOK
 	f.Status.Degraded = false
 	e.streamSeq++

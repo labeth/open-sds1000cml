@@ -7,6 +7,7 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"fmt"
+	core "github.com/labeth/open-dso-core/engine"
 	"github.com/labeth/open-dso-core/webclient"
 	"math/rand"
 	"os"
@@ -69,9 +70,9 @@ func TestAppendWordsRLE(t *testing.T) {
 		if it%4 == 1 {
 			off = 3
 		}
-		enc := appendWordsRLE(make([]byte, off, 8), raw, mask)[off:]
-		if len(enc) > rleBound(n) {
-			t.Fatalf("%d words coded in %d bytes, bound %d", n, len(enc), rleBound(n))
+		enc := core.AppendWordsRLE(make([]byte, off, 8), raw, mask)[off:]
+		if len(enc) > core.RLEBound(n) {
+			t.Fatalf("%d words coded in %d bytes, bound %d", n, len(enc), core.RLEBound(n))
 		}
 		got := rleWords(t, enc)
 		if len(got) != n {
@@ -84,7 +85,7 @@ func TestAppendWordsRLE(t *testing.T) {
 		}
 	}
 	quiet := make([]byte, 4*65536)
-	if enc := appendWordsRLE(nil, quiet, 0xFFFF); len(enc) != 8 {
+	if enc := core.AppendWordsRLE(nil, quiet, 0xFFFF); len(enc) != 8 {
 		t.Fatalf("a quiet second coded in %d bytes", len(enc))
 	}
 }
@@ -140,7 +141,7 @@ func TestClientTapRing(t *testing.T) {
 		seq = cw.Next
 		release()
 	}
-	if total > clientTapBytes || total < clientTapBytes/2 {
+	if total > core.ClientTapBytes || total < core.ClientTapBytes/2 {
 		t.Fatalf("the ring holds %d bytes", total)
 	}
 	if seq != 400 {
@@ -204,9 +205,9 @@ func clientTestStream(t *testing.T, proto int, p SerialParams, pushN int) *softS
 		plan = softPlan{log: softBitsLog(decode.StreamBitsMinPeriod), period: decode.StreamBitsMinPeriod, bits: true}
 	}
 	_, longest, quiet, _ := decode.StreamTiming(name, float64(p.Baud))
-	d, _ := lookupSerialDecoder(proto)
+	d, _ := core.LookupSerialDecoder(proto)
 	s := &softStream{
-		p: p, proto: name, decoder: d, mask: unitMask(p), gapFree: true, quiet: quiet, bits: true,
+		p: p, proto: name, decoder: d, mask: core.UnitMask(p), gapFree: true, quiet: quiet, bits: true,
 		trig: StreamManual, id: sramcapture.RecordIdentity{Epoch: softEpochBase | 7},
 	}
 	s.setTiming(plan)
@@ -296,8 +297,8 @@ func TestClientDecodeMatchesScope(t *testing.T) {
 			frames = append(frames, []int{0x80 | i, i, 0x55, 0})
 		}
 		cases = append(cases, clientCase{
-			"lin-frames", serLIN,
-			SerialParams{Proto: serLIN, Baud: baud, Threshold: 90, HaveThr: true},
+			"lin-frames", core.SerLIN,
+			SerialParams{Proto: core.SerLIN, Baud: baud, Threshold: 90, HaveThr: true},
 			bitsWords(linLevels(13/decode.StreamBitsPeriod(plan.period), baud, frames), 13),
 		})
 
@@ -418,15 +419,15 @@ func TestClientDecodeHandover(t *testing.T) {
 		if plan, _ := softGapFreePlanBudget("ws281x", 0, false, 1, softBitsBudget); plan.bits {
 			t.Fatalf("WS281x streams digital words within the scope's budget")
 		}
-		if plan, ok := softGapFreePlanBudget("ws281x", 0, false, 1, clientBitsBudget); !plan.bits || !ok {
+		if plan, ok := softGapFreePlanBudget("ws281x", 0, false, 1, core.ClientBitsBudget); !plan.bits || !ok {
 			t.Fatalf("WS281x does not stream gap-free when a page decodes")
 		}
 		e := &Engine{logf: t.Logf}
 		if e.softBudget() != softBitsBudget {
 			t.Fatalf("a budget for a page that never asked")
 		}
-		p := SerialParams{Proto: serLIN, Baud: 19200, Threshold: 90, HaveThr: true}
-		s := clientTestStream(t, serLIN, p, 1<<12)
+		p := SerialParams{Proto: core.SerLIN, Baud: 19200, Threshold: 90, HaveThr: true}
+		s := clientTestStream(t, core.SerLIN, p, 1<<12)
 		s.trig, s.value = StreamOnValue, 0x55
 		quiet := make([]byte, 4*4096)
 		for i := range quiet {
@@ -437,7 +438,7 @@ func TestClientDecodeHandover(t *testing.T) {
 			t.Fatalf("the page decodes without the lease")
 		}
 		e.LeaseClientDecode()
-		if e.softBudget() != clientBitsBudget {
+		if e.softBudget() != core.ClientBitsBudget {
 			t.Fatalf("no budget for a page that holds the lease")
 		}
 		if e.softClientMode(s); !s.client {
@@ -480,14 +481,14 @@ func TestClientDecodeHandover(t *testing.T) {
 			t.Fatalf("the page still decodes a stream that stopped")
 		}
 		// a page that stops asking hands the decode back
-		s2 := clientTestStream(t, serLIN, p, 1<<12)
+		s2 := clientTestStream(t, core.SerLIN, p, 1<<12)
 		s2.id.Epoch++
 		e.softClientMode(s2)
 		if !s2.client {
 			t.Fatalf("the page does not take the next stream")
 		}
 		e.ctap.mu.Lock()
-		e.ctap.lease = time.Now().Add(-2 * clientLease)
+		e.ctap.lease = time.Now().Add(-2 * core.ClientLease)
 		e.ctap.mu.Unlock()
 		e.softClientMode(s2)
 		if s2.client || len(s2.events) != 1 || s2.events[0].Kind != sramcapture.EventLoss {
@@ -497,13 +498,13 @@ func TestClientDecodeHandover(t *testing.T) {
 			t.Fatalf("frames taken after the page lost the decode")
 		}
 		// a plan only a page keeps up with ends when the page goes away
-		s3 := clientTestStream(t, serLIN, p, 1<<12)
+		s3 := clientTestStream(t, core.SerLIN, p, 1<<12)
 		s3.id.Epoch += 2
 		s3.overBudget = true
 		e.LeaseClientDecode()
 		e.softClientMode(s3)
 		e.ctap.mu.Lock()
-		e.ctap.lease = time.Now().Add(-2 * clientLease)
+		e.ctap.lease = time.Now().Add(-2 * core.ClientLease)
 		e.ctap.mu.Unlock()
 		if !e.softClientMode(s3) || s3.phase != softDone || s3.err == nil {
 			t.Fatalf("an over-budget stream goes on without its page: phase %v err %v", s3.phase, s3.err)
@@ -608,9 +609,9 @@ func BenchmarkClientFrames(b *testing.B) {
 func BenchmarkSoftFeedEdges(b *testing.B) {
 	withBitsImage(&testing.T{}, func() {
 		raw := clientBenchWords(false)
-		p := SerialParams{Proto: serSWD, Threshold: 128, HaveThr: true}
+		p := SerialParams{Proto: core.SerSWD, Threshold: 128, HaveThr: true}
 		t := &testing.T{}
-		s := clientTestStream(t, serSWD, p, 1<<18)
+		s := clientTestStream(t, core.SerSWD, p, 1<<18)
 		e := &Engine{logf: func(string, ...any) {}}
 		b.SetBytes(int64(len(raw)))
 		for b.Loop() {

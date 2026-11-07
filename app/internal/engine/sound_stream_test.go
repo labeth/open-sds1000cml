@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	core "github.com/labeth/open-dso-core/engine"
 	"github.com/labeth/open-sds1000cml/app/internal/sramcapture"
 )
 
@@ -26,7 +27,7 @@ func soundWords(start uint64, n int) []byte {
 // scale in force, the gaps and the marks inside what a reader copies.
 // TRLC-LINKS: REQ-SDS-265, REQ-SDS-272
 func TestSoundRing(t *testing.T) {
-	r := newSoundRing(12) // 4096 samples
+	r := core.NewSoundRing(12) // 4096 samples
 	now := time.Unix(10, 0)
 	sc := SoundScale{VdivV: [2]float64{1, 0.5}}
 	at := uint64(0)
@@ -36,13 +37,13 @@ func TestSoundRing(t *testing.T) {
 		if k >= 20 {
 			s.VdivV[0] = 2 // a V/div change
 		}
-		r.pushWords(soundWords(at, n), s, k == 36, now)
+		r.PushWords(soundWords(at, n), s, k == 36, now)
 		if k == 33 {
-			r.addMarks([]SoundMark{{At: at + 5, Rising: true}})
+			r.AddMarks([]SoundMark{{At: at + 5, Rising: true}})
 		}
 		at += uint64(n)
 	}
-	b := r.latest(4096, nil, nil, 61035)
+	b := r.Latest(4096, nil, nil, 61035)
 	if b.N != 4096 || b.First != at-4096 || b.Next != at {
 		t.Fatalf("latest: first %d n %d next %d (wrote %d)", b.First, b.N, b.Next, at)
 	}
@@ -60,39 +61,23 @@ func TestSoundRing(t *testing.T) {
 	}
 	// A read from before the oldest starts at the oldest; from the end gives
 	// nothing.
-	if c := r.read(0, 10, nil, nil, 1); c.First != at-4096 || c.N != 10 {
+	if c := r.Read(0, 10, nil, nil, 1); c.First != at-4096 || c.N != 10 {
 		t.Fatalf("old read %d %d", c.First, c.N)
 	}
-	if c := r.read(at+5, 10, nil, nil, 1); c.N != 0 || c.First != at {
+	if c := r.Read(at+5, 10, nil, nil, 1); c.N != 0 || c.First != at {
 		t.Fatalf("future read %d %d", c.First, c.N)
 	}
 	// wait wakes on new samples and times out without.
 	done := make(chan uint64)
-	go func() { done <- r.wait(at, 2*time.Second) }()
+	go func() { done <- r.Wait(at, 2*time.Second) }()
 	time.Sleep(20 * time.Millisecond)
-	r.pushWords(soundWords(at, 3), sc, false, now)
+	r.PushWords(soundWords(at, 3), sc, false, now)
 	if got := <-done; got != at+3 {
 		t.Fatalf("woke at %d", got)
 	}
 	start := time.Now()
-	if got := r.wait(at+3, 30*time.Millisecond); got != at+3 || time.Since(start) < 25*time.Millisecond {
+	if got := r.Wait(at+3, 30*time.Millisecond); got != at+3 || time.Since(start) < 25*time.Millisecond {
 		t.Fatal("wait did not time out")
-	}
-}
-
-// Mark words are 32-bit counts: they extend to the stream's ordinal near
-// the words drained, before and after a wrap.
-// TRLC-LINKS: REQ-SDS-272
-func TestUnwrapWord(t *testing.T) {
-	cases := []struct {
-		w    uint32
-		ref  uint64
-		want uint64
-	}{{100, 90, 100}, {100, 5000, 100}, {0xfffffff0, 1<<32 + 10, 0xfffffff0}, {5, 1<<32 - 3, 1<<32 + 5}, {7, 3<<32 + 2, 3<<32 + 7}}
-	for _, c := range cases {
-		if got := unwrapWord(c.w, c.ref); got != c.want {
-			t.Errorf("unwrap(%#x, %#x) = %#x, want %#x", c.w, c.ref, got, c.want)
-		}
 	}
 }
 

@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/labeth/open-dso-core/decode"
+	core "github.com/labeth/open-dso-core/engine"
 	"github.com/labeth/open-dso-core/sample"
 	"github.com/labeth/open-sds1000cml/app/internal/sramcapture"
 )
@@ -49,7 +50,7 @@ func planHardwarePacket(p *SerialParams, mask uint16, arinc uint32) sramcapture.
 		return true
 	}
 	switch p.Proto {
-	case serCAN:
+	case core.SerCAN:
 		c.Ticks, c.Aux = q8Ticks(p.Baud), q8Ticks(p.Baud)
 		if p.DataBaud > 0 {
 			c.Aux = q8Ticks(p.DataBaud)
@@ -58,12 +59,12 @@ func planHardwarePacket(p *SerialParams, mask uint16, arinc uint32) sramcapture.
 		if c.Ticks < 2048 || c.Ticks > 0xffffff || c.Aux < 2048 || c.Aux > 0xffffff || !bytes(8) {
 			return off
 		}
-	case serFlexRay:
+	case core.SerFlexRay:
 		c.Ticks = q8Ticks(p.Baud)
 		if c.Ticks < 1024 || c.Ticks > 0xffffff || !bytes(8) {
 			return off
 		}
-	case serARINC:
+	case core.SerARINC:
 		// One data field per word: a single pattern value selects bits 11..29.
 		ticks := math.Round(125e6 / float64(p.Baud))
 		if arinc == 0 || ticks < 4 || ticks > 0xffffff || len(p.Bytes) > 1 {
@@ -108,7 +109,7 @@ func planHardwareManchester(p *SerialParams) sramcapture.ManchesterTriggerConfig
 		bits = 8
 	}
 	ticks := math.Round(125e6 / math.Max(1, float64(p.Baud)))
-	if p.Proto != serManchester || !serialThresholdOK(p) || bits < 1 || bits > 16 || len(p.Bytes) > 4 || ticks < 8 || ticks > 0x3fffff {
+	if p.Proto != core.SerManchester || !serialThresholdOK(p) || bits < 1 || bits > 16 || len(p.Bytes) > 4 || ticks < 8 || ticks > 0x3fffff {
 		return sramcapture.ManchesterTriggerConfig{}
 	}
 	c := sramcapture.ManchesterTriggerConfig{Enabled: true, Channel: uint8(p.ChA), IEEE: p.IEEE, MSB: p.MSB, Bits: uint8(bits), BitTicks: uint32(ticks), Length: uint8(len(p.Bytes))} //nolint:gosec // G115: the checks above bound each field
@@ -247,21 +248,21 @@ func protocolImage(p SerialParams) string {
 		return imageQualify
 	}
 	switch p.Proto {
-	case serManchester:
+	case core.SerManchester:
 		return imageLine
-	case serCAN, serARINC, serFlexRay:
+	case core.SerCAN, core.SerARINC, core.SerFlexRay:
 		return imagePacket
-	case serMIL1553, serSENT, serUSB:
+	case core.SerMIL1553, core.SerSENT, core.SerUSB:
 		return imageFrame
-	case serSPI:
+	case core.SerSPI:
 		if (p.Fine || !planHardwareSPI(&p, false).Enabled) && planHardwareSPI(&p, true).Enabled {
 			return imageFast
 		}
-	case serUART:
+	case core.SerUART:
 		if (p.Fine || !planHardwareUART(&p, false).Enabled) && planHardwareUART(&p, true).Enabled {
 			return imageFast
 		}
-	case serI2C:
+	case core.SerI2C:
 		if (p.Fine || p.I2CClockHz > generalI2CReachHz) && planHardwareI2C(&p, true).Enabled {
 			return imageFast
 		}
@@ -313,7 +314,7 @@ func (e *Engine) wantImage() string {
 	if e.serialMode.Load() != SerialTrigger {
 		// A pulse, slope or video trigger runs on the qualifier image.
 		e.mu.Lock()
-		typ := e.tp.typ
+		typ := e.tp.Typ
 		e.mu.Unlock()
 		if (typ != TrigEdge || e.zonesOn()) && e.images.HasQualify() { // and the zone trigger
 			return imageQualify
@@ -325,15 +326,15 @@ func (e *Engine) wantImage() string {
 		}
 		return ""
 	}
-	e.ser.mu.Lock()
-	p := e.ser.params
-	e.ser.mu.Unlock()
+	e.ser.Mu.Lock()
+	p := e.ser.Params
+	e.ser.Mu.Unlock()
 	// The request as the matcher takes it: a threshold the engine learned
 	// (a request from the scope names none) makes it plannable.
 	p, why := e.serialPlanParams(p)
 	// An SPI clock measured again stays on the image it ran on: the fast
 	// image's captures measure it as well, without two loads.
-	if why == spiMeasuring && e.protocolImage == imageFast {
+	if why == core.SPIMeasuring && e.protocolImage == imageFast {
 		return imageFast
 	}
 	// (protocolImage plans SPI itself: its clock, not a baud.)
@@ -501,9 +502,9 @@ func (e *Engine) noteARINCLevels(f *sample.Frame) {
 	if e.arincAux.Load() != 0 {
 		return
 	}
-	e.ser.mu.Lock()
-	p := e.ser.params
-	e.ser.mu.Unlock()
+	e.ser.Mu.Lock()
+	p := e.ser.Params
+	e.ser.Mu.Unlock()
 	// Plannable once a threshold is known (the scope's request learns it);
 	// the slicer levels are the decoder's own from a sampled record. A live
 	// envelope's (min, max) pairs give wrong ones, kept until the request
@@ -512,7 +513,7 @@ func (e *Engine) noteARINCLevels(f *sample.Frame) {
 	// the bits, read in milliseconds where the full-rate record of 200us/div
 	// takes seconds (and a decimated envelope asked for none: the trigger
 	// waited for a record something else asked for).
-	if planned, _ := e.serialPlanParams(p); p.Proto != serARINC || !serialThresholdOK(&planned) || f.Len() < 8 {
+	if planned, _ := e.serialPlanParams(p); p.Proto != core.SerARINC || !serialThresholdOK(&planned) || f.Len() < 8 {
 		return
 	}
 	resolves := uint32(f.AcqDecim) <= 1 || p.Baud > 0 && f.SampleS > 0 && f.SampleS*arincBitSamples <= 1/float64(p.Baud)
@@ -543,7 +544,7 @@ func (e *Engine) noteBackendsLoading(image string) {
 	serial := e.serialMode.Load() == SerialTrigger
 	e.mu.Lock()
 	defer e.mu.Unlock()
-	if e.tp.typ != TrigEdge && !serial {
+	if e.tp.Typ != TrigEdge && !serial {
 		e.stats.TriggerBackend = why
 	}
 	if zones && !serial {

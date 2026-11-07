@@ -3,13 +3,14 @@
 package engine
 
 import (
+	core "github.com/labeth/open-dso-core/engine"
 	"math"
 	"testing"
 )
 
 // TRLC-LINKS: REQ-SDS-013
 func TestPlanHardwareSENT(t *testing.T) {
-	p := SerialParams{Proto: serSENT, HaveThr: true, Threshold: 103, TickNs: 3000, ChA: 1, Inverted: true, Bytes: []int{5, 10}}
+	p := SerialParams{Proto: core.SerSENT, HaveThr: true, Threshold: 103, TickNs: 3000, ChA: 1, Inverted: true, Bytes: []int{5, 10}}
 	c := planHardwareSENT(&p)
 	if !c.Enabled || c.TickTicks != 375 || c.Nibbles != 8 || c.Pattern != 0x050a || c.Channel != 1 || !c.Inverted {
 		t.Fatalf("plan %+v", c)

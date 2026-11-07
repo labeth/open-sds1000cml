@@ -2,11 +2,14 @@
 
 package engine
 
-import "testing"
+import (
+	core "github.com/labeth/open-dso-core/engine"
+	"testing"
+)
 
 // TRLC-LINKS: REQ-SDS-013, REQ-SDS-018
 func TestPlanHardwareUSBLS(t *testing.T) {
-	p := SerialParams{Proto: serUSB, HaveThr: true, Threshold: 103, Baud: 1500000, ChA: 1, Inverted: true, Bytes: []int{0xff, 0x55, 0xaa, 0}}
+	p := SerialParams{Proto: core.SerUSB, HaveThr: true, Threshold: 103, Baud: 1500000, ChA: 1, Inverted: true, Bytes: []int{0xff, 0x55, 0xaa, 0}}
 	c := planHardwareUSBLS(&p)
 	if !c.Enabled || c.BitTicksQ8 != 21333 || c.Pattern != 0xff55aa00 || c.Length != 4 || c.Channel != 1 || !c.Inverted {
 		t.Fatalf("plan %+v", c)

@@ -12,6 +12,7 @@ import (
 	"testing"
 
 	"github.com/labeth/open-dso-core/decode"
+	core "github.com/labeth/open-dso-core/engine"
 	"github.com/labeth/open-dso-core/testenv"
 	"github.com/labeth/open-sds1000cml/app/internal/sramcapture"
 )
@@ -47,7 +48,7 @@ func TestSymbolTopRTL(t *testing.T) {
 		wave func() *symWave
 	}{
 		{"WS281x", func() SerialParams {
-			p := symParams(serWS281x, 800000)
+			p := symParams(core.SerWS281x, 800000)
 			p.Pattern = []PatternElem{symStart, symData(0x11, 0xff)}
 			return p
 		}(), func() *symWave {
@@ -68,7 +69,7 @@ func TestSymbolTopRTL(t *testing.T) {
 			return w
 		}},
 		{"DMX", func() SerialParams {
-			p := symParams(serDMX, 250000)
+			p := symParams(core.SerDMX, 250000)
 			p.Pattern = []PatternElem{symStart, symData(0, 0xff)}
 			return p
 		}(), func() *symWave {
@@ -88,7 +89,7 @@ func TestSymbolTopRTL(t *testing.T) {
 			return w
 		}},
 		{"SWD", func() SerialParams {
-			p := symParams(serSWD, 5000000)
+			p := symParams(core.SerSWD, 5000000)
 			p.Pattern = []PatternElem{symStart, symData(0xa5, 0xff)}
 			return p
 		}(), func() *symWave {

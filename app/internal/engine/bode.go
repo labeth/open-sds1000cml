@@ -7,8 +7,8 @@ import (
 	"fmt"
 	"math"
 	"slices"
-	"sync"
 
+	core "github.com/labeth/open-dso-core/engine"
 	"github.com/labeth/open-dso-core/sample"
 )
 
@@ -20,46 +20,12 @@ import (
 // curve. The engine is the single source of truth; the web and the LCD render
 // the same accumulated points.
 
-// The Bode mode states (SetBodeMode), and the accumulation limits.
-const (
-	BodeOff = 0 // frames are not measured for the frequency response
-	BodeOn  = 1 // every frame adds a point to the frequency response
-
-	bodeBinsPerDecade = 30   // log-frequency accumulation resolution
-	bodeMaxPoints     = 4096 // hard cap on the accumulated set
-	bodeMinCycles     = 4.0  // need at least this many cycles in the record
-)
-
-// BodePoint is one accumulated transfer-function sample.
-// TRLC-LINKS: REQ-SDS-066
-type BodePoint struct {
-	FreqHz   float64
-	GainDB   float64
-	PhaseDeg float64
-	Seq      uint64 // capture ordinal of the frame that set this bin (freshness)
-}
-
-// TRLC-LINKS: REQ-SDS-066
-type bodeState struct {
-	mu    sync.Mutex
-	refCh int // 0 = C1, 1 = C2 (DUT input reference)
-	dutCh int // 0 = C1, 1 = C2 (DUT output)
-	bins  map[int]BodePoint
-	cap   uint64 // capture ordinal
-
-	// last live point (for the status readout), guarded by mu
-	live      BodePoint
-	liveValid bool
-	why       string            // why the last capture gave no point ("" when it did)
-	scale     func(int) float64 // input-referred volts/div, including probe factor
-}
-
 // SetBodeScaleSource supplies calibrated, probe-referred channel scales.
 // TRLC-LINKS: REQ-SDS-066
 func (e *Engine) SetBodeScaleSource(fn func(int) float64) {
-	e.bode.mu.Lock()
-	e.bode.scale = fn
-	e.bode.mu.Unlock()
+	e.bode.Mu.Lock()
+	e.bode.Scale = fn
+	e.bode.Mu.Unlock()
 }
 
 // SetBodeMode arms/disarms FRA and sets the reference + DUT channels. Arming
@@ -67,13 +33,13 @@ func (e *Engine) SetBodeScaleSource(fn func(int) float64) {
 // may re-arm mid-sweep); use ClearBode to reset.
 // TRLC-LINKS: REQ-SDS-066
 func (e *Engine) SetBodeMode(on bool, refCh, dutCh int) {
-	e.bode.mu.Lock()
-	e.bode.refCh = refCh & 1
-	e.bode.dutCh = dutCh & 1
-	if e.bode.bins == nil {
-		e.bode.bins = make(map[int]BodePoint)
+	e.bode.Mu.Lock()
+	e.bode.RefCh = refCh & 1
+	e.bode.DutCh = dutCh & 1
+	if e.bode.Bins == nil {
+		e.bode.Bins = make(map[int]BodePoint)
 	}
-	e.bode.mu.Unlock()
+	e.bode.Mu.Unlock()
 	if on {
 		e.bodeMode.Store(BodeOn)
 	} else {
@@ -84,19 +50,19 @@ func (e *Engine) SetBodeMode(on bool, refCh, dutCh int) {
 // ClearBode empties the accumulated curve.
 // TRLC-LINKS: REQ-SDS-066
 func (e *Engine) ClearBode() {
-	e.bode.mu.Lock()
-	e.bode.bins = make(map[int]BodePoint)
-	e.bode.liveValid = false
-	e.bode.mu.Unlock()
+	e.bode.Mu.Lock()
+	e.bode.Bins = make(map[int]BodePoint)
+	e.bode.LiveValid = false
+	e.bode.Mu.Unlock()
 }
 
 // BodePoints returns the accumulated curve sorted by frequency.
 // TRLC-LINKS: REQ-SDS-066
 func (e *Engine) BodePoints() []BodePoint {
-	e.bode.mu.Lock()
-	defer e.bode.mu.Unlock()
-	out := make([]BodePoint, 0, len(e.bode.bins))
-	for _, p := range e.bode.bins {
+	e.bode.Mu.Lock()
+	defer e.bode.Mu.Unlock()
+	out := make([]BodePoint, 0, len(e.bode.Bins))
+	for _, p := range e.bode.Bins {
 		out = append(out, p)
 	}
 	slices.SortFunc(out, func(a, b BodePoint) int { return cmp.Compare(a.FreqHz, b.FreqHz) })
@@ -111,9 +77,9 @@ func (e *Engine) bodeEval(f *sample.Frame, valid int, sampleS float64) {
 		e.bodeInvalidate("no samples")
 		return
 	}
-	e.bode.mu.Lock()
-	refCh, dutCh, scale := e.bode.refCh, e.bode.dutCh, e.bode.scale
-	e.bode.mu.Unlock()
+	e.bode.Mu.Lock()
+	refCh, dutCh, scale := e.bode.RefCh, e.bode.DutCh, e.bode.Scale
+	e.bode.Mu.Unlock()
 
 	ref := f.Codes8(0)
 	dut := f.Codes8(0)
@@ -129,22 +95,22 @@ func (e *Engine) bodeEval(f *sample.Frame, valid int, sampleS float64) {
 	ref, dut = ref[:valid], dut[:valid]
 
 	noTone := fmt.Sprintf("no tone on the reference C%d", refCh+1)
-	f0 := fundamentalHz(ref, sampleS)
+	f0 := core.FundamentalHz(ref, sampleS)
 	if f0 <= 0 {
 		e.bodeInvalidate(noTone)
 		return
 	}
 	cyc := f0 * float64(valid) * sampleS
-	if cyc < bodeMinCycles {
-		e.bodeInvalidate(fmt.Sprintf("%.1f cycles on screen, %g needed: S/DIV slower", cyc, bodeMinCycles))
+	if cyc < core.BodeMinCycles {
+		e.bodeInvalidate(fmt.Sprintf("%.1f cycles on screen, %g needed: S/DIV slower", cyc, core.BodeMinCycles))
 		return
 	}
 	if f0 >= 0.5/sampleS {
 		e.bodeInvalidate("the tone is too fast for this sample rate: S/DIV faster")
 		return
 	}
-	re1, im1 := singleBinDFT(ref, f0, sampleS)
-	re2, im2 := singleBinDFT(dut, f0, sampleS)
+	re1, im1 := core.SingleBinDFT(ref, f0, sampleS)
+	re2, im2 := core.SingleBinDFT(dut, f0, sampleS)
 	mag1 := math.Hypot(re1, im1)
 	mag2 := math.Hypot(re2, im2)
 	// noise floor: the reference must carry real signal (its DFT bin well above
@@ -176,98 +142,24 @@ func (e *Engine) bodeEval(f *sample.Frame, valid int, sampleS float64) {
 	phaseDeg := math.Atan2(pi, pr) * 180 / math.Pi
 
 	p := BodePoint{FreqHz: f0, GainDB: gainDB, PhaseDeg: phaseDeg}
-	e.bode.mu.Lock()
-	p.Seq = e.bode.cap + 1
-	e.bode.cap = p.Seq
-	if e.bode.bins == nil {
-		e.bode.bins = make(map[int]BodePoint)
+	e.bode.Mu.Lock()
+	p.Seq = e.bode.Cap + 1
+	e.bode.Cap = p.Seq
+	if e.bode.Bins == nil {
+		e.bode.Bins = make(map[int]BodePoint)
 	}
-	bin := int(math.Round(math.Log10(f0) * bodeBinsPerDecade))
-	if len(e.bode.bins) < bodeMaxPoints || func() bool { _, ok := e.bode.bins[bin]; return ok }() {
-		e.bode.bins[bin] = p
+	bin := int(math.Round(math.Log10(f0) * core.BodeBinsPerDecade))
+	if len(e.bode.Bins) < core.BodeMaxPoints || func() bool { _, ok := e.bode.Bins[bin]; return ok }() {
+		e.bode.Bins[bin] = p
 	}
-	e.bode.live, e.bode.liveValid, e.bode.why = p, true, ""
-	e.bode.mu.Unlock()
+	e.bode.Live, e.bode.LiveValid, e.bode.Why = p, true, ""
+	e.bode.Mu.Unlock()
 }
 
 // bodeInvalidate marks the live point stale, saying why the capture gave none.
 // TRLC-LINKS: REQ-SDS-066
 func (e *Engine) bodeInvalidate(why string) {
-	e.bode.mu.Lock()
-	e.bode.liveValid, e.bode.why = false, why
-	e.bode.mu.Unlock()
-}
-
-// fundamentalHz estimates the fundamental frequency of a periodic record by
-// mean-level crossing spacing (works for square or sine stimuli; no FFT). The
-// single-bin DFT that follows only needs this as an f0 estimate — the gain/
-// phase come from the X2/X1 ratio, which is robust to a small f0 error.
-// TRLC-LINKS: REQ-SDS-066
-func fundamentalHz(sig []uint8, sampleS float64) float64 {
-	n := len(sig)
-	if n < 8 {
-		return 0
-	}
-	sum := 0 // an integer sum: the float one was exact, every step
-	for _, v := range sig {
-		sum += int(v)
-	}
-	mean := float64(sum) / float64(n)
-	// rising crossings of the mean with a small hysteresis to reject noise
-	const hyst = 2.0
-	// codes are integers: v < m is v < ⌈m⌉, v >= m is v >= ⌈m⌉
-	armBelow, at := int(math.Ceil(mean-hyst)), int(math.Ceil(mean))
-	var firstX, lastX float64
-	crossings := 0
-	armed := false
-	firstX, lastX = -1, -1
-	for i := 1; i < n; i++ {
-		ai, bi := int(sig[i-1]), int(sig[i])
-		if !armed && bi < armBelow {
-			armed = true
-		}
-		if armed && ai < at && bi >= at {
-			a, b := float64(ai), float64(bi)
-			// linear-interpolated crossing position
-			x := float64(i-1) + (mean-a)/(b-a)
-			if firstX < 0 {
-				firstX = x
-			}
-			lastX = x
-			crossings++
-			armed = false
-		}
-	}
-	if crossings < 2 || lastX <= firstX {
-		return 0
-	}
-	periodSamples := (lastX - firstX) / float64(crossings-1)
-	if periodSamples <= 1 {
-		return 0
-	}
-	return 1.0 / (periodSamples * sampleS)
-}
-
-// singleBinDFT returns the real/imag parts of the DFT coefficient at frequency
-// f0: Σ (v[n]−mean)·exp(−j·2π·f0·n·dt). Mean-subtracted so the DC term does not
-// leak into the fundamental.
-// TRLC-LINKS: REQ-SDS-066
-func singleBinDFT(sig []uint8, f0, sampleS float64) (re, im float64) {
-	n := len(sig)
-	var sum float64
-	for _, v := range sig {
-		sum += float64(v)
-	}
-	mean := sum / float64(n)
-	w := 2 * math.Pi * f0 * sampleS // radians per sample
-	// incremental cos/sin via rotation to avoid a trig call per sample
-	c, s := math.Cos(w), math.Sin(w)
-	cosk, sink := 1.0, 0.0
-	for i := range n {
-		v := float64(sig[i]) - mean
-		re += v * cosk
-		im -= v * sink
-		cosk, sink = cosk*c-sink*s, sink*c+cosk*s
-	}
-	return re, im
+	e.bode.Mu.Lock()
+	e.bode.LiveValid, e.bode.Why = false, why
+	e.bode.Mu.Unlock()
 }

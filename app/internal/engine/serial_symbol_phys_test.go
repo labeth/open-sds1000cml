@@ -2,7 +2,10 @@
 
 package engine
 
-import "github.com/labeth/open-dso-core/decode"
+import (
+	"github.com/labeth/open-dso-core/decode"
+	core "github.com/labeth/open-dso-core/engine"
+)
 
 // physSymbolCases are synthetic buses of the sigrok protocols beyond the
 // first thirty with requests and the frames each must match (symbolCases):
@@ -12,7 +15,7 @@ func physSymbolCases() []symCase {
 	us, ms := 1e-6, 1e-3
 	withBits := func(p SerialParams, bits int) SerialParams { p.Bits = bits; return p }
 	return []symCase{
-		{name: "Quadrature", p: symParams(serQuad, 50000), wave: func() *symWave {
+		{name: "Quadrature", p: symParams(core.SerQuad, 50000), wave: func() *symWave {
 			w := &symWave{}
 			seq := [4][2]bool{{false, false}, {true, false}, {true, true}, {false, true}}
 			ph := 0
@@ -34,7 +37,7 @@ func physSymbolCases() []symCase {
 			{[]PatternElem{symStart, symData(1, 1)}, 2},
 			{[]PatternElem{symStart, symData(0, 1), symData(0, 1)}, 1},
 		}},
-		{name: "Stepper", p: symParams(serStepper, 50000), wave: func() *symWave {
+		{name: "Stepper", p: symParams(core.SerStepper, 50000), wave: func() *symWave {
 			w := &symWave{}
 			w.hold(false, true, 200*us)
 			for _, burst := range []struct {
@@ -51,7 +54,7 @@ func physSymbolCases() []symCase {
 			}
 			return w
 		}, reqs: []symReq{{[]PatternElem{symStart}, 3}, {[]PatternElem{symStart, symData(1, 1)}, 2}, {[]PatternElem{symStart, symData(0, 1)}, 1}}},
-		{name: "PWM", p: symParams(serPWM, 50000), wave: func() *symWave {
+		{name: "PWM", p: symParams(core.SerPWM, 50000), wave: func() *symWave {
 			w := &symWave{}
 			w.hold(false, true, 30*us)
 			for _, d := range []float64{0.2, 0.6, 0.3, 0.8, 0.55, 0.1, 0.4} {
@@ -66,7 +69,7 @@ func physSymbolCases() []symCase {
 			{[]PatternElem{symStart, symData(0x00, 0xc0)}, 2},
 			{[]PatternElem{symStart, symData(0x80, 0xc0)}, 2},
 		}},
-		{name: "RC encode", p: withBits(symParams(serRCEncode, 10000), 12), wave: func() *symWave {
+		{name: "RC encode", p: withBits(symParams(core.SerRCEncode, 10000), 12), wave: func() *symWave {
 			w := &symWave{}
 			a := 100 * us
 			w.hold(false, true, 40*a)
@@ -90,7 +93,7 @@ func physSymbolCases() []symCase {
 			}
 			return w
 		}, reqs: []symReq{{[]PatternElem{symStart}, 3}, {[]PatternElem{symStart, symData(0, 3)}, 2}, {[]PatternElem{symStart, symData(1, 3), symData(1, 3)}, 1}}},
-		{name: "Oregon OOK", p: withBits(symParams(serOOK, 8192), 3), wave: func() *symWave {
+		{name: "Oregon OOK", p: withBits(symParams(core.SerOOK, 8192), 3), wave: func() *symWave {
 			w := &symWave{}
 			hp := 1 / 8192.0 / 2
 			w.hold(false, true, 2*ms)
@@ -124,7 +127,7 @@ func physSymbolCases() []symCase {
 		{name: "Miller 2 us pauses", p: millerParams(true), wave: func() *symWave { return millerSymWave(2 * us) }, reqs: []symReq{{[]PatternElem{symStart}, 3}, {[]PatternElem{symStart, symData(0x9a, 0xff)}, 2}, {[]PatternElem{symStart, symAny, symData(0xb8, 0xff)}, 1}}},
 		{name: "Miller 3 us pauses", p: millerParams(true), wave: func() *symWave { return millerSymWave(3 * us) }, reqs: []symReq{{[]PatternElem{symStart}, 3}, {[]PatternElem{symStart, symData(0x9a, 0xff)}, 2}, {[]PatternElem{symStart, symAny, symData(0xb8, 0xff)}, 1}}},
 		{name: "Miller classic", p: millerParams(false), wave: func() *symWave { return millerSymWave(0) }, reqs: []symReq{{[]PatternElem{symStart}, 3}, {[]PatternElem{symStart, symData(0x9a, 0xff)}, 2}, {[]PatternElem{symStart, symAny, symData(0xb8, 0xff)}, 1}}},
-		{name: "Morse", p: symParams(serMorse, 1000), wave: func() *symWave {
+		{name: "Morse", p: symParams(core.SerMorse, 1000), wave: func() *symWave {
 			w := &symWave{}
 			u := 1 * ms
 			w.hold(false, true, 10*u)
@@ -154,7 +157,7 @@ func physSymbolCases() []symCase {
 			{[]PatternElem{symStart, symData('T', 0xff), symData('E', 0xff)}, 1},
 			{[]PatternElem{symData('O', 0xff)}, 2},
 		}},
-		{name: "DCF77", p: symParams(serDCF77, 1000), wave: func() *symWave {
+		{name: "DCF77", p: symParams(core.SerDCF77, 1000), wave: func() *symWave {
 			w := &symWave{}
 			sec := 1 * ms
 			w.hold(false, true, 0.9*sec)
@@ -195,7 +198,7 @@ func physSymbolCases() []symCase {
 			}
 			return w
 		}, reqs: []symReq{{[]PatternElem{symStart}, 3}, {[]PatternElem{symStart, symData(0x37, 0x7f)}, 2}, {[]PatternElem{symStart, symData(0x38, 0x7f), symData(0x12, 0x3f)}, 1}}},
-		{name: "EM4100", p: symParams(serEM4100, 3906), wave: func() *symWave {
+		{name: "EM4100", p: symParams(core.SerEM4100, 3906), wave: func() *symWave {
 			w := &symWave{}
 			hp := 128 * us
 			w.hold(true, true, 3*hp)
@@ -229,7 +232,7 @@ func physSymbolCases() []symCase {
 			w.hold(false, true, 3*hp)
 			return w
 		}, reqs: []symReq{{[]PatternElem{symStart}, 3}, {[]PatternElem{symStart, symData(0x01, 0xff)}, 2}, {[]PatternElem{symStart, symData(0x01, 0xff), symData(0xff, 0xff)}, 1}}},
-		{name: "EM4305", p: symParams(serEM4305, 125000), wave: func() *symWave {
+		{name: "EM4305", p: symParams(core.SerEM4305, 125000), wave: func() *symWave {
 			w := &symWave{}
 			fc := 8 * us
 			w.hold(true, true, 400*fc)
@@ -252,7 +255,7 @@ func physSymbolCases() []symCase {
 			}
 			return w
 		}, reqs: []symReq{{[]PatternElem{symStart}, 3}, {[]PatternElem{symStart, symData(2, 7)}, 2}, {[]PatternElem{symStart, symData(2, 7), symData(6, 15)}, 1}}},
-		{name: "T55xx", p: withBits(symParams(serT55xx, 125000), 38), wave: func() *symWave {
+		{name: "T55xx", p: withBits(symParams(core.SerT55xx, 125000), 38), wave: func() *symWave {
 			w := &symWave{}
 			fc := 8 * us
 			w.hold(true, true, 400*fc)
@@ -280,7 +283,7 @@ func physSymbolCases() []symCase {
 			}
 			return w
 		}, reqs: []symReq{{[]PatternElem{symStart}, 3}, {[]PatternElem{symStart, symData(2, 3)}, 2}, {[]PatternElem{symStart, symData(2, 3), symData(0, 1), symData(0xDE, 0xff)}, 1}}},
-		{name: "SWIM", p: symParams(serSWIM, 181818), wave: func() *symWave {
+		{name: "SWIM", p: symParams(core.SerSWIM, 181818), wave: func() *symWave {
 			w := &symWave{}
 			T := 22 / 4e6
 			w.hold(true, true, 20*us)
@@ -314,7 +317,7 @@ func physSymbolCases() []symCase {
 			}
 			return w
 		}, reqs: []symReq{{[]PatternElem{symStart, symData(1, 7)}, 2}, {[]PatternElem{symStart, symData(2, 7)}, 1}}},
-		{name: "SDQ", p: symParams(serSDQ, 98425), wave: func() *symWave {
+		{name: "SDQ", p: symParams(core.SerSDQ, 98425), wave: func() *symWave {
 			w := &symWave{}
 			T := 1 / 98425.0
 			w.hold(true, true, 30*us)
@@ -336,7 +339,7 @@ func physSymbolCases() []symCase {
 			}
 			return w
 		}, reqs: []symReq{{[]PatternElem{symStart}, 3}, {[]PatternElem{symStart, symData(0x33, 0xff)}, 2}, {[]PatternElem{symStart, symData(0xCC, 0xff), symData(0x44, 0xff)}, 1}}},
-		{name: "PJON", p: withBits(symParams(serPJDL, 22727), 1), wave: func() *symWave {
+		{name: "PJON", p: withBits(symParams(core.SerPJDL, 22727), 1), wave: func() *symWave {
 			w := &symWave{}
 			data, pad := 44*us, 116*us
 			w.hold(false, true, 1*ms)
@@ -357,7 +360,7 @@ func physSymbolCases() []symCase {
 			}
 			return w
 		}, reqs: []symReq{{[]PatternElem{symStart}, 3}, {[]PatternElem{symStart, symData(0x2A, 0xff)}, 2}, {[]PatternElem{symStart, symData(0x2A, 0xff), symData(0x02, 0xff)}, 1}}},
-		{name: "DSI", p: func() SerialParams { p := symParams(serDSI, 600); p.Inverted = true; return p }(), wave: func() *symWave {
+		{name: "DSI", p: func() SerialParams { p := symParams(core.SerDSI, 600); p.Inverted = true; return p }(), wave: func() *symWave {
 			w := &symWave{}
 			half := 1 / 1200.0
 			w.hold(false, true, 10*ms)
@@ -375,7 +378,7 @@ func physSymbolCases() []symCase {
 			}
 			return w
 		}, reqs: []symReq{{[]PatternElem{symStart}, 3}, {[]PatternElem{symStart, symData(0x55, 0xff)}, 2}}},
-		{name: "Qi", p: symParams(serQi, 2000), wave: func() *symWave {
+		{name: "Qi", p: symParams(core.SerQi, 2000), wave: func() *symWave {
 			w := &symWave{}
 			lvl := false
 			w.hold(lvl, true, 5*ms)
@@ -413,7 +416,7 @@ func physSymbolCases() []symCase {
 			}
 			return w
 		}, reqs: []symReq{{[]PatternElem{symStart, symAny}, 3}, {[]PatternElem{symStart, symData(0x01, 0xff)}, 2}, {[]PatternElem{symStart, symData(0x01, 0xff), symData(0x40, 0xff)}, 1}}},
-		{name: "SD card", p: symParams(serSDCard, 1000000), wave: func() *symWave {
+		{name: "SD card", p: symParams(core.SerSDCard, 1000000), wave: func() *symWave {
 			w := &symWave{}
 			bits := []int{}
 			idle := func(n int) {
@@ -467,7 +470,7 @@ func physSymbolCases() []symCase {
 			}
 			return w
 		}, reqs: []symReq{{[]PatternElem{symStart, symAny}, 6}, {[]PatternElem{symStart, symData(0x40|17, 0xff)}, 2}, {[]PatternElem{symStart, symData(0x40|13, 0xff), symData(0x12, 0xff)}, 1}}},
-		{name: "PDI", p: symParams(serPDI, 250000), wave: func() *symWave {
+		{name: "PDI", p: symParams(core.SerPDI, 250000), wave: func() *symWave {
 			w := &symWave{}
 			bits := []int{1, 1, 1, 1, 1, 1, 1, 1}
 			char := func(v int) {
@@ -498,7 +501,7 @@ func physSymbolCases() []symCase {
 			}
 			return w
 		}, reqs: []symReq{{[]PatternElem{symStart, symData(0xC2, 0xff)}, 2}, {[]PatternElem{symStart, symData(0xC2, 0xff), symData(0x5A, 0xff)}, 1}}},
-		{name: "cJTAG", p: symParams(serCJTAG, 250000), wave: func() *symWave {
+		{name: "cJTAG", p: symParams(core.SerCJTAG, 250000), wave: func() *symWave {
 			w := &symWave{}
 			tms := false
 			per := 4 * us
@@ -530,7 +533,7 @@ func physSymbolCases() []symCase {
 			}
 			return w
 		}, reqs: []symReq{{[]PatternElem{symStart}, 3}}},
-		{name: "Maple", p: symParams(serMaple, 1000000), wave: func() *symWave {
+		{name: "Maple", p: symParams(core.SerMaple, 1000000), wave: func() *symWave {
 			w := &symWave{}
 			st := 250e-9
 			la, lb := true, true
@@ -577,7 +580,7 @@ func physSymbolCases() []symCase {
 			}
 			return w
 		}, reqs: []symReq{{[]PatternElem{symStart}, 3}}},
-		{name: "Caliper", p: symParams(serCaliper, 12500), wave: func() *symWave {
+		{name: "Caliper", p: symParams(core.SerCaliper, 12500), wave: func() *symWave {
 			w := &symWave{}
 			w.hold(false, false, 20*ms)
 			for _, v := range []int{1234, 4321, 1234} {
@@ -591,7 +594,7 @@ func physSymbolCases() []symCase {
 			}
 			return w
 		}, reqs: []symReq{{[]PatternElem{symStart}, 3}, {[]PatternElem{symStart, symData(1234&0xff, 0xff), symData(1234>>8, 0xff)}, 2}}},
-		{name: "IR Samsung32", p: withBits(symParams(serIRMP, 1818), decode.IRSamsung32), wave: func() *symWave {
+		{name: "IR Samsung32", p: withBits(symParams(core.SerIRMP, 1818), decode.IRSamsung32), wave: func() *symWave {
 			w := &symWave{}
 			w.hold(true, true, 20*ms)
 			for _, addr := range []int{0x0707, 0xE0E0, 0x0707} {
@@ -611,7 +614,7 @@ func physSymbolCases() []symCase {
 			}
 			return w
 		}, reqs: []symReq{{[]PatternElem{symStart}, 3}, {[]PatternElem{symStart, symData(0x0707, 0xffff)}, 2}, {[]PatternElem{symStart, symData(0xE0E0, 0xffff), symData(0xFD02, 0xffff)}, 1}}},
-		{name: "IR Kaseikyo", p: withBits(symParams(serIRMP, 2364), decode.IRKaseikyo), wave: func() *symWave {
+		{name: "IR Kaseikyo", p: withBits(symParams(core.SerIRMP, 2364), decode.IRKaseikyo), wave: func() *symWave {
 			w := &symWave{}
 			w.hold(true, true, 20*ms)
 			for _, cmd := range []int{0x123, 0x0F0, 0x123} {
@@ -635,7 +638,7 @@ func physSymbolCases() []symCase {
 			}
 			return w
 		}, reqs: []symReq{{[]PatternElem{symStart}, 3}, {[]PatternElem{symStart, symData(0x2002, 0xffff), symData(0x8523, 0xffff)}, 2}}},
-		{name: "IR Denon", p: withBits(symParams(serIRMP, 3226), decode.IRDenon), wave: func() *symWave {
+		{name: "IR Denon", p: withBits(symParams(core.SerIRMP, 3226), decode.IRDenon), wave: func() *symWave {
 			w := &symWave{}
 			w.hold(true, true, 20*ms)
 			for _, cmd := range []int{0x2C4, 0x016, 0x2C4} {
@@ -702,7 +705,7 @@ func emBits(cmd, addr int, word [4]int) []int {
 // modified Miller) or a classic line's edges.
 // TRLC-LINKS: REQ-SDS-013, REQ-SDS-257
 func millerParams(pauses bool) SerialParams {
-	p := symParams(serMiller, 106000)
+	p := symParams(core.SerMiller, 106000)
 	p.Inverted = pauses
 	return p
 }

@@ -3,6 +3,7 @@
 package engine
 
 import (
+	core "github.com/labeth/open-dso-core/engine"
 	"math/bits"
 	"testing"
 )
@@ -12,13 +13,13 @@ import (
 // TRLC-LINKS: REQ-SDS-012
 func TestRecipExact(t *testing.T) {
 	for d := uint32(1); d <= 4096; d++ {
-		r := newRecip(d)
+		r := core.NewRecip(d)
 		limit := uint64(1) << (17 + bits.Len32(d-1)) // the bound
 		check := func(x uint64) {
 			if x >= limit || x > 1<<32-1 {
 				return
 			}
-			if got, want := r.div(uint32(x)), uint32(x)/d; got != want {
+			if got, want := r.Div(uint32(x)), uint32(x)/d; got != want {
 				t.Fatalf("%d/%d = %d, want %d", x, d, got, want)
 			}
 		}
@@ -35,10 +36,10 @@ func TestRecipExact(t *testing.T) {
 		return
 	}
 	for _, d := range []uint32{3, 7, 63, 255, 256, 257} { // every dividend under the bound
-		r := newRecip(d)
+		r := core.NewRecip(d)
 		limit := uint32(1) << (17 + bits.Len32(d-1))
 		for x := range limit {
-			if r.div(x) != x/d {
+			if r.Div(x) != x/d {
 				t.Fatalf("%d/%d", x, d)
 			}
 		}

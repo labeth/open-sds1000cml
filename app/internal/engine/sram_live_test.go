@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	core "github.com/labeth/open-dso-core/engine"
 	"github.com/labeth/open-dso-core/sample"
 	"github.com/labeth/open-sds1000cml/app/internal/sramcapture"
 )
@@ -152,7 +153,7 @@ func TestHeldRecallRoundTrip(t *testing.T) {
 func TestPeakSamplesOrdered(t *testing.T) {
 	e := &Engine{}
 	r := &rollView{}
-	r.reset(planRollPeak(0.01), 0.01, [2]chScale{})
+	r.reset(planRollPeak(0.01), 0.01, [2]core.ChScale{})
 	// {max2,max1,min2,min1}: high, high->low (edge), low; CH2 constant 100.
 	raw := []byte{
 		200, 100, 200, 100, // bucket 0: CH1 200..200
@@ -162,7 +163,7 @@ func TestPeakSamplesOrdered(t *testing.T) {
 	q1, q2 := e.peakSamples(r, raw)
 	want := []uint8{200, 200, 200, 10, 10, 10}
 	for i, v := range want {
-		if roundQ8(q1[i]) != v || roundQ8(q2[i]) != 100 {
+		if core.RoundQ8(q1[i]) != v || core.RoundQ8(q2[i]) != 100 {
 			t.Fatalf("CH1 %v, want %v; CH2 %v", q1, want, q2)
 		}
 	}
@@ -202,7 +203,7 @@ func TestRollPlansBounded(t *testing.T) {
 // TRLC-LINKS: REQ-SDS-010
 func TestRollGroupCarries(t *testing.T) {
 	r := &rollView{}
-	r.reset(rollPlan{group: 4, screen: 100}, 1, [2]chScale{})
+	r.reset(rollPlan{group: 4, screen: 100}, 1, [2]core.ChScale{})
 	o1, _, _ := r.groupAvg(0, []uint16{100, 200, 300}, []uint16{1, 1, 1})
 	if len(o1) != 0 {
 		t.Fatalf("partial group published %v", o1)
@@ -218,7 +219,7 @@ func TestRollGroupCarries(t *testing.T) {
 	if o1, _, held := r.groupAvg(6, nil, nil); len(o1) != 2 || held[0] || !held[1] {
 		t.Fatalf("held groups %v %v", o1, held)
 	}
-	r.reset(rollPlan{group: 3, screen: 100}, 1, [2]chScale{})
+	r.reset(rollPlan{group: 3, screen: 100}, 1, [2]core.ChScale{})
 	// bytes: min1 min2 max1 max2
 	if out := r.groupPeak([]byte{50, 60, 70, 80, 40, 61, 75, 79}); len(out) != 0 {
 		t.Fatalf("partial peak group published %v", out)
@@ -235,7 +236,7 @@ func TestRollGroupCarries(t *testing.T) {
 // TRLC-LINKS: REQ-SDS-010, REQ-SDS-040
 func TestRollRescaleKeepsHistory(t *testing.T) {
 	r := &rollView{}
-	one := [2]chScale{{vdiv: 1, off: 0}, {vdiv: 1, off: 0}}
+	one := [2]core.ChScale{{Vdiv: 1, Off: 0}, {Vdiv: 1, Off: 0}}
 	r.reset(rollPlan{group: 1, screen: 6}, 1, one)
 	in := []uint16{128 << 8, 140 << 8, 215 << 8, 41 << 8, 250 << 8, 5 << 8} // -0..+4.9 V
 	r.push(0, in, in, nil)
@@ -244,7 +245,7 @@ func TestRollRescaleKeepsHistory(t *testing.T) {
 			t.Fatalf("code %d: %d, want %d (volts round trip)", i, r.q1[i], v)
 		}
 	}
-	half := [2]chScale{{vdiv: 0.5, off: 0}, {vdiv: 0.5, off: 0}}
+	half := [2]core.ChScale{{Vdiv: 0.5, Off: 0}, {Vdiv: 0.5, Off: 0}}
 	r.rescale(half, time.Now())
 	if r.c1[4] != 255 || r.c1[5] != 0 {
 		t.Fatalf("at 0.5 V/div the extremes should clip on screen: %v", r.c1)
@@ -261,7 +262,7 @@ func TestRollRescaleKeepsHistory(t *testing.T) {
 // TRLC-LINKS: REQ-SDS-010
 func TestRollPeakHoldPairs(t *testing.T) {
 	r := &rollView{}
-	one := [2]chScale{{vdiv: 1}, {vdiv: 1}}
+	one := [2]core.ChScale{{Vdiv: 1}, {Vdiv: 1}}
 	r.reset(rollPlan{group: 1, screen: 8, peak: true}, 1, one)
 	lo, hi := uint16(100<<8), uint16(200<<8)
 	r.push(0, []uint16{lo, hi, lo, hi}, []uint16{lo, hi, lo, hi}, nil)
@@ -280,7 +281,7 @@ func TestRollPeakHoldPairs(t *testing.T) {
 // TRLC-LINKS: REQ-SDS-010, REQ-SDS-021
 func TestRollHeldMarksGaps(t *testing.T) {
 	r := &rollView{}
-	r.reset(rollPlan{group: 1, screen: 12}, 1, [2]chScale{{vdiv: 1}, {vdiv: 1}})
+	r.reset(rollPlan{group: 1, screen: 12}, 1, [2]core.ChScale{{Vdiv: 1}, {Vdiv: 1}})
 	chunk := func(n int) []uint16 { return make([]uint16, n) }
 	r.push(0, chunk(4), chunk(4), nil) // the past filled from the first chunk: 8 held, 4 captured
 	r.push(3, chunk(5), chunk(5), nil) // 3 held, 5 captured

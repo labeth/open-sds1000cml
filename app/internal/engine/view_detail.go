@@ -4,9 +4,9 @@ package engine
 
 import (
 	"math"
-	"sync/atomic"
 	"time"
 
+	core "github.com/labeth/open-dso-core/engine"
 	"github.com/labeth/open-dso-core/sample"
 	"github.com/labeth/open-sds1000cml/app/internal/sramcapture"
 )
@@ -20,28 +20,6 @@ import (
 // when short; the detail's From, To are where it lies among the frame's
 // values (fractional indices): whole buckets widen the request a little.
 
-// ViewSurface is who asks for a view window.
-type ViewSurface int
-
-// The view surfaces, and their count.
-const (
-	ViewScope ViewSurface = iota // the scope's zoom
-	ViewWeb                      // the web page's zoom
-	viewSurfaces
-)
-
-// viewSlot is one surface's request: until when, its ends (screen widths
-// from the trigger, float64 bits) and the display columns it is drawn over.
-type viewSlot struct {
-	lease atomic.Int64
-	a, b  atomic.Uint64
-	cols  atomic.Int64
-}
-
-// viewMaxBuckets caps a view's buckets: a bucket a display column up to a
-// browser canvas's width. A bucket costs the frame two bus reads (~7 us).
-const viewMaxBuckets = 1024
-
 // LeaseViewWindow asks, for surface s, for the stretch [a, b] of the live
 // frames at full detail (ViewDetail) for d from now; d <= 0 ends the request.
 // a and b are screen widths from the trigger (the record's middle on an
@@ -49,68 +27,47 @@ const viewMaxBuckets = 1024
 // is how many display columns show it. A surface's newest request wins.
 // TRLC-LINKS: REQ-SDS-010, REQ-SDS-021
 func (e *Engine) LeaseViewWindow(s ViewSurface, a, b float64, cols int, d time.Duration) {
-	if s < 0 || s >= viewSurfaces {
+	if s < 0 || s >= core.ViewSurfaces {
 		return
 	}
 	v := &e.views[s]
 	if d <= 0 || !(b > a) || math.IsInf(b-a, 0) || cols < 2 {
-		v.lease.Store(0)
+		v.Lease.Store(0)
 		return
 	}
-	v.a.Store(math.Float64bits(a))
-	v.b.Store(math.Float64bits(b))
-	v.cols.Store(int64(cols))
-	e.lease(&v.lease, d)
+	v.A.Store(math.Float64bits(a))
+	v.B.Store(math.Float64bits(b))
+	v.Cols.Store(int64(cols))
+	e.lease(&v.Lease, d)
 }
 
 // viewRequest is surface s's current request, if any.
 // TRLC-LINKS: REQ-SDS-010
 func (e *Engine) viewRequest(s ViewSurface) (a, b float64, cols int, ok bool) {
 	v := &e.views[s]
-	if !e.leased(&v.lease) {
+	if !e.leased(&v.Lease) {
 		return 0, 0, 0, false
 	}
-	a, b = math.Float64frombits(v.a.Load()), math.Float64frombits(v.b.Load())
-	return a, b, int(v.cols.Load()), b > a
-}
-
-// viewBuckets is how many buckets a view of b-a screen widths shown over cols
-// columns is read in; 0 when the screen's envelope (screen buckets across
-// it) has a bucket at least every second column there already. Magnified
-// further, a bucket spans many columns and its (min, max) pair draws as a
-// slope: the 1 MHz square at 200us/div zoomed 50x read as a slow wave.
-// TRLC-LINKS: REQ-SDS-021
-func viewBuckets(a, b float64, cols int, screen uint32) uint32 {
-	if !(b > a) || cols < 2 || 2*float64(screen)*(b-a) >= float64(cols) {
-		return 0
-	}
-	n := uint32(min(cols, viewMaxBuckets))
-	return n + n&1 // the reducer takes buckets in pairs
-}
-
-// viewPlan is how a view's stretch is read: buckets of bucket words (0: raw
-// samples) over the record words [start, start+length), n values a channel.
-type viewPlan struct {
-	bucket, start, length, buckets uint32
-	n                              int
+	a, b = math.Float64frombits(v.A.Load()), math.Float64frombits(v.B.Load())
+	return a, b, int(v.Cols.Load()), b > a
 }
 
 // planView plans the read of the record's words [from, to) in buckets
 // buckets: whole buckets about its centre, raw when that is short. false when
 // the stretch is empty.
 // TRLC-LINKS: REQ-SDS-021
-func planView(m sramcapture.Metadata, from, to float64, buckets uint32) (viewPlan, bool) {
+func planView(m sramcapture.Metadata, from, to float64, buckets uint32) (core.ViewPlan, bool) {
 	from, to = math.Max(0, math.Floor(from)), math.Min(float64(m.Length), math.Ceil(to))
 	if m.SamplesPerWord == 0 || !(to-from >= 2) {
-		return viewPlan{}, false
+		return core.ViewPlan{}, false
 	}
-	p := viewPlan{buckets: buckets}
-	p.bucket, p.start, p.length = envelopeWindow(uint32(from), uint32(to-from), buckets, m.Length, 0)
-	p.n = int(p.length) * int(m.SamplesPerWord)
-	if p.bucket != 0 {
-		p.n = 2 * int(buckets)
+	p := core.ViewPlan{Buckets: buckets}
+	p.Bucket, p.Start, p.Length = envelopeWindow(uint32(from), uint32(to-from), buckets, m.Length, 0)
+	p.N = int(p.Length) * int(m.SamplesPerWord)
+	if p.Bucket != 0 {
+		p.N = 2 * int(buckets)
 	}
-	return p, p.n > 0
+	return p, p.N > 0
 }
 
 // viewSpan is the record words [from, to) of a request for a, b screen widths
@@ -130,7 +87,7 @@ func viewSpan(m sramcapture.Metadata, screen int, offset, words uint32, edgeX, a
 // viewRead is a planned view window's read: the plan and the frame its
 // values land in.
 type viewRead struct {
-	p   viewPlan
+	p   core.ViewPlan
 	f   *sample.Frame
 	w   sramFrameWriter
 	win *sample.Detail
@@ -138,8 +95,8 @@ type viewRead struct {
 
 // newViewRead prepares the read of planned view p of the record m.
 // TRLC-LINKS: REQ-SDS-021
-func newViewRead(m sramcapture.Metadata, p viewPlan) *viewRead {
-	n := p.n
+func newViewRead(m sramcapture.Metadata, p core.ViewPlan) *viewRead {
+	n := p.N
 	f := recordFrame(n)
 	if m.FractionBits == 8 {
 		f.Traces[0].Precision, f.Traces[1].Precision = make([]uint16, n), make([]uint16, n)
@@ -150,27 +107,27 @@ func newViewRead(m sramcapture.Metadata, p viewPlan) *viewRead {
 // record is the read as the capture makes it.
 // TRLC-LINKS: REQ-SDS-021
 func (r *viewRead) record() sramcapture.RecordRead {
-	if r.p.bucket != 0 {
-		return sramcapture.RecordRead{Offset: r.p.start, Bucket: r.p.bucket, Count: r.p.buckets, Dst: &r.w}
+	if r.p.Bucket != 0 {
+		return sramcapture.RecordRead{Offset: r.p.Start, Bucket: r.p.Bucket, Count: r.p.Buckets, Dst: &r.w}
 	}
-	return sramcapture.RecordRead{Offset: r.p.start, Count: r.p.length, Dst: &r.w}
+	return sramcapture.RecordRead{Offset: r.p.Start, Count: r.p.Length, Dst: &r.w}
 }
 
 // window is the view window the read gave, with the live readout's
 // conditioning; at maps a record word to the frame's value index. nil when
 // the read did not fill it.
 // TRLC-LINKS: REQ-SDS-010, REQ-SDS-021
-func (e *Engine) window(m sramcapture.Metadata, r *viewRead, scale [2]chScale, at func(w uint32) float64) *sample.Detail {
-	p, f, n := r.p, r.f, r.p.n
+func (e *Engine) window(m sramcapture.Metadata, r *viewRead, scale [2]core.ChScale, at func(w uint32) float64) *sample.Detail {
+	p, f, n := r.p, r.f, r.p.N
 	if r.w.n != n {
 		return nil
 	}
 	sampleS := 1 / m.SampleRateHz
-	v := &sample.Detail{From: at(p.start), To: at(p.start + p.length), Frame: f}
+	v := &sample.Detail{From: at(p.Start), To: at(p.Start + p.Length), Frame: f}
 	f.SampleS, f.Content = sampleS, sample.RawDecimated
 	f.Traces[0].Precision, f.Traces[1].Precision = nil, nil // the record's, not the calibrated codes'
-	if p.bucket != 0 {
-		f.SampleS = sampleS * float64(p.bucket) * float64(m.SamplesPerWord) / 2
+	if p.Bucket != 0 {
+		f.SampleS = sampleS * float64(p.Bucket) * float64(m.SamplesPerWord) / 2
 		f.Content = sample.PeakPairs
 		f.Flags = sample.Ordered
 		if cal := e.interleaveCalibration; cal != nil && m.Decimation <= 1 {
@@ -184,7 +141,7 @@ func (e *Engine) window(m sramcapture.Metadata, r *viewRead, scale [2]chScale, a
 		orderEnvelope(f.Codes8(1), nil)
 	} else if cal := e.interleaveCalibration; cal != nil && m.FractionBits == 0 && n >= 2000 {
 		q1, q2 := e.viewQ8(n)
-		cal.apply(f.Codes8(0), f.Codes8(1), q1, q2, [2]float64{scale[0].vdiv, scale[1].vdiv}, sampleS)
+		cal.apply(f.Codes8(0), f.Codes8(1), q1, q2, [2]float64{scale[0].Vdiv, scale[1].Vdiv}, sampleS)
 	}
 	return v
 }
@@ -201,16 +158,9 @@ func (e *Engine) viewQ8(n int) (q1, q2 []uint16) {
 	return q[:n:n], q[n:]
 }
 
-// envelopeValue maps a record word to the value index of an envelope frame
-// read from word offset in buckets of bucket words: a value a half bucket.
-// TRLC-LINKS: REQ-SDS-021
-func envelopeValue(offset, bucket uint32) func(w uint32) float64 {
-	return func(w uint32) float64 { return (float64(w) - float64(offset)) * 2 / float64(bucket) }
-}
-
 // viewReads is the view windows the surfaces ask for of a frame, planned:
 // one read serves both surfaces when they ask for the same.
-type viewReads [viewSurfaces]*viewRead
+type viewReads [core.ViewSurfaces]*viewRead
 
 // planViews plans the view windows the surfaces ask for of frame f, read from
 // words [offset, offset+words) of the record in buckets of bucket words. They
@@ -223,12 +173,12 @@ func (e *Engine) planViews(f *sample.Frame, m sramcapture.Metadata, screen int, 
 	if m.SamplesPerWord == 0 || screen <= 0 || bucket == 0 {
 		return v
 	}
-	for s := range viewSurfaces {
+	for s := range core.ViewSurfaces {
 		a, b, cols, ok := e.viewRequest(s)
 		if !ok {
 			continue
 		}
-		n := viewBuckets(a, b, cols, screenBuckets)
+		n := core.ViewBuckets(a, b, cols, screenBuckets)
 		if n == 0 {
 			continue
 		}
@@ -263,13 +213,13 @@ func (v *viewReads) reads(dst []sramcapture.RecordRead) []sramcapture.RecordRead
 // windows gives frame f the view windows the reads filled (the frame read
 // from word offset in buckets of bucket words).
 // TRLC-LINKS: REQ-SDS-010, REQ-SDS-021
-func (e *Engine) windows(f *sample.Frame, v *viewReads, m sramcapture.Metadata, offset, bucket uint32, scale [2]chScale) {
+func (e *Engine) windows(f *sample.Frame, v *viewReads, m sramcapture.Metadata, offset, bucket uint32, scale [2]core.ChScale) {
 	for s, r := range v {
 		if r == nil {
 			continue
 		}
 		if r.win == nil {
-			r.win = e.window(m, r, scale, envelopeValue(offset, bucket))
+			r.win = e.window(m, r, scale, core.EnvelopeValue(offset, bucket))
 		}
 		if r.win != nil {
 			d := *r.win
@@ -277,10 +227,4 @@ func (e *Engine) windows(f *sample.Frame, v *viewReads, m sramcapture.Metadata, 
 			f.Details = append(f.Details, d)
 		}
 	}
-}
-
-// ViewDetail is frame f's view window for surface s, or nil.
-// TRLC-LINKS: REQ-SDS-010, REQ-SDS-021
-func ViewDetail(f *sample.Frame, s ViewSurface) *sample.Detail {
-	return f.Detail(sample.RoleView(int(s)))
 }

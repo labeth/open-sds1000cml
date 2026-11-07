@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	core "github.com/labeth/open-dso-core/engine"
 	"github.com/labeth/open-dso-core/sample"
 	"github.com/labeth/open-sds1000cml/app/internal/iface"
 )
@@ -223,7 +224,7 @@ func TestETSFrame(t *testing.T) {
 	if f.TriggerAt < 0 {
 		t.Fatalf("ETS reconstruction expected (EdgeX=%v)", f.TriggerAt)
 	}
-	_, _, p := ptp(f.Codes8(0)[:f.Len()])
+	_, _, p := core.Ptp(f.Codes8(0)[:f.Len()])
 	if p < etsEdgeMinPtp {
 		t.Fatalf("ETS reconstruction ptp = %d, want ≥ %d", p, etsEdgeMinPtp)
 	}

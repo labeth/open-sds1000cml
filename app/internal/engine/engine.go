@@ -12,6 +12,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	core "github.com/labeth/open-dso-core/engine"
 	"github.com/labeth/open-dso-core/sample"
 	"github.com/labeth/open-sds1000cml/app/internal/bus"
 	"github.com/labeth/open-sds1000cml/app/internal/iface"
@@ -90,13 +91,6 @@ const (
 	trigCPVDefault  = 911.0
 )
 
-// Clock abstracts time for tests. Sleep must also advance Now in fakes.
-// TRLC-LINKS: REQ-SDS-008
-type Clock struct {
-	Now   func() time.Time
-	Sleep func(time.Duration)
-}
-
 // defaultFramePeriod is the publish pacing floor. It was 50 ms (20 fps), which
 // was well below what the hardware sustains: measured on the instrument, the
 // frame rate rises with the floor down to 10 ms and saturates
@@ -129,9 +123,6 @@ const defaultArmSettle = 1 * time.Millisecond
 // 89.2 fps, 0 incoherent, 0 bus errors, 0 held, 0 dead runs, 0 short drains,
 // TSRC ramp afterwards 0 breaks over 256 distinct codes.
 const defaultMatureUs = 750
-
-// TRLC-LINKS: REQ-SDS-008
-func realClock() Clock { return Clock{Now: time.Now, Sleep: time.Sleep} }
 
 // Config wires an Engine.
 // TRLC-LINKS: REQ-SDS-001, REQ-SDS-007, REQ-SDS-008
@@ -333,7 +324,7 @@ type Engine struct {
 	clk                   Clock
 	lastPublish           time.Time // when the newest frame was published (guarded by mu)
 	logf                  func(string, ...any)
-	arena                 *arena
+	arena                 *core.Arena
 	sram                  recordMemory
 	adc                   adcHealth // the converters' health checks (adc_health.go)
 	panelScan             sramcapture.PanelConfig
@@ -413,31 +404,31 @@ type Engine struct {
 	avgCount        atomic.Int32
 	precisionLog    atomic.Int32
 	eresLen         atomic.Int32
-	avgGen          atomic.Uint32          // bumped on acq-mode/depth changes → ring clear
-	singleArmed     atomic.Bool            // SINGLE: stop after the next triggered frame
-	singleGen       atomic.Uint64          // bumped per SINGLE press: a capture armed before the press never consumes it
-	forceReq        atomic.Bool            // FORCE: complete the armed capture once without a trigger
-	decodeView      atomic.Bool            // the display decodes the frame: send samples, not peak-detect pairs
-	decodeLease     atomic.Int64           // raw live frames until this time (unix ns; see LeaseDecodeView)
-	rawMu           sync.Mutex             // guards rawHolders and rawCancel
-	rawHolders      map[string]int64       // named raw leases: each holder's end (unix ns; LeaseRawFor)
-	rawCancel       func()                 // abandons the live raw read in flight for the leases (nil when none)
-	recallCancel    func()                 // abandons any record read in flight (SOUND starting; nil when none)
-	sampleLease     atomic.Int64           // evenly sampled live frames until this time (LeaseSampleView)
-	spectrumLease   atomic.Int64           // live frames for a spectrum until this time (LeaseSpectrumView)
-	displayPaceNs   atomic.Int64           // the least time a live SRAM capture takes, for the display (SetDisplayPace)
-	searchLease     atomic.Int64           // whole decimated records for a bus search until this time (LeaseSearchView)
-	busLease        atomic.Int64           // records sampled every busSampleS for a bus decode until this time (LeaseBusSamples)
-	busSampleS      atomic.Uint64          // the bus lease's coarsest sample interval (float64 bits)
-	views           [viewSurfaces]viewSlot // view windows at full detail (LeaseViewWindow)
-	viewQ           []uint16               // a view window's Q8.8 scratch (viewQ8; engine goroutine)
-	adopt           *adoptedRecord         // a decoded stream's record for the stopped loop to show (guarded by mu)
-	decodedCfg      sramcapture.Config     // the running decoded capture's configuration (acquisition owner)
-	decodedLines    bool                   // the worker builds the stream transcript; no event pumping (owner)
-	decodedStarting time.Time              // a decoded stream holds its image until its capture begins, at most until then (owner)
-	memDepth        atomic.Int32           // decimated drain depth (samples): fps↔data tradeoff
-	streamMode      atomic.Bool            // stitched high-bandwidth streaming decode mode
-	chVdivBits      [2]atomic.Uint64       // per-channel V/div (float64 bits) for the
+	avgGen          atomic.Uint32                    // bumped on acq-mode/depth changes → ring clear
+	singleArmed     atomic.Bool                      // SINGLE: stop after the next triggered frame
+	singleGen       atomic.Uint64                    // bumped per SINGLE press: a capture armed before the press never consumes it
+	forceReq        atomic.Bool                      // FORCE: complete the armed capture once without a trigger
+	decodeView      atomic.Bool                      // the display decodes the frame: send samples, not peak-detect pairs
+	decodeLease     atomic.Int64                     // raw live frames until this time (unix ns; see LeaseDecodeView)
+	rawMu           sync.Mutex                       // guards rawHolders and rawCancel
+	rawHolders      map[string]int64                 // named raw leases: each holder's end (unix ns; LeaseRawFor)
+	rawCancel       func()                           // abandons the live raw read in flight for the leases (nil when none)
+	recallCancel    func()                           // abandons any record read in flight (SOUND starting; nil when none)
+	sampleLease     atomic.Int64                     // evenly sampled live frames until this time (LeaseSampleView)
+	spectrumLease   atomic.Int64                     // live frames for a spectrum until this time (LeaseSpectrumView)
+	displayPaceNs   atomic.Int64                     // the least time a live SRAM capture takes, for the display (SetDisplayPace)
+	searchLease     atomic.Int64                     // whole decimated records for a bus search until this time (LeaseSearchView)
+	busLease        atomic.Int64                     // records sampled every busSampleS for a bus decode until this time (LeaseBusSamples)
+	busSampleS      atomic.Uint64                    // the bus lease's coarsest sample interval (float64 bits)
+	views           [core.ViewSurfaces]core.ViewSlot // view windows at full detail (LeaseViewWindow)
+	viewQ           []uint16                         // a view window's Q8.8 scratch (viewQ8; engine goroutine)
+	adopt           *adoptedRecord                   // a decoded stream's record for the stopped loop to show (guarded by mu)
+	decodedCfg      sramcapture.Config               // the running decoded capture's configuration (acquisition owner)
+	decodedLines    bool                             // the worker builds the stream transcript; no event pumping (owner)
+	decodedStarting time.Time                        // a decoded stream holds its image until its capture begins, at most until then (owner)
+	memDepth        atomic.Int32                     // decimated drain depth (samples): fps↔data tradeoff
+	streamMode      atomic.Bool                      // stitched high-bandwidth streaming decode mode
+	chVdivBits      [2]atomic.Uint64                 // per-channel V/div (float64 bits) for the
 	//                              trigger-level → display-code mapping
 	trigZero      [2]atomic.Uint64 // per-channel active trig-cal Zero (float64 bits)
 	trigCPV       [2]atomic.Uint64 // per-channel active trig-cal CPV (float64 bits)
@@ -446,7 +437,7 @@ type Engine struct {
 	feGen         atomic.Uint64    // bumped on every front-end write (relays, gain, offset DAC), changed or not
 	learnFE       uint64           // feGen when the SRAM loop's previous capture was armed (level learning waits a steady capture)
 	singleRestore atomic.Int32     // trigger mode a SINGLE replaced: 1 AUTO, 2 NORM, 0 none (restored on RUN)
-	pubIdent      frameIdent       // geometry of the latest published frame (guarded by mu)
+	pubIdent      core.FrameIdent  // geometry of the latest published frame (guarded by mu)
 	chCoupling    [2]atomic.Int32  // per-channel coupling (analog.CplDC/AC/GND); AC is software
 	chMeanCode    [2]atomic.Uint64 // per-channel smoothed raw mean code of published frames (float64 bits; 0 = none)
 	hintReset     atomic.Bool      // clear the phase-continuity hint (config changed)
@@ -463,17 +454,17 @@ type Engine struct {
 	beatN       atomic.Uint64 // liveness heartbeat (see Beats)
 	zoneSkip    atomic.Int64  // zone-armed publishes that could not be tested (env/roll)
 	zoneHeld    int           // engine goroutine only: AUTO liveness fallback counter
-	zm          zoneMaskState
-	maskMap     maskMapState // engine goroutine only: the mask read through time (maskThroughTime)
+	zm          core.ZoneMaskState
+	maskMap     core.MaskMapState // engine goroutine only: the mask read through time (maskThroughTime)
 	// serial / protocol trigger (serialtrig.go)
 	serialMode    atomic.Int32
 	serialMatches atomic.Int64
 	serialHeld    int // engine goroutine only: AUTO liveness fallback counter
-	ser           serialState
-	serLv         serialLevels // the lines' levels and SPI clock, for the hardware matcher (serial_levels.go)
-	qualExt       qualExtent   // the channels' extents, for the hardware qualifiers (qualify_hardware.go)
-	bodeMode      atomic.Int32 // FRA (Bode) accumulation armed (bode.go)
-	bode          bodeState
+	ser           core.SerialState
+	serLv         core.SerialLevels // the lines' levels and SPI clock, for the hardware matcher (serial_levels.go)
+	qualExt       core.QualExtent   // the channels' extents, for the hardware qualifiers (qualify_hardware.go)
+	bodeMode      atomic.Int32      // FRA (Bode) accumulation armed (bode.go)
+	bode          core.BodeState
 
 	// mu guards the command shadows and the stats mirror. Setters record and
 	// return; only the owner touches the bus (spec 09 §1). Bus writes happen
@@ -517,17 +508,17 @@ type Engine struct {
 	holdQualify   atomic.Bool // an edge trigger keeps a loaded qualifier image (HoldQualifyImage)
 	shownScaleGen atomic.Uint64
 	etsWant       bool // staged ETS opt-in; applied at the frame boundary
-	tp            trigParams
+	tp            core.TrigParams
 	stats         Stats
 	pubTimes      [64]int64 // recent publish times for the FPS window (a ring: notePublish), ns after pubEpoch
 	pubAt         int       // the ring's next slot
 	pubEpoch      time.Time // an hour before the first publish: unused slots (0) are long past
 
 	// sramJobs carries FPGA image-switching work (fpga_stack.go) to the owner.
-	sramJobs chan ownerJob
+	sramJobs chan core.OwnerJob
 	images   ImageSwitcher
 
-	decodedRequests           chan ownerJob
+	decodedRequests           chan core.OwnerJob
 	decodedSession            *sramcapture.DecodedCapture // acquisition-owner fields
 	decodedBuffer             []sramcapture.DecodedEvent
 	decodedHead, decodedCount int
@@ -599,8 +590,8 @@ type Engine struct {
 
 	// Acq-mode state (spec 03 §7.4): AVERAGE ring, uniformity telemetry,
 	// ERES scratch. avgKey tracks when the ring must clear.
-	avg    avgRing
-	uni    uniRing
+	avg    core.AvgRing
+	uni    core.UniRing
 	avgKey struct {
 		gen   uint32
 		width int
@@ -618,7 +609,7 @@ func New(cfg Config) *Engine {
 	// only via Sleep, so tests must keep the sleep path (see armEngine).
 	realTime := cfg.Clock.Now == nil
 	if realTime {
-		cfg.Clock = realClock()
+		cfg.Clock = core.RealClock()
 	}
 	if cfg.FramePeriod == 0 {
 		cfg.FramePeriod = defaultFramePeriod
@@ -641,7 +632,7 @@ func New(cfg Config) *Engine {
 		b:                     cfg.Bus,
 		clk:                   cfg.Clock,
 		logf:                  cfg.Logf,
-		bode:                  bodeState{dutCh: 1}, // the frequency response's reference on C1, the DUT on C2
+		bode:                  core.BodeState{DutCh: 1}, // the frequency response's reference on C1, the DUT on C2
 		arena:                 newFrameArena(capacity),
 		interleaveCalibration: cfg.InterleaveCalibration,
 		armSettle:             cfg.ArmSettle,
@@ -650,8 +641,8 @@ func New(cfg Config) *Engine {
 		band:                  start,
 		prevKind:              start.Kind(),
 		done:                  make(chan struct{}),
-		sramJobs:              make(chan ownerJob, 1),
-		decodedRequests:       make(chan ownerJob, 8),
+		sramJobs:              make(chan core.OwnerJob, 1),
+		decodedRequests:       make(chan core.OwnerJob, 8),
 	}
 	if cfg.SRAM != nil { // a nil *Capture must leave the interface nil
 		e.sram = cfg.SRAM
@@ -714,8 +705,8 @@ func New(cfg Config) *Engine {
 	e.trigPosFrac.Store(math.Float64bits(0.5)) // trigger at screen centre
 	e.memDepth.Store(decimDrain)               // default decimated depth (fps↔data)
 	e.framePeriodNs.Store(int64(cfg.FramePeriod))
-	e.tp = defaultTrigParams()
-	e.stats.TrigQual = qualOf(e.tp)
+	e.tp = core.DefaultTrigParams()
+	e.stats.TrigQual = core.QualOf(e.tp)
 	e.eresScratch = make([]uint16, deepRecord)
 	e.mu.Lock()
 	e.stats.Running, e.stats.TrigRising = true, true
@@ -881,30 +872,30 @@ func (e *Engine) Snapshot() Stats {
 	s.MaskFail = e.maskFail.Load()
 	s.MaskSkip = e.maskSkip.Load()
 	s.MaskStopped = e.maskStopped.Load()
-	e.zm.mu.Lock()
-	s.ZoneCount = len(e.zm.zones)
-	s.MaskRing = len(e.zm.ring)
-	s.MaskSet, s.MaskGen = e.zm.mask != nil, e.zm.maskGen
-	e.zm.mu.Unlock()
+	e.zm.Mu.Lock()
+	s.ZoneCount = len(e.zm.Zones)
+	s.MaskRing = len(e.zm.Ring)
+	s.MaskSet, s.MaskGen = e.zm.Mask != nil, e.zm.MaskGen
+	e.zm.Mu.Unlock()
 	s.SerialMode = int(e.serialMode.Load())
 	s.SerialMatches = e.serialMatches.Load()
-	e.ser.mu.Lock()
-	s.SerialSet = !e.ser.params.empty()
-	e.ser.mu.Unlock()
+	e.ser.Mu.Lock()
+	s.SerialSet = !e.ser.Params.Empty()
+	e.ser.Mu.Unlock()
 	s.BodeMode = int(e.bodeMode.Load())
-	e.bode.mu.Lock()
-	s.BodeRef, s.BodeDut = e.bode.refCh, e.bode.dutCh
-	s.BodePoints = len(e.bode.bins)
-	s.BodeValid = e.bode.liveValid
-	if e.bode.liveValid {
-		s.BodeFreqHz = e.bode.live.FreqHz
-		s.BodeGainDB = e.bode.live.GainDB
-		s.BodePhaseDeg = e.bode.live.PhaseDeg
+	e.bode.Mu.Lock()
+	s.BodeRef, s.BodeDut = e.bode.RefCh, e.bode.DutCh
+	s.BodePoints = len(e.bode.Bins)
+	s.BodeValid = e.bode.LiveValid
+	if e.bode.LiveValid {
+		s.BodeFreqHz = e.bode.Live.FreqHz
+		s.BodeGainDB = e.bode.Live.GainDB
+		s.BodePhaseDeg = e.bode.Live.PhaseDeg
 	}
 	if s.BodeMode != 0 {
-		s.BodeWhy = e.bode.why
+		s.BodeWhy = e.bode.Why
 	}
-	e.bode.mu.Unlock()
+	e.bode.Mu.Unlock()
 	// FPS = publishes within the trailing second.
 	// now-t <= 1 s is t at or after now-1 s: one subtraction, not one a slot
 	// Times are integers on one epoch: a time.Time comparison a slot was a
@@ -1190,28 +1181,4 @@ func (e *Engine) lease(l *atomic.Int64, d time.Duration) {
 func (e *Engine) leased(l *atomic.Int64) bool {
 	v := l.Load()
 	return v != 0 && e.clk.Now != nil && e.clk.Now().UnixNano() < v
-}
-
-// TrigQual reports the pulse and slope qualifiers (levels as fractions of the
-// span, widths and times in ns, conditions any/<min/>max/in), so every
-// surface shows and edits the values the engine uses.
-type TrigQual struct {
-	VideoStd   int     `json:"video_std"`
-	VideoLine  int     `json:"video_line"`
-	VideoNeg   bool    `json:"video_neg"`
-	PulseLvl   float64 `json:"pulse_lvl"`
-	PulseMinNs float64 `json:"pulse_min_ns"`
-	PulseMaxNs float64 `json:"pulse_max_ns"`
-	PulseCond  int     `json:"pulse_cond"`
-	SlopeLo    float64 `json:"slope_lo"`
-	SlopeHi    float64 `json:"slope_hi"`
-	SlopeMinNs float64 `json:"slope_min_ns"`
-	SlopeMaxNs float64 `json:"slope_max_ns"`
-	SlopeCond  int     `json:"slope_cond"`
-}
-
-// qualOf is the reported view of trigger parameters.
-// TRLC-LINKS: REQ-SDS-127
-func qualOf(p trigParams) TrigQual {
-	return TrigQual{VideoStd: p.videoStd, VideoLine: p.videoLine, VideoNeg: p.videoNeg, PulseLvl: p.pulseLvlFrac, PulseMinNs: p.pulseWMinNs, PulseMaxNs: p.pulseWMaxNs, PulseCond: p.pulseCond, SlopeLo: p.slopeLoFrac, SlopeHi: p.slopeHiFrac, SlopeMinNs: p.slopeTMinNs, SlopeMaxNs: p.slopeTMaxNs, SlopeCond: p.slopeCond}
 }

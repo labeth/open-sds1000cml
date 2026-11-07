@@ -5,24 +5,13 @@ package engine
 import (
 	"math"
 
-	"github.com/labeth/open-dso-core/dsp"
+	core "github.com/labeth/open-dso-core/engine"
 )
 
 // Software edge discrimination and centring (spec 03 §7, spec 05 §3).
 // There are no hardware slope/type registers: the comparator only places the
 // threshold; slope and position are judged over the drained record. Slope is
 // judged in code space with exactly these predicates.
-
-// ptp returns min, max and peak-to-peak of sig.
-// TRLC-LINKS: REQ-SDS-009, REQ-SDS-011
-func ptp(sig []uint8) (lo, hi, p int) {
-	if len(sig) == 0 {
-		return 0, 0, 0
-	}
-	l, h := dsp.MinMax8(sig)
-	lo, hi = int(l), int(h)
-	return lo, hi, hi - lo
-}
 
 // validDepthP is validDepth with the record's peak-to-peak span precomputed, so
 // a caller that already scanned the record (oneFrame does exactly one ptp pass
@@ -41,7 +30,7 @@ func validDepthP(sig []uint8, p int) int {
 	last := 0
 	for from := 0; from < n; from += w {
 		to := min(from+w, n)
-		if _, _, lp := ptp(sig[from:to]); lp >= thr {
+		if _, _, lp := core.Ptp(sig[from:to]); lp >= thr {
 			last = to
 		}
 	}
@@ -90,72 +79,6 @@ func realDepthP(sig []uint8, p int) int {
 	return n - run
 }
 
-// noiseFloor estimates the per-sample ADC noise as the MEDIAN absolute second
-// difference |s[i+1] − 2·s[i] + s[i−1]|. The second difference cancels any
-// linear ramp (independent of its slope AND of the signal period), leaving only
-// high-frequency noise — so this is a PERIOD-INDEPENDENT noise estimate. That is
-// what a moving-average gate could not be: a fixed window washes out a signal
-// with many periods on screen (aliased/slow-timebase), whereas this holds at
-// every timebase. Exact median via a histogram over the small integer |Δ²|
-// values: O(n) time, O(1) space. Floored at 0.5 (a perfectly clean slow ramp has
-// median |Δ²| = 0 because adjacent codes repeat).
-// TRLC-LINKS: REQ-SDS-011
-func noiseFloor(sig []uint8) float64 {
-	n := len(sig)
-	if n < 3 {
-		return 0.5
-	}
-	var hist [513]int
-	total := 0
-	for i := 1; i < n-1; i++ {
-		d := int(sig[i+1]) - 2*int(sig[i]) + int(sig[i-1])
-		if d < 0 {
-			d = -d
-		}
-		if d > 512 {
-			d = 512
-		}
-		hist[d]++
-		total++
-	}
-	half := total / 2
-	cum, med := 0, 0
-	for b := range 513 {
-		if cum += hist[b]; cum > half {
-			med = b
-			break
-		}
-	}
-	if med < 1 {
-		return 0.5
-	}
-	return float64(med)
-}
-
-// signalPresent reports whether the record holds a real signal rather than a
-// flat / quiet rail: peak-to-peak must exceed k times the noiseFloor. Raw ptp
-// alone CANNOT decide this — a noisy rail (ptp up to ~18 at σ≈2.5) can exceed a
-// real small on-screen signal (a 2.4 Vpp cal signal is ptp 8 at 10 V/div) — but
-// ptp-relative-to-noise separates them cleanly at ANY timebase (a real signal
-// has ptp ≫ noise; a rail's ptp IS its noise, ~5σ). Used as the DECIMATED lock
-// gate; native-fast keeps the raw-ptp test (its record spans < 1 period).
-// TRLC-LINKS: REQ-SDS-011
-func signalPresent(sig []uint8, k float64) bool {
-	_, _, p := ptp(sig)
-	return float64(p) >= k*noiseFloor(sig)
-}
-
-// midLevel is the crossing threshold: (min+max)/2 over the drained samples
-// (128 for an empty slice). It floats with amplitude so it works at any V/div.
-// TRLC-LINKS: REQ-SDS-011
-func midLevel(sig []uint8) int {
-	if len(sig) == 0 {
-		return 128
-	}
-	lo, hi, _ := ptp(sig)
-	return (lo + hi) / 2
-}
-
 // centerCross finds the qualifying level crossing nearest the frame centre
 // (phase-stable) and returns its sub-sample position, or -1 if none. rising:
 // sig[c-1] < lvl && sig[c] >= lvl; falling mirrored.
@@ -186,7 +109,7 @@ func centerCross(sig []uint8, lvl int, rising bool) float64 {
 // falling (centerCrossHint takes one direction), or -1.
 // TRLC-LINKS: REQ-SDS-013, REQ-SDS-011
 func nearerCrossHint(sig []uint8, lvl int, hint float64) float64 {
-	nf := noiseFloor(sig) // once for both directions
+	nf := core.NoiseFloor(sig) // once for both directions
 	r, f := centerCrossNF(sig, lvl, true, hint, nf), centerCrossNF(sig, lvl, false, hint, nf)
 	switch {
 	case r < 0:
@@ -201,7 +124,7 @@ func nearerCrossHint(sig []uint8, lvl int, hint float64) float64 {
 
 // TRLC-LINKS: REQ-SDS-011
 func centerCrossHint(sig []uint8, lvl int, rising bool, hint float64) float64 {
-	return centerCrossNF(sig, lvl, rising, hint, noiseFloor(sig))
+	return centerCrossNF(sig, lvl, rising, hint, core.NoiseFloor(sig))
 }
 
 // centerCrossNF is centerCrossHint with sig's noiseFloor nf already taken.

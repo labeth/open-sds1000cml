@@ -6,6 +6,7 @@ import (
 	"math"
 	"testing"
 
+	core "github.com/labeth/open-dso-core/engine"
 	"github.com/labeth/open-dso-core/sample"
 	"github.com/labeth/open-sds1000cml/app/internal/sramcapture"
 )
@@ -57,14 +58,14 @@ func TestZoneMaskPublishPolicy(t *testing.T) {
 	feature = false
 	e.zoneHeld = 0
 	pubs := 0
-	for range 2 * zoneFallback {
+	for range 2 * core.ZoneFallback {
 		e.oneFrame(false)
 		if _, fresh := e.Consume(); fresh {
 			pubs++
 		}
 	}
 	if pubs != 2 {
-		t.Fatalf("AUTO liveness: %d publishes over %d holds, want 2", pubs, 2*zoneFallback)
+		t.Fatalf("AUTO liveness: %d publishes over %d holds, want 2", pubs, 2*core.ZoneFallback)
 	}
 
 	// Mask counts every locked frame even while the zone holds, and ring
@@ -322,7 +323,7 @@ func TestSingleShotWaitsForZoneQualify(t *testing.T) {
 
 // TRLC-LINKS: REQ-SDS-014
 func TestMaskKeepsBuilderGeometry(t *testing.T) {
-	e := &Engine{sram: &sramcapture.Capture{}, pubIdent: frameIdent{.0002, 1e-6, true}}
+	e := &Engine{sram: &sramcapture.Capture{}, pubIdent: core.FrameIdent{TdivS: .0002, SampleS: 1e-6, PeakDetect: true}}
 	e.SetMask(&Mask{
 		Lo: []uint8{0, 0}, Hi: []uint8{255, 255}, WinCols: 2,
 		FrameIdent: true, TdivS: .0002, SampleS: 2e-9,

@@ -22,6 +22,7 @@ import (
 	"testing"
 	"time"
 
+	core "github.com/labeth/open-dso-core/engine"
 	"github.com/labeth/open-dso-core/sample"
 	"github.com/labeth/open-dso-core/superres"
 	"github.com/labeth/open-sds1000cml/app/internal/bus"
@@ -664,7 +665,7 @@ func halScenarios() []halScenario {
 			}}},
 		{name: "uart-trigger", caps: uart, stopAt: 6, triggers: always, fill: 2,
 			hooks: map[int]func(*Engine){1: func(e *Engine) {
-				e.SetSerialParams(SerialParams{Proto: serUART, Baud: 115200, Bits: 8, Threshold: 128, HaveThr: true, Addr: -1, RW: 2, Bytes: []int{0x55}})
+				e.SetSerialParams(SerialParams{Proto: core.SerUART, Baud: 115200, Bits: 8, Threshold: 128, HaveThr: true, Addr: -1, RW: 2, Bytes: []int{0x55}})
 				e.SetSerialMode(SerialTrigger)
 			}}},
 		{name: "bode", caps: general, stopAt: 5, triggers: always, fill: 2,

@@ -3,6 +3,7 @@
 package engine
 
 import (
+	core "github.com/labeth/open-dso-core/engine"
 	"runtime"
 	"testing"
 )
@@ -36,7 +37,7 @@ func decodeAlloc(d SerialDecoder, proto, n, per int) uint64 {
 // TRLC-LINKS: REQ-SDS-018
 func TestDecodersLinearOnBusyLine(t *testing.T) {
 	for proto := 1; proto < SerialProtocols; proto++ {
-		d, ok := lookupSerialDecoder(proto)
+		d, ok := core.LookupSerialDecoder(proto)
 		if !ok {
 			continue
 		}

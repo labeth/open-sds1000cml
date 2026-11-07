@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	core "github.com/labeth/open-dso-core/engine"
 	"github.com/labeth/open-dso-core/sample"
 	"github.com/labeth/open-sds1000cml/app/internal/sramcapture"
 )
@@ -34,7 +35,7 @@ func levelsEngine(p SerialParams) *Engine {
 // through a capture whose level moved under two codes (ADR-SERIAL-HARDWARE-TRIGGER).
 // TRLC-LINKS: REQ-SDS-013
 func TestLearnedLevelPlansTheHardwareMatcher(t *testing.T) {
-	e := levelsEngine(SerialParams{Proto: serUART, ChA: 0, ChB: 1, Baud: 115200, Bits: 8, Parity: "none", Bytes: []int{0x48, 0x69}})
+	e := levelsEngine(SerialParams{Proto: core.SerUART, ChA: 0, ChB: 1, Baud: 115200, Bits: 8, Parity: "none", Bytes: []int{0x48, 0x69}})
 	if c, _, _, _, _ := e.sramConfig(); c.UART.Enabled || c.Normal {
 		t.Fatalf("a matcher before the line's levels are known: %+v", c.UART)
 	}
@@ -43,7 +44,7 @@ func TestLearnedLevelPlansTheHardwareMatcher(t *testing.T) {
 	}
 	w := uartWave([]int{0x48, 0x69, 0x20}, 20) // rails 40 and 210: threshold 125
 	f := &sample.Frame{SampleS: 1 / (115200.0 * 20), Traces: []sample.Trace{{Codes8: w, Valid: len(w)}, {Ch: 1, Codes8: w, Valid: len(w)}}}
-	scale := [2]chScale{{1, 0}, {1, 0}}
+	scale := [2]core.ChScale{{Vdiv: 1, Off: 0}, {Vdiv: 1, Off: 0}}
 	e.learnSerialLevels(f, scale)
 	c, _, _, _, _ := e.sramConfig()
 	if !c.UART.Enabled || !c.Normal || c.TriggerChannel != 0 || c.TriggerLevel != 125 || c.UART.Pattern != 0x4869 {
@@ -66,7 +67,7 @@ func TestLearnedLevelPlansTheHardwareMatcher(t *testing.T) {
 		}
 	}
 	e.learnSerialLevels(f, scale)
-	if v := math.Float64frombits(e.serLv.volts[0].Load()); math.Abs(v-(-3.0/25)) > 1e-9 {
+	if v := math.Float64frombits(e.serLv.Volts[0].Load()); math.Abs(v-(-3.0/25)) > 1e-9 {
 		t.Fatalf("a one-code move re-planned: %v V", v)
 	}
 }
@@ -76,16 +77,16 @@ func TestLearnedLevelPlansTheHardwareMatcher(t *testing.T) {
 // TRLC-LINKS: REQ-SDS-013
 func TestSPIClockRateFromTheClockLine(t *testing.T) {
 	clk, data := spiWave([]int{0x55, 0xaa, 0x0f}, 10) // 20-sample clock periods
-	if hz := clockRate(clk, 1e-8, false); math.Abs(hz-5e6) > 1 {
+	if hz := core.ClockRate(clk, 1e-8, false); math.Abs(hz-5e6) > 1 {
 		t.Fatalf("clock %v Hz, want 5 MHz", hz)
 	}
-	e := levelsEngine(SerialParams{Proto: serSPI, ChA: 0, ChB: 1, MSB: true, Bytes: []int{0x55}})
+	e := levelsEngine(SerialParams{Proto: core.SerSPI, ChA: 0, ChB: 1, MSB: true, Bytes: []int{0x55}})
 	f := &sample.Frame{SampleS: 1e-8, Traces: []sample.Trace{{Codes8: clk, Valid: len(clk)}, {Ch: 1, Codes8: data, Valid: len(clk)}}}
-	if _, why := e.serialPlanParams(e.ser.params); why == "" {
+	if _, why := e.serialPlanParams(e.ser.Params); why == "" {
 		t.Fatal("an SPI plan before its clock was measured")
 	}
-	e.learnSerialLevels(f, [2]chScale{{1, 0}, {1, 0}})
-	p, why := e.serialPlanParams(e.ser.params)
+	e.learnSerialLevels(f, [2]core.ChScale{{Vdiv: 1, Off: 0}, {Vdiv: 1, Off: 0}})
+	p, why := e.serialPlanParams(e.ser.Params)
 	if why != "" || p.SPIClockHz != 5000000 || !p.HaveThr {
 		t.Fatalf("SPI plan params %+v (%q)", p, why)
 	}
@@ -100,7 +101,7 @@ func TestSPIClockRateFromTheClockLine(t *testing.T) {
 // TRLC-LINKS: REQ-SDS-013
 func TestHardwareMatchStartPlacesTheTrigger(t *testing.T) {
 	const spb = 20
-	e := levelsEngine(SerialParams{Proto: serUART, ChA: 0, ChB: 1, Baud: 115200, Bits: 8, Parity: "none", Bytes: []int{0x48, 0x69}})
+	e := levelsEngine(SerialParams{Proto: core.SerUART, ChA: 0, ChB: 1, Baud: 115200, Bits: 8, Parity: "none", Bytes: []int{0x48, 0x69}})
 	w := uartWave([]int{0x10, 0x48, 0x69, 0x20}, spb)
 	f := &sample.Frame{SampleS: 1 / (115200.0 * spb), Traces: []sample.Trace{{Codes8: w, Valid: len(w)}, {Ch: 1, Codes8: w, Valid: len(w)}}}
 	start := 8*spb + 11*spb          // 0x48's start bit
@@ -122,20 +123,20 @@ func TestUARTAutoBaudPlansTheHardwareMatcher(t *testing.T) {
 	const spb = 20
 	w := uartWave([]int{0x48, 0x69, 0x20, 0x55, 0xaa, 0x0f, 0xf0, 0x0a}, spb)
 	sampleS := 1 / (115200.0 * spb) * 1.01 // a 1 % fast clock still reads 115200
-	if b := uartBaud(w, sampleS); b != 115200 {
+	if b := core.UARTBaud(w, sampleS); b != 115200 {
 		t.Fatalf("measured %v baud", b)
 	}
-	e := levelsEngine(SerialParams{Proto: serUART, ChA: 0, ChB: 0, Baud: 0, Bits: 8, Parity: "none", Bytes: []int{0xaa}})
-	if _, why := e.serialPlanParams(e.ser.params); !strings.Contains(why, "learning the line levels") {
+	e := levelsEngine(SerialParams{Proto: core.SerUART, ChA: 0, ChB: 0, Baud: 0, Bits: 8, Parity: "none", Bytes: []int{0xaa}})
+	if _, why := e.serialPlanParams(e.ser.Params); !strings.Contains(why, "learning the line levels") {
 		t.Fatalf("before any capture: %q", why)
 	}
-	e.serLv.volts[0].Store(math.Float64bits(-.12)) // the level known, the rate not yet
-	e.serLv.have[0].Store(true)
-	if _, why := e.serialPlanParams(e.ser.params); why != "measuring the UART bit rate" {
+	e.serLv.Volts[0].Store(math.Float64bits(-.12)) // the level known, the rate not yet
+	e.serLv.Have[0].Store(true)
+	if _, why := e.serialPlanParams(e.ser.Params); why != "measuring the UART bit rate" {
 		t.Fatalf("before the rate was measured: %q", why)
 	}
-	e.learnSerialLevels(&sample.Frame{SampleS: sampleS, Traces: []sample.Trace{{Codes8: w, Valid: len(w)}, {Ch: 1, Codes8: w, Valid: len(w)}}}, [2]chScale{{1, 0}, {1, 0}})
-	p, why := e.serialPlanParams(e.ser.params)
+	e.learnSerialLevels(&sample.Frame{SampleS: sampleS, Traces: []sample.Trace{{Codes8: w, Valid: len(w)}, {Ch: 1, Codes8: w, Valid: len(w)}}}, [2]core.ChScale{{Vdiv: 1, Off: 0}, {Vdiv: 1, Off: 0}})
+	p, why := e.serialPlanParams(e.ser.Params)
 	if why != "" || p.Baud != 115200 {
 		t.Fatalf("plan params %+v (%q)", p, why)
 	}
@@ -180,27 +181,27 @@ func TestEveryBusPlansFromTheScope(t *testing.T) {
 	}
 	e.trigPosFrac.Store(math.Float64bits(.5))
 	e.band = Band{TdivS: 100e-6}
-	e.SetSerialParams(SerialParams{Proto: serCAN, Baud: 500000, Bytes: []int{0x55, 0xAA}})
+	e.SetSerialParams(SerialParams{Proto: core.SerCAN, Baud: 500000, Bytes: []int{0x55, 0xAA}})
 	e.SetSerialMode(SerialTrigger)
 	if e.serviceImage() {
 		t.Fatal("an image loaded before the line's levels are known")
 	}
 	w := uartWave([]int{0x55, 0xAA}, 20) // rails 40 and 210: threshold 125
-	e.learnSerialLevels(&sample.Frame{SampleS: 1e-7, Traces: []sample.Trace{{Codes8: w, Valid: len(w)}, {Ch: 1, Codes8: w, Valid: len(w)}}}, [2]chScale{{1, 0}, {1, 0}})
+	e.learnSerialLevels(&sample.Frame{SampleS: 1e-7, Traces: []sample.Trace{{Codes8: w, Valid: len(w)}, {Ch: 1, Codes8: w, Valid: len(w)}}}, [2]core.ChScale{{Vdiv: 1, Off: 0}, {Vdiv: 1, Off: 0}})
 	if !e.serviceImage() || b.image != "packet" {
 		t.Fatalf("CAN with learned levels: image %s", b.image)
 	}
-	if cfg, _, _, _, _ := e.sramConfig(); !cfg.Packet.Enabled || cfg.Packet.Protocol != serCAN || cfg.TriggerLevel != 125 {
+	if cfg, _, _, _, _ := e.sramConfig(); !cfg.Packet.Enabled || cfg.Packet.Protocol != core.SerCAN || cfg.TriggerLevel != 125 {
 		t.Fatalf("CAN plan %+v level %d", cfg.Packet, cfg.TriggerLevel)
 	}
 
-	e.SetSerialParams(SerialParams{Proto: serSENT, Baud: 115200, Bytes: []int{1, 2}})
+	e.SetSerialParams(SerialParams{Proto: core.SerSENT, Baud: 115200, Bytes: []int{1, 2}})
 	if cfg, _, _, _, _ := e.sramConfig(); cfg.SENT.Enabled || !strings.Contains(e.serialNoHardware(), "measuring the SENT tick") {
 		t.Fatalf("SENT before its tick: %+v %q", cfg.SENT, e.serialNoHardware())
 	}
 	frame := []int{0, 1, 2, 5, 10, 3, 4, 1}
 	line := sentLine([][]int{frame, frame, frame, frame}, 30) // 3 us ticks at 100 ns
-	e.learnSerialLevels(&sample.Frame{SampleS: 1e-7, Traces: []sample.Trace{{Codes8: line, Valid: len(line)}, {Ch: 1, Codes8: line, Valid: len(line)}}}, [2]chScale{{1, 0}, {1, 0}})
+	e.learnSerialLevels(&sample.Frame{SampleS: 1e-7, Traces: []sample.Trace{{Codes8: line, Valid: len(line)}, {Ch: 1, Codes8: line, Valid: len(line)}}}, [2]core.ChScale{{Vdiv: 1, Off: 0}, {Vdiv: 1, Off: 0}})
 	// on the frame image (with MIL-1553), matching with the sequence trigger
 	if !e.serviceImage() || b.image != "frame" {
 		t.Fatalf("SENT with learned levels: image %s", b.image)
@@ -209,21 +210,21 @@ func TestEveryBusPlansFromTheScope(t *testing.T) {
 		t.Fatalf("SENT plan %+v sequence %d (want 375 ticks of 8 ns, 8 nibbles, 2 units)", cfg.SENT, cfg.Sequence.Length)
 	}
 
-	e.SetSerialParams(SerialParams{Proto: serMIL1553, Baud: 1000000, Bytes: []int{0xA5, 0x5A}})
+	e.SetSerialParams(SerialParams{Proto: core.SerMIL1553, Baud: 1000000, Bytes: []int{0xA5, 0x5A}})
 	if cfg, _, _, _, _ := e.sramConfig(); !cfg.MIL1553.Enabled || cfg.Sequence.Length != 1 || cfg.Sequence.Elements[0].Value != 0xA55A {
 		t.Fatalf("MIL-1553 plan %+v sequence %+v", cfg.MIL1553, cfg.Sequence)
 	}
 	// an ARINC 429 data field as the BUS table's bytes 00 AB CD
-	if p, _ := e.serialPlanParams(SerialParams{Proto: serARINC, Baud: 100000, Bytes: []int{0x00, 0xAB, 0xCD}}); len(p.Bytes) != 1 || p.Bytes[0] != 0xABCD {
+	if p, _ := e.serialPlanParams(SerialParams{Proto: core.SerARINC, Baud: 100000, Bytes: []int{0x00, 0xAB, 0xCD}}); len(p.Bytes) != 1 || p.Bytes[0] != 0xABCD {
 		t.Fatalf("ARINC 429 field %v", p.Bytes)
 	}
-	if p, _ := e.serialPlanParams(SerialParams{Proto: serARINC, Baud: 100000, Bytes: []int{0x12, 0x34, 0x56}}); len(p.Bytes) != 3 {
+	if p, _ := e.serialPlanParams(SerialParams{Proto: core.SerARINC, Baud: 100000, Bytes: []int{0x12, 0x34, 0x56}}); len(p.Bytes) != 3 {
 		t.Fatalf("an ARINC 429 field over 19 bits joined: %v", p.Bytes)
 	}
 	// a sequence of words as their bytes in turn: two MIL-1553 words (the
 	// BUS picker's "Trig on 2" on them; read as four separate units they
 	// never matched)
-	if p, _ := e.serialPlanParams(SerialParams{Proto: serMIL1553, Baud: 1000000, Bytes: []int{0xA5, 0x5A, 0x5A, 0xA5}}); fmt.Sprint(p.Bytes) != "[42330 23205]" {
+	if p, _ := e.serialPlanParams(SerialParams{Proto: core.SerMIL1553, Baud: 1000000, Bytes: []int{0xA5, 0x5A, 0x5A, 0xA5}}); fmt.Sprint(p.Bytes) != "[42330 23205]" {
 		t.Fatalf("two MIL-1553 words %v, want [0xA55A 0x5AA5]", p.Bytes)
 	}
 }
@@ -234,14 +235,14 @@ func TestEveryBusPlansFromTheScope(t *testing.T) {
 // screen at 200 us/div, which would pad the screen's left edge).
 // TRLC-LINKS: REQ-SDS-013, REQ-SDS-010
 func TestSerialPreRoomHoldsTheMatchStart(t *testing.T) {
-	e := levelsEngine(SerialParams{Proto: serARINC, ChA: 0, Baud: 100000, Bytes: []int{0x00, 0xAB, 0xCD}})
+	e := levelsEngine(SerialParams{Proto: core.SerARINC, ChA: 0, Baud: 100000, Bytes: []int{0x00, 0xAB, 0xCD}})
 	w := uartWave([]int{0x55}, 20)
-	e.learnSerialLevels(&sample.Frame{SampleS: 1e-7, Traces: []sample.Trace{{Codes8: w, Valid: len(w)}, {Ch: 1, Codes8: w, Valid: len(w)}}}, [2]chScale{{1, 0}, {1, 0}})
+	e.learnSerialLevels(&sample.Frame{SampleS: 1e-7, Traces: []sample.Trace{{Codes8: w, Valid: len(w)}, {Ch: 1, Codes8: w, Valid: len(w)}}}, [2]core.ChScale{{Vdiv: 1, Off: 0}, {Vdiv: 1, Off: 0}})
 	const sampleS, screen = 2e-9, 1000000                            // 200 us/div
 	if room := e.serialPreRoom(sampleS, screen); room != 3*36*5000 { // one field and two words of 36 bits, 5000 samples a bit
 		t.Fatalf("ARINC room %d samples, want %d", room, 3*36*5000)
 	}
-	e.SetSerialParams(SerialParams{Proto: serI2C, ChA: 0, ChB: 1, Bytes: []int{0x55}}) // no unit known: a quarter screen
+	e.SetSerialParams(SerialParams{Proto: core.SerI2C, ChA: 0, ChB: 1, Bytes: []int{0x55}}) // no unit known: a quarter screen
 	if room := e.serialPreRoom(sampleS, screen); room != screen/4 {
 		t.Fatalf("I2C room %d", room)
 	}
@@ -258,21 +259,21 @@ func TestSerialPreRoomHoldsTheMatchStart(t *testing.T) {
 // samples (an ARINC 429 field begins 0.44 ms before the trigger).
 // TRLC-LINKS: REQ-SDS-013
 func TestRecordHoldsTheMatchBeforeTheTrigger(t *testing.T) {
-	e := levelsEngine(SerialParams{Proto: serUART, ChA: 0, ChB: 1, Baud: 115200, Bits: 8, Parity: "none"})
+	e := levelsEngine(SerialParams{Proto: core.SerUART, ChA: 0, ChB: 1, Baud: 115200, Bits: 8, Parity: "none"})
 	e.band = Band{TdivS: 200e-6}
 	c0, plan, _, _, _ := e.sramConfig()                                                                  // no match: nothing kept before the trigger
 	words := func(s float64) uint32 { return uint32(s/plan.SampleS) / uint32(2-boolInt(plan.Log != 0)) } // samples a word
 	near := func(got, want uint32) bool { d := int(got) - int(want); return d >= -1 && d <= 1 }
-	e.SetSerialParams(SerialParams{Proto: serUART, ChA: 0, ChB: 1, Baud: 115200, Bits: 8, Parity: "none", Bytes: []int{0x48}})
+	e.SetSerialParams(SerialParams{Proto: core.SerUART, ChA: 0, ChB: 1, Baud: 115200, Bits: 8, Parity: "none", Bytes: []int{0x48}})
 	if c, _, _, _, _ := e.sramConfig(); !near(c.PreWords, c0.PreWords+words(10/115200.0)) {
 		t.Fatalf("before a placement: pre %d, want the matched character kept, %d", c.PreWords, c0.PreWords+words(10/115200.0))
 	}
-	e.serLv.shiftS.Store(math.Float64bits(440e-6))
+	e.serLv.ShiftS.Store(math.Float64bits(440e-6))
 	c1, _, _, _, _ := e.sramConfig()
 	if want := c0.PreWords + words(440e-6); !near(c1.PreWords, want) || c1.PreWords+c1.PostWords != c0.PreWords+c0.PostWords {
 		t.Fatalf("pre %d -> %d words, want %d (record %d words)", c0.PreWords, c1.PreWords, want, c0.PreWords+c0.PostWords)
 	}
-	e.SetSerialParams(SerialParams{Proto: serUART, ChA: 0, Baud: 9600, Bytes: []int{0x48}}) // another request: measured anew
+	e.SetSerialParams(SerialParams{Proto: core.SerUART, ChA: 0, Baud: 9600, Bytes: []int{0x48}}) // another request: measured anew
 	if c2, _, _, _, _ := e.sramConfig(); !near(c2.PreWords, c0.PreWords+words(10/9600.0)) {
 		t.Fatalf("a new request kept the old shift: pre %d", c2.PreWords)
 	}
@@ -283,11 +284,11 @@ func TestRecordHoldsTheMatchBeforeTheTrigger(t *testing.T) {
 // the screen's 18 ms after the trigger.
 // TRLC-LINKS: REQ-SDS-013
 func TestRecordKeepsTheScreenAfterTheTrigger(t *testing.T) {
-	e := levelsEngine(SerialParams{Proto: serUART, ChA: 0, ChB: 1, Baud: 115200, Bits: 8, Parity: "none", Bytes: []int{0x48}})
+	e := levelsEngine(SerialParams{Proto: core.SerUART, ChA: 0, ChB: 1, Baud: 115200, Bits: 8, Parity: "none", Bytes: []int{0x48}})
 	e.band = Band{TdivS: 2e-3}
 	e.hardwareEnvelope = true // the deep record, read as an envelope
 	e.trigPosFrac.Store(math.Float64bits(0.1))
-	e.serLv.shiftS.Store(math.Float64bits(20e-3)) // a lead longer than the record holds beside the screen
+	e.serLv.ShiftS.Store(math.Float64bits(20e-3)) // a lead longer than the record holds beside the screen
 	c, plan, _, _, _ := e.sramConfig()
 	perWord := float64(2 - boolInt(plan.Log != 0))
 	if after := float64(c.PostWords) * perWord; after < 0.9*float64(plan.Screen) {
@@ -301,18 +302,18 @@ func TestRecordKeepsTheScreenAfterTheTrigger(t *testing.T) {
 // vain (each word is a frame of its own).
 // TRLC-LINKS: REQ-SDS-013
 func TestWordPatternsGroupByUnit(t *testing.T) {
-	e := levelsEngine(SerialParams{Proto: serMIL1553})
-	errs := []PatternElem{{Kind: patternError}, {Kind: patternError}, {Kind: patternData, Value: 0xA5, Mask: 0xff}, {Kind: patternData, Value: 0x5A, Mask: 0xff}}
-	p, why := e.serialPlanParams(SerialParams{Proto: serMIL1553, Baud: 1000000, HaveThr: true, Threshold: 128, Pattern: errs})
-	if why != "" || len(p.Pattern) != 2 || p.Pattern[0].Kind != patternError || p.Pattern[1].Value != 0xA55A || p.Pattern[1].Mask != 0xffff {
+	e := levelsEngine(SerialParams{Proto: core.SerMIL1553})
+	errs := []PatternElem{{Kind: core.PatternError}, {Kind: core.PatternError}, {Kind: core.PatternData, Value: 0xA5, Mask: 0xff}, {Kind: core.PatternData, Value: 0x5A, Mask: 0xff}}
+	p, why := e.serialPlanParams(SerialParams{Proto: core.SerMIL1553, Baud: 1000000, HaveThr: true, Threshold: 128, Pattern: errs})
+	if why != "" || len(p.Pattern) != 2 || p.Pattern[0].Kind != core.PatternError || p.Pattern[1].Value != 0xA55A || p.Pattern[1].Mask != 0xffff {
 		t.Fatalf("MIL-1553 [ERR ERR A5 5A] planned %+v (%q), want [error, A55A]", p.Pattern, why)
 	}
-	field := []PatternElem{{Kind: patternData, Value: 0x00, Mask: 0xff}, {Kind: patternData, Value: 0xA0, Mask: 0xf0}, {Kind: patternData, Value: 0xCD, Mask: 0xff}}
-	p, why = e.serialPlanParams(SerialParams{Proto: serARINC, Baud: 100000, HaveThr: true, Threshold: 128, Pattern: field})
+	field := []PatternElem{{Kind: core.PatternData, Value: 0x00, Mask: 0xff}, {Kind: core.PatternData, Value: 0xA0, Mask: 0xf0}, {Kind: core.PatternData, Value: 0xCD, Mask: 0xff}}
+	p, why = e.serialPlanParams(SerialParams{Proto: core.SerARINC, Baud: 100000, HaveThr: true, Threshold: 128, Pattern: field})
 	if why != "" || len(p.Pattern) != 1 || p.Pattern[0].Value != 0xA0CD || p.Pattern[0].Mask != 0x7f0ff {
 		t.Fatalf("ARINC 00 A? CD planned %+v (%q)", p.Pattern, why)
 	}
-	if _, why := e.serialPlanParams(SerialParams{Proto: serARINC, Baud: 100000, HaveThr: true, Threshold: 128, Bytes: []int{0x00, 0xAB, 0xCD, 0x01, 0x23, 0x45}}); why != arincOneWord {
+	if _, why := e.serialPlanParams(SerialParams{Proto: core.SerARINC, Baud: 100000, HaveThr: true, Threshold: 128, Bytes: []int{0x00, 0xAB, 0xCD, 0x01, 0x23, 0x45}}); why != core.ArincOneWord {
 		t.Fatal("two ARINC 429 words planned without a word")
 	}
 }
@@ -334,21 +335,21 @@ func TestSPIClockMeasuredAgainWhenQuiet(t *testing.T) {
 		}
 		return c
 	}
-	if hz := clockRate(square(4000, 4.8), 2e-9, false); math.Abs(hz-104.17e6) > 1e6 {
+	if hz := core.ClockRate(square(4000, 4.8), 2e-9, false); math.Abs(hz-104.17e6) > 1e6 {
 		t.Fatalf("104 MHz clock read as %v", hz)
 	}
 	// Bucket extremes two entries a bucket: alternating, a clock unresolved.
-	if hz := clockRate(square(4000, 4), 16e-9, true); hz != 0 {
+	if hz := core.ClockRate(square(4000, 4), 16e-9, true); hz != 0 {
 		t.Fatalf("peak-detect alternation read as a %v Hz clock", hz)
 	}
-	if hz := clockRate(square(4000, 20), 16e-9, true); math.Abs(hz-3.125e6) > 1e3 {
+	if hz := core.ClockRate(square(4000, 20), 16e-9, true); math.Abs(hz-3.125e6) > 1e3 {
 		t.Fatalf("a resolved clock in bucket extremes read as %v", hz)
 	}
 	now := time.Unix(1000, 0)
-	e := levelsEngine(SerialParams{Proto: serSPI, ChA: 1, ChB: 0, MSB: true, Bytes: []int{0x4f}})
+	e := levelsEngine(SerialParams{Proto: core.SerSPI, ChA: 1, ChB: 0, MSB: true, Bytes: []int{0x4f}})
 	e.clk = Clock{Now: func() time.Time { return now }, Sleep: func(time.Duration) {}}
 	e.hardwareSampleSPI = true
-	sc := [2]chScale{{1, 0}, {1, 0}}
+	sc := [2]core.ChScale{{Vdiv: 1, Off: 0}, {Vdiv: 1, Off: 0}}
 	fast := square(4000, 4.8)
 	e.learnSerialLevels(&sample.Frame{SampleS: 2e-9, Traces: []sample.Trace{{Codes8: fast, Valid: len(fast)}, {Ch: 1, Codes8: fast, Valid: len(fast)}}}, sc)
 	c, _, _, _, _ := e.sramConfig()
@@ -359,7 +360,7 @@ func TestSPIClockMeasuredAgainWhenQuiet(t *testing.T) {
 	if c, _, _, _, _ = e.sramConfig(); c.SPI.Enabled {
 		t.Fatalf("a quiet learned clock stayed planned: %+v", c.SPI)
 	}
-	if _, why := e.serialPlanParams(e.ser.params); why != spiMeasuring {
+	if _, why := e.serialPlanParams(e.ser.Params); why != core.SPIMeasuring {
 		t.Fatalf("plan while measuring again: %q", why)
 	}
 	slow := square(4000, 25) // 10 MHz at 4 ns
@@ -375,12 +376,12 @@ func TestSPIClockMeasuredAgainWhenQuiet(t *testing.T) {
 // and the matcher never fires.
 // TRLC-LINKS: REQ-SDS-013
 func TestTwoLineBusPlansEachLineLevel(t *testing.T) {
-	for _, proto := range []int{serSPI, serI2C} {
+	for _, proto := range []int{core.SerSPI, core.SerI2C} {
 		e := levelsEngine(SerialParams{Proto: proto, ChA: 1, ChB: 0, MSB: true, SPIClockHz: 5000000, Addr: -1, RW: 2, Bytes: []int{0x55}})
 		e.hardwareI2C = true
 		clk, data := spiWave([]int{0x55, 0xaa, 0x0f}, 10) // rails 40 and 210: threshold 125 on each
 		f := &sample.Frame{SampleS: 1e-8, Traces: []sample.Trace{{Codes8: data, Valid: len(clk)}, {Ch: 1, Codes8: clk, Valid: len(clk)}}}
-		e.learnSerialLevels(f, [2]chScale{{1, 0}, {1, 0}})
+		e.learnSerialLevels(f, [2]core.ChScale{{Vdiv: 1, Off: 0}, {Vdiv: 1, Off: 0}})
 		c, _, _, _, _ := e.sramConfig()
 		if c.TriggerChannel != 1 || c.TriggerLevel != 125 || c.SecondLevel != 125 {
 			t.Fatalf("proto %d equal traces: channel %d levels %d, %d", proto, c.TriggerChannel, c.TriggerLevel, c.SecondLevel)
@@ -395,31 +396,15 @@ func TestTwoLineBusPlansEachLineLevel(t *testing.T) {
 		}
 	}
 	// a second line not yet seen holds the plan back
-	e := levelsEngine(SerialParams{Proto: serSPI, ChA: 0, ChB: 1, SPIClockHz: 5000000, Bytes: []int{0x55}})
-	e.serLv.volts[0].Store(math.Float64bits(0))
-	e.serLv.have[0].Store(true)
-	if _, why := e.serialPlanParams(e.ser.params); why != "learning the line levels on C2" {
+	e := levelsEngine(SerialParams{Proto: core.SerSPI, ChA: 0, ChB: 1, SPIClockHz: 5000000, Bytes: []int{0x55}})
+	e.serLv.Volts[0].Store(math.Float64bits(0))
+	e.serLv.Have[0].Store(true)
+	if _, why := e.serialPlanParams(e.ser.Params); why != "learning the line levels on C2" {
 		t.Fatalf("plan before the data line's levels: %q", why)
 	}
 	// a request's own threshold slices both lines
-	p, why := e.serialPlanParams(SerialParams{Proto: serSPI, ChA: 0, ChB: 1, SPIClockHz: 5000000, Threshold: 100, HaveThr: true})
+	p, why := e.serialPlanParams(SerialParams{Proto: core.SerSPI, ChA: 0, ChB: 1, SPIClockHz: 5000000, Threshold: 100, HaveThr: true})
 	if why != "" || p.ThresholdB != 100 || !p.HaveThrB {
 		t.Fatalf("explicit threshold: %+v (%q)", p, why)
-	}
-}
-
-// A decimated record's clock replaces a learned SPI clock only where it
-// would resolve it: a 10 MHz clock filtered to its alias on 32 ns samples
-// keeps the 10 MHz; the full rate's samples measure a bus that slowed.
-// TRLC-LINKS: REQ-SDS-013, REQ-SDS-229
-func TestDecimatedAliasKeepsTheLearnedClock(t *testing.T) {
-	if resolvesClock(10e6, &sample.Frame{SampleS: 32e-9, AcqDecim: int(16), Traces: []sample.Trace{{}, {Ch: 1}}}) {
-		t.Fatal("3.1 samples a 10 MHz period replaced it")
-	}
-	if !resolvesClock(10e6, &sample.Frame{SampleS: 2e-9, AcqDecim: int(1), Traces: []sample.Trace{{}, {Ch: 1}}}) || !resolvesClock(1e6, &sample.Frame{SampleS: 32e-9, AcqDecim: int(16), Traces: []sample.Trace{{}, {Ch: 1}}}) {
-		t.Fatal("a frame that resolves the clock kept the old")
-	}
-	if !resolvesClock(0, &sample.Frame{SampleS: 1e-6, AcqDecim: int(512), Traces: []sample.Trace{{}, {Ch: 1}}}) {
-		t.Fatal("no clock learned: the first measurement refused")
 	}
 }

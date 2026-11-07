@@ -7,35 +7,10 @@ import (
 	"testing"
 	"time"
 
+	core "github.com/labeth/open-dso-core/engine"
 	"github.com/labeth/open-dso-core/sample"
 	"github.com/labeth/open-sds1000cml/app/internal/sramcapture"
 )
-
-// A view is read only where the screen's envelope is coarser than the display
-// draws it: a bucket every second column or fewer.
-// TRLC-LINKS: REQ-SDS-021
-func TestViewBuckets(t *testing.T) {
-	for _, c := range []struct {
-		name         string
-		a, b         float64
-		cols         int
-		screen, want uint32
-	}{
-		{"LCD zoom 2: 1024 buckets over 770 columns", -0.25, 0.25, 770, 2048, 0},
-		{"LCD zoom 5: 410 buckets, about one every second column", -0.1, 0.1, 770, 2048, 0},
-		{"LCD zoom 10", -0.05, 0.05, 770, 2048, 770},
-		{"LCD zoom 50, odd columns", -0.01, 0.01, 771, 2048, 772},
-		{"canvas zoom 2", -0.25, 0.25, 1900, 2048, 0},
-		{"canvas zoom 5: capped", -0.1, 0.1, 1900, 2048, viewMaxBuckets},
-		{"Q8 screen, canvas zoom 2", -0.25, 0.25, 1900, 1024, viewMaxBuckets},
-		{"empty", 0.1, 0.1, 770, 2048, 0},
-		{"no columns", -0.05, 0.05, 1, 2048, 0},
-	} {
-		if got := viewBuckets(c.a, c.b, c.cols, c.screen); got != c.want {
-			t.Errorf("%s: %d buckets, want %d", c.name, got, c.want)
-		}
-	}
-}
 
 // The scope's zoom asks for its stretch in screen widths from the trigger; the
 // view read for it lies among the frame's values where the LCD draws the zoom,
@@ -64,7 +39,7 @@ func TestViewCoversTheZoom(t *testing.T) {
 					win := float64(winCols / zoom)
 					centre := xc + zoomOff*float64(valid)
 					za, zb := centre-win/2, centre+win/2
-					n := viewBuckets(a, b, 770, sramcapture.EnvelopeBuckets)
+					n := core.ViewBuckets(a, b, 770, sramcapture.EnvelopeBuckets)
 					if n == 0 {
 						t.Fatalf("zoom %d: no view", zoom)
 					}
@@ -76,8 +51,8 @@ func TestViewCoversTheZoom(t *testing.T) {
 						}
 						t.Fatalf("trig %d zoom %d off %.1f: no plan for words %.0f..%.0f", trig, zoom, zoomOff, from, to)
 					}
-					at := envelopeValue(offset, bucket)
-					vFrom, vTo := at(p.start), at(p.start+p.length)
+					at := core.EnvelopeValue(offset, bucket)
+					vFrom, vTo := at(p.Start), at(p.Start+p.Length)
 					if za < at(0) || zb > at(m.Length) {
 						continue // the zoom runs off the record: the view is clipped to it
 					}
@@ -86,8 +61,8 @@ func TestViewCoversTheZoom(t *testing.T) {
 							trig, edgeX, zoom, zoomOff, vFrom, vTo, za, zb)
 					}
 					// centred on the zoom (widened about it), to two of its values
-					if clipped := p.start == 0 || p.start+p.length >= m.Length; !clipped {
-						if d, two := math.Abs((vFrom+vTo)/2-centre), 2*(vTo-vFrom)/float64(p.n); d > two {
+					if clipped := p.Start == 0 || p.Start+p.Length >= m.Length; !clipped {
+						if d, two := math.Abs((vFrom+vTo)/2-centre), 2*(vTo-vFrom)/float64(p.N); d > two {
 							t.Errorf("trig %d edge %.0f zoom %d off %.1f: view centred %.2f values from the zoom's centre (allowed %.2f)",
 								trig, edgeX, zoom, zoomOff, d, two)
 						}
@@ -96,8 +71,8 @@ func TestViewCoversTheZoom(t *testing.T) {
 					if w := vTo - vFrom; w > 1.25*(zb-za)+4 {
 						t.Errorf("zoom %d: view %.1f values wide for a zoom of %.1f", zoom, w, zb-za)
 					}
-					if want := 2 * int(n); p.bucket != 0 && p.n != want {
-						t.Errorf("zoom %d: %d values, want %d", zoom, p.n, want)
+					if want := 2 * int(n); p.Bucket != 0 && p.N != want {
+						t.Errorf("zoom %d: %d values, want %d", zoom, p.N, want)
 					}
 				}
 			}
@@ -113,7 +88,7 @@ func TestViewCoversTheZoom(t *testing.T) {
 func TestPlanViewRawWhenShort(t *testing.T) {
 	m := sramcapture.Metadata{Length: sramcapture.Words, SamplesPerWord: 2, TriggerIndex: 1000}
 	p, ok := planView(m, 900, 1100, 770)
-	if !ok || p.bucket != 0 || p.start != 900 || p.length != 200 || p.n != 400 {
+	if !ok || p.Bucket != 0 || p.Start != 900 || p.Length != 200 || p.N != 400 {
 		t.Fatalf("plan %+v ok %v, want raw words 900..1100, 400 samples", p, ok)
 	}
 	if _, ok := planView(m, -50, 1, 770); ok {
@@ -187,11 +162,11 @@ func TestViewsReadWithTheScreen(t *testing.T) {
 	// Filled, each surface's window lands on the frame; one the read did not
 	// fill is none.
 	r := v[ViewScope]
-	if _, err := r.w.Write(make([]byte, 4*int(r.p.buckets))); err != nil {
+	if _, err := r.w.Write(make([]byte, 4*int(r.p.Buckets))); err != nil {
 		t.Fatal(err)
 	}
-	e.windows(f, &v, m, offset, bucket, [2]chScale{})
-	if w := ViewDetail(f, ViewScope); w == nil || w.Frame.Content != sample.PeakPairs || w.Frame.Len() != r.p.n || !(w.To > w.From) {
+	e.windows(f, &v, m, offset, bucket, [2]core.ChScale{})
+	if w := ViewDetail(f, ViewScope); w == nil || w.Frame.Content != sample.PeakPairs || w.Frame.Len() != r.p.N || !(w.To > w.From) {
 		t.Fatalf("scope window %+v", w)
 	}
 	if ViewDetail(f, ViewWeb) != nil {

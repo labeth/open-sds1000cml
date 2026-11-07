@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	core "github.com/labeth/open-dso-core/engine"
 	"github.com/labeth/open-dso-core/superres"
 	"github.com/labeth/open-sds1000cml/app/internal/bus"
 	"github.com/labeth/open-sds1000cml/app/internal/sramcapture"
@@ -237,7 +238,7 @@ func newStackTestEngine(t *testing.T) (*Engine, *stackEngineBus, *fakeImages) {
 	}
 	images := &fakeImages{b: b}
 	e := &Engine{
-		b: b, sram: capture, sramJobs: make(chan ownerJob, 1), done: make(chan struct{}), images: images,
+		b: b, sram: capture, sramJobs: make(chan core.OwnerJob, 1), done: make(chan struct{}), images: images,
 		logf: t.Logf, clk: Clock{Now: time.Now, Sleep: func(time.Duration) {}},
 	}
 	return e, b, images

@@ -6,6 +6,7 @@ import (
 	"math"
 	"time"
 
+	core "github.com/labeth/open-dso-core/engine"
 	"github.com/labeth/open-dso-core/sample"
 	"github.com/labeth/open-sds1000cml/app/internal/iface"
 )
@@ -118,12 +119,12 @@ func (e *Engine) etsFrame(norm bool) {
 		if int(e.trigSrc.Load()) == 1 {
 			disc = e.etsScratch2
 		}
-		_, _, p := ptp(disc)
+		_, _, p := core.Ptp(disc)
 		lastPtp = p
 		if p < etsEdgeMinPtp {
 			continue // flat/slow source: no phase information in this capture
 		}
-		xref := centerCross(disc, midLevel(disc), rising)
+		xref := centerCross(disc, core.MidLevel(disc), rising)
 		if xref < 0 {
 			continue
 		}
@@ -173,14 +174,14 @@ func (e *Engine) etsFrame(norm bool) {
 		}
 		return f.Codes8(0)[:nCols]
 	}
-	_, _, p := ptp(recon())
+	_, _, p := core.Ptp(recon())
 	if f.TriggerAt >= 0 && p < etsEdgeMinPtp {
 		// Reconstruction went flat (source changed): fall back honestly.
 		off := etsDrainCols/2 - nCols/2
 		copy(f.Codes8(0)[:nCols], e.etsScratch1[off:off+nCols])
 		copy(f.Codes8(1)[:nCols], e.etsScratch2[off:off+nCols])
 		f.TriggerAt = -1
-		_, _, p = ptp(recon())
+		_, _, p = core.Ptp(recon())
 	}
 
 	f.SetLen(nCols)

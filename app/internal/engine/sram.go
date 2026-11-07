@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/labeth/open-dso-core/dsp"
+	core "github.com/labeth/open-dso-core/engine"
 	"github.com/labeth/open-dso-core/sample"
 	"github.com/labeth/open-sds1000cml/app/internal/sramcapture"
 )
@@ -183,7 +184,7 @@ func (w *sramFrameWriter) writeWords(b []byte) (int, error) {
 		if w.m.FractionBits == 8 {
 			a, c := binary.LittleEndian.Uint16(b[i:]), binary.LittleEndian.Uint16(b[i+2:])
 			q1[w.n], q2[w.n] = a, c
-			c1[w.n], c2[w.n] = roundQ8(a), roundQ8(c)
+			c1[w.n], c2[w.n] = core.RoundQ8(a), core.RoundQ8(c)
 			w.n++
 		} else {
 			c1[w.n], c2[w.n] = b[i], b[i+1]
@@ -193,12 +194,6 @@ func (w *sramFrameWriter) writeWords(b []byte) (int, error) {
 		}
 	}
 	return len(b), nil
-}
-
-// TRLC-LINKS: REQ-SDS-040
-func roundQ8(x uint16) uint8 {
-	v := min((uint32(x)+128)>>8, 255)
-	return uint8(v)
 }
 
 // heldKey identifies a recall: the frozen record and the window read.
@@ -271,7 +266,7 @@ func (h *heldRecall) restoreCond(f *sample.Frame, q1, q2 []uint16) {
 	copy(f.Codes8(0), c.c1)
 	copy(f.Codes8(1), c.c2)
 	if n := len(c.q1); n == f.Len() && n == len(c.q2) {
-		f.Traces[0].Precision, f.Traces[1].Precision = qBuffer(q1, n), qBuffer(q2, n)
+		f.Traces[0].Precision, f.Traces[1].Precision = core.QBuffer(q1, n), core.QBuffer(q2, n)
 		copy(f.Precision(0), c.q1)
 		copy(f.Precision(1), c.q2)
 	}
@@ -292,20 +287,8 @@ func (h *heldRecall) restore(f *sample.Frame) int {
 	return h.n
 }
 
-// qBuffer is q sized to n, reused when it holds n; a buffer four times
-// larger than needed (a deep stopped record's, under live frames again) is
-// let go: the frame slots kept a 1 M-sample record's Q8.8 codes for good,
-// and with the other held copies the heap sat at the memory limit.
-// TRLC-LINKS: REQ-SDS-040
-func qBuffer(q []uint16, n int) []uint16 {
-	if cap(q) < n || cap(q) >= 1<<18 && cap(q) > 4*n {
-		return make([]uint16, n)
-	}
-	return q[:n]
-}
-
 // TRLC-LINKS: REQ-SDS-010, REQ-SDS-011, REQ-SDS-036, REQ-SDS-040
-func (e *Engine) sramConfig() (sramcapture.Config, SRAMPlan, float64, bool, trigParams) {
+func (e *Engine) sramConfig() (sramcapture.Config, SRAMPlan, float64, bool, core.TrigParams) {
 	var c sramcapture.Config
 	p, tdiv, norm, tp := e.sramConfigInto(&c)
 	return c, p, tdiv, norm, tp
@@ -316,7 +299,7 @@ func (e *Engine) sramConfig() (sramcapture.Config, SRAMPlan, float64, bool, trig
 // the FPGA takes, and the hysteresis. It returns p with its samples a whole
 // number of words.
 // TRLC-LINKS: REQ-SDS-009, REQ-SDS-011, REQ-SDS-013, REQ-SDS-014
-func (e *Engine) buildSRAMConfig(c *sramcapture.Config, p SRAMPlan, tp trigParams) SRAMPlan {
+func (e *Engine) buildSRAMConfig(c *sramcapture.Config, p SRAMPlan, tp core.TrigParams) SRAMPlan {
 	samples := p.Samples
 	perWord := 2 - boolInt(p.Log != 0)
 	words := uint32((samples + perWord - 1) / perWord) //nolint:gosec // G115: the plan's samples fit the SRAM
@@ -330,20 +313,20 @@ func (e *Engine) buildSRAMConfig(c *sramcapture.Config, p SRAMPlan, tp trigParam
 	}
 	*c = sramcapture.Config{
 		Source: sramcapture.ADC, DecimationLog2: p.Log, PreWords: pre, PostWords: words - pre,
-		Normal: tp.typ == TrigEdge && e.serialMode.Load() != SerialTrigger, Falling: !e.trigRising.Load(),
+		Normal: tp.Typ == TrigEdge && e.serialMode.Load() != SerialTrigger, Falling: !e.trigRising.Load(),
 		TriggerChannel: e.trigChannel(), TriggerLevel: e.trigLevelCode(),
 	}
 	if e.hasSerialHardware() && e.serialMode.Load() == SerialTrigger {
-		e.ser.mu.Lock()
-		serial := e.ser.params
-		e.ser.mu.Unlock()
+		e.ser.Mu.Lock()
+		serial := e.ser.Params
+		e.ser.Mu.Unlock()
 		e.spiQuietCheck(serial)
 		// The matcher slices at the learned level when the request names none.
-		if serial, why := e.serialPlanParams(serial); why != arincOneWord {
-			e.planSerial(c, serial, tp.typ == TrigEdge && e.serialMode.Load() != SerialTrigger)
+		if serial, why := e.serialPlanParams(serial); why != core.ArincOneWord {
+			e.planSerial(c, serial, tp.Typ == TrigEdge && e.serialMode.Load() != SerialTrigger)
 		}
 	}
-	if tp.typ != TrigEdge && e.serialMode.Load() != SerialTrigger {
+	if tp.Typ != TrigEdge && e.serialMode.Load() != SerialTrigger {
 		// The FPGA's qualifier decides a pulse, slope or video trigger; until
 		// it can (no image, the levels still unknown) captures run free
 		// and nothing triggers.
@@ -378,7 +361,7 @@ func (e *Engine) buildSRAMConfig(c *sramcapture.Config, p SRAMPlan, tp trigParam
 // command off the screen; it begins 1.1 ms before).
 // TRLC-LINKS: REQ-SDS-013, REQ-SDS-223
 func (e *Engine) serialLeadWords(p SRAMPlan, perWord int, words, pre uint32) uint32 {
-	s := math.Float64frombits(e.serLv.shiftS.Load())
+	s := math.Float64frombits(e.serLv.ShiftS.Load())
 	if !(s > 0) {
 		s = e.matchLeadS(p.SampleS) // none placed yet
 	}
@@ -402,7 +385,7 @@ func (e *Engine) hasSerialHardware() bool {
 // sramConfigInto is sramConfig filling c in place: the config is 2.7 KB, and
 // the capture loop builds one every status poll.
 // TRLC-LINKS: REQ-SDS-009
-func (e *Engine) sramConfigInto(c *sramcapture.Config) (SRAMPlan, float64, bool, trigParams) {
+func (e *Engine) sramConfigInto(c *sramcapture.Config) (SRAMPlan, float64, bool, core.TrigParams) {
 	e.mu.Lock()
 	// An image that records raw samples only (2.1 ms) shows no slower
 	// screen whole (a SENT bus's frames read 2.4 times as long as they are
@@ -464,33 +447,6 @@ func (e *Engine) sramConfigInto(c *sramcapture.Config) (SRAMPlan, float64, bool,
 	return p, tdiv, norm, tp
 }
 
-// autoForceDue reports AUTO's wait for a trigger over: running AUTO (or a
-// stopped scope's SINGLE served at once), waited past autoWait, and the
-// hardware not triggered - a triggered record only fills its post-trigger
-// part, which at slow timebases outlasts the wait (10ms/div: 135 ms).
-// TRLC-LINKS: REQ-SDS-010, REQ-SDS-011
-func autoForceDue(norm, running, triggered bool, waited, autoWait time.Duration) bool {
-	return (!norm || !running) && !triggered && waited >= autoWait
-}
-
-// statusPollWait is the wait between the status polls of a capture waiting
-// for its event, waited since its arm: 1 ms while a fast record and its
-// trigger are still due, longer for one that goes on waiting (a slow or
-// NORMAL trigger, a serial match). Each poll is a bus read on the worker;
-// a capture past 10 ms is seen at most 2 ms later.
-// TRLC-LINKS: REQ-SDS-010, REQ-SDS-011
-func statusPollWait(waited time.Duration) time.Duration {
-	if waited < 10*time.Millisecond {
-		return time.Millisecond
-	}
-	return 2 * time.Millisecond
-}
-
-// settingsPollEvery is how often a capture waiting for its event looks for
-// changed settings (a fresh capture with them): building and comparing the
-// whole configuration on every status poll was a third of the wait's work.
-const settingsPollEvery = 4 * time.Millisecond
-
 // averageAlignEdge is the crossing an average aligns a capture on, near
 // hint (the FPGA's trigger point in local). A serial match's edge and a
 // pulse, slope or video qualifier's closing edge go either way (a UART start
@@ -501,9 +457,9 @@ const settingsPollEvery = 4 * time.Millisecond
 // TRLC-LINKS: REQ-SDS-011, REQ-SDS-013, REQ-SDS-218
 func averageAlignEdge(local []uint8, hint float64, nearer, rising bool) float64 {
 	if nearer {
-		return nearerCrossHint(local, midLevel(local), hint)
+		return nearerCrossHint(local, core.MidLevel(local), hint)
 	}
-	return centerCrossHint(local, midLevel(local), rising, hint)
+	return centerCrossHint(local, core.MidLevel(local), rising, hint)
 }
 
 // planSerial installs the hardware decoder and, beyond its native matcher,
@@ -532,14 +488,14 @@ func (e *Engine) planSerial(c *sramcapture.Config, serial SerialParams, fallback
 		}
 		return
 	}
-	if serial.Proto == serMIDI {
+	if serial.Proto == core.SerMIDI {
 		// MIDI is UART characters, 8N1, on the UART receiver.
-		serial.Proto, serial.Bits, serial.Parity = serUART, 8, parityNone
+		serial.Proto, serial.Bits, serial.Parity = core.SerUART, 8, core.ParityNone
 	}
 	// A request beyond the protocol's native matcher runs the decoder
 	// unfiltered and matches with the sequence trigger; without that
 	// trigger it stays a software qualification.
-	request, needSequence := serial, sequenceNeeded(serial) || (e.sequenceOnly && len(patternOf(serial)) != 0)
+	request, needSequence := serial, core.SequenceNeeded(serial) || (e.sequenceOnly && len(core.PatternOf(serial)) != 0)
 	if needSequence {
 		serial.Bytes, serial.Pattern = nil, nil
 		if !e.hardwareSequence {
@@ -709,7 +665,7 @@ func (e *Engine) decodedIdle() {
 // noteBackendsLocked reports what serves the serial trigger, the trigger
 // qualifier and the zones of capture cfg (e.mu held).
 // TRLC-LINKS: REQ-SDS-011, REQ-SDS-013, REQ-SDS-014
-func (e *Engine) noteBackendsLocked(cfg sramcapture.Config, tp trigParams) {
+func (e *Engine) noteBackendsLocked(cfg sramcapture.Config, tp core.TrigParams) {
 	e.stats.SerialBackend = ""
 	if name := hardwareSerialName(cfg); name != "" {
 		e.stats.SerialBackend = "hardware-" + name
@@ -719,7 +675,7 @@ func (e *Engine) noteBackendsLocked(cfg sramcapture.Config, tp trigParams) {
 	e.stats.TriggerBackend = ""
 	if cfg.Qualifier.Enabled {
 		e.stats.TriggerBackend = "hardware-" + qualName(cfg.Qualifier.Kind)
-	} else if tp.typ != TrigEdge && e.serialMode.Load() != SerialTrigger {
+	} else if tp.Typ != TrigEdge && e.serialMode.Load() != SerialTrigger {
 		_, _, why := e.planQualifier(tp, int(cfg.TriggerChannel), e.trigRising.Load())
 		e.stats.TriggerBackend = "none: " + why
 	}
@@ -755,7 +711,7 @@ type sramArm struct {
 // report reads it when the wait never polled). *singleGen follows the
 // SINGLE presses the capture serves.
 // TRLC-LINKS: REQ-SDS-008, REQ-SDS-009, REQ-SDS-040
-func (e *Engine) armAndWait(cfg sramcapture.Config, plan SRAMPlan, tdiv float64, norm bool, tp trigParams, armAt time.Time, prev sramcapture.Metadata, singleGen *uint64) (a sramArm, ok bool) {
+func (e *Engine) armAndWait(cfg sramcapture.Config, plan SRAMPlan, tdiv float64, norm bool, tp core.TrigParams, armAt time.Time, prev sramcapture.Metadata, singleGen *uint64) (a sramArm, ok bool) {
 	a.m = prev
 	aborted := false
 	a.symbols = e.symbolCount(cfg)
@@ -788,7 +744,7 @@ func (e *Engine) armAndWait(cfg sramcapture.Config, plan SRAMPlan, tdiv float64,
 		}
 		// the settings changed: a fresh capture with them (looked at
 		// every few polls - a change waits a few milliseconds)
-		if now := e.clk.Now(); now.Sub(settingsAt) >= settingsPollEvery {
+		if now := e.clk.Now(); now.Sub(settingsAt) >= core.SettingsPollEvery {
 			settingsAt = now
 			_, nextTdiv, nextNorm, nextTP := e.sramConfigInto(&next)
 			if next != cfg || nextTdiv != tdiv || nextNorm != norm || nextTP != tp {
@@ -811,7 +767,7 @@ func (e *Engine) armAndWait(cfg sramcapture.Config, plan SRAMPlan, tdiv float64,
 		// past the wait, and a frame-start trigger's records read forced);
 		// FORCE (ForceTrigger) forces once now, and that frame is shown
 		// even in NORMAL.
-		autoDue := autoForceDue(norm, e.running.Load(), a.m.Triggered, e.clk.Now().Sub(armAt), autoWait)
+		autoDue := core.AutoForceDue(norm, e.running.Load(), a.m.Triggered, e.clk.Now().Sub(armAt), autoWait)
 		if cfg.Normal && !a.forced && !autoDue && e.forceReq.Swap(false) {
 			a.userForced, autoDue = true, true
 		}
@@ -824,7 +780,7 @@ func (e *Engine) armAndWait(cfg sramcapture.Config, plan SRAMPlan, tdiv float64,
 				break
 			}
 		}
-		e.clk.Sleep(statusPollWait(e.clk.Now().Sub(a.armedAt)))
+		e.clk.Sleep(core.StatusPollWait(e.clk.Now().Sub(a.armedAt)))
 	}
 	if aborted || e.stopReq.Load() || err != nil || a.m.DataFault {
 		ctx, cancel = context.WithTimeout(context.Background(), time.Second)
@@ -857,7 +813,7 @@ type frameConditioner struct {
 // filter), the envelope's or the full-rate record's converter calibration,
 // and ERES. q1 and q2 are the frame's Q8.8 buffers, returned grown.
 // TRLC-LINKS: REQ-SDS-012, REQ-SDS-040
-func (e *Engine) conditionFrame(f *sample.Frame, m sramcapture.Metadata, cfg sramcapture.Config, bucket uint32, q1, q2 []uint16, savedScale [2]chScale, c *frameConditioner) ([]uint16, []uint16) {
+func (e *Engine) conditionFrame(f *sample.Frame, m sramcapture.Metadata, cfg sramcapture.Config, bucket uint32, q1, q2 []uint16, savedScale [2]core.ChScale, c *frameConditioner) ([]uint16, []uint16) {
 	if len(f.Precision(0)) == f.Len() && len(f.Precision(1)) == f.Len() && bucket == 0 && (e.boxDecim || cfg.Pick) && m.Decimation > 1 {
 		// Box averages: no CIC droop to compensate; a sinc's -3 dB
 		// at 0.443 of the output rate. Picked samples: no filter.
@@ -870,7 +826,7 @@ func (e *Engine) conditionFrame(f *sample.Frame, m sramcapture.Metadata, cfg sra
 		dsp.RoundQ8(f.Codes8(0)[:f.Len()], f.Precision(0)[:f.Len()])
 		dsp.RoundQ8(f.Codes8(1)[:f.Len()], f.Precision(1)[:f.Len()])
 	} else if len(f.Precision(0)) == f.Len() && len(f.Precision(1)) == f.Len() && bucket == 0 {
-		c.scratch = qBuffer(c.scratch, f.Len())
+		c.scratch = core.QBuffer(c.scratch, f.Len())
 		dsp.ConditionQ8(f.Precision(0), c.scratch)
 		dsp.ConditionQ8(f.Precision(1), c.scratch)
 		f.Cond.Guard = dsp.PrecisionGuard
@@ -890,7 +846,7 @@ func (e *Engine) conditionFrame(f *sample.Frame, m sramcapture.Metadata, cfg sra
 	} else if m.FractionBits == 0 && e.interleaveCalibration != nil {
 		q1, q2 = e.calibrateRecord(f, q1, q2, savedScale)
 	}
-	if length := clampEresLen(int(e.eresLen.Load())); e.acqMode.Load() == AcqEres && length > 1 {
+	if length := core.ClampEresLen(int(e.eresLen.Load())); e.acqMode.Load() == AcqEres && length > 1 {
 		c.eres(f, q1, q2, length)
 	}
 	return q1, q2
@@ -909,7 +865,7 @@ func (e *Engine) calibrateEnvelope(f *sample.Frame, m sramcapture.Metadata, buck
 	f.Cond.Filter = fmt.Sprintf("peak-detect display readout, %d words per bucket; full record in SRAM", bucket)
 	f.Content = sample.PeakPairs
 	if cal := e.interleaveCalibration; cal != nil && m.Decimation <= 1 {
-		f.Traces[0].Precision, f.Traces[1].Precision = qBuffer(q1, f.Len()), qBuffer(q2, f.Len())
+		f.Traces[0].Precision, f.Traces[1].Precision = core.QBuffer(q1, f.Len()), core.QBuffer(q2, f.Len())
 		cal.debiasEnvelope(0, f.Codes8(0)[:f.Len()], f.Precision(0), len(f.Precision(0)) == f.Len() && m.FractionBits == 8)
 		cal.debiasEnvelope(1, f.Codes8(1)[:f.Len()], f.Precision(1), len(f.Precision(1)) == f.Len() && m.FractionBits == 8)
 		f.Cond.Filter += "; converter offsets removed from the extremes"
@@ -920,10 +876,10 @@ func (e *Engine) calibrateEnvelope(f *sample.Frame, m sramcapture.Metadata, buck
 // capture's detent's, to full-rate record frame f into q1 and q2 (returned
 // grown).
 // TRLC-LINKS: REQ-SDS-040
-func (e *Engine) calibrateRecord(f *sample.Frame, q1, q2 []uint16, savedScale [2]chScale) ([]uint16, []uint16) {
-	q1 = qBuffer(q1, f.Len())
-	q2 = qBuffer(q2, f.Len())
-	scale := [2]float64{savedScale[0].vdiv, savedScale[1].vdiv}
+func (e *Engine) calibrateRecord(f *sample.Frame, q1, q2 []uint16, savedScale [2]core.ChScale) ([]uint16, []uint16) {
+	q1 = core.QBuffer(q1, f.Len())
+	q2 = core.QBuffer(q2, f.Len())
+	scale := [2]float64{savedScale[0].Vdiv, savedScale[1].Vdiv}
 	if !e.interleaveCalibration.apply(f.Codes8(0)[:f.Len()], f.Codes8(1)[:f.Len()], q1, q2, scale, f.SampleS) {
 		f.Cond.Filter = "interleave calibration bypassed (scale, clipping or phase mismatch)"
 		return q1, q2
@@ -943,15 +899,15 @@ func (e *Engine) calibrateRecord(f *sample.Frame, q1, q2 []uint16, savedScale [2
 // TRLC-LINKS: REQ-SDS-012
 func (c *frameConditioner) eres(f *sample.Frame, q1, q2 []uint16, length int) {
 	if len(f.Precision(0)) != f.Len() {
-		f.Traces[0].Precision, f.Traces[1].Precision = qBuffer(q1, f.Len()), qBuffer(q2, f.Len())
+		f.Traces[0].Precision, f.Traces[1].Precision = core.QBuffer(q1, f.Len()), core.QBuffer(q2, f.Len())
 		q1, q2, c1, c2 := f.Precision(0), f.Precision(1), f.Codes8(0), f.Codes8(1)
 		for i := range f.Len() {
 			q1[i], q2[i] = uint16(c1[i])<<8, uint16(c2[i])<<8
 		}
 	}
-	c.scratch = qBuffer(c.scratch, f.Len())
-	eresQ8(f.Precision(0), c.scratch, length)
-	eresQ8(f.Precision(1), c.scratch, length)
+	c.scratch = core.QBuffer(c.scratch, f.Len())
+	core.EresQ8(f.Precision(0), c.scratch, length)
+	core.EresQ8(f.Precision(1), c.scratch, length)
 	dsp.RoundQ8(f.Codes8(0)[:f.Len()], f.Precision(0)[:f.Len()])
 	dsp.RoundQ8(f.Codes8(1)[:f.Len()], f.Precision(1)[:f.Len()])
 	f.Cond.Filter += fmt.Sprintf("; ERES %d-point boxcar", length)
@@ -967,7 +923,7 @@ func (c *frameConditioner) eres(f *sample.Frame, q1, q2 []uint16, length int) {
 // the other way at record m's rate: a live envelope holds no edge shape,
 // nor a mean where the signal is faster than a bucket of bucket words.
 // TRLC-LINKS: REQ-SDS-021, REQ-SDS-040
-func (e *Engine) readEdgeWindows(f *sample.Frame, m sramcapture.Metadata, cfg sramcapture.Config, tp trigParams, recallOffset, bucket uint32, savedScale [2]chScale) (edge, opp *sample.Frame) {
+func (e *Engine) readEdgeWindows(f *sample.Frame, m sramcapture.Metadata, cfg sramcapture.Config, tp core.TrigParams, recallOffset, bucket uint32, savedScale [2]core.ChScale) (edge, opp *sample.Frame) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
 	disc := f.Codes8(0)[:f.Len()]
@@ -975,14 +931,14 @@ func (e *Engine) readEdgeWindows(f *sample.Frame, m sramcapture.Metadata, cfg sr
 		disc = f.Codes8(1)[:f.Len()]
 	}
 	at, trig, rising := m.TriggerIndex, int(f.TriggerAt)/2, !cfg.Falling
-	if tp.typ != TrigEdge || e.serialMode.Load() == SerialTrigger {
+	if tp.Typ != TrigEdge || e.serialMode.Load() == SerialTrigger {
 		// the trigger point is no edge of the edge trigger's direction
-		if b, r := nearestEdgeBucket(disc, trig); b >= 0 {
+		if b, r := core.NearestEdgeBucket(disc, trig); b >= 0 {
 			at, trig, rising = recallOffset+uint32(b)*bucket+bucket/2, b, r //nolint:gosec // G115: b is a bucket index, non-negative here
 		}
 	}
 	edge = e.recallEdgeWindow(ctx, m, at, savedScale)
-	if b := oppositeEdgeBucket(disc, trig, rising); b >= 0 {
+	if b := core.OppositeEdgeBucket(disc, trig, rising); b >= 0 {
 		opp = e.recallEdgeWindow(ctx, m, recallOffset+uint32(b)*bucket+bucket/2, savedScale) //nolint:gosec // G115: b is a bucket index, non-negative here
 	}
 	return edge, opp
@@ -1037,11 +993,11 @@ func (e *Engine) serialTriggerKind(f *sample.Frame, m sramcapture.Metadata, cfg 
 	}
 	e.serialMatches.Add(1)
 	if cfg.SPI.Enabled && e.clk.Now != nil {
-		e.serLv.spiQuiet.Store(e.clk.Now().UnixNano())
+		e.serLv.SPIQuiet.Store(e.clk.Now().UnixNano())
 	}
 	hw := f.TriggerAt
 	if at := e.serialMatchStart(f, f.TriggerAt); at >= 0 {
-		e.serLv.shiftS.Store(math.Float64bits((f.TriggerAt - at) * f.SampleS))
+		e.serLv.ShiftS.Store(math.Float64bits((f.TriggerAt - at) * f.SampleS))
 		f.TriggerAt = at
 	}
 	if name == "uart" && hw >= 0 && f.TriggerAt >= 0 {
@@ -1061,7 +1017,7 @@ func (e *Engine) serialTriggerKind(f *sample.Frame, m sramcapture.Metadata, cfg 
 // disc, to the average ring (restarted when the settings change) and leaves
 // the average in f; true once the ring holds the count asked.
 // TRLC-LINKS: REQ-SDS-012
-func (e *Engine) averageFrame(f *sample.Frame, avg *sramAverage, cfg sramcapture.Config, tdiv float64, norm bool, tp trigParams, disc []uint8, q1, q2 []uint16) bool {
+func (e *Engine) averageFrame(f *sample.Frame, avg *core.SramAverage, cfg sramcapture.Config, tdiv float64, norm bool, tp core.TrigParams, disc []uint8, q1, q2 []uint16) bool {
 	n := int(e.avgCount.Load())
 	key := fmt.Sprintf("%v/%g/%t/%v/%d/%d/%d/%d/%d/%s", averageCfg(cfg), tdiv, norm, tp, e.avgGen.Load(), e.chVdivBits[0].Load(), e.chVdivBits[1].Load(), e.trigOffV[0].Load(), e.trigOffV[1].Load(), f.Cond.Filter)
 	// Refine the word-level trigger with the observed waveform crossing.
@@ -1073,21 +1029,21 @@ func (e *Engine) averageFrame(f *sample.Frame, avg *sramAverage, cfg sramcapture
 		hi = f.Len()
 	}
 	edge := -1.0
-	if tp.typ == TrigEdge && e.serialMode.Load() != SerialTrigger && f.TriggerAt >= 0 {
+	if tp.Typ == TrigEdge && e.serialMode.Load() != SerialTrigger && f.TriggerAt >= 0 {
 		// Already the exact trigger-level crossing (refineTriggerEdge).
 		edge = f.TriggerAt - float64(lo)
 	} else if hi > lo {
-		edge = averageAlignEdge(disc[lo:hi], f.TriggerAt-float64(lo), e.serialMode.Load() == SerialTrigger || tp.typ != TrigEdge, !cfg.Falling)
+		edge = averageAlignEdge(disc[lo:hi], f.TriggerAt-float64(lo), e.serialMode.Load() == SerialTrigger || tp.Typ != TrigEdge, !cfg.Falling)
 	}
 	if edge >= 0 {
 		f.TriggerAt = edge + float64(lo)
 	}
-	if key != avg.key {
-		avg.reset()
-		avg.key = key
+	if key != avg.Key {
+		avg.Reset()
+		avg.Key = key
 	}
 	if len(f.Precision(0)) != f.Len() {
-		f.Traces[0].Precision, f.Traces[1].Precision = qBuffer(q1, f.Len()), qBuffer(q2, f.Len())
+		f.Traces[0].Precision, f.Traces[1].Precision = core.QBuffer(q1, f.Len()), core.QBuffer(q2, f.Len())
 		q1, q2, c1, c2 := f.Precision(0), f.Precision(1), f.Codes8(0), f.Codes8(1)
 		for i := range f.Len() {
 			q1[i], q2[i] = uint16(c1[i])<<8, uint16(c2[i])<<8
@@ -1095,9 +1051,9 @@ func (e *Engine) averageFrame(f *sample.Frame, avg *sramAverage, cfg sramcapture
 	}
 	count := 0
 	if edge >= 0 {
-		count = avg.push(f, n)
+		count = avg.Push(f, n)
 	} else {
-		avg.reset()
+		avg.Reset()
 	}
 	f.Cond.Filter += fmt.Sprintf("; average %d/%d (waveform aligned)", count, n)
 	if count > 0 {
@@ -1186,22 +1142,22 @@ func (e *Engine) runSRAM() { //nolint:gocyclo,funlen // the owner loop: one capt
 	e.startConverters("the start") // as after every image load (loadImage)
 	var previousFrozen time.Time
 	var cond frameConditioner
-	var average sramAverage
+	var average core.SramAverage
 	var retained, recalled bool
 	var savedM sramcapture.Metadata
 	var savedCfg sramcapture.Config
 	var savedPlan SRAMPlan
 	var savedNorm, savedForced bool
-	var savedTP trigParams
-	var savedScale [2]chScale // front-end scale the retained record was captured at
-	var savedShownTrigd bool  // the retained capture was published triggered
-	var edges edgeDetail      // the last edge windows read, carried to the frames between reads
-	var shownScaleGen uint64  // scaleGen when the shown frame was produced
-	var singleGen uint64      // SINGLE press the current capture was armed/waiting under
-	var held heldRecall       // the stopped record's recall, kept for re-scaled replays
-	var lastPace float64      // the previous frame's pacing hold (FrameStages)
-	var roll rollView         // the slow-timebase scrolling view (sram_roll.go)
-	var streamShown bool      // stopped on a decoded stream's record: its image stays
+	var savedTP core.TrigParams
+	var savedScale [2]core.ChScale // front-end scale the retained record was captured at
+	var savedShownTrigd bool       // the retained capture was published triggered
+	var edges edgeDetail           // the last edge windows read, carried to the frames between reads
+	var shownScaleGen uint64       // scaleGen when the shown frame was produced
+	var singleGen uint64           // SINGLE press the current capture was armed/waiting under
+	var held heldRecall            // the stopped record's recall, kept for re-scaled replays
+	var lastPace float64           // the previous frame's pacing hold (FrameStages)
+	var roll rollView              // the slow-timebase scrolling view (sram_roll.go)
+	var streamShown bool           // stopped on a decoded stream's record: its image stays
 	for !e.stopReq.Load() {
 		e.setBusy("", 0) // set again only around a recall and its processing
 		e.serviceCommands()
@@ -1225,7 +1181,7 @@ func (e *Engine) runSRAM() { //nolint:gocyclo,funlen // the owner loop: one capt
 				savedPlan = SRAMPlan{Log: a.cfg.DecimationLog2, Samples: int(a.m.Length) * int(a.m.SamplesPerWord), SampleS: 1 / a.m.SampleRateHz}
 			}
 			savedPlan = retainedSRAMPlan(savedPlan, e.Snapshot().TdivS)
-			savedNorm, savedForced, savedTP = true, false, trigParams{typ: TrigEdge}
+			savedNorm, savedForced, savedTP = true, false, core.TrigParams{Typ: TrigEdge}
 			retained, recalled, adopting = true, false, true
 			e.logf("engine: showing the decoded stream's record (%d words, trigger word %d)", a.m.Length, a.m.TriggerIndex)
 		}
@@ -1409,8 +1365,8 @@ func (e *Engine) runSRAM() { //nolint:gocyclo,funlen // the owner loop: one capt
 			}
 		}
 		if m.FractionBits == 8 {
-			f.Traces[0].Precision = qBuffer(q1, f.Len())
-			f.Traces[1].Precision = qBuffer(q2, f.Len())
+			f.Traces[0].Precision = core.QBuffer(q1, f.Len())
+			f.Traces[1].Precision = core.QBuffer(q2, f.Len())
 		}
 		writer := sramFrameWriter{f: f, m: m}
 		e.setBusy("reading", 0) // the recall's burst loop reports progress
@@ -1541,7 +1497,7 @@ func (e *Engine) runSRAM() { //nolint:gocyclo,funlen // the owner loop: one capt
 				if len(q) != f.Len() {
 					q = nil
 				}
-				rescaleCodes(c, q, savedScale[ch], live[ch])
+				core.RescaleCodes(c, q, savedScale[ch], live[ch])
 			}
 			f.Cond.Filter += "; stopped record shown at the current V/div and offset"
 		}
@@ -1559,7 +1515,7 @@ func (e *Engine) runSRAM() { //nolint:gocyclo,funlen // the owner loop: one capt
 		if cfg.TriggerChannel == 1 {
 			disc = f.Codes8(1)[:f.Len()]
 		}
-		_, _, f.SourcePtp = ptp(disc)
+		_, _, f.SourcePtp = core.Ptp(disc)
 		qualified := f.Status.Triggered
 		if cfg.Zones.Enabled() && f.Status.Triggered && f.TriggerAt >= 0 && f.SampleS > 0 {
 			// The FPGA's zones decided and fired when the latest window ended:
@@ -1580,7 +1536,7 @@ func (e *Engine) runSRAM() { //nolint:gocyclo,funlen // the owner loop: one capt
 				}
 				f.TriggerAt = placeQualified(f, disc, q, cfg.Qualifier, cfg.TriggerLevel)
 			}
-		case tp.typ != TrigEdge && e.serialMode.Load() != SerialTrigger:
+		case tp.Typ != TrigEdge && e.serialMode.Load() != SerialTrigger:
 			// No qualifier could take it: nothing triggers. Software never
 			// decides a trigger.
 			qualified, f.Status.Triggered = false, false
@@ -1590,7 +1546,7 @@ func (e *Engine) runSRAM() { //nolint:gocyclo,funlen // the owner loop: one capt
 		// Place a plain edge trigger at its exact level crossing: the FPGA
 		// index is word-granular. Envelope frames hold bucket extremes, not
 		// samples in time order.
-		if tp.typ == TrigEdge && e.serialMode.Load() != SerialTrigger && f.Status.Triggered && !m.HostTrigger &&
+		if tp.Typ == TrigEdge && e.serialMode.Load() != SerialTrigger && f.Status.Triggered && !m.HostTrigger &&
 			!e.refineEdgeTrigger(f, disc, cfg) && (!replay || !savedShownTrigd) {
 			// The FPGA pointed at an edge the calibrated record does
 			// not have (converter noise): software may check a trigger
@@ -1633,7 +1589,7 @@ func (e *Engine) runSRAM() { //nolint:gocyclo,funlen // the owner loop: one capt
 			// again would replace the average with one of its captures.
 			recalled = true
 		} else {
-			average.reset()
+			average.Reset()
 		}
 		e.mu.Lock()
 		e.stats.Coherent++
@@ -1682,7 +1638,7 @@ func (e *Engine) runSRAM() { //nolint:gocyclo,funlen // the owner loop: one capt
 		if publish {
 			e.noteChannelMeans(f)
 			e.mu.Lock()
-			e.pubIdent = frameIdent{f.Snapshot.TdivS, f.SampleS, f.Content == sample.PeakPairs}
+			e.pubIdent = core.FrameIdent{TdivS: f.Snapshot.TdivS, SampleS: f.SampleS, PeakDetect: f.Content == sample.PeakPairs}
 			e.mu.Unlock()
 			e.seq++
 			f.Seq = e.seq
@@ -1770,50 +1726,14 @@ func liveSRAMWindowPre(m sramcapture.Metadata, screen int, posFrac float64, extr
 	return offset, words
 }
 
-// chScale is a channel's front-end scale: analog V/div (the codes' range) and
-// the applied input-referred offset. A code reads (code-128)·vdiv/25 - off.
-type chScale struct{ vdiv, off float64 }
-
 // liveScale is the front end's scale now.
 // TRLC-LINKS: REQ-SDS-040
-func (e *Engine) liveScale() [2]chScale {
-	var s [2]chScale
+func (e *Engine) liveScale() [2]core.ChScale {
+	var s [2]core.ChScale
 	for ch := range s {
-		s[ch] = chScale{math.Float64frombits(e.chVdivBits[ch].Load()), math.Float64frombits(e.trigOffV[ch].Load())}
+		s[ch] = core.ChScale{Vdiv: math.Float64frombits(e.chVdivBits[ch].Load()), Off: math.Float64frombits(e.trigOffV[ch].Load())}
 	}
 	return s
-}
-
-// rescaleCodes re-expresses codes captured at one scale at another, so every
-// consumer that reads them at the live V/div and offset sees the captured
-// volts. Codes that leave the 8-bit range clip, as on the screen.
-// TRLC-LINKS: REQ-SDS-015, REQ-SDS-040
-func rescaleCodes(c []uint8, q []uint16, from, to chScale) {
-	if !(from.vdiv > 0) || !(to.vdiv > 0) {
-		return
-	}
-	k := from.vdiv / to.vdiv
-	b := (to.off - from.off) * 25 / to.vdiv
-	// Tables, not per-sample float math: 2M samples of float clamping take
-	// 3.7 s on the ARM.
-	var lut8 [256]uint8
-	for v := range lut8 {
-		lut8[v] = uint8(math.Round(math.Max(0, math.Min(255, 128+(float64(v)-128)*k+b))))
-	}
-	for i, v := range c {
-		c[i] = lut8[v]
-	}
-	if len(q) == 0 {
-		return
-	}
-	// Fixed point, not a 64K table: random lookups into 128 KB miss the ARM's
-	// caches on every sample (~0.6 s for a deep record per V/div step).
-	kf := int64(math.Round(k * (1 << 16)))
-	bf := int64(math.Round((32768 + b*256) * (1 << 16)))
-	for i, v := range q {
-		x := ((int64(v)-32768)*kf + bf + 1<<15) >> 16
-		q[i] = uint16(min(max(x, 0), 65535))
-	}
 }
 
 // A stopped timebase change reuses the captured sample pitch and depth.

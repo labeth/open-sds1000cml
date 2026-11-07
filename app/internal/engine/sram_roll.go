@@ -10,6 +10,7 @@ import (
 	"math"
 	"time"
 
+	core "github.com/labeth/open-dso-core/engine"
 	"github.com/labeth/open-dso-core/sample"
 	"github.com/labeth/open-sds1000cml/app/internal/bus"
 	"github.com/labeth/open-sds1000cml/app/internal/sramcapture"
@@ -95,7 +96,7 @@ func (e *Engine) rollActive() bool {
 	norm, tp := e.norm, e.tp
 	e.mu.Unlock()
 	switch {
-	case norm || tdiv < RollMinTdiv*0.999 || tp.typ != TrigEdge:
+	case norm || tdiv < RollMinTdiv*0.999 || tp.Typ != TrigEdge:
 		return false
 	case e.acqMode.Load() == AcqAverage, e.serialMode.Load() == SerialTrigger,
 		e.zoneMode.Load() == ZoneTrigger, e.maskMode.Load() != MaskOff, e.bodeMode.Load() == BodeOn:
@@ -131,7 +132,7 @@ type rollView struct {
 	feGen    uint64    // the front-end write generation the view's data was captured under
 	filled   int       // samples received since the view started
 	lastEnd  time.Time // host time of the newest sample
-	scale    [2]chScale
+	scale    [2]core.ChScale
 	covered  float64 // captured share of the recent timeline, 0..1
 	captured float64
 	elapsed  float64
@@ -156,7 +157,7 @@ type rollView struct {
 }
 
 // TRLC-LINKS: REQ-SDS-010
-func (r *rollView) reset(p rollPlan, tdiv float64, scale [2]chScale) {
+func (r *rollView) reset(p rollPlan, tdiv float64, scale [2]core.ChScale) {
 	r.plan, r.tdiv, r.scale = p, tdiv, scale
 	r.c1, r.c2 = make([]uint8, p.screen), make([]uint8, p.screen)
 	r.q1, r.q2 = make([]uint16, p.screen), make([]uint16, p.screen)
@@ -275,7 +276,7 @@ func (r *rollView) push(gap int, q1, q2 []uint16, held []bool) {
 			}
 		}
 		src := len(q) - (add - hold)
-		vdiv, off := r.scale[ch].vdiv, r.scale[ch].off // volts, the scale read once
+		vdiv, off := r.scale[ch].Vdiv, r.scale[ch].Off // volts, the scale read once
 		if !(vdiv > 0) {
 			vdiv = 1
 		}
@@ -296,10 +297,10 @@ func (r *rollView) push(gap int, q1, q2 []uint16, held []bool) {
 // TRLC-LINKS: REQ-SDS-010, REQ-SDS-040
 func (r *rollView) volts(ch int, q uint16) float32 {
 	sc := r.scale[ch]
-	if !(sc.vdiv > 0) {
-		sc.vdiv = 1
+	if !(sc.Vdiv > 0) {
+		sc.Vdiv = 1
 	}
-	return float32((float64(q)/256-128)*sc.vdiv/25 - sc.off)
+	return float32((float64(q)/256-128)*sc.Vdiv/25 - sc.Off)
 }
 
 // render derives the view's codes from its volts at the live scale; volts
@@ -308,19 +309,19 @@ func (r *rollView) volts(ch int, q uint16) float32 {
 func (r *rollView) render() {
 	for ch := range r.scale {
 		sc := r.scale[ch]
-		if !(sc.vdiv > 0) {
-			sc.vdiv = 1
+		if !(sc.Vdiv > 0) {
+			sc.Vdiv = 1
 		}
 		v, q, c := r.v1, r.q1, r.c1
 		if ch == 1 {
 			v, q, c = r.v2, r.q2, r.c2
 		}
-		k, b := 25/sc.vdiv, 128+sc.off*25/sc.vdiv
+		k, b := 25/sc.Vdiv, 128+sc.Off*25/sc.Vdiv
 		for i, x := range v {
 			// builtin min/max: math.Max/Min's results (NaN, signed zero), inline
 			code := max(0, min(65535, math.Round((float64(x)*k+b)*256)))
 			q[i] = uint16(code)
-			c[i] = roundQ8(q[i])
+			c[i] = core.RoundQ8(q[i])
 		}
 	}
 }
@@ -328,7 +329,7 @@ func (r *rollView) render() {
 // rescale moves the view to a new V/div or offset: the history is kept in
 // volts, and data captured across the change is dropped for a moment.
 // TRLC-LINKS: REQ-SDS-010, REQ-SDS-040
-func (r *rollView) rescale(scale [2]chScale, now time.Time) {
+func (r *rollView) rescale(scale [2]core.ChScale, now time.Time) {
 	r.scale = scale
 	r.render()
 	r.settle = now.Add(rollSettle)
@@ -515,7 +516,7 @@ func (e *Engine) rollPublish(r *rollView, decimation uint32, filter, readout, st
 	e.arena.Publish()
 	now := e.clk.Now()
 	e.mu.Lock()
-	e.pubIdent = frameIdent{f.Snapshot.TdivS, f.SampleS, f.Content == sample.PeakPairs}
+	e.pubIdent = core.FrameIdent{TdivS: f.Snapshot.TdivS, SampleS: f.SampleS, PeakDetect: f.Content == sample.PeakPairs}
 	e.stats.Published++
 	e.stats.Coherent++
 	e.lastPublish = now
@@ -786,7 +787,7 @@ func (e *Engine) peakSamples(r *rollView, raw []byte) ([]uint16, []uint16) {
 		} else if len(qb) > 0 {
 			q[ch][1] = qb[0]
 		}
-		c[ch][1] = roundQ8(q[ch][1])
+		c[ch][1] = core.RoundQ8(q[ch][1])
 		orderEnvelope(c[ch], q[ch])
 		out[ch] = q[ch][2:]
 	}
@@ -817,31 +818,6 @@ func (e *Engine) rollStreamStop(r *rollView) {
 		r.deadline = nil
 	}
 	r.streaming, r.first, r.carry = false, true, nil
-}
-
-// MeasureRange is the stretch of the record measurements read: a roll view's
-// longest run of captured samples - its held stretches are no signal (a 1 kHz
-// square measured across them read 769 Hz) - else the whole record.
-// TRLC-LINKS: REQ-SDS-010, REQ-SDS-021
-func MeasureRange(f *sample.Frame) (int, int) {
-	held, n := f.Held(0), f.Len()
-	if len(held) != n {
-		return 0, n
-	}
-	best, bestAt, at := 0, 0, -1
-	for i := 0; i <= n; i++ {
-		if i < n && !held[i] {
-			if at < 0 {
-				at = i
-			}
-			continue
-		}
-		if at >= 0 && i-at > best {
-			best, bestAt = i-at, at
-		}
-		at = -1
-	}
-	return bestAt, bestAt + best
 }
 
 // noteStreamLoss notes a stream that lost words: one lost before its first

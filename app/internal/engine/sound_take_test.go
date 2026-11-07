@@ -3,7 +3,6 @@
 package engine
 
 import (
-	"math"
 	"testing"
 	"time"
 )
@@ -25,43 +24,6 @@ func takeWords(start uint64, n, per int) []byte {
 	return b
 }
 
-// The take times stay inside the ring: pre at most 10 s, post at least a
-// tenth, the two at most 16 s.
-// TRLC-LINKS: REQ-SDS-275
-func TestSoundTakeTimes(t *testing.T) {
-	for _, c := range []struct{ pre, post, wp, wq float64 }{
-		{1, 4, 1, 4}, {-1, 0, 1, 4}, {math.NaN(), math.Inf(1), 1, 4}, {12, 3, 10, 3}, {8, 15, 1, 15}, {0, 0.01, 0, 4},
-	} {
-		if p, q := SoundTakeTimes(c.pre, c.post); p != c.wp || q != c.wq {
-			t.Errorf("%v %v: %v %v, want %v %v", c.pre, c.post, p, q, c.wp, c.wq)
-		}
-	}
-}
-
-// The comparator's first crossing: armed at or below the level less the
-// hysteresis, firing at or above it; falling mirrored; a crossing before
-// start disarms as in the fabric.
-// TRLC-LINKS: REQ-SDS-275
-func TestFirstCrossing(t *testing.T) {
-	codes := []int{130, 130, 120, 125, 129, 131, 140, 120, 135, 150, 110}
-	q := make([]uint16, len(codes))
-	for i, c := range codes {
-		q[i] = uint16(c << 8)
-	}
-	if i, ok := firstCrossingFrom(q, 130, 4, true, 0); !ok || i != 5 {
-		t.Errorf("rising: %d %v", i, ok)
-	}
-	if i, ok := firstCrossingFrom(q, 130, 4, true, 6); !ok || i != 8 {
-		t.Errorf("rising from 6: %d %v", i, ok)
-	}
-	if i, ok := firstCrossingFrom(q, 130, 4, false, 0); !ok || i != 7 {
-		t.Errorf("falling: %d %v", i, ok)
-	}
-	if _, ok := firstCrossingFrom(q[:2], 130, 4, true, 0); ok {
-		t.Error("a crossing without arming")
-	}
-}
-
 // A NORMAL trigger: armed once the pre-trigger time has streamed, the
 // FPGA's mark that came with others placed on the first crossing after the
 // arm, the take published once the post-trigger time has streamed with the
@@ -78,7 +40,7 @@ func TestSoundTrigger(t *testing.T) {
 	now := time.Unix(5, 0)
 	const per = 100
 	push := func(n int) {
-		s.ring.pushWords(takeWords(s.ring.next, n, per), SoundScale{VdivV: [2]float64{1, 1}}, false, now)
+		s.ring.PushWords(takeWords(s.ring.Next, n, per), SoundScale{VdivV: [2]float64{1, 1}}, false, now)
 	}
 	push(200)
 	e.soundTrigStep(s) // arms: marks from 200, a trigger from 610 (the pre-trigger time since the start)
@@ -88,7 +50,7 @@ func TestSoundTrigger(t *testing.T) {
 	push(1000)
 	// The image read three crossings since the last read and kept the
 	// newest (1050); the first after the arm is at 650.
-	s.ring.addMarks([]SoundMark{{At: 500, Ch: 0, Rising: true}, {At: 1050, Ch: 0, Rising: true, N: 3}})
+	s.ring.AddMarks([]SoundMark{{At: 500, Ch: 0, Rising: true}, {At: 1050, Ch: 0, Rising: true, N: 3}})
 	e.soundTrigStep(s)
 	if !s.pending || s.trigAt != 650 {
 		t.Fatalf("pending %v at %d, want 650", s.pending, s.trigAt)
@@ -112,8 +74,8 @@ func TestSoundTrigger(t *testing.T) {
 	e.running.Store(true)
 	e.soundTrigStep(s)
 	push(1000)
-	at := s.ring.next - 50
-	s.ring.addMarks([]SoundMark{{At: at, Ch: 0, Rising: true, N: 1}})
+	at := s.ring.Next - 50
+	s.ring.AddMarks([]SoundMark{{At: at, Ch: 0, Rising: true, N: 1}})
 	e.soundTrigStep(s)
 	push(6200)
 	e.soundTrigStep(s)
@@ -129,7 +91,7 @@ func TestSoundFreeze(t *testing.T) {
 	fb := newFakeBus()
 	e, _ := newTestEngine(t, fb)
 	s := e.sound()
-	s.ring.pushWords(takeWords(0, 5000, 100), SoundScale{VdivV: [2]float64{1, 1}}, false, time.Unix(1, 0))
+	s.ring.PushWords(takeWords(0, 5000, 100), SoundScale{VdivV: [2]float64{1, 1}}, false, time.Unix(1, 0))
 	e.soundFreeze(s)
 	tk := e.SoundTake()
 	if tk == nil || tk.N != 5000 || tk.HasTrig || tk.Why != "stop" || !s.frozen {

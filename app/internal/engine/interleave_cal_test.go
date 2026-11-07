@@ -3,6 +3,7 @@
 package engine
 
 import (
+	core "github.com/labeth/open-dso-core/engine"
 	"math"
 	"math/rand"
 	"testing"
@@ -154,7 +155,7 @@ func TestApertureCorrectionAgainstKnownSampleTimes(t *testing.T) {
 				truth[i] = 128 + 40*math.Sin(2*math.Pi*hz*float64(i)*2e-9)
 				v := 128 + 40*math.Sin(2*math.Pi*hz*(float64(i)*2e-9-delays[(i+rotation)%5]*1e-9))
 				q[i] = uint16(math.Round(v * 256))
-				codes[i] = roundQ8(q[i])
+				codes[i] = core.RoundQ8(q[i])
 				if i >= 2 && i < len(q)-2 {
 					before += math.Pow(float64(q[i])/256-truth[i], 2)
 				}
@@ -164,7 +165,7 @@ func TestApertureCorrectionAgainstKnownSampleTimes(t *testing.T) {
 			after := 0.0
 			for i := 2; i < len(q)-2; i++ {
 				after += math.Pow(float64(q[i])/256-truth[i], 2)
-				if codes[i] != roundQ8(q[i]) {
+				if codes[i] != core.RoundQ8(q[i]) {
 					t.Fatal("preview differs")
 				}
 			}
@@ -220,7 +221,7 @@ func TestCorrectApertureIsTheFormula(t *testing.T) {
 			derivative := (prev2 - 8*prev1 + 8*float64(want[i+1]) - float64(want[i+2])) / 12
 			corrected := math.Round(current + delays[(i+rotation)%5]/2*derivative)
 			want[i] = uint16(math.Max(0, math.Min(65535, corrected)))
-			wantCodes[i] = roundQ8(want[i])
+			wantCodes[i] = core.RoundQ8(want[i])
 			prev2, prev1 = prev1, current
 		}
 		codes := make([]uint8, n)

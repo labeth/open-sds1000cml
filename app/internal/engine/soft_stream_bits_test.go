@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/labeth/open-dso-core/decode"
+	core "github.com/labeth/open-dso-core/engine"
 	"github.com/labeth/open-sds1000cml/app/internal/decodedlines"
 	"github.com/labeth/open-sds1000cml/app/internal/sramcapture"
 )
@@ -61,21 +62,21 @@ func TestSoftStreamModesWithBits(t *testing.T) {
 			period      int // raw words
 		}{
 			// 1.67 us: six periods of 69 raw words, 3.6 M samples a second
-			{serWS281x, 800000, "captures", false, 0},
-			{serUSBPD, 300000, "gap-free", true, 69},
-			{serSWD, 1000000, "captures", false, 0},
-			{serMDIO, 1000000, "captures", false, 0},
+			{core.SerWS281x, 800000, "captures", false, 0},
+			{core.SerUSBPD, 300000, "gap-free", true, 69},
+			{core.SerSWD, 1000000, "captures", false, 0},
+			{core.SerMDIO, 1000000, "captures", false, 0},
 			// 2 us on two lines: 2 M samples a second a line, 4 periods
-			{serMDIO, 250000, "gap-free", true, 125},
-			{serPDI, 250000, "gap-free", true, 125},
-			{serMiller, 106007, "gap-free", true, 98},
-			{serMaple, 1333333, "captures", false, 0},
-			{serDMX, 250000, "gap-free", true, 166},
-			{serLIN, 19200, "gap-free", true, 2170},
-			{serModbus, 460800, "gap-free", true, 90},
-			{serSPDIF, 3072000, "captures", false, 0},
-			{serIRNEC, 889, "gap-free", false, 0},
-			{serEM4100, 1953, "gap-free", false, 0},
+			{core.SerMDIO, 250000, "gap-free", true, 125},
+			{core.SerPDI, 250000, "gap-free", true, 125},
+			{core.SerMiller, 106007, "gap-free", true, 98},
+			{core.SerMaple, 1333333, "captures", false, 0},
+			{core.SerDMX, 250000, "gap-free", true, 166},
+			{core.SerLIN, 19200, "gap-free", true, 2170},
+			{core.SerModbus, 460800, "gap-free", true, 90},
+			{core.SerSPDIF, 3072000, "captures", false, 0},
+			{core.SerIRNEC, 889, "gap-free", false, 0},
+			{core.SerEM4100, 1953, "gap-free", false, 0},
 		} {
 			name, _ := softProtoName(c.proto)
 			plan, _ := softGapFreePlan(name, c.baud, false, softLines(c.proto))
@@ -99,7 +100,7 @@ func TestSoftStreamModesWithBits(t *testing.T) {
 func TestSoftStreamBitsToEvents(t *testing.T) {
 	withBitsImage(t, func() {
 		for _, baud := range []int{19200, 250000, 1000000} {
-			name := softProtoNames[serLIN]
+			name := softProtoNames[core.SerLIN]
 			plan, ok := softGapFreePlan(name, baud, false, 1)
 			if !ok || !plan.bits {
 				t.Fatalf("LIN at %d: not a digital gap-free stream", baud)
@@ -121,9 +122,9 @@ func TestSoftStreamBitsToEvents(t *testing.T) {
 			}
 			// 13 samples a period, so edges fall anywhere in one.
 			raw := bitsWords(linLevels(13/period, float64(baud), frames), 13)
-			d, _ := lookupSerialDecoder(serLIN)
+			d, _ := core.LookupSerialDecoder(core.SerLIN)
 			s := &softStream{
-				p: SerialParams{Proto: serLIN, Baud: baud, Threshold: 128, HaveThr: true}, proto: name, decoder: d,
+				p: SerialParams{Proto: core.SerLIN, Baud: baud, Threshold: 128, HaveThr: true}, proto: name, decoder: d,
 				mask: 0xff, gapFree: true, quiet: quiet, bits: true, trig: StreamManual,
 				id: sramcapture.RecordIdentity{Epoch: softEpochBase | 1},
 			}
@@ -137,7 +138,7 @@ func TestSoftStreamBitsToEvents(t *testing.T) {
 				s.pendA = s.pendA[:0]
 			}
 			s.emit(s.dec.Flush(), s.ord)
-			tr := decodedlines.New(serLIN+1, 1000)
+			tr := decodedlines.New(core.SerLIN+1, 1000)
 			tr.Add(s.events)
 			tr.Flush()
 			if tr.Count() != len(frames) {
@@ -161,7 +162,7 @@ func TestSoftStreamBitsToEvents(t *testing.T) {
 func TestSoftStreamBitsQuietSkipped(t *testing.T) {
 	withBitsImage(t, func() {
 		const baud = 250000
-		name := softProtoNames[serLIN]
+		name := softProtoNames[core.SerLIN]
 		plan, _ := softGapFreePlan(name, baud, false, 1)
 		_, longest, quiet, _ := decode.StreamTiming(name, float64(baud))
 		period := decode.StreamBitsPeriod(plan.period)
@@ -190,9 +191,9 @@ func TestSoftStreamBitsQuietSkipped(t *testing.T) {
 			if skip {
 				k = 1
 			}
-			d, _ := lookupSerialDecoder(serLIN)
+			d, _ := core.LookupSerialDecoder(core.SerLIN)
 			s := &softStream{
-				p: SerialParams{Proto: serLIN, Baud: baud, Threshold: 128, HaveThr: true}, proto: name, decoder: d,
+				p: SerialParams{Proto: core.SerLIN, Baud: baud, Threshold: 128, HaveThr: true}, proto: name, decoder: d,
 				mask: 0xff, gapFree: true, quiet: quiet, bits: true, trig: StreamManual,
 				id: sramcapture.RecordIdentity{Epoch: softEpochBase | 1},
 			}

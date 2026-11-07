@@ -5,6 +5,7 @@ package engine
 import (
 	"math"
 
+	core "github.com/labeth/open-dso-core/engine"
 	"github.com/labeth/open-sds1000cml/app/internal/sramcapture"
 )
 
@@ -13,7 +14,7 @@ import (
 // crossing plus the channels' sampling phase.
 // TRLC-LINKS: REQ-SDS-013, REQ-SDS-229
 func planHardwareI2C(p *SerialParams, sample bool) sramcapture.I2CTriggerConfig {
-	if p.Proto != serI2C || !p.HaveThr || math.IsNaN(p.Threshold) || math.IsInf(p.Threshold, 0) || p.Threshold < 0 || p.Threshold > 255 ||
+	if p.Proto != core.SerI2C || !p.HaveThr || math.IsNaN(p.Threshold) || math.IsInf(p.Threshold, 0) || p.Threshold < 0 || p.Threshold > 255 ||
 		p.ChA < 0 || p.ChA > 1 || p.ChB < 0 || p.ChB > 1 || p.ChA == p.ChB || p.Addr < -1 || p.Addr > 127 || p.RW < 0 || p.RW > 2 || len(p.Bytes) > 4 {
 		return sramcapture.I2CTriggerConfig{}
 	}

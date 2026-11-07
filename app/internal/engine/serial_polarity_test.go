@@ -5,14 +5,15 @@ package engine
 import (
 	"testing"
 
+	core "github.com/labeth/open-dso-core/engine"
 	"github.com/labeth/open-dso-core/sample"
 )
 
 // TRLC-LINKS: REQ-SDS-013
 func TestInvertedTwoWireSerialTriggers(t *testing.T) {
-	for _, proto := range []int{serI2C, serSPI} {
+	for _, proto := range []int{core.SerI2C, core.SerSPI} {
 		var a, b []uint8
-		if proto == serI2C {
+		if proto == core.SerI2C {
 			a, b = i2cWave(0x24, 0, []int{0x55, 0xaa}, 20)
 		} else {
 			a, b = spiWave([]int{0x55, 0xaa}, 20)

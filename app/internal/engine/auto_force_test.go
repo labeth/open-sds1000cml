@@ -3,6 +3,7 @@
 package engine
 
 import (
+	core "github.com/labeth/open-dso-core/engine"
 	"testing"
 	"time"
 )
@@ -25,7 +26,7 @@ func TestAutoForceWaitsOnATriggeredRecord(t *testing.T) {
 		{true, true, false, time.Second, false},
 		{true, false, false, time.Second, true},
 	} {
-		if got := autoForceDue(c.norm, c.running, c.triggered, c.waited, wait); got != c.want {
+		if got := core.AutoForceDue(c.norm, c.running, c.triggered, c.waited, wait); got != c.want {
 			t.Fatalf("%+v: %v", c, got)
 		}
 	}

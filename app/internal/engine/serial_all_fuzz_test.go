@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	core "github.com/labeth/open-dso-core/engine"
 	"github.com/labeth/open-dso-core/sample"
 	"github.com/labeth/open-sds1000cml/app/internal/sramcapture"
 )
@@ -130,8 +131,8 @@ func FuzzSerialAllProtocols(f *testing.F) {
 			}
 		}
 		_ = SoftStreamMode(p.Proto, p.Baud, p.Overdrive)
-		_ = unitMask(p)
-		if d, ok := lookupSerialDecoder(p.Proto); ok {
+		_ = core.UnitMask(p)
+		if d, ok := core.LookupSerialDecoder(p.Proto); ok {
 			for _, bl := range [][]uint8{b, nil} {
 				r := d.Decode(a, bl, sampleS, p)
 				for _, s := range r.Spans {

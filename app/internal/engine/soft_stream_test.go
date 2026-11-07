@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/labeth/open-dso-core/decode"
+	core "github.com/labeth/open-dso-core/engine"
 	"github.com/labeth/open-sds1000cml/app/internal/decodedlines"
 	"github.com/labeth/open-sds1000cml/app/internal/sramcapture"
 )
@@ -71,7 +72,7 @@ func peakWords(levels []bool, m int) []byte {
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
 func TestSoftStreamPeakWordsToEvents(t *testing.T) {
 	const baud = 19200
-	name := softProtoNames[serLIN]
+	name := softProtoNames[core.SerLIN]
 	log, ok := softGapFreeLog(name, baud, false)
 	if !ok {
 		t.Fatal("LIN is not gap-free")
@@ -94,9 +95,9 @@ func TestSoftStreamPeakWordsToEvents(t *testing.T) {
 	}
 	raw := peakWords(linLevels(8/bucket, baud, frames), 8)
 	for _, stop := range []bool{false, true} {
-		d, _ := lookupSerialDecoder(serLIN)
+		d, _ := core.LookupSerialDecoder(core.SerLIN)
 		s := &softStream{
-			p: SerialParams{Proto: serLIN, Baud: baud, Threshold: 128, HaveThr: true}, proto: name, decoder: d,
+			p: SerialParams{Proto: core.SerLIN, Baud: baud, Threshold: 128, HaveThr: true}, proto: name, decoder: d,
 			mask: 0xff, gapFree: true, quiet: quiet, log: uint8(log), trig: StreamManual, id: sramcapture.RecordIdentity{Epoch: softEpochBase | 1},
 		}
 		if stop {
@@ -117,7 +118,7 @@ func TestSoftStreamPeakWordsToEvents(t *testing.T) {
 		if !stopped {
 			s.emit(s.dec.Flush(), s.ord)
 		}
-		tr := decodedlines.New(serLIN+1, 1000)
+		tr := decodedlines.New(core.SerLIN+1, 1000)
 		tr.Add(s.events)
 		tr.Flush()
 		want := len(frames)
@@ -157,11 +158,11 @@ func TestSoftStreamValuePatternPlaces(t *testing.T) {
 	for _, c := range []struct {
 		proto, baud, value, unit int
 		bits                     int
-	}{{serIRSIRC, 1667, 0x01, 1, 12}, {serIRRC5, 562, 0x0C, 1, 0}, {serDALI, 1200, 0x80, 1, 0}, {serWiegand, 1000, 0x1234, 1, 26}} {
+	}{{core.SerIRSIRC, 1667, 0x01, 1, 12}, {core.SerIRRC5, 562, 0x0C, 1, 0}, {core.SerDALI, 1200, 0x80, 1, 0}, {core.SerWiegand, 1000, 0x1234, 1, 26}} {
 		s := &softStream{p: SerialParams{
 			Proto: c.proto, Baud: c.baud, Bits: c.bits, ChA: 0, ChB: 1, Threshold: 128, HaveThr: true,
 			ThresholdB: 128, HaveThrB: true,
-		}, value: c.value, mask: unitMask(SerialParams{Proto: c.proto})}
+		}, value: c.value, mask: core.UnitMask(SerialParams{Proto: c.proto})}
 		if !s.symbolPlans(s.valuePattern(-1)) && !s.symbolPlans(s.valuePattern(c.unit)) {
 			t.Errorf("protocol %d: %X matches neither at any unit nor as unit %d", c.proto, c.value, c.unit)
 		}
@@ -204,11 +205,11 @@ func TestSoftStreamEmitReadsOnWhereTheFPGADidNotFire(t *testing.T) {
 // TRLC-LINKS: REQ-SDS-260
 func TestSoftStreamStopPatternAtItsPlace(t *testing.T) {
 	s := &softStream{
-		p:     SerialParams{Proto: serIRMP, Baud: 1818, Bits: decode.IRSamsung32, Threshold: 128, HaveThr: true},
+		p:     SerialParams{Proto: core.SerIRMP, Baud: 1818, Bits: decode.IRSamsung32, Threshold: 128, HaveThr: true},
 		proto: "irmp", value: 0xFD02, mask: 0xffff, stopUnit: 1,
 	}
 	pat := s.stopPattern()
-	if len(pat) != 3 || pat[0].Kind != patternStart || pat[1].Mask != 0 || pat[2].Value != 0xFD02 || pat[2].Mask != 0xffff {
+	if len(pat) != 3 || pat[0].Kind != core.PatternStart || pat[1].Mask != 0 || pat[2].Value != 0xFD02 || pat[2].Mask != 0xffff {
 		t.Fatalf("Samsung32 command FD02: %+v", pat)
 	}
 	s.value, s.stopUnit = 0x0707, 0 // the address: unit 0
@@ -216,7 +217,7 @@ func TestSoftStreamStopPatternAtItsPlace(t *testing.T) {
 		t.Fatalf("Samsung32 address 0707: %+v", pat)
 	}
 	u := &softStream{
-		p: SerialParams{Proto: serLIN, Baud: 19200, Threshold: 128, HaveThr: true}, proto: "lin", value: 0x55,
+		p: SerialParams{Proto: core.SerLIN, Baud: 19200, Threshold: 128, HaveThr: true}, proto: "lin", value: 0x55,
 		mask: 0xff, stopUnit: 3,
 	}
 	if pat := u.stopPattern(); len(pat) != 1 { // LIN: the value at any unit
@@ -229,24 +230,24 @@ func TestSoftStreamStopPatternAtItsPlace(t *testing.T) {
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
 func TestSoftStreamModes(t *testing.T) {
 	for proto, want := range map[int]string{
-		serLIN: "gap-free", serDMX: "gap-free", serModbus: "gap-free",
-		serOneWire: "gap-free", serDHT: "gap-free", serCEC: "gap-free", serJ1850: "gap-free", serIRNEC: "gap-free",
-		serIRSIRC: "gap-free", serIRRC5: "gap-free", serIRRC6: "gap-free", serDALI: "gap-free", serPS2: "gap-free",
-		serWiegand: "gap-free", serUSBPD: "captures", serSPDIF: "captures", serSWD: "captures", serMDIO: "captures",
-		serWS281x: "captures", serUART: "", serMIDI: "", serUSB: "",
-		serQuad: "gap-free", serStepper: "gap-free", serPWM: "captures", serRCEncode: "gap-free", serOOK: "gap-free",
-		serMiller: "captures", serMorse: "gap-free", serDCF77: "gap-free", serEM4100: "gap-free", serEM4305: "gap-free",
-		serT55xx: "gap-free", serSWIM: "captures", serSDQ: "captures", serPJDL: "gap-free", serDSI: "gap-free", serQi: "gap-free",
-		serSDCard: "captures", serPDI: "captures", serCJTAG: "captures", serMaple: "captures", serCaliper: "gap-free", serIRMP: "gap-free",
+		core.SerLIN: "gap-free", core.SerDMX: "gap-free", core.SerModbus: "gap-free",
+		core.SerOneWire: "gap-free", core.SerDHT: "gap-free", core.SerCEC: "gap-free", core.SerJ1850: "gap-free", core.SerIRNEC: "gap-free",
+		core.SerIRSIRC: "gap-free", core.SerIRRC5: "gap-free", core.SerIRRC6: "gap-free", core.SerDALI: "gap-free", core.SerPS2: "gap-free",
+		core.SerWiegand: "gap-free", core.SerUSBPD: "captures", core.SerSPDIF: "captures", core.SerSWD: "captures", core.SerMDIO: "captures",
+		core.SerWS281x: "captures", core.SerUART: "", core.SerMIDI: "", core.SerUSB: "",
+		core.SerQuad: "gap-free", core.SerStepper: "gap-free", core.SerPWM: "captures", core.SerRCEncode: "gap-free", core.SerOOK: "gap-free",
+		core.SerMiller: "captures", core.SerMorse: "gap-free", core.SerDCF77: "gap-free", core.SerEM4100: "gap-free", core.SerEM4305: "gap-free",
+		core.SerT55xx: "gap-free", core.SerSWIM: "captures", core.SerSDQ: "captures", core.SerPJDL: "gap-free", core.SerDSI: "gap-free", core.SerQi: "gap-free",
+		core.SerSDCard: "captures", core.SerPDI: "captures", core.SerCJTAG: "captures", core.SerMaple: "captures", core.SerCaliper: "gap-free", core.SerIRMP: "gap-free",
 	} {
 		baud := map[int]int{
-			serLIN: 19200, serDMX: 250000, serModbus: 19200, serOneWire: 16300, serDHT: 20000,
-			serCEC: 417, serJ1850: 10400, serIRNEC: 889, serIRSIRC: 1667, serIRRC5: 562, serIRRC6: 1126, serDALI: 1200,
-			serPS2: 16700, serWiegand: 1000, serUSBPD: 300000, serSPDIF: 3072000, serSWD: 1000000, serMDIO: 1000000,
-			serWS281x: 800000, serQuad: 10000, serStepper: 5000, serPWM: 10000, serRCEncode: 2857, serOOK: 1024, serMiller: 106007,
-			serMorse: 500, serDCF77: 333, serEM4100: 1953, serEM4305: 125000, serT55xx: 125000, serSWIM: 363636, serSDQ: 98425,
-			serPJDL: 22727, serDSI: 600, serQi: 2000, serSDCard: 250000, serPDI: 250000, serCJTAG: 250000, serMaple: 1333333,
-			serCaliper: 12500, serIRMP: 1786,
+			core.SerLIN: 19200, core.SerDMX: 250000, core.SerModbus: 19200, core.SerOneWire: 16300, core.SerDHT: 20000,
+			core.SerCEC: 417, core.SerJ1850: 10400, core.SerIRNEC: 889, core.SerIRSIRC: 1667, core.SerIRRC5: 562, core.SerIRRC6: 1126, core.SerDALI: 1200,
+			core.SerPS2: 16700, core.SerWiegand: 1000, core.SerUSBPD: 300000, core.SerSPDIF: 3072000, core.SerSWD: 1000000, core.SerMDIO: 1000000,
+			core.SerWS281x: 800000, core.SerQuad: 10000, core.SerStepper: 5000, core.SerPWM: 10000, core.SerRCEncode: 2857, core.SerOOK: 1024, core.SerMiller: 106007,
+			core.SerMorse: 500, core.SerDCF77: 333, core.SerEM4100: 1953, core.SerEM4305: 125000, core.SerT55xx: 125000, core.SerSWIM: 363636, core.SerSDQ: 98425,
+			core.SerPJDL: 22727, core.SerDSI: 600, core.SerQi: 2000, core.SerSDCard: 250000, core.SerPDI: 250000, core.SerCJTAG: 250000, core.SerMaple: 1333333,
+			core.SerCaliper: 12500, core.SerIRMP: 1786,
 		}[proto]
 		if got := SoftStreamMode(proto, baud, false); got != want {
 			t.Errorf("protocol %d at %d: %q, want %q", proto, baud, got, want)
@@ -260,14 +261,14 @@ func TestSoftStreamModes(t *testing.T) {
 		log  int
 	}{{19200, "gap-free", 12}, {57600, "gap-free", 11}, {115200, "gap-free", 10}, {230400, "gap-free", 9}, {460800, "captures", 0}} {
 		log, _ := softGapFreeLog("modbus", c.baud, false)
-		if got := SoftStreamMode(serModbus, c.baud, false); got != c.mode || log != c.log {
+		if got := SoftStreamMode(core.SerModbus, c.baud, false); got != c.mode || log != c.log {
 			t.Errorf("Modbus at %d Bd: %q at 2^%d, want %q at 2^%d", c.baud, got, log, c.mode, c.log)
 		}
 	}
 	if log, _ := softGapFreeLog("dmx512", 250000, false); log != 9 {
 		t.Errorf("DMX512 at 2^%d, want 2^9", log)
 	}
-	if got := SoftStreamMode(serOneWire, 160000, true); got != "captures" {
+	if got := SoftStreamMode(core.SerOneWire, 160000, true); got != "captures" {
 		t.Errorf("1-Wire overdrive: %q", got)
 	}
 	// The captures' record rates: eight samples in the shortest feature.

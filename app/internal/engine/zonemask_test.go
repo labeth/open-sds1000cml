@@ -5,6 +5,7 @@ package engine
 import (
 	"testing"
 
+	core "github.com/labeth/open-dso-core/engine"
 	"github.com/labeth/open-dso-core/sample"
 )
 
@@ -112,10 +113,10 @@ func TestMaskEvalAndRing(t *testing.T) {
 		t.Fatal("MaskStopFail must request a stop")
 	}
 	// ring caps at maskRingCap
-	for range maskRingCap + 4 {
+	for range core.MaskRingCap + 4 {
 		e.maskEval(f2, n, 0, edgeX, 2e-9, 0.5)
 	}
-	if len(e.MaskFails()) != maskRingCap {
+	if len(e.MaskFails()) != core.MaskRingCap {
 		t.Fatalf("ring cap: %d", len(e.MaskFails()))
 	}
 	// WinCols mismatch → not comparable, no counting
@@ -123,34 +124,6 @@ func TestMaskEvalAndRing(t *testing.T) {
 	e.SetMask(&Mask{Lo: lo[:win-1], Hi: hi[:win-1], WinCols: win - 1, Ch: 0})
 	if fail, _ := e.maskEval(f2, n, 0, edgeX, 2e-9, 0.5); fail {
 		t.Fatal("mismatched WinCols must skip, not fail")
-	}
-}
-
-// TRLC-LINKS: REQ-SDS-014
-func TestBuildMaskFromEnvelope(t *testing.T) {
-	win := 100
-	lo := make([]uint8, win)
-	hi := make([]uint8, win)
-	for i := range lo {
-		lo[i], hi[i] = 100, 120
-	}
-	// a step at column 50
-	for i := 50; i < win; i++ {
-		lo[i], hi[i] = 180, 200
-	}
-	m := BuildMaskFromEnvelope(lo, hi, win, 2, 5, 0)
-	if m == nil {
-		t.Fatal("nil mask")
-	}
-	if m.Lo[10] != 95 || m.Hi[10] != 125 {
-		t.Errorf("flat region dilation: [%d,%d]", m.Lo[10], m.Hi[10])
-	}
-	// near the step, horizontal dilation must open the envelope across it
-	if m.Lo[49] != 95 || m.Hi[49] != 205 {
-		t.Errorf("step-adjacent dilation: [%d,%d]", m.Lo[49], m.Hi[49])
-	}
-	if BuildMaskFromEnvelope(lo, hi, win+1, 1, 1, 0) != nil {
-		t.Error("length mismatch must return nil")
 	}
 }
 

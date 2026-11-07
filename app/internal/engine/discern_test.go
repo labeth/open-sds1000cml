@@ -3,6 +3,7 @@
 package engine
 
 import (
+	core "github.com/labeth/open-dso-core/engine"
 	"math"
 	"testing"
 )
@@ -22,19 +23,9 @@ func square(n, halfPeriod int, lo, hi uint8) []uint8 {
 }
 
 // TRLC-LINKS: REQ-SDS-011
-func TestMidLevel(t *testing.T) {
-	if got := midLevel(nil); got != 128 {
-		t.Errorf("midLevel(nil) = %d, want 128", got)
-	}
-	if got := midLevel([]uint8{10, 200}); got != 105 {
-		t.Errorf("midLevel = %d, want 105", got)
-	}
-}
-
-// TRLC-LINKS: REQ-SDS-011
 func TestCenterCrossNearestCentre(t *testing.T) {
 	sig := square(1000, 100, 50, 200)
-	lvl := midLevel(sig)
+	lvl := core.MidLevel(sig)
 
 	xc := centerCross(sig, lvl, true)
 	if xc < 0 {
@@ -129,7 +120,7 @@ func TestCenterCrossSubSample(t *testing.T) {
 // TRLC-LINKS: REQ-SDS-011
 func TestWindowSlopeMatches(t *testing.T) {
 	sig := square(1000, 100, 50, 200)
-	lvl := midLevel(sig)
+	lvl := core.MidLevel(sig)
 	xr := centerCross(sig, lvl, true)
 	if !windowSlopeMatches(sig, xr, 200, true) {
 		t.Error("valid rising crossing rejected")
@@ -155,17 +146,6 @@ func TestWindowSlopeSmallWindowNeverVetoes(t *testing.T) {
 	}
 	if !windowSlopeMatches(sig[:6], 3, 100, true) {
 		t.Error("record < 8 samples must never veto")
-	}
-}
-
-// TRLC-LINKS: REQ-SDS-009, REQ-SDS-011
-func TestPtp(t *testing.T) {
-	lo, hi, p := ptp([]uint8{100, 50, 220, 128})
-	if lo != 50 || hi != 220 || p != 170 {
-		t.Errorf("ptp = %d/%d/%d, want 50/220/170", lo, hi, p)
-	}
-	if _, _, p := ptp(nil); p != 0 {
-		t.Errorf("ptp(nil) = %d, want 0", p)
 	}
 }
 
@@ -238,8 +218,8 @@ func TestSignalPresentSmallSignal(t *testing.T) {
 	for _, amp := range []float64{8, 13, 32} {
 		for _, period := range []int{240, 20} {
 			sig := noisyTriangle(6000, period, amp, 0.5, 42)
-			if !signalPresent(sig, k) {
-				_, _, p := ptp(sig)
+			if !core.SignalPresent(sig, k) {
+				_, _, p := core.Ptp(sig)
 				t.Errorf("real signal amp=%.0f period=%d (ptp=%d) not present, want present", amp, period, p)
 			}
 		}
@@ -249,8 +229,8 @@ func TestSignalPresentSmallSignal(t *testing.T) {
 	for _, sigma := range []float64{0.5, 1.0, 1.5, 2.0, 2.5, 3.0} {
 		for seed := uint64(1); seed <= 8; seed++ {
 			flat := noisyFlat(6000, sigma, seed*131+7)
-			if signalPresent(flat, k) {
-				_, _, p := ptp(flat)
+			if core.SignalPresent(flat, k) {
+				_, _, p := core.Ptp(flat)
 				t.Errorf("flat rail sigma=%.1f seed=%d (ptp=%d) reported present, want rejected", sigma, seed, p)
 			}
 		}
@@ -264,14 +244,14 @@ func TestSignalPresentSmallSignal(t *testing.T) {
 // TRLC-LINKS: REQ-SDS-011
 func TestNoiseFloorPeriodIndependent(t *testing.T) {
 	clean := noisyTriangle(6000, 300, 60, 0.4, 3)
-	nf := noiseFloor(clean)
+	nf := core.NoiseFloor(clean)
 	if nf > 3 {
 		t.Errorf("noiseFloor of a clean ramp = %.1f, want small (≈ per-sample noise)", nf)
 	}
 	// Even with many periods (few samples/period), a well-sampled ramp's floor
 	// stays low — the discriminator does not wash out.
 	dense := noisyTriangle(6000, 40, 60, 0.4, 4)
-	if nfd := noiseFloor(dense); nfd > 4 {
+	if nfd := core.NoiseFloor(dense); nfd > 4 {
 		t.Errorf("noiseFloor of a dense ramp = %.1f, want still small", nfd)
 	}
 }

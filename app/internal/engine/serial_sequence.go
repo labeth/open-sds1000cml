@@ -3,122 +3,9 @@
 package engine
 
 import (
-	"github.com/labeth/open-dso-core/decode"
+	core "github.com/labeth/open-dso-core/engine"
 	"github.com/labeth/open-sds1000cml/app/internal/sramcapture"
 )
-
-// PatternElem is one trigger pattern token (ADR-PROTOCOL-SEQUENCE-TRIGGER):
-// Kind 2 is a decoded unit (byte, word or ARINC data field) equal to Value
-// under Mask, in the decoder's own units; Mask 0 accepts any value. Kind 4 is
-// a decoder-reported error (CRC, parity, framing, stuffing or coding). Kind 1
-// is the start of a frame as the hardware decoder reports it (a START, SOF,
-// SYNC or the idle gap before an SPI word), so [start, any unit] fires on a
-// frame's first unit. A MIL-1553 unit may also require the command sync
-// (MILCommand in Value and Mask).
-// TRLC-LINKS: REQ-SDS-013
-type PatternElem struct {
-	Kind  int `json:"kind"`
-	Value int `json:"value"`
-	Mask  int `json:"mask"`
-}
-
-// Pattern token kinds.
-const (
-	patternStart = 1
-	patternData  = 2
-	patternError = 4
-)
-
-// MILCommand is the flag of a MIL-1553 word received after a command (or
-// status) sync, beside its sixteen bits in the matcher's event value.
-const MILCommand = 1 << 16
-
-// unitFlags are the event metadata bits a pattern unit may require beside
-// the unit (the MIL command sync).
-// TRLC-LINKS: REQ-SDS-013
-func unitFlags(p SerialParams) int {
-	if p.Proto == serMIL1553 {
-		return MILCommand
-	}
-	return 0
-}
-
-// nativeLimit is the longest plain pattern the protocol's own hardware
-// matcher takes; longer ones and any Pattern use the sequence trigger.
-// TRLC-LINKS: REQ-SDS-013
-func nativeLimit(proto int) int {
-	switch proto {
-	case serMIL1553, serARINC:
-		return 1
-	case serCAN, serFlexRay:
-		return 8
-	}
-	return 4
-}
-
-// sequenceNeeded reports a request beyond the protocol's native matcher.
-// TRLC-LINKS: REQ-SDS-013
-func sequenceNeeded(p SerialParams) bool {
-	return len(p.Pattern) != 0 || len(p.Bytes) > nativeLimit(p.Proto)
-}
-
-// patternOf is the request as tokens: Pattern, or Bytes as exact units.
-// TRLC-LINKS: REQ-SDS-013
-func patternOf(p SerialParams) []PatternElem {
-	if len(p.Pattern) != 0 {
-		return p.Pattern
-	}
-	out := make([]PatternElem, len(p.Bytes))
-	for i, b := range p.Bytes {
-		out[i] = PatternElem{Kind: patternData, Value: b, Mask: unitMask(p)}
-	}
-	return out
-}
-
-// unitMask covers one decoded unit of the protocol.
-// TRLC-LINKS: REQ-SDS-013
-func unitMask(p SerialParams) int {
-	switch p.Proto {
-	case serMIL1553:
-		return 0xffff
-	case serARINC:
-		return 0x7ffff
-	case serSENT:
-		return 0xf
-	case serMDIO, serWiegand, serIRMP:
-		return 0xffff
-	case serQuad, serStepper:
-		return 1 // a step: its direction
-	case serOOK:
-		return 0xf // a nibble
-	case serCJTAG:
-		return 0x7fffffff // a scan's low 31 bits
-	case serSPDIF:
-		return 0xffffff
-	case serSWD:
-		// a data word's low 31 bits (a pattern unit is an int, 32 bits on the
-		// scope); the request and acknowledge fit too
-		return 0x7fffffff
-	case serManchester:
-		bits := p.Bits
-		if bits <= 0 || bits > 16 {
-			bits = 8
-		}
-		return 1<<bits - 1
-	}
-	return 0xff
-}
-
-// framedProtocol decoders validate whole frames; a data sequence on them
-// triggers only when its frame ends valid, as their native matchers do.
-// TRLC-LINKS: REQ-SDS-013
-func framedProtocol(proto int) bool {
-	switch proto {
-	case serCAN, serFlexRay, serUSB, serSENT, serManchester, serARINC:
-		return true
-	}
-	return proto >= serLIN && proto != serMIDI // the decoders that frame their units
-}
 
 // planSequence maps the request into the hardware's event values: ARINC's
 // data field sits at bits 10..28 of its word, and an I2C data unit requires
@@ -126,28 +13,28 @@ func framedProtocol(proto int) bool {
 // TRLC-LINKS: REQ-SDS-013
 func planSequence(p SerialParams) sramcapture.SequenceTriggerConfig {
 	var c sramcapture.SequenceTriggerConfig
-	elems := patternOf(p)
+	elems := core.PatternOf(p)
 	if len(elems) == 0 || len(elems) > sramcapture.SequenceMax {
 		return c
 	}
 	dataOnly := true
 	for i, e := range elems {
 		switch e.Kind {
-		case patternStart:
+		case core.PatternStart:
 			dataOnly = false
 			c.Elements[i] = sramcapture.SequenceElement{Kind: sramcapture.SequenceStart}
-		case patternError:
+		case core.PatternError:
 			dataOnly = false
 			c.Elements[i] = sramcapture.SequenceElement{Kind: sramcapture.SequenceError}
-		case patternData:
-			if allowed := unitMask(p) | unitFlags(p); e.Value < 0 || e.Mask < 0 || e.Value&^allowed != 0 || e.Mask&^allowed != 0 {
+		case core.PatternData:
+			if allowed := core.UnitMask(p) | core.UnitFlags(p); e.Value < 0 || e.Mask < 0 || e.Value&^allowed != 0 || e.Mask&^allowed != 0 {
 				return sramcapture.SequenceTriggerConfig{}
 			}
 			value, mask := uint32(e.Value&e.Mask), uint32(e.Mask) //nolint:gosec // G115: checked non-negative and within the unit mask above
 			switch p.Proto {
-			case serARINC:
+			case core.SerARINC:
 				value, mask = value<<10, mask<<10
-			case serI2C:
+			case core.SerI2C:
 				mask |= 0x100
 			}
 			c.Elements[i] = sramcapture.SequenceElement{Kind: sramcapture.SequenceData, Value: value, Mask: mask}
@@ -156,129 +43,7 @@ func planSequence(p SerialParams) sramcapture.SequenceTriggerConfig {
 		}
 	}
 	c.Length = uint8(len(elems)) //nolint:gosec // G115: checked to at most SequenceMax elements above
-	c.Qualify = dataOnly && framedProtocol(p.Proto)
-	c.EndBadValue = p.Proto == serManchester || p.Proto == serARINC
+	c.Qualify = dataOnly && core.FramedProtocol(p.Proto)
+	c.EndBadValue = p.Proto == core.SerManchester || p.Proto == core.SerARINC
 	return c
-}
-
-// i2cSelected reports whether the I2C address span sp[i] opens a
-// transaction p asks for: its address (any when p.Addr < 0) and direction
-// (p.RW 0 write, 1 read, 2 either).
-// TRLC-LINKS: REQ-SDS-013
-func i2cSelected(sp []decode.Span, i int, p SerialParams) bool {
-	rw := "" // the direction's text: W, R (none for another RW)
-	switch p.RW {
-	case 0:
-		rw = "W"
-	case 1:
-		rw = "R"
-	}
-	return (p.Addr < 0 || sp[i].Val == p.Addr) && (p.RW == 2 || i+1 < len(sp) && sp[i+1].Kind == "rw" && sp[i+1].Text == rw)
-}
-
-// matchSequence is the software form of the sequence trigger over decoded
-// spans, in the decoder's units: data spans are units, error spans are
-// errors, and packet boundaries break contiguity. On framed protocols a data
-// sequence counts only in a packet without errors, like matchPackets. I2C
-// counts only data in transactions whose address and direction match.
-// TRLC-LINKS: REQ-SDS-013
-func matchSequence(sp []decode.Span, p SerialParams) (bool, int) {
-	elems := patternOf(p)
-	if len(elems) == 0 {
-		return false, -1
-	}
-	dataOnly := true
-	for _, e := range elems {
-		dataOnly = dataOnly && e.Kind == patternData
-	}
-	qualify := dataOnly && framedProtocol(p.Proto)
-	var buf [16]int
-	state := buf[:0] // start index of each partial match, -1 none (on the stack up to 16)
-	if len(elems) > len(buf) {
-		state = make([]int, 0, len(elems))
-	}
-	state = state[:len(elems)]
-	reset := func() {
-		for k := range state {
-			state[k] = -1
-		}
-	}
-	reset()
-	selected := p.Proto != serI2C
-	command := 0 // MILCommand while the word after a command sync is read
-	bad, hit := false, -1
-	finish := func() (bool, int) {
-		if hit >= 0 && !bad {
-			return true, hit
-		}
-		bad, hit = false, -1
-		return false, -1
-	}
-	for i, s := range sp {
-		kind := 0
-		switch s.Kind {
-		case spanData:
-			kind = patternData
-		case spanFrameError, spanParityError:
-			kind, bad = patternError, true
-		case spanGap, spanStart, spanStop, spanSOF, spanSync:
-			reset()
-			if qualify {
-				if ok, at := finish(); ok {
-					return true, at
-				}
-			}
-			if p.Proto == serI2C && s.Kind == spanStop {
-				selected = false
-			}
-			if p.Proto == serMIL1553 {
-				command = 0
-				if s.Text == "csync" {
-					command = MILCommand
-				}
-			}
-			if s.Kind == spanGap || s.Kind == spanStop {
-				continue
-			}
-			kind = patternStart // a frame opens: a start element matches here
-		case "addr":
-			if p.Proto != serI2C {
-				continue
-			}
-			reset()
-			selected = i2cSelected(sp, i, p)
-			continue
-		default:
-			continue
-		}
-		if kind == patternData && !selected {
-			reset()
-			continue
-		}
-		for k := len(elems) - 1; k >= 0; k-- {
-			e := elems[k]
-			ok := e.Kind == kind && (kind != patternData || ((s.Val|command)^e.Value)&e.Mask == 0)
-			start := i
-			if k > 0 {
-				start = state[k-1]
-			}
-			if ok && start >= 0 {
-				state[k] = start
-			} else {
-				state[k] = -1
-			}
-		}
-		if at := state[len(elems)-1]; at >= 0 {
-			if !qualify {
-				return true, sp[at].I0
-			}
-			if hit < 0 {
-				hit = sp[at].I0
-			}
-		}
-	}
-	if qualify {
-		return finish()
-	}
-	return false, -1
 }

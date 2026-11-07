@@ -11,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	core "github.com/labeth/open-dso-core/engine"
 	"github.com/labeth/open-sds1000cml/app/internal/sramcapture"
 )
 
@@ -153,7 +154,7 @@ func TestDecodedOwnerSkipsCancelledRequest(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	e := &Engine{sram: capture, decodedRequests: make(chan ownerJob, 1), done: make(chan struct{})}
+	e := &Engine{sram: capture, decodedRequests: make(chan core.OwnerJob, 1), done: make(chan struct{})}
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	result := make(chan error, 1)
@@ -181,7 +182,7 @@ func TestDecodedBatchRingWrapAndCancelledReuse(t *testing.T) {
 		t.Fatal(err)
 	}
 	id := sramcapture.RecordIdentity{Epoch: 7, Record: 1}
-	e := &Engine{sram: capture, decodedRequests: make(chan ownerJob, 1), done: make(chan struct{}), decodedSession: &sramcapture.DecodedCapture{Identity: id}, decodedBuffer: make([]sramcapture.DecodedEvent, decodedBufferLimit), decodedHead: decodedBufferLimit - 1, decodedCount: 2}
+	e := &Engine{sram: capture, decodedRequests: make(chan core.OwnerJob, 1), done: make(chan struct{}), decodedSession: &sramcapture.DecodedCapture{Identity: id}, decodedBuffer: make([]sramcapture.DecodedEvent, decodedBufferLimit), decodedHead: decodedBufferLimit - 1, decodedCount: 2}
 	e.decodedBuffer[decodedBufferLimit-1] = sramcapture.DecodedEvent{Sequence: 40, Value: 0xaa}
 	e.decodedBuffer[0] = sramcapture.DecodedEvent{Sequence: 41, Value: 0x55}
 	dst := make([]sramcapture.DecodedEvent, 2)
@@ -216,7 +217,7 @@ func TestDecodedBatchRingWrapAndCancelledReuse(t *testing.T) {
 	dst[0].Value = 0x1234
 	// Even a request selected just before cancellation cannot write into a
 	// destination that the caller has already reclaimed.
-	if _, err := req.run(); !errors.Is(err, context.Canceled) {
+	if _, err := req.Run(); !errors.Is(err, context.Canceled) {
 		t.Fatal(err)
 	}
 	if dst[0].Value != 0x1234 {
@@ -257,7 +258,7 @@ func webSessionEngine(t *testing.T, web bool, contact time.Duration) *Engine {
 		t.Fatal(err)
 	}
 	e := &Engine{
-		sram: capture, decodedRequests: make(chan ownerJob, 1), done: make(chan struct{}), logf: t.Logf,
+		sram: capture, decodedRequests: make(chan core.OwnerJob, 1), done: make(chan struct{}), logf: t.Logf,
 		decodedSession: &sramcapture.DecodedCapture{Identity: sramcapture.RecordIdentity{Epoch: 7, Record: 1}},
 		decodedWeb:     web, decodedContact: time.Now().Add(-contact),
 	}

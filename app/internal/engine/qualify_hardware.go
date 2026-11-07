@@ -5,9 +5,9 @@ package engine
 import (
 	"fmt"
 	"math"
-	"sync/atomic"
 
 	"github.com/labeth/open-dso-core/decode"
+	core "github.com/labeth/open-dso-core/engine"
 	"github.com/labeth/open-dso-core/sample"
 	"github.com/labeth/open-sds1000cml/app/internal/sramcapture"
 )
@@ -23,16 +23,10 @@ import (
 // imageQualify is the image with the hardware qualifiers.
 const imageQualify = "qualify"
 
-// qualExtent is what the captures taught about each channel's code range.
-type qualExtent struct {
-	lo, hi [2]atomic.Uint64 // the extent's ends in volts at the BNC (float64 bits)
-	have   [2]atomic.Bool
-}
-
 // learnQualExtentOf is learnQualExtent with the channels' extents taken
 // from lv when it is given.
 // TRLC-LINKS: REQ-SDS-011
-func (e *Engine) learnQualExtentOf(f *sample.Frame, sc [2]chScale, lv *frameLevels) {
+func (e *Engine) learnQualExtentOf(f *sample.Frame, sc [2]core.ChScale, lv *core.FrameLevels) {
 	if f == nil || f.Len() < 64 {
 		return
 	}
@@ -41,32 +35,32 @@ func (e *Engine) learnQualExtentOf(f *sample.Frame, sc [2]chScale, lv *frameLeve
 		if ch == 1 {
 			codes = f.Codes8(1)
 		}
-		if len(codes) < f.Len() || !(sc[ch].vdiv > 0) {
+		if len(codes) < f.Len() || !(sc[ch].Vdiv > 0) {
 			continue
 		}
 		var lo, hi int
 		var ok bool
 		if lv != nil {
-			lv.of(ch, codes[:f.Len()])
-			lo, hi, ok = lv.extLo[ch], lv.extHi[ch], lv.extOK[ch]
+			lv.Of(ch, codes[:f.Len()])
+			lo, hi, ok = lv.ExtLo[ch], lv.ExtHi[ch], lv.ExtOK[ch]
 		} else {
 			lo, hi, ok = decode.Extent(codes[:f.Len()])
 		}
 		if !ok {
 			continue
 		}
-		volts := func(code int) float64 { return (float64(code)-128)*sc[ch].vdiv/25 - sc[ch].off }
+		volts := func(code int) float64 { return (float64(code)-128)*sc[ch].Vdiv/25 - sc[ch].Off }
 		lv, hv := volts(lo), volts(hi)
-		if e.qualExt.have[ch].Load() {
-			ol := math.Float64frombits(e.qualExt.lo[ch].Load())
-			oh := math.Float64frombits(e.qualExt.hi[ch].Load())
-			if math.Abs(lv-ol)*25/sc[ch].vdiv < 2 && math.Abs(hv-oh)*25/sc[ch].vdiv < 2 {
+		if e.qualExt.Have[ch].Load() {
+			ol := math.Float64frombits(e.qualExt.Lo[ch].Load())
+			oh := math.Float64frombits(e.qualExt.Hi[ch].Load())
+			if math.Abs(lv-ol)*25/sc[ch].Vdiv < 2 && math.Abs(hv-oh)*25/sc[ch].Vdiv < 2 {
 				continue
 			}
 		}
-		e.qualExt.lo[ch].Store(math.Float64bits(lv))
-		e.qualExt.hi[ch].Store(math.Float64bits(hv))
-		e.qualExt.have[ch].Store(true)
+		e.qualExt.Lo[ch].Store(math.Float64bits(lv))
+		e.qualExt.Hi[ch].Store(math.Float64bits(hv))
+		e.qualExt.Have[ch].Store(true)
 	}
 }
 
@@ -77,9 +71,9 @@ func (e *Engine) learnQualExtentOf(f *sample.Frame, sc [2]chScale, lv *frameLeve
 // transient, which widens the learned extent (at 10 V/div a pulse level is
 // planned off the signal).
 // TRLC-LINKS: REQ-SDS-011, REQ-SDS-013
-func (e *Engine) learnLevels(f *sample.Frame, sc [2]chScale, feAtArm uint64) {
+func (e *Engine) learnLevels(f *sample.Frame, sc [2]core.ChScale, feAtArm uint64) {
 	if feAtArm == e.feGen.Load() && feAtArm == e.learnFE {
-		var lv frameLevels // one histogram a channel for both
+		var lv core.FrameLevels // one histogram a channel for both
 		e.learnSerialLevelsOf(f, sc, &lv)
 		e.learnQualExtentOf(f, sc, &lv)
 	}
@@ -98,7 +92,7 @@ const (
 // has none ("" when it does). rising is the trigger slope: a high pulse, a
 // rising slope.
 // TRLC-LINKS: REQ-SDS-011
-func (e *Engine) planQualifier(tp trigParams, ch int, rising bool) (sramcapture.QualifierConfig, uint8, string) {
+func (e *Engine) planQualifier(tp core.TrigParams, ch int, rising bool) (sramcapture.QualifierConfig, uint8, string) {
 	ch &= 1
 	if !e.hardwareQualifier {
 		if e.images != nil && e.images.HasQualify() && e.protocolImage != imageQualify {
@@ -106,41 +100,41 @@ func (e *Engine) planQualifier(tp trigParams, ch int, rising bool) (sramcapture.
 		}
 		return sramcapture.QualifierConfig{}, 0, "this FPGA image has no pulse, slope or video trigger"
 	}
-	if !e.qualExt.have[ch].Load() {
+	if !e.qualExt.Have[ch].Load() {
 		return sramcapture.QualifierConfig{}, 0, fmt.Sprintf("learning the signal levels on C%d", ch+1)
 	}
 	off := math.Float64frombits(e.trigOffV[ch].Load())
 	vdiv := e.chVdivV(ch)
 	code := func(v float64) float64 { return 128 + (v+off)*25/vdiv }
-	lo := code(math.Float64frombits(e.qualExt.lo[ch].Load()))
-	hi := code(math.Float64frombits(e.qualExt.hi[ch].Load()))
+	lo := code(math.Float64frombits(e.qualExt.Lo[ch].Load()))
+	hi := code(math.Float64frombits(e.qualExt.Hi[ch].Load()))
 	span := hi - lo
-	if span < flatRejectSpan {
+	if span < core.FlatRejectSpan {
 		return sramcapture.QualifierConfig{}, 0, fmt.Sprintf("no signal swing on C%d", ch+1)
 	}
 	clamp := func(v float64) uint8 { return uint8(math.Round(math.Max(1, math.Min(254, v)))) }
-	q := sramcapture.QualifierConfig{Enabled: true, Channel: uint8(ch), Cond: uint8(tp.pulseCond)} //nolint:gosec // G115: the channel is 0 or 1, the condition 0..3 (SetPulseParams)
-	level := clamp(lo + tp.pulseLvlFrac*span)
-	minNs, maxNs := tp.pulseWMinNs, tp.pulseWMaxNs
-	switch tp.typ {
+	q := sramcapture.QualifierConfig{Enabled: true, Channel: uint8(ch), Cond: uint8(tp.PulseCond)} //nolint:gosec // G115: the channel is 0 or 1, the condition 0..3 (SetPulseParams)
+	level := clamp(lo + tp.PulseLvlFrac*span)
+	minNs, maxNs := tp.PulseWMinNs, tp.PulseWMaxNs
+	switch tp.Typ {
 	case TrigPulse:
 		q.Kind, q.Negative = sramcapture.QualPulse, !rising
 	case TrigSlope:
-		q.Kind, q.Negative, q.Cond = sramcapture.QualSlope, !rising, uint8(tp.slopeCond) //nolint:gosec // G115: the condition is 0..3 (SetSlopeParams)
-		q.LevelA, q.LevelB = clamp(lo+tp.slopeLoFrac*span), clamp(lo+tp.slopeHiFrac*span)
-		level, minNs, maxNs = q.LevelA, tp.slopeTMinNs, tp.slopeTMaxNs
+		q.Kind, q.Negative, q.Cond = sramcapture.QualSlope, !rising, uint8(tp.SlopeCond) //nolint:gosec // G115: the condition is 0..3 (SetSlopeParams)
+		q.LevelA, q.LevelB = clamp(lo+tp.SlopeLoFrac*span), clamp(lo+tp.SlopeHiFrac*span)
+		level, minNs, maxNs = q.LevelA, tp.SlopeTMinNs, tp.SlopeTMaxNs
 	case TrigVideo:
-		q.Kind, q.Negative, q.Cond = sramcapture.QualVideo, tp.videoNeg, sramcapture.QualAny
+		q.Kind, q.Negative, q.Cond = sramcapture.QualVideo, tp.VideoNeg, sramcapture.QualAny
 		level = clamp(lo + 0.3*span) // the sync slice, 30 % from the sync tip
-		if !tp.videoNeg {
+		if !tp.VideoNeg {
 			level = clamp(hi - 0.3*span)
 		}
 		first := videoFirstLinePAL
-		if tp.videoStd == 1 {
+		if tp.VideoStd == 1 {
 			first = videoFirstLineNTSC
 		}
-		if tp.videoLine > 0 {
-			q.Line = uint16(max(1, min(1023, tp.videoLine-first+1)))
+		if tp.VideoLine > 0 {
+			q.Line = uint16(max(1, min(1023, tp.VideoLine-first+1)))
 		}
 		minNs, maxNs = 0, 0
 	case TrigEdge:
@@ -205,20 +199,20 @@ func placeQualified(f *sample.Frame, disc []uint8, q []uint16, qc sramcapture.Qu
 	}
 	switch qc.Kind {
 	case sramcapture.QualPulse:
-		return refineTriggerEdge(disc, q, f.Len(), x, float64(level), qc.Negative)
+		return core.RefineTriggerEdge(disc, q, f.Len(), x, float64(level), qc.Negative)
 	case sramcapture.QualSlope:
 		if qc.Negative {
-			return refineTriggerEdge(disc, q, f.Len(), x, float64(qc.LevelA), false)
+			return core.RefineTriggerEdge(disc, q, f.Len(), x, float64(qc.LevelA), false)
 		}
-		return refineTriggerEdge(disc, q, f.Len(), x, float64(qc.LevelB), true)
+		return core.RefineTriggerEdge(disc, q, f.Len(), x, float64(qc.LevelB), true)
 	case sramcapture.QualVideo:
-		end := refineTriggerEdge(disc, q, f.Len(), x, float64(level), qc.Negative)
+		end := core.RefineTriggerEdge(disc, q, f.Len(), x, float64(level), qc.Negative)
 		// back to the sync's leading edge, at most a line sync's width before
 		span := 8e-6 / f.SampleS
 		for i := int(end); i > 0 && float64(int(end)-i) <= span; i-- {
 			a, b := disc[i-1], disc[i]
 			if (qc.Negative && a > level && b <= level) || (!qc.Negative && a < level && b >= level) {
-				return crossFrac(disc, i, int(level))
+				return core.CrossFrac(disc, i, int(level))
 			}
 		}
 		return end
@@ -232,9 +226,9 @@ func (e *Engine) zonesOn() bool {
 	if e.zoneMode.Load() != ZoneTrigger {
 		return false
 	}
-	e.zm.mu.Lock()
-	defer e.zm.mu.Unlock()
-	return len(e.zm.zones) != 0
+	e.zm.Mu.Lock()
+	defer e.zm.Mu.Unlock()
+	return len(e.zm.Zones) != 0
 }
 
 // planZones is the zone trigger in the FPGA (ADR-HARDWARE-QUALIFIERS): each
@@ -252,9 +246,9 @@ func (e *Engine) planZones() (z sramcapture.ZoneConfig, delayS float64, why stri
 		}
 		return z, 0, "this FPGA image has no zone trigger"
 	}
-	e.zm.mu.Lock()
-	zones := append([]Zone(nil), e.zm.zones...)
-	e.zm.mu.Unlock()
+	e.zm.Mu.Lock()
+	zones := append([]Zone(nil), e.zm.Zones...)
+	e.zm.Mu.Unlock()
 	if len(zones) > len(z.Zones) {
 		return z, 0, "the FPGA takes four zones"
 	}

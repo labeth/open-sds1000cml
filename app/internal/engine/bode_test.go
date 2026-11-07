@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	core "github.com/labeth/open-dso-core/engine"
 	"github.com/labeth/open-dso-core/sample"
 )
 
@@ -33,7 +34,7 @@ func TestFundamentalHz(t *testing.T) {
 	const n, dt = 4096, 2e-9
 	for _, f := range []float64{1e6, 5e6, 12.5e6, 25e6} {
 		sig := synthSine(n, f, dt, 90, 128, 0.3)
-		got := fundamentalHz(sig, dt)
+		got := core.FundamentalHz(sig, dt)
 		if math.Abs(got-f) > f*0.02 {
 			t.Errorf("fundamentalHz(%.0f) = %.0f, want within 2%%", f, got)
 		}

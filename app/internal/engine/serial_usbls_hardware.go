@@ -5,12 +5,13 @@ package engine
 import (
 	"math"
 
+	core "github.com/labeth/open-dso-core/engine"
 	"github.com/labeth/open-sds1000cml/app/internal/sramcapture"
 )
 
 // TRLC-LINKS: REQ-SDS-013, REQ-SDS-018
 func planHardwareUSBLS(p *SerialParams) sramcapture.USBLSTriggerConfig {
-	if p.Proto != serUSB || !p.HaveThr || p.ChA < 0 || p.ChA > 1 || len(p.Bytes) > 4 || p.Baud <= 0 || math.IsNaN(p.Threshold) || math.IsInf(p.Threshold, 0) || p.Threshold < 0 || p.Threshold > 255 {
+	if p.Proto != core.SerUSB || !p.HaveThr || p.ChA < 0 || p.ChA > 1 || len(p.Bytes) > 4 || p.Baud <= 0 || math.IsNaN(p.Threshold) || math.IsInf(p.Threshold, 0) || p.Threshold < 0 || p.Threshold > 255 {
 		return sramcapture.USBLSTriggerConfig{}
 	}
 	ticks := math.Round(125e6 * 256 / float64(p.Baud))

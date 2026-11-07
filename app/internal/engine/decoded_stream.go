@@ -9,6 +9,7 @@ import (
 	"sync"
 	"time"
 
+	core "github.com/labeth/open-dso-core/engine"
 	"github.com/labeth/open-sds1000cml/app/internal/decodedlines"
 	"github.com/labeth/open-sds1000cml/app/internal/sramcapture"
 )
@@ -55,9 +56,9 @@ func (e *Engine) BeginDecodedStream(ctx context.Context, p SerialParams, trig St
 	}
 	// An error trigger; a manual stream is planned as one, then made
 	// unmatchable below.
-	p.Pattern = []PatternElem{{Kind: patternError}}
+	p.Pattern = []PatternElem{{Kind: core.PatternError}}
 	if trig == StreamOnValue {
-		p.Pattern = []PatternElem{{Kind: patternData, Value: value & unitMask(p), Mask: unitMask(p)}}
+		p.Pattern = []PatternElem{{Kind: core.PatternData, Value: value & core.UnitMask(p), Mask: core.UnitMask(p)}}
 	}
 	cfgValue, err := e.decodedCall(ctx, func() (cfg any, err error) {
 		// Hold the image until BeginDecodedCapture takes over: between the two
@@ -81,12 +82,12 @@ func (e *Engine) BeginDecodedStream(ctx context.Context, p SerialParams, trig St
 			}
 			e.loadImage(want)
 		}
-		if p.Proto == serARINC && e.arincAux.Load() == 0 {
+		if p.Proto == core.SerARINC && e.arincAux.Load() == 0 {
 			return nil, fmt.Errorf("%w: show the bus decoded a moment, then start again", ErrLevelsLearning)
 		}
 		return e.decodedStreamConfig(p, trig)
 	})
-	cfg, err := ownerResult[sramcapture.Config](cfgValue, err)
+	cfg, err := core.OwnerResult[sramcapture.Config](cfgValue, err)
 	if err != nil {
 		return sramcapture.RecordIdentity{}, err
 	}

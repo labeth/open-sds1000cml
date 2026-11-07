@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/labeth/open-dso-core/decode"
+	core "github.com/labeth/open-dso-core/engine"
 	"github.com/labeth/open-sds1000cml/app/internal/sramcapture"
 )
 
@@ -63,7 +64,7 @@ func softEdgeRun(t *testing.T, proto int, p SerialParams, raw []byte, edges bool
 		plan = softPlan{log: softBitsLog(decode.StreamBitsMinPeriod), period: decode.StreamBitsMinPeriod, bits: true}
 	}
 	_, longest, quiet, _ := decode.StreamTiming(name, float64(p.Baud))
-	d, _ := lookupSerialDecoder(proto)
+	d, _ := core.LookupSerialDecoder(proto)
 	if !edges {
 		d.Edges = nil
 	}
@@ -105,7 +106,7 @@ func TestSoftStreamEdgesMatchSamples(t *testing.T) {
 		rng := rand.New(rand.NewSource(5))
 		n := 0
 		for proto, name := range softProtoNames {
-			d, _ := lookupSerialDecoder(proto)
+			d, _ := core.LookupSerialDecoder(proto)
 			if !decode.StreamBitsLine(name) {
 				if d.Edges != nil {
 					t.Errorf("%s: an edge decoder for a line the digital stream does not carry", name)
@@ -151,9 +152,9 @@ func TestSoftStreamEdgesMatchSamples(t *testing.T) {
 			frames = append(frames, []int{0x80 | i, i, 0x55, 0})
 		}
 		raw := bitsWords(linLevels(13/period, baud, frames), 13)
-		p := SerialParams{Proto: serLIN, Baud: baud, Threshold: 90, HaveThr: true}
-		want := softEdgeRun(t, serLIN, p, raw, false)
-		got := softEdgeRun(t, serLIN, p, raw, true)
+		p := SerialParams{Proto: core.SerLIN, Baud: baud, Threshold: 90, HaveThr: true}
+		want := softEdgeRun(t, core.SerLIN, p, raw, false)
+		got := softEdgeRun(t, core.SerLIN, p, raw, true)
 		if len(want) < 30 || !reflect.DeepEqual(got, want) {
 			t.Fatalf("LIN: %d events over edges, %d over samples", len(got), len(want))
 		}

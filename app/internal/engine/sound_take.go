@@ -3,6 +3,7 @@
 package engine
 
 import (
+	core "github.com/labeth/open-dso-core/engine"
 	"math"
 	"time"
 )
@@ -20,46 +21,6 @@ import (
 // crossings is the one the image keeps) is placed on the first crossing of
 // the same level after the arm, inside the stretch the image says holds
 // them.
-
-// Take bounds: STOP keeps the newest soundStopTakeS; a triggered take is
-// pre plus post, at most soundTakeMaxS (the ring holds 17 s).
-const (
-	soundStopTakeS = 15.0
-	soundTakeMaxS  = 16.0
-	soundPreMaxS   = 10.0
-	soundPostMinS  = 0.1
-)
-
-// SoundTake is a frozen stretch of the audio stream: the samples, scales,
-// gaps and marks of First..First+N-1, and the trigger in it.
-type SoundTake struct {
-	SoundBlock
-	ID         uint64
-	Why        string // "stop", "single" or "normal"
-	HasTrig    bool
-	Trig       uint64 // the trigger's sample (stream ordinal)
-	TrigCh     int
-	TrigRising bool
-	TrigLevel  uint8 // the FPGA's level, an 8-bit code
-	At         time.Time
-}
-
-// SoundTakeTimes bounds pre- and post-trigger seconds.
-// TRLC-LINKS: REQ-SDS-275
-func SoundTakeTimes(pre, post float64) (float64, float64) {
-	if !(pre >= 0) || math.IsInf(pre, 0) {
-		pre = 1
-	}
-	if !(post >= soundPostMinS) || math.IsInf(post, 0) {
-		post = 4
-	}
-	pre = math.Min(pre, soundPreMaxS)
-	post = math.Min(post, soundTakeMaxS-soundPostMinS)
-	if pre+post > soundTakeMaxS {
-		pre = soundTakeMaxS - post
-	}
-	return pre, post
-}
 
 // SetSoundTakeTimes sets the pre- and post-trigger seconds of a triggered
 // take (bounded).
@@ -151,13 +112,13 @@ func (e *Engine) soundFreeze(s *soundState) {
 	}
 	s.frozen = true
 	if t := s.take.Load(); t == nil || !s.trigMode {
-		e.soundPublish(s, s.ring.latest(int(soundStopTakeS*s.info.RateHz), nil, nil, s.info.RateHz), "stop", nil, 0)
+		e.soundPublish(s, s.ring.Latest(int(core.SoundStopTakeS*s.info.RateHz), nil, nil, s.info.RateHz), "stop", nil, 0)
 	}
 	s.armed, s.pending = false, false
 	if s.streaming {
 		e.soundStop(s)
 	}
-	s.ring.release()
+	s.ring.Release()
 	s.setState("stopped", false, nil)
 }
 
@@ -191,21 +152,21 @@ func (e *Engine) soundTrigStep(s *soundState) {
 	pre, post := s.takeTimes()
 	preN, postN := uint64(pre*rate), uint64(math.Ceil(post*rate))
 	cfg := s.applied
-	s.ring.mu.Lock()
-	next := s.ring.next
+	s.ring.Mu.Lock()
+	next := s.ring.Next
 	lastGap := uint64(0)
-	if k := len(s.ring.gaps); k > 0 {
-		lastGap = s.ring.gaps[k-1]
+	if k := len(s.ring.Gaps); k > 0 {
+		lastGap = s.ring.Gaps[k-1]
 	}
 	var marks []SoundMark
 	if s.armed {
-		for _, m := range s.ring.marks {
+		for _, m := range s.ring.Marks {
 			if m.At >= s.armFrom {
 				marks = append(marks, m)
 			}
 		}
 	}
-	s.ring.mu.Unlock()
+	s.ring.Mu.Unlock()
 	if !s.armed && !s.pending {
 		// Arm: marks of this configuration only, after the pre-trigger time
 		// has streamed (from the last gap on, the stretch is one signal).
@@ -238,7 +199,7 @@ func (e *Engine) soundTrigStep(s *soundState) {
 	}
 	s.pending = false
 	from := s.trigAt - min(preN, s.trigAt)
-	b := s.ring.read(from, int(s.trigAt+postN-from), nil, nil, rate) //nolint:gosec // G115: a take of a few seconds of samples
+	b := s.ring.Read(from, int(s.trigAt+postN-from), nil, nil, rate) //nolint:gosec // G115: a take of a few seconds of samples
 	if len(b.Gaps) > 0 || b.First != from {
 		s.nextArm = next // a gap in the stretch: arm again
 		return
@@ -307,51 +268,15 @@ func (e *Engine) soundFirstCrossing(s *soundState, lo, hi uint64, cfg SoundMarkC
 	}
 	lead := uint64(s.info.RateHz / 20) // the state before lo
 	from := lo - min(lead, lo)
-	b := s.ring.read(from, int(hi-from+1), nil, nil, s.info.RateHz) //nolint:gosec // G115: a take of a few seconds of samples
+	b := s.ring.Read(from, int(hi-from+1), nil, nil, s.info.RateHz) //nolint:gosec // G115: a take of a few seconds of samples
 	q := b.Q1
 	if cfg.Ch == 1 {
 		q = b.Q2
 	}
 	if lo >= b.First {
-		if i, ok := firstCrossingFrom(q, int(cfg.Level), hyst, rising, int(lo-b.First)); ok { //nolint:gosec // G115: lo lies within the block read
+		if i, ok := core.FirstCrossingFrom(q, int(cfg.Level), hyst, rising, int(lo-b.First)); ok { //nolint:gosec // G115: lo lies within the block read
 			return b.First + uint64(i) //nolint:gosec // G115: i is an index of the block
 		}
 	}
 	return hi
-}
-
-// firstCrossingFrom is the first crossing at index start or later; the
-// comparator's arming runs from the start of q (a crossing before start
-// disarms it as in the fabric).
-// TRLC-LINKS: REQ-SDS-275
-func firstCrossingFrom(q []uint16, level, hyst int, rising bool, start int) (int, bool) {
-	armed := false
-	if !rising { // the rising test on negated codes: arm at or above level+hyst, fire at or below level
-		armAt, fireAt := level+hyst, level
-		for i, w := range q {
-			switch c := int(w >> 8); {
-			case c >= armAt:
-				armed = true
-			case armed && c <= fireAt:
-				if i >= start {
-					return i, true
-				}
-				armed = false
-			}
-		}
-		return 0, false
-	}
-	armAt, fireAt := level-hyst, level
-	for i, w := range q {
-		switch c := int(w >> 8); {
-		case c <= armAt:
-			armed = true
-		case armed && c >= fireAt:
-			if i >= start {
-				return i, true
-			}
-			armed = false
-		}
-	}
-	return 0, false
 }

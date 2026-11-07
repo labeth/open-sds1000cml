@@ -5,6 +5,7 @@ package engine
 import (
 	"testing"
 
+	core "github.com/labeth/open-dso-core/engine"
 	"github.com/labeth/open-sds1000cml/app/internal/decodedlines"
 	"github.com/labeth/open-sds1000cml/app/internal/sramcapture"
 )
@@ -19,7 +20,7 @@ func TestDecodedStreamOnErrorPlansTheErrorToken(t *testing.T) {
 		"general": {hardwareUART: true, hardwareI2C: true, hardwareSPI: true, hardwareSequence: true},
 		"packet": {
 			hardwareSENT: true, hardwareMIL1553: true, hardwareSequence: true, sequenceOnly: true,
-			hardwarePacket: 1<<serCAN | 1<<serARINC | 1<<serFlexRay,
+			hardwarePacket: 1<<core.SerCAN | 1<<core.SerARINC | 1<<core.SerFlexRay,
 		},
 		"line": {hardwareManchester: true, hardwareUSBLS: true, hardwareSequence: true, sequenceOnly: true},
 	}
@@ -27,24 +28,24 @@ func TestDecodedStreamOnErrorPlansTheErrorToken(t *testing.T) {
 		image string
 		p     SerialParams
 	}{
-		{"general", SerialParams{Proto: serUART, Baud: 115200, Bits: 8, Parity: "none"}},
-		{"general", SerialParams{Proto: serMIDI, Baud: 31250}},
-		{"general", SerialParams{Proto: serI2C, ChA: 0, ChB: 1}},
-		{"general", SerialParams{Proto: serSPI, ChA: 0, ChB: 1, SPIClockHz: 1000000}},
-		{"packet", SerialParams{Proto: serCAN, Baud: 500000}},
-		{"packet", SerialParams{Proto: serARINC, Baud: 100000}},
-		{"packet", SerialParams{Proto: serFlexRay, Baud: 10000000}},
-		{"packet", SerialParams{Proto: serMIL1553, Baud: 1000000}},
-		{"packet", SerialParams{Proto: serSENT, TickNs: 3000, Nibbles: 6}},
-		{"line", SerialParams{Proto: serManchester, Baud: 1000000, Bits: 16}},
-		{"line", SerialParams{Proto: serUSB, Baud: 12000000}},
+		{"general", SerialParams{Proto: core.SerUART, Baud: 115200, Bits: 8, Parity: "none"}},
+		{"general", SerialParams{Proto: core.SerMIDI, Baud: 31250}},
+		{"general", SerialParams{Proto: core.SerI2C, ChA: 0, ChB: 1}},
+		{"general", SerialParams{Proto: core.SerSPI, ChA: 0, ChB: 1, SPIClockHz: 1000000}},
+		{"packet", SerialParams{Proto: core.SerCAN, Baud: 500000}},
+		{"packet", SerialParams{Proto: core.SerARINC, Baud: 100000}},
+		{"packet", SerialParams{Proto: core.SerFlexRay, Baud: 10000000}},
+		{"packet", SerialParams{Proto: core.SerMIL1553, Baud: 1000000}},
+		{"packet", SerialParams{Proto: core.SerSENT, TickNs: 3000, Nibbles: 6}},
+		{"line", SerialParams{Proto: core.SerManchester, Baud: 1000000, Bits: 16}},
+		{"line", SerialParams{Proto: core.SerUSB, Baud: 12000000}},
 	} {
 		e := images[c.image]
 		e.arincAux.Store(0x8d72a15c)
 		p := c.p
 		p.Threshold, p.HaveThr, p.ThresholdB, p.HaveThrB = 128, true, 128, true
 		p.Addr, p.RW = -1, 2
-		p.Pattern = []PatternElem{{Kind: patternError}}
+		p.Pattern = []PatternElem{{Kind: core.PatternError}}
 		cfg, err := e.decodedStreamConfig(p, StreamOnError)
 		if err != nil {
 			t.Errorf("protocol %d on the %s image: %v", c.p.Proto, c.image, err)

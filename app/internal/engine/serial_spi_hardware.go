@@ -6,6 +6,7 @@ import (
 	"math"
 
 	"github.com/labeth/open-dso-core/decode"
+	core "github.com/labeth/open-dso-core/engine"
 	"github.com/labeth/open-sds1000cml/app/internal/sramcapture"
 )
 
@@ -20,7 +21,7 @@ const spiPhase16 = decode.ChannelPhase16
 // a 125 MHz clock, on the 125 MHz line levels to about 20 MHz.
 // TRLC-LINKS: REQ-SDS-013, REQ-SDS-229
 func planHardwareSPI(p *SerialParams, sample bool) sramcapture.SPITriggerConfig {
-	if p.Proto != serSPI || !p.HaveThr || p.SPIClockHz <= 0 || p.ChA < 0 || p.ChA > 1 || p.ChB != 1-p.ChA || len(p.Bytes) > 4 || math.IsNaN(p.Threshold) || math.IsInf(p.Threshold, 0) || p.Threshold < 0 || p.Threshold > 255 {
+	if p.Proto != core.SerSPI || !p.HaveThr || p.SPIClockHz <= 0 || p.ChA < 0 || p.ChA > 1 || p.ChB != 1-p.ChA || len(p.Bytes) > 4 || math.IsNaN(p.Threshold) || math.IsInf(p.Threshold, 0) || p.Threshold < 0 || p.Threshold > 255 {
 		return sramcapture.SPITriggerConfig{}
 	}
 	rate := float64(p.SPIClockHz)
@@ -72,7 +73,7 @@ func spiDelay16(ns float64, clockCh int) int {
 }
 
 // The software SPI decoder reads the data line where this receiver does.
-func init() { spiDataDelayNs = SPIDelayFPGA }
+func init() { core.SPIDataDelayNs = SPIDelayFPGA }
 
 // SPIDelayFPGA is the delay after the sampling edge the receiver on the
 // samples reads SPI's data at for a delay of ns asked, with the clock on

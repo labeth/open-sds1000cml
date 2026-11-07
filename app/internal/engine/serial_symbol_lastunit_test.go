@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/labeth/open-dso-core/decode"
+	core "github.com/labeth/open-dso-core/engine"
 )
 
 // Every symbol-trigger protocol's frames matched on their last unit, whole:
@@ -20,7 +21,7 @@ func TestSymbolTriggerMatchesLastUnit(t *testing.T) {
 	for _, tc := range symbolCases() {
 		t.Run(tc.name, func(t *testing.T) {
 			w := tc.wave()
-			d, ok := lookupSerialDecoder(tc.p.Proto)
+			d, ok := core.LookupSerialDecoder(tc.p.Proto)
 			if !ok {
 				t.Fatal("no software decoder registered")
 			}

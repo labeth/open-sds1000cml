@@ -10,6 +10,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	core "github.com/labeth/open-dso-core/engine"
 	"github.com/labeth/open-dso-core/superres"
 	"github.com/labeth/open-sds1000cml/app/internal/sramcapture"
 )
@@ -120,7 +121,7 @@ func (e *Engine) sramCall(ctx context.Context, run func(context.Context) (any, e
 func (e *Engine) serviceSRAMJobs() bool {
 	select {
 	case job := <-e.sramJobs:
-		if !job.serve() {
+		if !job.Serve() {
 			return false
 		}
 		e.beatN.Add(1)
@@ -154,7 +155,7 @@ func (e *Engine) FPGAStack(ctx context.Context, req FPGAStackRequest) (FPGAStack
 		}
 		return e.runFPGAStack(ctx, cfg, req)
 	})
-	return ownerResult[FPGAStackResult](value, err)
+	return core.OwnerResult[FPGAStackResult](value, err)
 }
 
 // TRLC-LINKS: REQ-SDS-141

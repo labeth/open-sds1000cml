@@ -5,6 +5,7 @@ package engine
 import (
 	"math"
 
+	core "github.com/labeth/open-dso-core/engine"
 	"github.com/labeth/open-sds1000cml/app/internal/sramcapture"
 )
 
@@ -20,7 +21,7 @@ func liveSRAMWindow(m sramcapture.Metadata, screen int, posFrac float64) (uint32
 // prefers the event nearest the hardware edge. A window no larger than the
 // screen leaves only the hardware edge's own neighbourhood.
 // TRLC-LINKS: REQ-SDS-011
-func softAnchor(valid, screen int, posFrac, hwEdge float64) anchorSpan {
+func softAnchor(valid, screen int, posFrac, hwEdge float64) core.AnchorSpan {
 	if !(posFrac >= 0 && posFrac <= 1) {
 		posFrac = .5
 	}
@@ -31,9 +32,9 @@ func softAnchor(valid, screen int, posFrac, hwEdge float64) anchorSpan {
 		target = (lo + hi) / 2
 	}
 	if lo > hi { // the window cannot hold a screen: anywhere, as before
-		return anchorSpan{target: target, lo: 0, hi: valid}
+		return core.AnchorSpan{Target: target, Lo: 0, Hi: valid}
 	}
-	return anchorSpan{target: target, lo: lo, hi: hi}
+	return core.AnchorSpan{Target: target, Lo: lo, Hi: hi}
 }
 
 // offRecord is how many of a screen's winCols columns, centred on anchor at

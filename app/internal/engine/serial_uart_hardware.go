@@ -6,6 +6,7 @@ import (
 	"math"
 
 	"github.com/labeth/open-dso-core/decode"
+	core "github.com/labeth/open-dso-core/engine"
 	"github.com/labeth/open-sds1000cml/app/internal/sramcapture"
 )
 
@@ -17,7 +18,7 @@ import (
 func planHardwareUART(p *SerialParams, sample bool) sramcapture.UARTTriggerConfig {
 	// Hardware must not silently substitute the edge-trigger level for the
 	// decoder's automatic threshold. Auto slicing remains a software request.
-	if !p.HaveThr || p.Proto != serUART || p.Baud <= 0 || len(p.Bytes) > 4 || p.ChA < 0 || p.ChA > 1 ||
+	if !p.HaveThr || p.Proto != core.SerUART || p.Baud <= 0 || len(p.Bytes) > 4 || p.ChA < 0 || p.ChA > 1 ||
 		math.IsNaN(p.Threshold) || math.IsInf(p.Threshold, 0) || p.Threshold < 0 || p.Threshold > 255 {
 		return sramcapture.UARTTriggerConfig{}
 	}
@@ -27,7 +28,7 @@ func planHardwareUART(p *SerialParams, sample bool) sramcapture.UARTTriggerConfi
 	}
 	var par uint8
 	switch p.Parity {
-	case "", parityNone:
+	case "", core.ParityNone:
 	case "even":
 		par = 1
 	case "odd":

@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/labeth/open-dso-core/decode"
+	core "github.com/labeth/open-dso-core/engine"
 	"github.com/labeth/open-sds1000cml/app/internal/sramcapture"
 )
 
@@ -62,18 +63,18 @@ func TestSoftRingPlan(t *testing.T) {
 	for _, c := range []struct {
 		proto, baud int
 	}{
-		{serLIN, 19200},
-		{serDMX, 250000},
-		{serModbus, 19200},
-		{serOneWire, 16300},
-		{serDALI, 1200},
-		{serCEC, 417},
-		{serPS2, 16700},
-		{serJ1850, 10400},
-		{serPJDL, 22727},
-		{serDCF77, 333},
-		{serPDI, 250000},
-		{serSDQ, 98425},
+		{core.SerLIN, 19200},
+		{core.SerDMX, 250000},
+		{core.SerModbus, 19200},
+		{core.SerOneWire, 16300},
+		{core.SerDALI, 1200},
+		{core.SerCEC, 417},
+		{core.SerPS2, 16700},
+		{core.SerJ1850, 10400},
+		{core.SerPJDL, 22727},
+		{core.SerDCF77, 333},
+		{core.SerPDI, 250000},
+		{core.SerSDQ, 98425},
 	} {
 		sl, rl, why, ok := softRingPlanFor(c.proto, c.baud)
 		name, _ := softProtoName(c.proto)
@@ -85,7 +86,7 @@ func TestSoftRingPlan(t *testing.T) {
 		}
 	}
 	// The buses this is for: a stop on a value on LIN or DMX512 shows the ring.
-	for _, c := range []struct{ proto, baud int }{{serLIN, 19200}, {serDMX, 250000}, {serModbus, 19200}} {
+	for _, c := range []struct{ proto, baud int }{{core.SerLIN, 19200}, {core.SerDMX, 250000}, {core.SerModbus, 19200}} {
 		if _, _, why, ok := softRingPlanFor(c.proto, c.baud); !ok {
 			t.Errorf("protocol %d at %d Bd: no ring: %s", c.proto, c.baud, why)
 		}
@@ -228,7 +229,7 @@ func TestSoftRingPace(t *testing.T) {
 // that loses words goes on without the ring (the SRAM drum's slack).
 // TRLC-LINKS: REQ-SDS-035, REQ-SDS-240
 func TestSoftRingStartFallsBackOnce(t *testing.T) {
-	d, _ := lookupSerialDecoder(serDMX)
+	d, _ := core.LookupSerialDecoder(core.SerDMX)
 	s := &softStream{ring: true, ringLog: 9, log: 12, decoder: d}
 	rings, plains := 0, 0
 	refuse := func(sramcapture.Config) error {

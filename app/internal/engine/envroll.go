@@ -5,6 +5,7 @@ package engine
 import (
 	"time"
 
+	core "github.com/labeth/open-dso-core/engine"
 	"github.com/labeth/open-dso-core/sample"
 	"github.com/labeth/open-sds1000cml/app/internal/iface"
 )
@@ -37,7 +38,7 @@ func (e *Engine) clearCrossFrame() {
 	e.rollSnaps1, e.rollSnaps2 = e.rollSnaps1[:0], e.rollSnaps2[:0]
 	e.rollPos = 0
 	e.etsReset()
-	e.uni.reset()
+	e.uni.Reset()
 	e.avgKey.width = 0 // forces the average ring to reset on next use
 	e.resetDeadRuns()
 }
@@ -112,7 +113,7 @@ func (e *Engine) envFrame(norm bool) {
 	if int(e.trigSrc.Load()) == 1 {
 		disc = f.Codes8(1)[:capCols]
 	}
-	_, _, p := ptp(disc)
+	_, _, p := core.Ptp(disc)
 
 	// TRIGGER the envelope band when the drained record carries a confident edge
 	// on a real, well-sampled signal: publish it as a normal edge-centred trace
@@ -128,7 +129,7 @@ func (e *Engine) envFrame(norm bool) {
 	// where triggering is impossible.
 	td := e.trigDispLevel(int(e.trigSrc.Load()))
 	edgeX := -1.0
-	if td >= 0 && signalPresent(disc, float64(e.tuneSigK.Load())) {
+	if td >= 0 && core.SignalPresent(disc, float64(e.tuneSigK.Load())) {
 		edgeX = centerCross(disc, td, e.trigRising.Load())
 	}
 	triggered := edgeX >= 0
@@ -357,7 +358,7 @@ func (e *Engine) rollUpdate(norm bool) {
 	e.rollSnap(f)
 	e.rollReduce(f)
 
-	_, _, p := ptp(f.Codes8(0)[:rollWin])
+	_, _, p := core.Ptp(f.Codes8(0)[:rollWin])
 
 	f.SetLen(rollWin)
 	f.WinPoints = rollWin

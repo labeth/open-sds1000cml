@@ -6,6 +6,7 @@ import (
 	"math"
 	"time"
 
+	core "github.com/labeth/open-dso-core/engine"
 	"github.com/labeth/open-dso-core/sample"
 	"github.com/labeth/open-sds1000cml/app/internal/sramcapture"
 )
@@ -17,7 +18,7 @@ func (e *Engine) SetTrigType(t int) {
 		t = int(TrigEdge)
 	}
 	e.mu.Lock()
-	e.tp.typ = TrigType(t)
+	e.tp.Typ = TrigType(t)
 	e.stats.TrigType = t
 	if t == int(TrigEdge) {
 		e.stats.TriggerBackend = "" // an edge needs no qualifier: not the last type's
@@ -30,10 +31,10 @@ func (e *Engine) SetTrigType(t int) {
 // TRLC-LINKS: REQ-SDS-011
 func (e *Engine) SetPulseParams(lvlFrac, wMinNs, wMaxNs float64, cond int) {
 	e.mu.Lock()
-	e.tp.pulseLvlFrac = clampFrac(lvlFrac)
-	e.tp.pulseWMinNs, e.tp.pulseWMaxNs = orderPair(wMinNs, wMaxNs)
-	e.tp.pulseCond = cond & 3
-	e.stats.TrigQual = qualOf(e.tp)
+	e.tp.PulseLvlFrac = core.ClampFrac(lvlFrac)
+	e.tp.PulseWMinNs, e.tp.PulseWMaxNs = core.OrderPair(wMinNs, wMaxNs)
+	e.tp.PulseCond = cond & 3
+	e.stats.TrigQual = core.QualOf(e.tp)
 	e.mu.Unlock()
 }
 
@@ -43,10 +44,10 @@ func (e *Engine) SetPulseParams(lvlFrac, wMinNs, wMaxNs float64, cond int) {
 // TRLC-LINKS: REQ-SDS-011
 func (e *Engine) SetSlopeParams(loFrac, hiFrac, tMinNs, tMaxNs float64, cond int) {
 	e.mu.Lock()
-	e.tp.slopeLoFrac, e.tp.slopeHiFrac = orderPair(clampFrac(loFrac), clampFrac(hiFrac))
-	e.tp.slopeTMinNs, e.tp.slopeTMaxNs = orderPair(tMinNs, tMaxNs)
-	e.tp.slopeCond = cond & 3
-	e.stats.TrigQual = qualOf(e.tp)
+	e.tp.SlopeLoFrac, e.tp.SlopeHiFrac = core.OrderPair(core.ClampFrac(loFrac), core.ClampFrac(hiFrac))
+	e.tp.SlopeTMinNs, e.tp.SlopeTMaxNs = core.OrderPair(tMinNs, tMaxNs)
+	e.tp.SlopeCond = cond & 3
+	e.stats.TrigQual = core.QualOf(e.tp)
 	e.mu.Unlock()
 }
 
@@ -61,33 +62,9 @@ func (e *Engine) SetVideoParams(std, line int, neg bool) {
 		line = 0
 	}
 	e.mu.Lock()
-	e.tp.videoStd, e.tp.videoLine, e.tp.videoNeg = std, line, neg
-	e.stats.TrigQual = qualOf(e.tp)
+	e.tp.VideoStd, e.tp.VideoLine, e.tp.VideoNeg = std, line, neg
+	e.stats.TrigQual = core.QualOf(e.tp)
 	e.mu.Unlock()
-}
-
-// orderPair reads a qualifier's two limits as a range whichever way round
-// they came: an inverted pair (W max under W min, slope High under Low, from
-// the web or SCPI) would never trigger. A zero limit is "unset"
-// (e.g. T max under "<min") and is left where it is.
-// TRLC-LINKS: REQ-SDS-011
-func orderPair(lo, hi float64) (float64, float64) {
-	if lo > hi && hi > 0 {
-		return hi, lo
-	}
-	return lo, hi
-}
-
-// clampFrac clamps a level fraction to [0, 1].
-// TRLC-LINKS: REQ-SDS-011
-func clampFrac(f float64) float64 {
-	if f < 0 {
-		return 0
-	}
-	if f > 1 {
-		return 1
-	}
-	return f
 }
 
 // SetAcqMode selects the acquisition mode (Acq*; out of range is normal).
@@ -123,7 +100,7 @@ func (e *Engine) SetAvgCount(n int) {
 // SetEresLen sets the ERES boxcar length (clamped like EresLenForBits).
 // TRLC-LINKS: REQ-SDS-012
 func (e *Engine) SetEresLen(l int) {
-	l = clampEresLen(l)
+	l = core.ClampEresLen(l)
 	e.eresLen.Store(int32(l)) //nolint:gosec // G115: clampEresLen bounds it to 1..64
 	e.mu.Lock()
 	e.stats.EresLen = l

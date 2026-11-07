@@ -3,6 +3,7 @@
 package engine
 
 import (
+	core "github.com/labeth/open-dso-core/engine"
 	"testing"
 	"time"
 )
@@ -14,14 +15,14 @@ import (
 // TRLC-LINKS: REQ-SDS-040
 func TestQBufferLetsGoOfADeepRecordsBuffer(t *testing.T) {
 	deep := make([]uint16, 1<<20)
-	if q := qBuffer(deep, 4096); cap(q) >= 1<<20 {
+	if q := core.QBuffer(deep, 4096); cap(q) >= 1<<20 {
 		t.Fatalf("a live frame kept the deep buffer (cap %d)", cap(q))
 	}
-	if q := qBuffer(deep, 1<<20-5); &q[0] != &deep[0] {
+	if q := core.QBuffer(deep, 1<<20-5); &q[0] != &deep[0] {
 		t.Fatal("a buffer that fits was not reused")
 	}
 	small := make([]uint16, 8192)
-	if q := qBuffer(small, 1000); &q[0] != &small[0] {
+	if q := core.QBuffer(small, 1000); &q[0] != &small[0] {
 		t.Fatal("a small buffer was not reused")
 	}
 }
@@ -31,18 +32,18 @@ func TestQBufferLetsGoOfADeepRecordsBuffer(t *testing.T) {
 // sample from before the release is read back.
 // TRLC-LINKS: REQ-SDS-265
 func TestSoundRingReleasesItsSamples(t *testing.T) {
-	r := newSoundRing(12)
+	r := core.NewSoundRing(12)
 	now := time.Unix(1, 0)
-	r.pushWords(soundWords(0, 3000), SoundScale{}, false, now)
-	r.release()
-	if len(r.q[0]) != 0 {
+	r.PushWords(soundWords(0, 3000), SoundScale{}, false, now)
+	r.Release()
+	if len(r.Q[0]) != 0 {
 		t.Fatal("the samples were kept")
 	}
-	if b := r.read(0, 5000, nil, nil, 1); b.N != 0 || b.First != 3000 {
+	if b := r.Read(0, 5000, nil, nil, 1); b.N != 0 || b.First != 3000 {
 		t.Fatalf("read after the release: first %d n %d", b.First, b.N)
 	}
-	r.pushWords(soundWords(3000, 100), SoundScale{}, true, now)
-	b := r.read(0, 5000, nil, nil, 1)
+	r.PushWords(soundWords(3000, 100), SoundScale{}, true, now)
+	b := r.Read(0, 5000, nil, nil, 1)
 	if b.First != 3000 || b.N != 100 || b.Q1[0] != 3000 || b.Next != 3100 {
 		t.Fatalf("after the release: first %d n %d q %d next %d", b.First, b.N, b.Q1[0], b.Next)
 	}

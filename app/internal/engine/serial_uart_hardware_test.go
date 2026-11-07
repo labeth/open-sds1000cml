@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	core "github.com/labeth/open-dso-core/engine"
 	"github.com/labeth/open-sds1000cml/app/internal/sramcapture"
 )
 
@@ -30,7 +31,7 @@ func TestGeneralUARTReach(t *testing.T) {
 // decoder reads, a bit time in sixteenths of a nanosecond, to 62.5 MBd.
 // TRLC-LINKS: REQ-SDS-229
 func TestPlanHardwareSampleUART(t *testing.T) {
-	p := SerialParams{Proto: serUART, Baud: 50000000, Bits: 9, Parity: "odd", ChA: 1, Inverted: true, HaveThr: true, Threshold: 120, Bytes: []int{0x55, 0xaa}}
+	p := SerialParams{Proto: core.SerUART, Baud: 50000000, Bits: 9, Parity: "odd", ChA: 1, Inverted: true, HaveThr: true, Threshold: 120, Bytes: []int{0x55, 0xaa}}
 	if planHardwareUART(&p, false).Enabled {
 		t.Fatal("50 MBd 9O1 planned on the level receiver")
 	}
@@ -64,7 +65,7 @@ func TestPlanHardwareSampleUART(t *testing.T) {
 // TRLC-LINKS: REQ-SDS-229
 func TestFastImageTakesFastUART(t *testing.T) {
 	e, b, images := newPacketTestEngine(t)
-	slow := SerialParams{Proto: serUART, Baud: 115200, ChA: 0, HaveThr: true, Threshold: 128, Bytes: []int{0x48}}
+	slow := SerialParams{Proto: core.SerUART, Baud: 115200, ChA: 0, HaveThr: true, Threshold: 128, Bytes: []int{0x48}}
 	e.SetSerialParams(slow)
 	e.SetSerialMode(SerialTrigger)
 	if e.serviceImage() || b.image != "general" {
@@ -73,7 +74,7 @@ func TestFastImageTakesFastUART(t *testing.T) {
 	if cfg, _, _, _, _ := e.sramConfig(); !cfg.UART.Enabled || cfg.UART.BitTicks != 1085 || cfg.UART.Period16 != 0 {
 		t.Fatalf("115200 Bd plan %+v", cfg.UART)
 	}
-	e.SetSerialParams(SerialParams{Proto: serUART, Baud: 62500000, ChA: 0, HaveThr: true, Threshold: 128, Bytes: []int{0x48}})
+	e.SetSerialParams(SerialParams{Proto: core.SerUART, Baud: 62500000, ChA: 0, HaveThr: true, Threshold: 128, Bytes: []int{0x48}})
 	if !e.serviceImage() || b.image != "fast" || !e.hardwareSampleUART {
 		t.Fatalf("62.5 MBd: loads %v image %s", images.loads, b.image)
 	}
@@ -102,7 +103,7 @@ func TestFastImageTakesFastUART(t *testing.T) {
 // TRLC-LINKS: REQ-SDS-229
 func TestFastImageTakesFastI2C(t *testing.T) {
 	e, b, images := newPacketTestEngine(t)
-	p := SerialParams{Proto: serI2C, ChA: 0, ChB: 1, Addr: 0x50, RW: 2, HaveThr: true, Threshold: 128, I2CClockHz: 1000000}
+	p := SerialParams{Proto: core.SerI2C, ChA: 0, ChB: 1, Addr: 0x50, RW: 2, HaveThr: true, Threshold: 128, I2CClockHz: 1000000}
 	e.SetSerialParams(p)
 	e.SetSerialMode(SerialTrigger)
 	if e.serviceImage() || b.image != "general" {

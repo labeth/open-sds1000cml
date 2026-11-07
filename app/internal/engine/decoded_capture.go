@@ -11,43 +11,17 @@ import (
 	"sync"
 	"time"
 
+	core "github.com/labeth/open-dso-core/engine"
 	"github.com/labeth/open-sds1000cml/app/internal/bus"
 	"github.com/labeth/open-sds1000cml/app/internal/sramcapture"
 )
-
-// ownerJob is work another goroutine hands the owner loop: run on the owner,
-// unless the caller's context ended (cancelled reports it) before the owner
-// came to it; the reply goes to done.
-type ownerJob struct {
-	cancelled func() error
-	run       func() (any, error)
-	done      chan ownerReply
-}
-
-// ownerReply is an owner job's result.
-type ownerReply struct {
-	value any
-	err   error
-}
-
-// serve runs the job on the owner and reports whether it ran.
-// TRLC-LINKS: REQ-SDS-001
-func (j ownerJob) serve() bool {
-	if err := j.cancelled(); err != nil {
-		j.done <- ownerReply{err: err}
-		return false
-	}
-	value, err := j.run()
-	j.done <- ownerReply{value, err}
-	return true
-}
 
 // callOwner queues run for the owner loop and waits for its reply. A caller
 // whose context ends gets its error at once; a job already running still
 // runs to completion.
 // TRLC-LINKS: REQ-SDS-001
-func (e *Engine) callOwner(ctx context.Context, queue chan<- ownerJob, run func() (any, error)) (any, error) {
-	job := ownerJob{cancelled: ctx.Err, run: run, done: make(chan ownerReply, 1)}
+func (e *Engine) callOwner(ctx context.Context, queue chan<- core.OwnerJob, run func() (any, error)) (any, error) {
+	job := core.OwnerJob{Cancelled: ctx.Err, Run: run, Done: make(chan core.OwnerReply, 1)}
 	select {
 	case queue <- job:
 	case <-ctx.Done():
@@ -56,27 +30,13 @@ func (e *Engine) callOwner(ctx context.Context, queue chan<- ownerJob, run func(
 		return nil, ErrStopped
 	}
 	select {
-	case r := <-job.done:
-		return r.value, r.err
+	case r := <-job.Done:
+		return r.Value, r.Err
 	case <-ctx.Done():
 		return nil, ctx.Err()
 	case <-e.done:
 		return nil, ErrStopped
 	}
-}
-
-// ownerResult converts an owner call's reply to the type its run returns.
-// TRLC-LINKS: REQ-SDS-001
-func ownerResult[T any](value any, err error) (T, error) {
-	var zero T
-	if err != nil {
-		return zero, err
-	}
-	v, ok := value.(T)
-	if !ok {
-		return zero, fmt.Errorf("owner call returned %T, not %T", value, zero)
-	}
-	return v, nil
 }
 
 const decodedBufferLimit = 131072 // 5 MiB; finite client-backpressure allowance
@@ -122,7 +82,7 @@ func (e *Engine) serviceDecodedRequests() {
 	for range 8 {
 		select {
 		case job := <-e.decodedRequests:
-			if job.serve() {
+			if job.Serve() {
 				e.beatN.Add(1)
 			}
 		default:
@@ -346,7 +306,7 @@ func (e *Engine) beginDecodedCapture(ctx context.Context, cfg sramcapture.Config
 		e.mu.Unlock()
 		return session.Identity, nil
 	})
-	return ownerResult[sramcapture.RecordIdentity](value, err)
+	return core.OwnerResult[sramcapture.RecordIdentity](value, err)
 }
 
 // decodedTaken refuses a web page's decoded capture while the scope's own
@@ -453,7 +413,7 @@ func (e *Engine) DecodedCaptureStatus(ctx context.Context, id sramcapture.Record
 		}
 		return m, nil
 	})
-	return ownerResult[sramcapture.Metadata](value, err)
+	return core.OwnerResult[sramcapture.Metadata](value, err)
 }
 
 // RecallDecodedRecord stages raw data before returning to the network layer.
@@ -530,7 +490,7 @@ func (e *Engine) EndWebDecodedCapture(ctx context.Context) (bool, error) {
 		e.logf("engine: the scope's keys end the web page's decoded capture")
 		return true, e.endDecoded(ctx, false)
 	})
-	return ownerResult[bool](v, err)
+	return core.OwnerResult[bool](v, err)
 }
 
 // expireDecoded ends a web page's session no client has touched for

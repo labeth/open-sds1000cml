@@ -6,6 +6,7 @@ import (
 	"math"
 	"testing"
 
+	core "github.com/labeth/open-dso-core/engine"
 	"github.com/labeth/open-dso-core/sample"
 )
 
@@ -31,16 +32,16 @@ func pulseTrain(n int, widths []int, gap int, lo, hi uint8) []uint8 {
 func TestQualifyPulseWidthWindow(t *testing.T) {
 	// Pulses of 10, 50, 10 samples at 100 ns/sample → 1 µs, 5 µs, 1 µs.
 	sig := pulseTrain(1000, []int{10, 50, 10}, 200, 50, 200)
-	p := defaultTrigParams()
+	p := core.DefaultTrigParams()
 
 	// cond=any: every pulse qualifies; anchor = completing edge nearest centre.
-	if xc := qualifyPulse(sig, 100, p, true); xc < 0 {
+	if xc := core.QualifyPulse(sig, 100, p, true); xc < 0 {
 		t.Fatal("any: no pulse found")
 	}
 
 	// inside [4µs, 6µs]: only the 50-sample (5 µs) pulse qualifies.
-	p.pulseWMinNs, p.pulseWMaxNs, p.pulseCond = 4000, 6000, CondInside
-	xc := qualifyPulse(sig, 100, p, true)
+	p.PulseWMinNs, p.PulseWMaxNs, p.PulseCond = 4000, 6000, CondInside
+	xc := core.QualifyPulse(sig, 100, p, true)
 	// The 5 µs pulse spans samples 410..459; its completing (falling) edge
 	// is at ~460.
 	if xc < 455 || xc > 465 {
@@ -48,14 +49,14 @@ func TestQualifyPulseWidthWindow(t *testing.T) {
 	}
 
 	// greater than 6µs: nothing qualifies → hold.
-	p.pulseWMinNs, p.pulseWMaxNs, p.pulseCond = 0, 6000, CondGreater
-	if xc := qualifyPulse(sig, 100, p, true); xc != -1 {
+	p.PulseWMinNs, p.PulseWMaxNs, p.PulseCond = 0, 6000, CondGreater
+	if xc := core.QualifyPulse(sig, 100, p, true); xc != -1 {
 		t.Fatalf("greater: got %v, want -1", xc)
 	}
 
 	// less than 2µs: the 1 µs pulses qualify.
-	p.pulseWMinNs, p.pulseWMaxNs, p.pulseCond = 2000, 0, CondLess
-	if xc := qualifyPulse(sig, 100, p, true); xc < 0 {
+	p.PulseWMinNs, p.PulseWMaxNs, p.PulseCond = 2000, 0, CondLess
+	if xc := core.QualifyPulse(sig, 100, p, true); xc < 0 {
 		t.Fatal("less: no 1µs pulse found")
 	}
 }
@@ -76,231 +77,14 @@ func TestQualifyPulseLowPolarity(t *testing.T) {
 	for i := 480; i < 500; i++ {
 		sig[i] = 50
 	}
-	p := defaultTrigParams()
-	xc := qualifyPulse(sig, 100, p, false) // low pulse
+	p := core.DefaultTrigParams()
+	xc := core.QualifyPulse(sig, 100, p, false) // low pulse
 	// Completing edge = the rising exit at ~500.
 	if xc < 495 || xc > 505 {
 		t.Fatalf("low pulse anchor %v, want ≈500", xc)
 	}
-	if xc := qualifyPulse(sig, 100, p, true); xc >= 480 && xc < 500 {
+	if xc := core.QualifyPulse(sig, 100, p, true); xc >= 480 && xc < 500 {
 		t.Fatalf("high-pulse search anchored inside the low dip: %v", xc)
-	}
-}
-
-// TRLC-LINKS: REQ-SDS-011
-func TestQualifyPulseFlatReject(t *testing.T) {
-	flat := make([]uint8, 500)
-	for i := range flat {
-		flat[i] = 128 + uint8(i%3) // 2-code noise
-	}
-	if xc := qualifyPulse(flat, 100, defaultTrigParams(), true); xc != -1 {
-		t.Fatalf("flat rail produced pulse event %v", xc)
-	}
-}
-
-// TRLC-LINKS: REQ-SDS-011
-func TestQualifySlope(t *testing.T) {
-	// A slow ramp (100 samples lo→hi) and a fast step, both rising.
-	sig := make([]uint8, 2000)
-	for i := range sig {
-		sig[i] = 50
-	}
-	for i := range 100 { // slow ramp at 500..599: 50 → 200
-		sig[500+i] = uint8(50 + 150*i/100)
-	}
-	for i := 600; i < 1400; i++ {
-		sig[i] = 200
-	}
-	sig[1400] = 50 // fall back
-	for i := 1401; i < 2000; i++ {
-		sig[i] = 50
-	}
-
-	p := defaultTrigParams()
-	// lo=0.2, hi=0.8 of span 150: lo≈80, hi≈170. The ramp crosses lo at
-	// ~i=520 and hi at ~i=580 → traversal ≈60 samples ≈ 6 µs at 100 ns.
-	p.slopeTMinNs, p.slopeTMaxNs, p.slopeCond = 4000, 8000, CondInside
-	xc := qualifySlope(sig, 100, p, true)
-	if xc < 570 || xc > 590 {
-		t.Fatalf("slope anchor %v, want ≈580 (second-threshold crossing)", xc)
-	}
-
-	// A window that excludes the 6 µs traversal → hold.
-	p.slopeTMinNs, p.slopeTMaxNs, p.slopeCond = 0, 1000, CondInside
-	if xc := qualifySlope(sig, 100, p, true); xc != -1 {
-		t.Fatalf("slope traversal should not qualify: %v", xc)
-	}
-}
-
-// TRLC-LINKS: REQ-SDS-011
-func TestQualifySlopeSingleStepEdge(t *testing.T) {
-	// A hard square edge that spans lo→hi in ONE sample step (the decimated
-	// cal-square case): the traversal exists at index c with time 0 and must
-	// be found, not missed.
-	sig := make([]uint8, 2048)
-	for i := range sig {
-		if (i/256)%2 == 0 {
-			sig[i] = 40
-		} else {
-			sig[i] = 210
-		}
-	}
-	p := defaultTrigParams() // loFrac 0.2, hiFrac 0.8, cond any
-	xc := qualifySlope(sig, 400, p, true)
-	if xc < 0 {
-		t.Fatal("single-step rising edge not detected (regression: k must start at c)")
-	}
-	// Rising crossings (40→210) are at 256, 768, 1280, 1792; the nearest to
-	// centre 1024 is 768 (tie with 1280, first wins). The sub-sample frac is
-	// (lvl−40)/(210−40) with lvl≈170.
-	if xc < 767 || xc > 769 {
-		t.Fatalf("single-step slope anchor %v, want ≈768 (nearest rising crossing)", xc)
-	}
-}
-
-// TRLC-LINKS: REQ-SDS-011
-func TestQualifyVideo(t *testing.T) {
-	// Composite-ish: negative sync pulses every 200 samples dipping to 20
-	// from a 150 rail; "video" content rides above.
-	sig := make([]uint8, 2000)
-	for i := range sig {
-		sig[i] = 150
-	}
-	for line := range 10 {
-		base := line * 200
-		for i := range 15 {
-			if base+i < len(sig) {
-				sig[base+i] = 20
-			}
-		}
-	}
-	p := defaultTrigParams() // PAL, line 0 (any), negative sync
-
-	// Any line: the sync edge nearest the centre (sample 1000 → line 5 at 1000).
-	xc := qualifyVideo(sig, 320, p)
-	if xc < 995 || xc > 1005 {
-		t.Fatalf("video any-line anchor %v, want ≈1000", xc)
-	}
-
-	// Line 3: the 3rd sync EDGE in the record. The record starts inside the
-	// first sync pulse (no crossing), so detected edges are at ≈200, 400,
-	// 600 — the 3rd is ≈600.
-	p.videoLine = 3
-	xc = qualifyVideo(sig, 320, p)
-	if xc < 595 || xc > 605 {
-		t.Fatalf("video line-3 anchor %v, want ≈600", xc)
-	}
-
-	// A plain square (100 us levels at 320 ns samples) has no line syncs.
-	sq := make([]uint8, 2000)
-	for i := range sq {
-		sq[i] = 20
-		if (i/312)%2 == 0 {
-			sq[i] = 150
-		}
-	}
-	p.videoLine = 0
-	if xc := qualifyVideo(sq, 320, p); xc != -1 {
-		t.Fatalf("a square wave triggered VIDEO at %v", xc)
-	}
-	p.videoLine = 3
-
-	// Line 100: fewer than 100 sync edges → hold.
-	p.videoLine = 100
-	if xc := qualifyVideo(sig, 320, p); xc != -1 {
-		t.Fatalf("line-100 with 10 lines: %v, want -1", xc)
-	}
-}
-
-// TRLC-LINKS: REQ-SDS-012
-func TestEresBoxcar(t *testing.T) {
-	// A boxcar of 15 shrinks σ ≈ √15; check it smooths an alternating signal
-	// to near its mean and preserves the ends without wrap.
-	sig := make([]uint8, 200)
-	for i := range sig {
-		if i%2 == 0 {
-			sig[i] = 100
-		} else {
-			sig[i] = 140
-		}
-	}
-	scratch := make([]uint16, 200)
-	eresBoxcar(sig, 15, scratch)
-	for i := 20; i < 180; i++ {
-		if sig[i] < 115 || sig[i] > 125 {
-			t.Fatalf("boxcar[%d] = %d, want ≈120", i, sig[i])
-		}
-	}
-	// Ends: kernel shrinks (no wrap, no fabricated tail) — still near mean.
-	if sig[0] < 110 || sig[0] > 130 {
-		t.Fatalf("boxcar[0] = %d (shrunk kernel)", sig[0])
-	}
-}
-
-// TRLC-LINKS: REQ-SDS-012
-func TestEresLenForBits(t *testing.T) {
-	cases := map[float64]int{0.5: 1, 1.0: 3, 1.5: 7, 2.0: 15, 2.5: 31, 3.0: 63}
-	for b, want := range cases {
-		if got := EresLenForBits(b); got != want {
-			t.Errorf("EresLenForBits(%v) = %d, want %d (even → odd-down)", b, got, want)
-		}
-	}
-}
-
-// TRLC-LINKS: REQ-SDS-012
-func TestAverageRing(t *testing.T) {
-	r := &avgRing{}
-	r.reset(4, 100)
-	f := &sample.Frame{Traces: []sample.Trace{{Codes8: make([]uint8, 1000), Valid: 1000}, {Ch: 1, Codes8: make([]uint8, 1000), Valid: 1000}}}
-	// Frames with an edge at varying positions; alignment centres them all.
-	for k := range 4 {
-		edge := 480 + k*10
-		for i := range f.Codes8(0) {
-			if i < edge {
-				f.Codes8(0)[i] = 60
-			} else {
-				f.Codes8(0)[i] = 200
-			}
-			f.Codes8(1)[i] = f.Codes8(0)[i]
-		}
-		r.push(f, float64(edge))
-	}
-	r.meanInto(f)
-	if f.Len() != 100 || f.TriggerAt != 50 {
-		t.Fatalf("mean frame: valid=%d edge=%v, want 100/50", f.Len(), f.TriggerAt)
-	}
-	// After alignment every ring entry has its edge at column 50: the mean
-	// must be a sharp edge (low before, high after), not a smear.
-	if f.Codes8(0)[40] != 60 || f.Codes8(0)[60] != 200 {
-		t.Fatalf("aligned mean: c1[40]=%d c1[60]=%d, want 60/200", f.Codes8(0)[40], f.Codes8(0)[60])
-	}
-}
-
-// TRLC-LINKS: REQ-SDS-012
-func TestAverageRingNoOffRecordBias(t *testing.T) {
-	// Frames whose edge is far off centre contribute off-record columns at
-	// one window end; those must NOT be averaged as a fabricated 128 —
-	// otherwise the window edge is pulled toward mid-scale.
-	r := &avgRing{}
-	r.reset(4, 200)
-	f := &sample.Frame{Traces: []sample.Trace{{Codes8: make([]uint8, 400), Valid: 400}, {Ch: 1, Codes8: make([]uint8, 400), Valid: 400}}}
-	for range 4 {
-		for i := range f.Codes8(0) {
-			f.Codes8(0)[i], f.Codes8(1)[i] = 40, 40 // a flat low rail, no 128 anywhere
-		}
-		r.push(f, 350) // edge at 350 → shift 250; left columns fall off-record
-	}
-	r.meanInto(f)
-	// Every contributing column is 40; no column should read the 128 fill.
-	for i := range 200 {
-		if f.Codes8(0)[i] != 40 && f.Codes8(0)[i] != 128 {
-			t.Fatalf("col %d = %d, expected 40 (real) or 128 (no-contribution)", i, f.Codes8(0)[i])
-		}
-		// Columns that DID have contributions must be the real 40, not a
-		// 40/128 blend (e.g. 84).
-		if f.Codes8(0)[i] > 40 && f.Codes8(0)[i] < 128 {
-			t.Fatalf("col %d = %d is a fabricated-fill blend", i, f.Codes8(0)[i])
-		}
 	}
 }
 
@@ -386,80 +170,23 @@ func TestQualifyPulseAnchorsWithinScreenSpan(t *testing.T) {
 		widths[i] = 10
 	}
 	sig := pulseTrain(2000, widths, 100, 50, 200)
-	p := defaultTrigParams()
+	p := core.DefaultTrigParams()
 	at := softAnchor(len(sig), 1000, 0.2, 400)
-	if at.lo != 200 || at.hi != 1200 {
+	if at.Lo != 200 || at.Hi != 1200 {
 		t.Fatalf("span %+v", at)
 	}
-	x := qualifyPulseAt(sig, 1, p, true, at)
+	x := core.QualifyPulseAt(sig, 1, p, true, at)
 	if x < 350 || x > 450 {
 		t.Fatalf("anchor %.1f, want the pulse ending nearest the hardware edge at 400", x)
 	}
 	// No hardware edge: still inside the fillable span.
-	if x := qualifyPulseAt(sig, 1, p, true, softAnchor(len(sig), 1000, 0.8, -1)); x < 800 || x > 1800 {
+	if x := core.QualifyPulseAt(sig, 1, p, true, softAnchor(len(sig), 1000, 0.8, -1)); x < 800 || x > 1800 {
 		t.Fatalf("anchor %.1f outside [800,1800]", x)
 	}
 	// A pulse only outside the span is no trigger.
 	only := pulseTrain(2000, []int{10}, 1900, 50, 200)
-	if x := qualifyPulseAt(only, 1, p, true, at); x >= 0 {
+	if x := core.QualifyPulseAt(only, 1, p, true, at); x >= 0 {
 		t.Fatalf("anchored at %.1f outside the span", x)
-	}
-}
-
-// A stopped record re-expressed at a new V/div and offset reads the same
-// volts there; codes beyond the screen clip.
-// TRLC-LINKS: REQ-SDS-015, REQ-SDS-040
-func TestRescaleCodesKeepsVolts(t *testing.T) {
-	volts := func(code float64, s chScale) float64 { return (code-128)*s.vdiv/25 - s.off }
-	from, to := chScale{vdiv: 2, off: 0}, chScale{vdiv: 1, off: -1}
-	c := []uint8{128, 169, 87, 250}
-	q := []uint16{128 << 8, 169 << 8, 87 << 8, 250 << 8}
-	want := make([]float64, len(c))
-	for i, v := range c {
-		want[i] = volts(float64(v), from)
-	}
-	rescaleCodes(c, q, from, to)
-	for i := range 3 {
-		if got := volts(float64(c[i]), to); math.Abs(got-want[i]) > to.vdiv/25 {
-			t.Fatalf("code %d reads %.3f V, captured %.3f V", i, got, want[i])
-		}
-		if got := volts(float64(q[i])/256, to); math.Abs(got-want[i]) > 1e-3 {
-			t.Fatalf("Q8 %d reads %.4f V, captured %.4f V", i, got, want[i])
-		}
-	}
-	if c[3] != 255 || q[3] != 65535 {
-		t.Fatalf("off-screen code %d / %d, want clipped", c[3], q[3])
-	}
-}
-
-// A hardware trigger stands only where the calibrated record crosses the
-// level in the trigger's direction; converter noise on a flat baseline does
-// not.
-// TRLC-LINKS: REQ-SDS-011, REQ-SDS-016
-func TestConfirmTriggerEdge(t *testing.T) {
-	edge := make([]uint8, 200)
-	flat := make([]uint8, 200)
-	for i := range edge {
-		edge[i], flat[i] = 128, uint8(128+i%2)
-		if i >= 100 {
-			edge[i] = 144
-		}
-	}
-	if !confirmTriggerEdge(edge, nil, 200, 98, 136, true, false) {
-		t.Fatal("real rising edge refused")
-	}
-	if confirmTriggerEdge(edge, nil, 200, 98, 136, false, false) {
-		t.Fatal("rising edge accepted as falling")
-	}
-	if confirmTriggerEdge(flat, nil, 200, 98, 136, true, false) {
-		t.Fatal("flat baseline accepted")
-	}
-	if confirmTriggerEdge(edge, nil, 200, 160, 136, true, false) {
-		t.Fatal("edge 60 samples away accepted")
-	}
-	env := []uint8{128, 129, 128, 129, 128, 144, 143, 144, 143, 144}
-	if !confirmTriggerEdge(env, nil, len(env), 4, 136, true, true) || confirmTriggerEdge(env[:4], nil, 4, 2, 136, true, true) {
-		t.Fatal("envelope confirmation")
 	}
 }
 
@@ -490,52 +217,22 @@ func TestACTriggerLevelFollowsMean(t *testing.T) {
 	}
 }
 
-// A step in averaged samples reads as a one-interval ramp: SLOPE > min must
-// not fire on it, while a genuinely slow ramp still qualifies.
-// TRLC-LINKS: REQ-SDS-011
-func TestSlopeStepIsNotSlow(t *testing.T) {
-	p := trigParams{typ: TrigSlope, slopeLoFrac: 0.2, slopeHiFrac: 0.8, slopeTMaxNs: 1000, slopeCond: CondGreater} // > max
-	step := make([]uint8, 200)
-	for i := range step {
-		step[i] = 50
-		if i > 100 {
-			step[i] = 200
-		}
-	}
-	step[100] = 140 // the sample whose interval holds the edge
-	if x := qualifySlope(step, 4864, p, true); x >= 0 {
-		t.Fatalf("a step qualified as a slope > 1 us at %v", x)
-	}
-	ramp := make([]uint8, 200)
-	for i := range ramp {
-		v := 50 + (i-90)*15
-		ramp[i] = uint8(min(200, max(50, v)))
-	}
-	if x := qualifySlope(ramp, 4864, p, true); x < 0 {
-		t.Fatal("a 10-sample ramp (~49 us) should qualify as a slope > 1 us")
-	}
-	p.slopeCond, p.slopeTMinNs, p.slopeTMaxNs = CondLess, 1000, 0 // < min
-	if x := qualifySlope(step, 4864, p, true); x < 0 {
-		t.Fatal("a step should qualify as a slope < 1 us")
-	}
-}
-
 // An inverted qualifier range from the web or SCPI is read as a range; a
 // zero limit stays "unset".
 // TRLC-LINKS: REQ-SDS-011
 func TestQualifierLimitsOrdered(t *testing.T) {
 	e := &Engine{}
 	e.SetPulseParams(0.5, 3000, 2000, CondInside)
-	if e.tp.pulseWMinNs != 2000 || e.tp.pulseWMaxNs != 3000 {
-		t.Fatalf("pulse %g..%g", e.tp.pulseWMinNs, e.tp.pulseWMaxNs)
+	if e.tp.PulseWMinNs != 2000 || e.tp.PulseWMaxNs != 3000 {
+		t.Fatalf("pulse %g..%g", e.tp.PulseWMinNs, e.tp.PulseWMaxNs)
 	}
 	e.SetSlopeParams(0.3, 0.2, 1000, 500, CondInside)
-	if e.tp.slopeLoFrac != 0.2 || e.tp.slopeHiFrac != 0.3 || e.tp.slopeTMinNs != 500 || e.tp.slopeTMaxNs != 1000 {
+	if e.tp.SlopeLoFrac != 0.2 || e.tp.SlopeHiFrac != 0.3 || e.tp.SlopeTMinNs != 500 || e.tp.SlopeTMaxNs != 1000 {
 		t.Fatalf("slope %+v", e.tp)
 	}
 	e.SetSlopeParams(0.2, 0.8, 1000, 0, CondLess)
-	if e.tp.slopeTMinNs != 1000 || e.tp.slopeTMaxNs != 0 {
-		t.Fatalf("unset T max moved: %g..%g", e.tp.slopeTMinNs, e.tp.slopeTMaxNs)
+	if e.tp.SlopeTMinNs != 1000 || e.tp.SlopeTMaxNs != 0 {
+		t.Fatalf("unset T max moved: %g..%g", e.tp.SlopeTMinNs, e.tp.SlopeTMaxNs)
 	}
 }
 

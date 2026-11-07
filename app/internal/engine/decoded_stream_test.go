@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	core "github.com/labeth/open-dso-core/engine"
 	"github.com/labeth/open-sds1000cml/app/internal/sramcapture"
 )
 
@@ -14,12 +15,12 @@ import (
 // value within the unit; the manual element is out of every unit's range.
 // TRLC-LINKS: REQ-SDS-018
 func TestStreamTriggerPatternsPlan(t *testing.T) {
-	p := SerialParams{Proto: serUART, Baud: 115200, ChA: 1, HaveThr: true, Threshold: 169}
-	p.Pattern = []PatternElem{{Kind: patternError}}
+	p := SerialParams{Proto: core.SerUART, Baud: 115200, ChA: 1, HaveThr: true, Threshold: 169}
+	p.Pattern = []PatternElem{{Kind: core.PatternError}}
 	if c := planSequence(p); c.Length != 1 || c.Elements[0].Kind != sramcapture.SequenceError {
 		t.Fatalf("error trigger: %+v", c)
 	}
-	p.Pattern = []PatternElem{{Kind: patternData, Value: 0x55, Mask: unitMask(p)}}
+	p.Pattern = []PatternElem{{Kind: core.PatternData, Value: 0x55, Mask: core.UnitMask(p)}}
 	if c := planSequence(p); c.Length != 1 || c.Elements[0].Value != 0x55 {
 		t.Fatalf("value trigger: %+v", c)
 	}
@@ -34,7 +35,7 @@ func TestStreamTriggerPatternsPlan(t *testing.T) {
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-228
 func TestStreamLeftForLiveOrStartedAgain(t *testing.T) {
 	e := webSessionEngine(t, false, time.Second)
-	e.clk = realClock()
+	e.clk = core.RealClock()
 	e.adopt = &adoptedRecord{}
 	e.DiscardDecodedRecord()
 	if e.takeAdopted() != nil {

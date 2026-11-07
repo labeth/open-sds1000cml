@@ -3,6 +3,7 @@
 package engine
 
 import (
+	core "github.com/labeth/open-dso-core/engine"
 	"math"
 	"testing"
 )
@@ -24,7 +25,7 @@ func TestNearerCrossTakesTheMatchEdge(t *testing.T) {
 		}
 	}
 	const anchor = 100.0 // the decoder's start of the matched byte
-	lvl := midLevel(sig)
+	lvl := core.MidLevel(sig)
 	if got := nearerCrossHint(sig, lvl, anchor); math.Abs(got-anchor) > 1.5 {
 		t.Fatalf("nearer crossing %.1f, want the start bit's falling edge at %.0f", got, anchor)
 	}

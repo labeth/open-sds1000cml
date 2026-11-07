@@ -2,6 +2,8 @@
 
 package engine
 
+import core "github.com/labeth/open-dso-core/engine"
+
 // realDepth is the count of leading samples the FPGA actually captured, before
 // the native-fast DEAD TAIL. When the HW freezes a half record, DrainInto reads
 // past the captured samples by cycling its 5 stream ports (0x30-0x34), so once
@@ -14,7 +16,7 @@ package engine
 // tail. A flat record (no signal) has no tail to trim — return full.
 // TRLC-LINKS: REQ-SDS-009, REQ-SDS-128
 func realDepth(sig []uint8) int {
-	_, _, p := ptp(sig)
+	_, _, p := core.Ptp(sig)
 	return realDepthP(sig, p)
 }
 
@@ -53,7 +55,7 @@ func windowSlopeMatches(sig []uint8, xc float64, winCols int, rising bool) bool 
 	if !lok || !rok {
 		return true
 	}
-	lo, hi, _ := ptp(sig)
+	lo, hi, _ := core.Ptp(sig)
 	margin := float64(hi-lo) / 8
 	if rising {
 		return right-left >= -margin

@@ -7,6 +7,7 @@ import (
 	"math/bits"
 
 	"github.com/labeth/open-dso-core/decode"
+	core "github.com/labeth/open-dso-core/engine"
 	"github.com/labeth/open-sds1000cml/app/internal/sramcapture"
 )
 
@@ -17,7 +18,7 @@ import (
 // reads it, bit for bit in the block's bit source.
 // TRLC-LINKS: REQ-SDS-013, REQ-SDS-257
 func physSymbolSpec(p *SerialParams, s *symSpec) bool { //nolint:gocyclo,funlen // one case per protocol: the table reads as one
-	if p.Baud <= 0 && p.Proto != serSDCard && p.Proto != serPDI && p.Proto != serCJTAG {
+	if p.Baud <= 0 && p.Proto != core.SerSDCard && p.Proto != core.SerPDI && p.Proto != core.SerCJTAG {
 		return false
 	}
 	T := 1 / float64(max(1, p.Baud))
@@ -35,18 +36,18 @@ func physSymbolSpec(p *SerialParams, s *symSpec) bool { //nolint:gocyclo,funlen 
 	// a bit as Manchester half levels: first half v (high is a 1)
 	manch := func(b *symBits, v, care bool) { b.put(v, care); b.put(!v, care) }
 	switch p.Proto {
-	case serQuad, serStepper:
+	case core.SerQuad, core.SerStepper:
 		// the bit is line B at line A's rising edges (forward: an encoder's
 		// B low, a stepper's DIR high); a motion opens after A rested two
 		// step periods
 		set(sramcapture.SymbolClocked, 1, 2*T, decode.SymDataSep)
-		s.cfg.TwoLines, s.cfg.InvA, s.cfg.InvB = true, false, p.Proto == serQuad
+		s.cfg.TwoLines, s.cfg.InvA, s.cfg.InvB = true, false, p.Proto == core.SerQuad
 		s.tab.both(true, 2*T, inf, leadStep0, decode.SymDataRestart)
 		s.tab.both(false, 2*T, inf, leadStep0, decode.SymDataRestart)
 		s.width = func(int) int { return 1 }
 		s.period = 1
 		s.unit = func(b *symBits, _ int, u symUnit) bool { b.field(u.value, u.mask, 1, false); return true }
-	case serPWM:
+	case core.SerPWM:
 		// a period's high time read as a bit: 1 inside the window of the
 		// asked duty cycles (a prefix of the duty byte's bits), else 0
 		set(sramcapture.SymbolClass, 0, T, decode.SymDataBit0)
@@ -71,7 +72,7 @@ func physSymbolSpec(p *SerialParams, s *symSpec) bool { //nolint:gocyclo,funlen 
 			b.fixed(1)
 			return true
 		}
-	case serRCEncode:
+	case core.SerRCEncode:
 		// high pulses short (0) or long (1); a frame opens after the sync's
 		// low of eight shorts or more
 		set(sramcapture.SymbolClass, 1, 8*T, decode.SymDataSep)
@@ -100,7 +101,7 @@ func physSymbolSpec(p *SerialParams, s *symSpec) bool { //nolint:gocyclo,funlen 
 			}
 			return true
 		}
-	case serOOK:
+	case core.SerOOK:
 		// Oregon's Manchester bursts at half bits (Baud: the line's bit
 		// rate); protocol 2.1 sends each bit inverted then as is
 		half := T / 2
@@ -133,7 +134,7 @@ func physSymbolSpec(p *SerialParams, s *symSpec) bool { //nolint:gocyclo,funlen 
 			}
 			return true
 		}
-	case serMiller:
+	case core.SerMiller:
 		// edges in units: a message opens at its first edge after an idle
 		// of two and a half bits; its first unit's first bit is the start 0,
 		// as the decoder's bytes hold it. A bit is read in its second half
@@ -185,7 +186,7 @@ func physSymbolSpec(p *SerialParams, s *symSpec) bool { //nolint:gocyclo,funlen 
 			}
 			return true
 		}
-	case serMorse:
+	case core.SerMorse:
 		// dots and dashes, the gap after each a 0 inside a letter and a 1
 		// after its last element; a word gap opens a frame
 		u := T
@@ -217,7 +218,7 @@ func physSymbolSpec(p *SerialParams, s *symSpec) bool { //nolint:gocyclo,funlen 
 			}
 			return b, 2, true // at a gap's place: an even bit of the frame
 		}
-	case serDCF77:
+	case core.SerDCF77:
 		// a second's pulse of 100 ms (0) or 200 ms (1) (Baud scales the
 		// second); the minute's gap opens a frame at second 0
 		sec := T
@@ -272,7 +273,7 @@ func physSymbolSpec(p *SerialParams, s *symSpec) bool { //nolint:gocyclo,funlen 
 			}
 			return b, 0, true
 		}
-	case serEM4100:
+	case core.SerEM4100:
 		// Manchester at half bits, a 1 high then low: the last frame's stop
 		// 0 and the nine 1s of the header, then rows of four bits and their
 		// even parity, two to a byte (a tag sends its frames back to back)
@@ -298,12 +299,12 @@ func physSymbolSpec(p *SerialParams, s *symSpec) bool { //nolint:gocyclo,funlen 
 			}
 			return true
 		}
-	case serEM4305, serT55xx:
+	case core.SerEM4305, core.SerT55xx:
 		fc := T // Baud: the field's frequency
 		if p.Inverted {
 			// read off the carrier: the first field stop opens a command
 			stop := 40 * fc
-			if p.Proto == serT55xx {
+			if p.Proto == core.SerT55xx {
 				stop = 20 * fc
 			}
 			set(sramcapture.SymbolClass, 1, stop, decode.SymDataSep)
@@ -314,7 +315,7 @@ func physSymbolSpec(p *SerialParams, s *symSpec) bool { //nolint:gocyclo,funlen 
 			break
 		}
 		s.cfg.InvA = false
-		if p.Proto == serEM4305 {
+		if p.Proto == core.SerEM4305 {
 			// the field's level each 16 field clocks: a 1 field twice, a 0
 			// field then its gap; the first field stop opens a command
 			set(sramcapture.SymbolLevel, 1, 40*fc, decode.SymDataSep)
@@ -387,7 +388,7 @@ func physSymbolSpec(p *SerialParams, s *symSpec) bool { //nolint:gocyclo,funlen 
 			b.field(u.value, u.mask, w, true)
 			return true
 		}
-	case serSWIM:
+	case core.SerSWIM:
 		// lows: under half a bit a 1, else a 0; an idle of a bit and a half
 		// opens a frame: the header, a 3-bit command or a byte, parity, ack.
 		// A command is its frame's first six bits, so a byte frame whose top
@@ -417,14 +418,14 @@ func physSymbolSpec(p *SerialParams, s *symSpec) bool { //nolint:gocyclo,funlen 
 			b.fixed(1) // acknowledged
 			return true
 		}
-	case serSDQ:
+	case core.SerSDQ:
 		set(sramcapture.SymbolClass, 1, 1.2*T, decode.SymDataSep)
 		s.cfg.InvA = false
 		s.tab.data(false, 0, 0.5*T, decode.SymDataBit1)
 		s.tab.data(false, 0.5*T, 1.2*T, decode.SymDataBit0)
 		s.tab.both(false, 1.2*T, inf, leadStep0, decode.SymDataRestart)
 		s.unit, s.period = byteLSB, 8
-	case serPJDL:
+	case core.SerPJDL:
 		// the level each data time; an idle, a pad and its zero open a
 		// frame at the next pad: the frame's sync pads, then each byte's pad,
 		// zero and bits
@@ -468,7 +469,7 @@ func physSymbolSpec(p *SerialParams, s *symSpec) bool { //nolint:gocyclo,funlen 
 			b.field(u.value, u.mask, 8, false)
 			return true
 		}
-	case serDSI:
+	case core.SerDSI:
 		// half bits of 1/1200 s, a 1 at the marks' level first; the idle
 		// before a frame opens it at its start bit's middle
 		half := 1 / 1200.0
@@ -482,7 +483,7 @@ func physSymbolSpec(p *SerialParams, s *symSpec) bool { //nolint:gocyclo,funlen 
 			}
 			return true
 		}
-	case serQi:
+	case core.SerQi:
 		// biphase mark at half bits of 2 kbit/s: a preamble of 1s, then
 		// bytes of a start 0, eight bits, odd parity and a stop 1. The
 		// preamble's 11 1s (its least) are more than a packet's bytes hold
@@ -517,7 +518,7 @@ func physSymbolSpec(p *SerialParams, s *symSpec) bool { //nolint:gocyclo,funlen 
 			bmc(b, true, true)
 			return true
 		}
-	case serSDCard:
+	case core.SerSDCard:
 		// CMD at CLK's rises: an idle of 1s, then the token's bytes, most
 		// significant first, its first bit the start 0
 		set(sramcapture.SymbolClocked, 0, T, decode.SymDataSep)
@@ -539,7 +540,7 @@ func physSymbolSpec(p *SerialParams, s *symSpec) bool { //nolint:gocyclo,funlen 
 			b.field(u.value, u.mask, 8, true)
 			return true
 		}
-	case serPDI:
+	case core.SerPDI:
 		// DATA at PDI_CLK's rises: two idle 1s, then characters of a start
 		// 0, eight bits, even parity and two stops
 		set(sramcapture.SymbolClocked, 0, T, decode.SymDataSep)
@@ -560,14 +561,14 @@ func physSymbolSpec(p *SerialParams, s *symSpec) bool { //nolint:gocyclo,funlen 
 			b.fixed(1, 1)
 			return true
 		}
-	case serCJTAG:
+	case core.SerCJTAG:
 		// TCKC at TMSC's rises: an escape's rises come with TCKC high, three
 		// of the six edges that select the online activation code
 		set(sramcapture.SymbolClocked, 0, T, decode.SymDataSep)
 		s.cfg.Channel, s.cfg.TwoLines, s.sliding = uint8(p.ChB), true, true //nolint:gosec // G115: the channel is 0 or 1 (serialPlanParams)
 		s.start = func(b *symBits, _ []symUnit) bool { b.fixed(0, 1, 1, 1, 0); return true }
 		s.unit = freeOnly
-	case serMaple:
+	case core.SerMaple:
 		// SDCKA at SDCKB's falls: after SDCKB idled high, the start
 		// pattern's four falls with SDCKA low
 		set(sramcapture.SymbolClocked, 1, 4*T, decode.SymDataSep)
@@ -575,7 +576,7 @@ func physSymbolSpec(p *SerialParams, s *symSpec) bool { //nolint:gocyclo,funlen 
 		s.tab.both(true, 4*T, inf, leadStep0, decode.SymDataRestart)
 		s.start = func(b *symBits, _ []symUnit) bool { b.fixed(0, 0, 0, 0); return true }
 		s.unit = freeOnly
-	case serCaliper:
+	case core.SerCaliper:
 		// DATA at CLK's rises after 5 ms of quiet: the count's two bytes and
 		// the flags, least significant first
 		quiet := math.Max(5*ms, 20*T)
@@ -584,7 +585,7 @@ func physSymbolSpec(p *SerialParams, s *symSpec) bool { //nolint:gocyclo,funlen 
 		s.tab.both(true, quiet, inf, leadStep0, decode.SymDataRestart)
 		s.tab.both(false, quiet, inf, leadStep0, decode.SymDataRestart)
 		s.unit, s.period = byteLSB, 8
-	case serIRMP:
+	case core.SerIRMP:
 		return irmpSymbolSpec(p, s, set)
 	default:
 		return false

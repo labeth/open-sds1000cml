@@ -17,7 +17,7 @@ import (
 func TestQualifierTriggerPlansAsAnEdge(t *testing.T) {
 	for _, typ := range []TrigType{TrigEdge, TrigPulse, TrigSlope, TrigVideo} {
 		e := &Engine{hardwareQualifier: true, band: Band{TdivS: 1e-3}}
-		e.tp.typ = typ
+		e.tp.Typ = typ
 		e.trigPosFrac.Store(math.Float64bits(.5))
 		_, p, tdiv, _, _ := e.sramConfig()
 		if tdiv != 1e-3 || e.stats.TdivMaxS != 0 || p.Log == 0 {
@@ -25,7 +25,7 @@ func TestQualifierTriggerPlansAsAnEdge(t *testing.T) {
 		}
 		for _, acq := range []int32{AcqAverage, AcqEres, AcqPrecision} {
 			e := &Engine{hardwareQualifier: true, band: Band{TdivS: 20e-6}}
-			e.tp.typ = typ
+			e.tp.Typ = typ
 			e.acqMode.Store(acq)
 			e.trigPosFrac.Store(math.Float64bits(.5))
 			if _, p, _, _, _ := e.sramConfig(); p.Log == 0 {

@@ -3,6 +3,7 @@
 package engine
 
 import (
+	core "github.com/labeth/open-dso-core/engine"
 	"math/rand"
 	"os"
 	"runtime"
@@ -17,7 +18,7 @@ import (
 func feedPeakRef(s *softStream, raw []byte, cal *InterleaveCalibration) {
 	n := len(raw) / 4
 	lines := 1
-	if clockedTwoLine(s.p.Proto) {
+	if core.ClockedTwoLine(s.p.Proto) {
 		lines = 2
 	}
 	for k := range lines {
@@ -38,7 +39,7 @@ func feedPeakRef(s *softStream, raw []byte, cal *InterleaveCalibration) {
 				if cal != nil {
 					x = debiasQ(x, off[k])
 				}
-				q[k][b], r[k][b] = int32(x), roundQ8(uint16(x))
+				q[k][b], r[k][b] = int32(x), core.RoundQ8(uint16(x))
 			}
 		}
 		at := len(*dst)
@@ -116,9 +117,9 @@ func TestFeedPeakSame(t *testing.T) {
 				}
 			}
 		}
-		proto := serDMX
+		proto := core.SerDMX
 		if trial%3 == 0 {
-			proto = serSWD
+			proto = core.SerSWD
 		}
 		p := SerialParams{Proto: proto, ChA: trial % 2}
 		a, b := &softStream{p: p}, &softStream{p: p}
@@ -140,7 +141,7 @@ func TestFeedPeakSame(t *testing.T) {
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
 func BenchmarkFeedPeak(b *testing.B) {
 	raw := softPeakWords(rand.New(rand.NewSource(1)), 1<<16)
-	s := &softStream{p: SerialParams{Proto: serDMX}}
+	s := &softStream{p: SerialParams{Proto: core.SerDMX}}
 	b.SetBytes(int64(len(raw)))
 	for range b.N {
 		s.pendA = s.pendA[:0]
@@ -165,7 +166,7 @@ func TestSoftFeedCPU(t *testing.T) {
 		return r.Utime.Nano() + r.Stime.Nano()
 	}
 	raw := softPeakWords(rand.New(rand.NewSource(1)), 1<<16)
-	for _, proto := range []int{serDMX, serSWD} {
+	for _, proto := range []int{core.SerDMX, core.SerSWD} {
 		var ns [2]float64
 		for k, feed := range []func(s *softStream, raw []byte, cal *InterleaveCalibration){feedPeakRef, (*softStream).feedPeak} {
 			s := &softStream{p: SerialParams{Proto: proto}}
@@ -185,7 +186,7 @@ func TestSoftFeedCPU(t *testing.T) {
 				}
 			}
 		}
-		t.Logf("feedPeak %s/%s, %d line(s): %.2f ns a word (the branching loop: %.2f)", runtime.GOOS, runtime.GOARCH, 1+btoi(clockedTwoLine(proto)), ns[1], ns[0])
+		t.Logf("feedPeak %s/%s, %d line(s): %.2f ns a word (the branching loop: %.2f)", runtime.GOOS, runtime.GOARCH, 1+btoi(core.ClockedTwoLine(proto)), ns[1], ns[0])
 	}
 }
 

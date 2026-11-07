@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	core "github.com/labeth/open-dso-core/engine"
 	"github.com/labeth/open-dso-core/sample"
 	"github.com/labeth/open-sds1000cml/app/internal/sramcapture"
 )
@@ -36,7 +37,7 @@ func learnSquare(e *Engine) {
 			w[i] = 213
 		}
 	}
-	e.learnQualExtent(&sample.Frame{SampleS: 1e-8, Traces: []sample.Trace{{Codes8: w, Valid: len(w)}, {Ch: 1, Codes8: w, Valid: len(w)}}}, [2]chScale{{1, 0}, {1, 0}})
+	e.learnQualExtent(&sample.Frame{SampleS: 1e-8, Traces: []sample.Trace{{Codes8: w, Valid: len(w)}, {Ch: 1, Codes8: w, Valid: len(w)}}}, [2]core.ChScale{{Vdiv: 1, Off: 0}, {Vdiv: 1, Off: 0}})
 }
 
 // Pulse, slope and video triggers are the FPGA's (owner rule: software never
@@ -252,12 +253,12 @@ func TestLevelsAreNotLearnedAcrossAFrontEndWrite(t *testing.T) {
 		}
 		return &sample.Frame{SampleS: 1e-8, Traces: []sample.Trace{{Codes8: w, Valid: len(w)}, {Ch: 1, Codes8: w, Valid: len(w)}}}
 	}
-	sc := [2]chScale{{1, 0}, {1, 0}}
+	sc := [2]core.ChScale{{Vdiv: 1, Off: 0}, {Vdiv: 1, Off: 0}}
 	extent := func() (float64, float64) {
-		return math.Float64frombits(e.qualExt.lo[0].Load()), math.Float64frombits(e.qualExt.hi[0].Load())
+		return math.Float64frombits(e.qualExt.Lo[0].Load()), math.Float64frombits(e.qualExt.Hi[0].Load())
 	}
 	e.learnLevels(square(128, 213), sc, e.feGen.Load()) // steady: learns 0..3.4 V
-	if lo, hi := extent(); !e.qualExt.have[0].Load() || lo != 0 || hi != 3.4 {
+	if lo, hi := extent(); !e.qualExt.Have[0].Load() || lo != 0 || hi != 3.4 {
 		t.Fatalf("a steady capture: %g..%g", lo, hi)
 	}
 	e.NoteFrontEndWrite()                              // a relay switch...
