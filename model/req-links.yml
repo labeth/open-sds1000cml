@@ -133,3 +133,19 @@ reqLinks:
     version: v0.1.0
   status: claimed
   rationale: The UI model that meets it moved to the core (uimodel/panel); this scope runs it.
+- id: LNK-SDS-090-CORE
+  parent: REQ-SDS-090
+  child: core::CAP-DSO-SETTINGS
+  pinned:
+    version: v0.1.0
+  status: claimed
+  rationale: The settings saver that meets it moved to the core (settings, REQ-DSO-293); this scope runs it through
+    the core's scope application.
+- id: LNK-SDS-273-CORE
+  parent: REQ-SDS-273
+  child: core::CAP-DSO-SOUND
+  pinned:
+    version: v0.1.0
+  status: claimed
+  rationale: The display loop that keeps SOUND's view on the repaint signature moved to the core (scopeapp); this
+    scope runs it.
