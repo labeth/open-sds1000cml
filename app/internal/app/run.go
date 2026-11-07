@@ -33,7 +33,7 @@ import (
 	"github.com/labeth/open-sds1000cml/app/internal/settings"
 	"github.com/labeth/open-sds1000cml/app/internal/sramcapture"
 	"github.com/labeth/open-sds1000cml/app/internal/streamview"
-	"github.com/labeth/open-sds1000cml/app/internal/web"
+	"github.com/labeth/open-sds1000cml/app/internal/webscope"
 )
 
 // TRLC-LINKS: REQ-SDS-167
@@ -146,7 +146,7 @@ func Run() {
 	// The vertical front end is off the GPMC bus (SPI). Optional: without it
 	// the scope still runs on the inherited boot range.
 	fe := startFrontEnd(e, calTab)
-	var feIface web.Analog
+	var feIface webscope.Analog
 	if fe != nil {
 		feIface = fe
 	}
@@ -251,10 +251,11 @@ func Run() {
 	// kill every parked request. Slow-peer writes are bounded per-response
 	// inside the handler (SetWriteDeadline). Don't "harden" this without
 	// moving that contract.
-	ws := web.New(scopeSource{e, fo}, feIface, pc, screenPNG)
+	sc := webscope.New(scopeSource{e, fo}, feIface, pc, screenPNG)
+	sc.SetInvertSource(scpiH.Inverted)         // display-level INVS: SCPI shadow → /api/status
+	sc.SetSetupMemory(webSetups{sharedSetups}) // the web top bar's Setups: the same slots as *SAV/*RCL
+	ws := webserver.New(sc, webserver.WithPprof())
 	webSrv.Store(ws)
-	ws.SetInvertSource(scpiH.Inverted)         // display-level INVS: SCPI shadow → /api/status
-	ws.SetSetupMemory(webSetups{sharedSetups}) // the web top bar's Setups: the same slots as *SAV/*RCL
 	srv := newWebServer(listen, ws.Handler())
 	go func() {
 		logf("web ui listening on %s", listen)

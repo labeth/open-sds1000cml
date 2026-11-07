@@ -7,10 +7,10 @@ import (
 	"strings"
 	"time"
 
+	"github.com/labeth/open-dso-core/webserver/wire"
 	"github.com/labeth/open-sds1000cml/app/internal/engine"
 	"github.com/labeth/open-sds1000cml/app/internal/frames"
 	"github.com/labeth/open-sds1000cml/app/internal/panel"
-	"github.com/labeth/open-sds1000cml/app/internal/web"
 )
 
 // scopeSource wires the web layer: setters/stats from the engine, frames
@@ -25,7 +25,7 @@ type scopeSource struct {
 func (s scopeSource) WithFrame(fn func(*engine.Frame)) { s.fo.WithFrame(fn) }
 
 // WaitNextFrame lets the web layer park a long-poll until the fan-out
-// snapshots a frame newer than last (web.go type-asserts for this method, so
+// snapshots a frame newer than last (webscope type-asserts for this method, so
 // test doubles without it degrade to a short poll).
 // TRLC-LINKS: REQ-SDS-167
 func (s scopeSource) WaitNextFrame(last uint64, timeout time.Duration) uint64 {
@@ -38,10 +38,10 @@ func (s scopeSource) WaitNextFrame(last uint64, timeout time.Duration) uint64 {
 type webSetups struct{ *panel.SharedSetups }
 
 // TRLC-LINKS: REQ-SDS-219
-func (w webSetups) SetupSlots() []web.SetupSlot {
-	var out []web.SetupSlot
+func (w webSetups) SetupSlots() []wire.SetupSlot {
+	var out []wire.SetupSlot
 	for _, s := range w.Slots() {
-		out = append(out, web.SetupSlot{Slot: s.Slot, Used: s.Used, Summary: s.Summary})
+		out = append(out, wire.SetupSlot{Slot: s.Slot, Used: s.Used, Summary: s.Summary})
 	}
 	return out
 }

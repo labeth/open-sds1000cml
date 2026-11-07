@@ -136,7 +136,7 @@ jobs:
   # half of the product can never go silently unguarded again.
   #
   # This lane includes the device-free operator-fuzz campaign
-  # (TestFuzzBrowserSynthetic in internal/web): e2e/fuzz.mjs — the same seeded
+  # (TestFuzzBrowserSynthetic in internal/webscope): e2e/fuzz.mjs — the same seeded
   # random-operator driver used against the live scope — runs 60 deterministic
   # iterations (SEED=1) against a local httptest server with a stateful
   # synthetic engine, so every PR replays the identical campaign and any
@@ -203,14 +203,14 @@ jobs:
         env:
           CI_REQUIRE_BROWSER: "1"
           CI_REQUIRE_SIGROK: "1"
-        run: go test -timeout 25m ./internal/web/
+        run: go test -timeout 25m ./internal/webscope/
       - name: core browser / node / JS-parity tests (skips are failures here)
         working-directory: ${{ github.workspace }}/../open-dso-core
         env:
           CI_REQUIRE_BROWSER: "1"
           CI_REQUIRE_SIGROK: "1"
           DSO_SCOPE_DIR: ${{ github.workspace }}
-        run: go test -timeout 25m ./decode/ ./superres/ ./analysis/
+        run: go test -timeout 25m ./decode/ ./superres/ ./analysis/ ./webserver/...
 
   # Oracle lane: libsigrokdecode's protocol decoders (via sigrok-cli) act as
   # the reference implementation for the Go protocol decoders — the
