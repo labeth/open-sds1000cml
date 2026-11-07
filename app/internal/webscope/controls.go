@@ -5,6 +5,7 @@ package webscope
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log"
 	"time"
 
@@ -35,7 +36,14 @@ func (st controlSetter) Set(ctx context.Context, c webserver.Control) webserver.
 func (s *Scope) set(ctx context.Context, req webserver.Control) webserver.Applied { //nolint:gocyclo,funlen // /api/set: one case per control
 	// Instrumentation (realtime acquisition checker): log what we did so the
 	// acq log can be read against the command that preceded it.
-	s.sc.NoteCmd(req.Name, req.Value)
+	name := req.Name
+	if req.V1 != "" {
+		name = req.V1
+	}
+	s.sc.NoteCmd(name, req.Value)
+	if webserver.PerChannel[req.Name] && (req.Ch < 0 || req.Ch > 1) {
+		return webserver.Applied{Err: fmt.Sprintf("%s: channel %d is not one of this scope's two", req.Name, req.Ch)}
+	}
 	ok, applied, errStr := true, req.Value, ""
 	switch req.Name {
 	case "run":
@@ -144,15 +152,12 @@ func (s *Scope) set(ctx context.Context, req webserver.Control) webserver.Applie
 			ch = 1
 		}
 		s.sc.SetTrigSource(ch)
-	case "vdiv1", "vdiv2":
+	case "vdiv":
 		if s.fe == nil {
 			ok, errStr = false, "vertical front end unavailable"
 			break
 		}
-		ch := 0
-		if req.Name == "vdiv2" {
-			ch = 1
-		}
+		ch := req.Ch
 		var refused *hal.Refusal
 		if err := s.fe.SetVdivV(ch, req.Value); errors.As(err, &refused) {
 			ok, errStr = false, "vdiv not in ladder"
@@ -162,21 +167,18 @@ func (s *Scope) set(ctx context.Context, req webserver.Control) webserver.Applie
 			break
 		}
 		applied = s.fe.VdivV(ch)
-	case "offset1", "offset2":
+	case "offset":
 		// Outer sanity guard only; the per-tier offset law clamps to the real
 		// ±1.6 V (×1) / ±40 V (×25) authority and readback reports the applied V.
 		if req.Value < -40 || req.Value > 40 {
 			ok, errStr = false, "offset out of range"
 			break
 		}
-		ch := 0
-		if req.Name == "offset2" {
-			ch = 1
-		}
+		ch := req.Ch
 		// The board stages the DAC; the front end re-anchors it on V/div
 		// changes.
 		applied = s.lv.SetOffset(ch, req.Value)
-	case "probe1", "probe2":
+	case "probe":
 		if s.fe == nil {
 			ok, errStr = false, "vertical front end unavailable"
 			break
@@ -186,13 +188,10 @@ func (s *Scope) set(ctx context.Context, req webserver.Control) webserver.Applie
 			ok, errStr = false, "probe must be 1, 10 or 100"
 			break
 		}
-		ch := 0
-		if req.Name == "probe2" {
-			ch = 1
-		}
+		ch := req.Ch
 		s.fe.SetProbe(ch, x)
 		applied = x
-	case "coupling1", "coupling2":
+	case "coupling":
 		if s.fe == nil {
 			ok, errStr = false, "vertical front end unavailable"
 			break
@@ -202,26 +201,20 @@ func (s *Scope) set(ctx context.Context, req webserver.Control) webserver.Applie
 			ok, errStr = false, "coupling must be 0 (DC), 1 (AC) or 2 (GND)"
 			break
 		}
-		ch := 0
-		if req.Name == "coupling2" {
-			ch = 1
-		}
+		ch := req.Ch
 		if err := s.fe.SetCoupling(ch, mode); err != nil {
 			ok, errStr = false, err.Error()
 			break
 		}
 		applied = req.Value
-	case "bwl1", "bwl2":
+	case "bwlimit":
 		// 20 MHz bandwidth limit: 1 engages the relay, 0 releases it.
 		bw, can := s.fe.(interface{ SetBWL(ch int, on bool) error })
 		if s.fe == nil || !can {
 			ok, errStr = false, "bandwidth limit unavailable"
 			break
 		}
-		ch := 0
-		if req.Name == "bwl2" {
-			ch = 1
-		}
+		ch := req.Ch
 		if err := bw.SetBWL(ch, req.Value != 0); err != nil {
 			ok, errStr = false, err.Error()
 			break
