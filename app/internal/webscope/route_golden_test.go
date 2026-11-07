@@ -496,8 +496,8 @@ func (p *goldenPanel) PageLeave() panel.SetResult { return panel.SetResult{OK: t
 func (p *goldenPanel) RefsExport() [2]panel.RefExport {
 	return [2]panel.RefExport{
 		{
-			Has: true, Show: true, Gen: 2, At: 1700000000000, Cols: 4, C1: []int{1, 2, 3, 4}, Vdiv: [2]float64{1, 0.5}, Probe: [2]float64{10, 1}, TdivS: 1e-3, PosFrac: 0.5,
-			Setup: &panel.RefSetup{TdivS: 1e-3, PosFrac: 0.5, Vdiv: [2]float64{1, 0.5}, Rising: true},
+			Has: true, Show: true, Gen: 2, At: 1700000000000, Cols: 4, C1: []int{1, 2, 3, 4}, Vdiv: panel.ChanValues{1, 0.5}, Probe: panel.ChanValues{10, 1}, TdivS: 1e-3, PosFrac: 0.5,
+			Setup: &panel.RefSetup{TdivS: 1e-3, PosFrac: 0.5, Vdiv: panel.ChanValues{1, 0.5}, Rising: true},
 		},
 		{},
 	}

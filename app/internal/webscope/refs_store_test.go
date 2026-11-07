@@ -63,8 +63,8 @@ func (s *fakeRefStore) act(frames func(func(*sample.Frame)), slot int, op string
 				return out
 			}
 			e = panel.RefExport{
-				Has: true, Show: true, Cols: panel.RefCols, C1: cols(f.Codes8(0)), C2: cols(f.Codes8(1)), Vdiv: [2]float64{1, 1},
-				Probe: [2]float64{1, 1}, TdivS: f.Snapshot.TdivS, PosFrac: .5, At: time.Now().UnixMilli(),
+				Has: true, Show: true, Cols: panel.RefCols, C1: cols(f.Codes8(0)), C2: cols(f.Codes8(1)), Vdiv: panel.ChanValues{1, 1},
+				Probe: panel.ChanValues{1, 1}, TdivS: f.Snapshot.TdivS, PosFrac: .5, At: time.Now().UnixMilli(),
 			}
 		})
 		if !e.Has {
