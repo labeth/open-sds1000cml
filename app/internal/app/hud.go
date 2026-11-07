@@ -10,6 +10,7 @@ import (
 	"github.com/labeth/open-sds1000cml/app/internal/analog"
 	"github.com/labeth/open-sds1000cml/app/internal/engine"
 	"github.com/labeth/open-sds1000cml/app/internal/lcd"
+	"github.com/labeth/open-sds1000cml/app/internal/panel"
 	"github.com/labeth/open-sds1000cml/app/internal/streamview"
 )
 
@@ -28,23 +29,7 @@ func buildHUD(e *engine.Engine, fe *analog.FrontEnd) render.HUD {
 		URL: lcd.DeviceURL(), // cached; re-enumerates at most every few seconds
 	}
 	if fe != nil {
-		idx, _ := fe.Snapshot()
-		hud.Ch[0].VdivV = analog.Detents[idx[0]].VdivV
-		hud.Ch[1].VdivV = analog.Detents[idx[1]].VdivV
-		hud.Ch[0].Zoom = analog.Detents[idx[0]].Zoom
-		hud.Ch[1].Zoom = analog.Detents[idx[1]].Zoom
-		hud.Ch[0].Probe = fe.ProbeFactor(0)
-		hud.Ch[1].Probe = fe.ProbeFactor(1)
-		hud.Ch[0].Cpl = fe.Coupling(0)
-		hud.Ch[1].Cpl = fe.Coupling(1)
-		// AC removes the DC in software (mean → centre), so the ground marker
-		// belongs at centre; leave it at 0 for an AC-coupled channel.
-		if st.OffC1 != 0 && hud.Ch[0].Cpl != analog.CplAC {
-			hud.Ch[0].OffV = fe.OffsetVolts(0, st.OffC1)
-		}
-		if st.OffC2 != 0 && hud.Ch[1].Cpl != analog.CplAC {
-			hud.Ch[1].OffV = fe.OffsetVolts(1, st.OffC2)
-		}
+		hudFrontEnd(&hud, fe, st)
 	}
 	// Loading indicator, after a short grace so fast frames never flash it.
 	if st.Busy != "" && st.BusyMs >= 150 {
@@ -62,6 +47,50 @@ func buildHUD(e *engine.Engine, fe *analog.FrontEnd) render.HUD {
 		decided := st.Norm || hud.SerialArmed || hud.ZoneTrig || hud.TrigType != 0
 		hud.Waiting = decided && since > time.Duration(math.Max(1, 25*st.TdivS)*float64(time.Second))
 	}
+	hudTrigLevel(&hud, e, st)
+	if pc := uiCtrl.Load(); pc != nil {
+		if sv := streamCtrl.Load(); sv != nil && pc.StreamMode() {
+			hudStreamPage(&hud, pc, sv)
+		}
+		hudWorkspace(&hud, pc)
+	}
+	if sh := scpiCtrl.Load(); sh != nil { // display-level INVS: the SCPI shadow is the truth
+		inv := sh.Inverted()
+		hud.Ch[0].Inv, hud.Ch[1].Inv = inv[0], inv[1]
+	}
+	hudZonesMask(&hud, e, st)
+	hudBode(&hud, e, st)
+	hud.Spect = lcdSpect
+	return hud
+}
+
+// hudFrontEnd fills the channels' scales, probes, couplings and offsets
+// from the front end.
+// TRLC-LINKS: REQ-SDS-168
+func hudFrontEnd(hud *render.HUD, fe *analog.FrontEnd, st engine.Stats) {
+	idx, _ := fe.Snapshot()
+	hud.Ch[0].VdivV = analog.Detents[idx[0]].VdivV
+	hud.Ch[1].VdivV = analog.Detents[idx[1]].VdivV
+	hud.Ch[0].Zoom = analog.Detents[idx[0]].Zoom
+	hud.Ch[1].Zoom = analog.Detents[idx[1]].Zoom
+	hud.Ch[0].Probe = fe.ProbeFactor(0)
+	hud.Ch[1].Probe = fe.ProbeFactor(1)
+	hud.Ch[0].Cpl = fe.Coupling(0)
+	hud.Ch[1].Cpl = fe.Coupling(1)
+	// AC removes the DC in software (mean → centre), so the ground marker
+	// belongs at centre; leave it at 0 for an AC-coupled channel.
+	if st.OffC1 != 0 && hud.Ch[0].Cpl != analog.CplAC {
+		hud.Ch[0].OffV = fe.OffsetVolts(0, st.OffC1)
+	}
+	if st.OffC2 != 0 && hud.Ch[1].Cpl != analog.CplAC {
+		hud.Ch[1].OffV = fe.OffsetVolts(1, st.OffC2)
+	}
+}
+
+// hudTrigLevel fills the trigger level marker (divisions, on the source
+// channel's scale and offset) and its readout (volts at the probe tip).
+// TRLC-LINKS: REQ-SDS-168
+func hudTrigLevel(hud *render.HUD, e *engine.Engine, st engine.Stats) {
 	srcVdiv, srcOff := hud.Ch[0].VdivV, hud.Ch[0].OffV
 	if st.TrigSource == 1 {
 		srcVdiv, srcOff = hud.Ch[1].VdivV, hud.Ch[1].OffV
@@ -77,70 +106,80 @@ func buildHUD(e *engine.Engine, fe *analog.FrontEnd) render.HUD {
 		}
 		hud.TrigLvlV = e.TrigVoltsAt(st.TrigCode, st.TrigSource) * max(probe, 1)
 	}
-	if pc := uiCtrl.Load(); pc != nil { //nolint:nestif // the stream page is formatted only inside stream mode; the workspace UI + per-channel display
-		if sv := streamCtrl.Load(); sv != nil && pc.StreamMode() {
-			v := sv.Snapshot()
-			list, top := pc.StreamList()
-			hud.StreamOn, hud.Stream = true, v
-			hud.StreamList = list || v.State == streamview.Streaming || v.State == streamview.Failed || v.State == streamview.Starting
-			// Formatting the page holds the transcript's lock: redo it only when
-			// what it shows can have changed (4 Hz while streaming).
-			lines := v.Lines
-			if v.State == streamview.Streaming {
-				lines = 0 // the slot paces a streaming page; its line count grows every tick
-			}
-			key := streamPageKey{v.State, hud.StreamList, top, lines, v.TriggerLine, streamSlot(hud)}
-			if cached := lastStreamPage.Load(); cached != nil && cached.key == key {
-				hud.StreamPage = cached.page
-			} else {
-				switch {
-				case v.State == streamview.Streaming:
-					hud.StreamPage = sv.Window(streamview.ListRows, top) // -1 follows the newest
-				case hud.StreamList:
-					hud.StreamPage = sv.Window(streamview.ListRows, top)
-				case v.TriggerLine >= 0: // waveform: a strip of the lines around the trigger
-					hud.StreamPage = sv.Window(6, v.TriggerLine-2)
-				default:
-					hud.StreamPage = sv.Window(6, -1)
-				}
-				lastStreamPage.Store(&cachedStreamPage{key, hud.StreamPage})
-			}
-		}
-		d, v := pc.Snapshot() // the display state and the workspace UI, read together
-		hud.Ch[0].Show, hud.Ch[1].Show, hud.ChanExplicit = d.ShowC1, d.ShowC2, true
-		hud.ShowMeas, hud.MeasItems = d.ShowMeas, d.MeasItems
-		hud.ViewMode, hud.MathMode, hud.FFTSrc = d.ViewMode, d.MathMode, d.FFTSrc
-		hud.AutosetBusy, hud.AutosetMsg = d.AutosetBusy, d.AutosetMsg
-		hud.Notice, hud.Remote = v.Notice, d.Remote
-		hud.UI = v
-		hud.Match = render.MatchView(pc.MatchEditor())
-		hud.Zoom, hud.ZoomOff = d.Zoom, d.ZoomOff
-		hud.Persist = d.Persist
-		hud.DecProto, hud.DecBaud = d.DecProto, d.DecBaud
-		hud.DecChA, hud.DecChB = d.DecChA, d.DecChB
-		hud.DecCPOL, hud.DecCPHA, hud.DecLSB = d.DecCPOL, d.DecCPHA, d.DecLSB
-		hud.DecParity = d.DecParity
-		hud.DecFormat, hud.DecDelayNs = d.DecFormat, d.DecDelayNs
-		rv := pc.RefView()
-		for i := range 2 {
-			hud.RefC1[i], hud.RefC2[i], hud.RefShow[i] = rv[i].C1, rv[i].C2, rv[i].Show
-			hud.RefVdiv[i], hud.RefOff[i], hud.RefProbe[i] = rv[i].Vdiv, rv[i].Off, rv[i].Probe
-		}
-		hud.CurOn, hud.CurType, hud.CurSel = d.CurOn, d.CurType, d.CurSel
-		hud.CurX, hud.CurY = d.CurX, d.CurY
-		sv := pc.SuperresView()
-		hud.SRActive, hud.SRFocus, hud.SRStatus = sv.Active, sv.Focus, sv.Status
-		hud.SRBits, hud.SRMean, hud.SRk = sv.Bits, sv.Mean, sv.K
-		hud.SRMean2, hud.SRAlign, hud.SRSampleS = sv.Mean2, sv.Align, sv.SampleS
-		hud.SRGateLo, hud.SRGateHi, hud.SRN = sv.GateLo, sv.GateHi, sv.N
-		hud.SRWinLo, hud.SRWinHi, hud.SRPeriod = sv.WinLo, sv.WinHi, sv.Period
-		hud.MaskMsg = pc.MaskStatus()
+}
+
+// hudStreamPage fills the stream page: the decoded stream's state and the
+// transcript lines it shows, formatted again only when they can have changed.
+// TRLC-LINKS: REQ-SDS-168
+func hudStreamPage(hud *render.HUD, pc *panel.Controller, sv *streamview.Controller) {
+	v := sv.Snapshot()
+	list, top := pc.StreamList()
+	hud.StreamOn, hud.Stream = true, v
+	hud.StreamList = list || v.State == streamview.Streaming || v.State == streamview.Failed || v.State == streamview.Starting
+	// Formatting the page holds the transcript's lock: redo it only when
+	// what it shows can have changed (4 Hz while streaming).
+	lines := v.Lines
+	if v.State == streamview.Streaming {
+		lines = 0 // the slot paces a streaming page; its line count grows every tick
 	}
-	if sh := scpiCtrl.Load(); sh != nil { // display-level INVS: the SCPI shadow is the truth
-		inv := sh.Inverted()
-		hud.Ch[0].Inv, hud.Ch[1].Inv = inv[0], inv[1]
+	key := streamPageKey{v.State, hud.StreamList, top, lines, v.TriggerLine, streamSlot(*hud)}
+	if cached := lastStreamPage.Load(); cached != nil && cached.key == key {
+		hud.StreamPage = cached.page
+		return
 	}
-	// Zone/mask overlay state (engine-side test; render parity with the web).
+	switch {
+	case v.State == streamview.Streaming:
+		hud.StreamPage = sv.Window(streamview.ListRows, top) // -1 follows the newest
+	case hud.StreamList:
+		hud.StreamPage = sv.Window(streamview.ListRows, top)
+	case v.TriggerLine >= 0: // waveform: a strip of the lines around the trigger
+		hud.StreamPage = sv.Window(6, v.TriggerLine-2)
+	default:
+		hud.StreamPage = sv.Window(6, -1)
+	}
+	lastStreamPage.Store(&cachedStreamPage{key, hud.StreamPage})
+}
+
+// hudWorkspace fills the workspace UI and the per-channel display state:
+// shown channels, views, decode, references, cursors, super-resolution and
+// the mask status.
+// TRLC-LINKS: REQ-SDS-168
+func hudWorkspace(hud *render.HUD, pc *panel.Controller) {
+	d, v := pc.Snapshot() // the display state and the workspace UI, read together
+	hud.Ch[0].Show, hud.Ch[1].Show, hud.ChanExplicit = d.ShowC1, d.ShowC2, true
+	hud.ShowMeas, hud.MeasItems = d.ShowMeas, d.MeasItems
+	hud.ViewMode, hud.MathMode, hud.FFTSrc = d.ViewMode, d.MathMode, d.FFTSrc
+	hud.AutosetBusy, hud.AutosetMsg = d.AutosetBusy, d.AutosetMsg
+	hud.Notice, hud.Remote = v.Notice, d.Remote
+	hud.UI = v
+	hud.Match = render.MatchView(pc.MatchEditor())
+	hud.Zoom, hud.ZoomOff = d.Zoom, d.ZoomOff
+	hud.Persist = d.Persist
+	hud.DecProto, hud.DecBaud = d.DecProto, d.DecBaud
+	hud.DecChA, hud.DecChB = d.DecChA, d.DecChB
+	hud.DecCPOL, hud.DecCPHA, hud.DecLSB = d.DecCPOL, d.DecCPHA, d.DecLSB
+	hud.DecParity = d.DecParity
+	hud.DecFormat, hud.DecDelayNs = d.DecFormat, d.DecDelayNs
+	rv := pc.RefView()
+	for i := range 2 {
+		hud.RefC1[i], hud.RefC2[i], hud.RefShow[i] = rv[i].C1, rv[i].C2, rv[i].Show
+		hud.RefVdiv[i], hud.RefOff[i], hud.RefProbe[i] = rv[i].Vdiv, rv[i].Off, rv[i].Probe
+	}
+	hud.CurOn, hud.CurType, hud.CurSel = d.CurOn, d.CurType, d.CurSel
+	hud.CurX, hud.CurY = d.CurX, d.CurY
+	sv := pc.SuperresView()
+	hud.SRActive, hud.SRFocus, hud.SRStatus = sv.Active, sv.Focus, sv.Status
+	hud.SRBits, hud.SRMean, hud.SRk = sv.Bits, sv.Mean, sv.K
+	hud.SRMean2, hud.SRAlign, hud.SRSampleS = sv.Mean2, sv.Align, sv.SampleS
+	hud.SRGateLo, hud.SRGateHi, hud.SRN = sv.GateLo, sv.GateHi, sv.N
+	hud.SRWinLo, hud.SRWinHi, hud.SRPeriod = sv.WinLo, sv.WinHi, sv.Period
+	hud.MaskMsg = pc.MaskStatus()
+}
+
+// hudZonesMask fills the zone and mask overlays (engine-side test; render
+// parity with the web).
+// TRLC-LINKS: REQ-SDS-168
+func hudZonesMask(hud *render.HUD, e *engine.Engine, st engine.Stats) {
 	hud.ZoneMode, hud.MaskMode = st.ZoneMode, st.MaskMode
 	hud.MaskPass, hud.MaskFail, hud.MaskSkip = st.MaskPass, st.MaskFail, st.MaskSkip
 	hud.MaskStopped = st.MaskStopped
@@ -158,11 +197,16 @@ func buildHUD(e *engine.Engine, fe *analog.FrontEnd) render.HUD {
 			hud.MaskTdivS, hud.MaskSampleS = m.TdivS, m.SampleS
 		}
 	}
-	// FRA / Bode: selecting the BODE view (ViewMode 3) arms the engine's
-	// accumulation on its reference and DUT channels (the VIEW tab's Bode rows
-	// and the web's selectors set them; it re-armed C1 / C2 over a web choice)
-	// and feeds the accumulated curve to the renderer; leaving it disarms. The
-	// web can also arm FRA — both observe the same accumulated points.
+}
+
+// hudBode arms FRA / Bode for the BODE view and fills its curve.
+// Selecting the BODE view (ViewMode 3) arms the engine's accumulation on its
+// reference and DUT channels (the VIEW tab's Bode rows and the web's
+// selectors set them; it re-armed C1 / C2 over a web choice) and feeds the
+// accumulated curve to the renderer; leaving it disarms. The web can also
+// arm FRA — both observe the same accumulated points.
+// TRLC-LINKS: REQ-SDS-168
+func hudBode(hud *render.HUD, e *engine.Engine, st engine.Stats) {
 	if hud.ViewMode == 3 {
 		e.SetBodeMode(true, st.BodeRef, st.BodeDut)
 		hud.BodeRef, hud.BodeDut = st.BodeRef, st.BodeDut
@@ -180,6 +224,4 @@ func buildHUD(e *engine.Engine, fe *analog.FrontEnd) render.HUD {
 	if hud.ViewMode == 3 {
 		lastViewWasBode.Store(true)
 	}
-	hud.Spect = lcdSpect
-	return hud
 }
