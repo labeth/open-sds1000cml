@@ -1321,7 +1321,6 @@ requirements:
   category: functional
   sourceRefs:
   - CODE-APP-INTERNAL-SETTINGS-SETTINGS-GO
-  - CODE-APP-INTERNAL-SETTINGS-WIRE-GO
   appliesTo:
   - FU-APP-SETTINGS
   verificationMethods:
@@ -1474,7 +1473,6 @@ requirements:
   category: functional
   sourceRefs:
   - CODE-APP-INTERNAL-SETTINGS-SETTINGS-GO
-  - CODE-APP-INTERNAL-SETTINGS-WIRE-GO
   appliesTo:
   - FU-APP-SETTINGS
   verificationMethods:
@@ -1492,8 +1490,6 @@ requirements:
   realizes:
   - CAP-SDS-SETTINGS
   category: functional
-  sourceRefs:
-  - CODE-APP-INTERNAL-SETTINGS-SAVER-GO
   appliesTo:
   - FU-APP-SETTINGS
   verificationMethods:

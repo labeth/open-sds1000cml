@@ -8,12 +8,12 @@ import (
 
 	"github.com/labeth/open-dso-core/analysis"
 	"github.com/labeth/open-dso-core/framecalc"
+	core "github.com/labeth/open-dso-core/settings"
 	"github.com/labeth/open-dso-core/uimodel/panel"
 	"github.com/labeth/open-sds1000cml/app/internal/analog"
 	"github.com/labeth/open-sds1000cml/app/internal/board"
 	"github.com/labeth/open-sds1000cml/app/internal/engine"
 	cmlpanel "github.com/labeth/open-sds1000cml/app/internal/panel"
-	"github.com/labeth/open-sds1000cml/app/internal/settings"
 )
 
 // FuzzParseAndApply hammers the loader with hostile bytes: Parse must never
@@ -45,11 +45,11 @@ func FuzzParseAndApply(f *testing.F) {
 	pc := panel.New(e, fe, board.New(e, fe), cmlpanel.Hardware{}, engine.SupportedTdivs(), 500e-6, func(string, ...any) {})
 
 	f.Fuzz(func(t *testing.T, raw []byte) {
-		s, err := settings.Parse(raw)
+		s, err := core.Parse(raw)
 		if err != nil {
 			return // rejected → boot falls back to defaults, by design
 		}
-		settings.Apply(s, e, fe, pc, ext(e, fe), nil)
+		core.Apply(s, e, fe, pc, ext(e, fe), nil)
 		// The applied controller state must land inside the menu domains no
 		// matter what the file said.
 		v := pc.SettingsView()

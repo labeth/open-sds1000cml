@@ -249,6 +249,10 @@ func (f *FrontEnd) OnVdiv(fn func(ch int, vdivV, zero, cpv float64)) {
 	}
 }
 
+// SetOffsetV is SetOffset without its code: the setup's restore.
+// TRLC-LINKS: REQ-SDS-095, REQ-SDS-072
+func (f *FrontEnd) SetOffsetV(ch int, volts float64) { f.SetOffset(ch, volts) }
+
 // SetOffset records a requested input-referred offset in volts, derives the
 // DAC code against the CURRENT detent's calibrated zero, and stages it.
 // Being volts-based, the offset survives a V/div change (SetVdiv re-anchors).

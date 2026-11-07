@@ -2,7 +2,7 @@
 
 package board
 
-import "github.com/labeth/open-sds1000cml/app/internal/settings"
+import settings "github.com/labeth/open-dso-core/settings"
 
 // SettingsExtension is the board's part of the settings file: the trigger
 // level as the comparator DAC code (level_code), as the file has always

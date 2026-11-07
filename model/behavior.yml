@@ -1126,7 +1126,7 @@ behavior:
     to: FU-APP-SETTINGS
   - type: depends_on
     from: FU-APP-SETTINGS
-    to: CODE-APP-INTERNAL-SETTINGS-SAVER-GO
+    to: CODE-APP-INTERNAL-SETTINGS-SETTINGS-GO
     description: Primary implementation or support artifact; does not imply hardware qualification.
   - type: contains
     from: FG-APP

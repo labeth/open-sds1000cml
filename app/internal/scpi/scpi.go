@@ -10,14 +10,13 @@ package scpi
 import (
 	"fmt"
 	"math"
-	"os"
-	"strings"
 	"sync/atomic"
 	"time"
 
 	inst "github.com/labeth/open-dso-core/instrument"
 	"github.com/labeth/open-dso-core/sample"
 	core "github.com/labeth/open-dso-core/scpi"
+	scope "github.com/labeth/open-sds1000cml/app"
 	"github.com/labeth/open-sds1000cml/app/internal/engine"
 )
 
@@ -202,7 +201,7 @@ func New(sc Scope, fe Analog, lv Levels, disp Display, shot Screenshot, logf fun
 		attn:   [2]float64{1, 1},
 		unit:   [2]string{"V", "V"},
 		trmd:   "AUTO",
-		serial: loadSerial(),
+		serial: scope.UnitSerial(),
 	}
 	h.eng = core.New(h.dialect(), instrument{h})
 	return h
@@ -239,26 +238,6 @@ func (h *Handler) SetInverted(ch int, on bool) {
 // inverted reports one channel's INVS state.
 // TRLC-LINKS: REQ-SDS-024
 func (h *Handler) inverted(ch int) bool { return ch >= 0 && ch < 2 && h.invs.Load()>>ch&1 != 0 }
-
-// TRLC-LINKS: REQ-SDS-024
-func loadSerial() string {
-	// Best-effort: the serial lives in usr/system/system_info.dat as
-	// printable ASCII (exact offset unpinned by spec 11).
-	if b, err := os.ReadFile("/usr/bin/siglent/usr/system/system_info.dat"); err == nil {
-		run := []byte{}
-		for _, c := range b {
-			if c >= 0x20 && c < 0x7f {
-				run = append(run, c)
-				if len(run) >= 14 && strings.HasPrefix(string(run), "SDS") {
-					return string(run)
-				}
-			} else {
-				run = run[:0]
-			}
-		}
-	}
-	return "SDS00000000000"
-}
 
 // HandleLine executes one \n-terminated line (possibly ';'-separated
 // compound commands) and returns the concatenated reply bytes. Pure setters

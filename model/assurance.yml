@@ -167,8 +167,8 @@ assurance:
     responsibleRole: ACT-MAINTAINER
     artifacts:
     - path: model/req-links.yml
-      description: 'The links of the requirements the core UI model (uimodel/panel) now satisfies; review each and set
-        it accepted.'
+      description: 'The links of the requirements the core UI model (uimodel/panel), settings and scope application
+        (scopeapp) now satisfy; review each and set it accepted.'
     defers:
     - code: link.claimed_only
       path: reqLinks[0].status
@@ -208,6 +208,10 @@ assurance:
       path: reqLinks[17].status
     - code: link.claimed_only
       path: reqLinks[18].status
+    - code: link.claimed_only
+      path: reqLinks[19].status
+    - code: link.claimed_only
+      path: reqLinks[20].status
     - code: requirement.orphan
       path: requirements[REQ-SDS-020]
     - code: requirement.orphan
@@ -246,6 +250,10 @@ assurance:
       path: requirements[REQ-SDS-276]
     - code: requirement.orphan
       path: requirements[REQ-SDS-281]
+    - code: requirement.orphan
+      path: requirements[REQ-SDS-090]
+    - code: requirement.orphan
+      path: requirements[REQ-SDS-273]
   trustBoundaries:
   - id: TB-DEVICE
     name: Privileged instrument execution
