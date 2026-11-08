@@ -774,6 +774,7 @@ func (c *sramCycle) ForcePending() bool { return c.e.forceReq.Load() }
 func (c *sramCycle) StopOnFail() {
 	e := c.e
 	e.maskStopped.Store(true)
+	e.inst().OwnerStop(false)
 	e.running.Store(false)
 	e.mu.Lock()
 	e.stats.Running = false
@@ -788,6 +789,7 @@ func (c *sramCycle) SingleDone(core.Verdict) {
 	if acq := e.acqMode.Load(); acq == AcqAverage || acq == AcqPrecision {
 		c.recalled = true // the completed block is the result: no raw record over it
 	}
+	e.inst().OwnerStop(true)
 	e.singleArmed.Store(false)
 	e.running.Store(false)
 	e.mu.Lock()

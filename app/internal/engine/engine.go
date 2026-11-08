@@ -14,6 +14,7 @@ import (
 
 	core "github.com/labeth/open-dso-core/engine"
 	"github.com/labeth/open-dso-core/hal"
+	"github.com/labeth/open-dso-core/instrument"
 	"github.com/labeth/open-dso-core/sample"
 	"github.com/labeth/open-sds1000cml/app/internal/board/acq"
 	"github.com/labeth/open-sds1000cml/app/internal/bus"
@@ -130,6 +131,9 @@ const defaultMatureUs = 750
 // TRLC-LINKS: REQ-SDS-001, REQ-SDS-007, REQ-SDS-008
 type Config struct {
 	InterleaveCalibration *InterleaveCalibration
+	// Instrument is the instrument state the engine's run control lives
+	// in; nil: one of its own, running AUTO.
+	Instrument *instrument.Model
 	// Board is the acquisition board the composition built; nil: the
 	// engine builds one over SRAM and Bus.
 	Board       *acq.Board
@@ -254,18 +258,17 @@ type Engine struct {
 	streamMode      atomic.Bool                      // stitched high-bandwidth streaming decode mode
 	chVdivBits      [2]atomic.Uint64                 // per-channel V/div (float64 bits) for the
 	//                              trigger-level → display-code mapping
-	trigZero      [2]atomic.Uint64 // per-channel active trig-cal Zero (float64 bits)
-	trigCPV       [2]atomic.Uint64 // per-channel active trig-cal CPV (float64 bits)
-	trigOffV      [2]atomic.Uint64 // per-channel applied offset volts (float64 bits)
-	scaleGen      atomic.Uint64    // bumped on every V/div or offset change (stopped replay)
-	feGen         atomic.Uint64    // bumped on every front-end write (relays, gain, offset DAC), changed or not
-	learnFE       uint64           // feGen when the SRAM loop's previous capture was armed (level learning waits a steady capture)
-	singleRestore atomic.Int32     // trigger mode a SINGLE replaced: 1 AUTO, 2 NORM, 0 none (restored on RUN)
-	pubIdent      core.FrameIdent  // geometry of the latest published frame (guarded by mu)
-	chCoupling    [2]atomic.Int32  // per-channel coupling (analog.CplDC/AC/GND); AC is software
-	chMeanCode    [2]atomic.Uint64 // per-channel smoothed raw mean code of published frames (float64 bits; 0 = none)
-	hintReset     atomic.Bool      // clear the phase-continuity hint (config changed)
-	trigPosFrac   atomic.Uint64    // horizontal trigger position, fraction of screen
+	trigZero    [2]atomic.Uint64 // per-channel active trig-cal Zero (float64 bits)
+	trigCPV     [2]atomic.Uint64 // per-channel active trig-cal CPV (float64 bits)
+	trigOffV    [2]atomic.Uint64 // per-channel applied offset volts (float64 bits)
+	scaleGen    atomic.Uint64    // bumped on every V/div or offset change (stopped replay)
+	feGen       atomic.Uint64    // bumped on every front-end write (relays, gain, offset DAC), changed or not
+	learnFE     uint64           // feGen when the SRAM loop's previous capture was armed (level learning waits a steady capture)
+	pubIdent    core.FrameIdent  // geometry of the latest published frame (guarded by mu)
+	chCoupling  [2]atomic.Int32  // per-channel coupling (analog.CplDC/AC/GND); AC is software
+	chMeanCode  [2]atomic.Uint64 // per-channel smoothed raw mean code of published frames (float64 bits; 0 = none)
+	hintReset   atomic.Bool      // clear the phase-continuity hint (config changed)
+	trigPosFrac atomic.Uint64    // horizontal trigger position, fraction of screen
 
 	// zone trigger + mask testing (zonemask.go)
 	zoneMode    atomic.Int32
@@ -274,12 +277,17 @@ type Engine struct {
 	maskFail    atomic.Int64
 	maskSkip    atomic.Int64
 	maskStopped atomic.Bool
-	maskCap     atomic.Uint64 // capture ordinal: counts every mask-tested frame
-	beatN       atomic.Uint64 // liveness heartbeat (see Beats)
-	zoneSkip    atomic.Int64  // zone-armed publishes that could not be tested (env/roll)
-	zoneHeld    core.Liveness // engine goroutine only: AUTO liveness for the zone gate
-	zm          core.ZoneMaskState
-	maskMap     core.MaskMapState // engine goroutine only: the mask read through time (maskThroughTime)
+	// instModel holds the run control (running, the single shot and the
+	// mode it replaced, the trigger mode); the atomics above mirror it for
+	// the owner's hot path. inst() makes one for an engine built without New.
+	instModel *instrument.Model
+	instOnce  sync.Once
+	maskCap   atomic.Uint64 // capture ordinal: counts every mask-tested frame
+	beatN     atomic.Uint64 // liveness heartbeat (see Beats)
+	zoneSkip  atomic.Int64  // zone-armed publishes that could not be tested (env/roll)
+	zoneHeld  core.Liveness // engine goroutine only: AUTO liveness for the zone gate
+	zm        core.ZoneMaskState
+	maskMap   core.MaskMapState // engine goroutine only: the mask read through time (maskThroughTime)
 	// serial / protocol trigger (serialtrig.go)
 	serialMode    atomic.Int32
 	serialMatches atomic.Int64
@@ -444,6 +452,17 @@ func (e *Engine) useBoard(b *acq.Board) {
 	e.rdx = b.Readout()
 }
 
+// inst is the instrument model holding the run control.
+// TRLC-LINKS: REQ-SDS-008, REQ-SDS-011
+func (e *Engine) inst() *instrument.Model {
+	e.instOnce.Do(func() {
+		if e.instModel == nil {
+			e.instModel = instrument.New(instrument.State{Channels: make([]hal.Channel, 2), Running: true, Sweep: hal.Auto}, nil)
+		}
+	})
+	return e.instModel
+}
+
 // hw is the acquisition board, built over the record memory on first use
 // by an engine made without New (a test's).
 // TRLC-LINKS: REQ-SDS-001
@@ -516,6 +535,7 @@ func New(cfg Config) *Engine {
 		bode:                  core.BodeState{DutCh: 1}, // the frequency response's reference on C1, the DUT on C2
 		arena:                 newFrameArena(capacity),
 		interleaveCalibration: cfg.InterleaveCalibration,
+		instModel:             cfg.Instrument,
 		armSettle:             cfg.ArmSettle,
 		armBusy:               realTime,
 		pollEvery:             cfg.PollEvery,

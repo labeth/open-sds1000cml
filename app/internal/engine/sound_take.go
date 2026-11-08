@@ -215,6 +215,7 @@ func (e *Engine) soundTrigStep(s *soundState) {
 	e.soundPublish(s, b, why, &tc, s.trigAt)
 	s.nextArm = s.trigAt + postN
 	if single {
+		e.inst().OwnerStop(true)
 		e.singleArmed.Store(false)
 		e.running.Store(false)
 		e.mu.Lock()

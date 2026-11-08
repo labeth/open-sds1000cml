@@ -30,9 +30,9 @@ func (p *platformFacet) BringUp(context.Context) (hal.Identity, error) {
 func (p *platformFacet) Handover() hal.Handover { return p.handover }
 
 // Service writes what other goroutines staged: at a commit point with no
-// capture armed the relay and gain words the front end's setters left
-// (settings staged through FrontEnd().Set wait for Arm) (a detent's
-// change re-stages its offset DAC), then on the panel plane the lamp word,
+// capture armed the front end's settings staged through FrontEnd().Set and
+// the relay and gain words its own setters left (a detent's change
+// re-stages its offset DAC), then on the panel plane the lamp word,
 // the offset DACs and the trigger level DAC; inside a read (as a Readout
 // yield) the lamp word only.
 // TRLC-LINKS: REQ-SDS-001
@@ -43,9 +43,11 @@ func (p *platformFacet) Service() {
 		return
 	}
 	if b.state != hal.Armed && b.frontEnd != nil {
-		if err := b.frontEnd.flush(); err != nil && b.panel.writeErr != nil {
+		wrote, err := b.frontEnd.write()
+		if err != nil && b.panel.writeErr != nil {
 			b.panel.writeErr(fmt.Errorf("front end: %w", err))
 		}
+		b.stopped = b.stopped || wrote // the next Arm is a commit arm all the same
 	}
 	b.panel.flush()
 }

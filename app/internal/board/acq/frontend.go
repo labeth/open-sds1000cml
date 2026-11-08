@@ -127,14 +127,3 @@ func (f *frontEndFacet) write() (bool, error) {
 	wrote, err := f.w.Flush()
 	return applied || wrote, err
 }
-
-// flush writes the front end's due hardware words, what its own setters
-// left; settings staged here wait for Arm. OWNER, with no capture armed.
-// TRLC-LINKS: REQ-SDS-015
-func (f *frontEndFacet) flush() error {
-	if f.w == nil {
-		return nil
-	}
-	_, err := f.w.Flush()
-	return err
-}
