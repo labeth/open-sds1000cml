@@ -5,9 +5,9 @@ header Cache-Control: no-cache
 header Content-Length: 73767
 header Content-Security-Policy: default-src 'self'; script-src 'self'; connect-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; object-src 'none'; base-uri 'none'
 header Content-Type: text/html; charset=utf-8
-header Etag: "cfa142e583144b55"
+header Etag: "6632beaf25d7f7bf"
 header Vary: Accept-Encoding
-body: 73767 bytes, sha256 1e416cd3dec6fecd038e77adc1252b520ef02cdb7d5023e10b161e46064a3d9b
+body: 73767 bytes, sha256 8753cbca5ca46e8cac27e3e27db559e6b637c15e6d83ab4b2fa460527464b631
 
 === GET /remote
 status 200
@@ -145,21 +145,21 @@ body: 30 bytes, sha256 b7419965e3b91642ef8efe43a592b3b4e0b6d4fb4c5eb416f8bc11ad4
 status 200
 header Accept-Ranges: bytes
 header Cache-Control: no-cache
-header Content-Length: 41379
+header Content-Length: 41777
 header Content-Type: text/javascript; charset=utf-8
-header Etag: "3f8f1c3442bf13de"
+header Etag: "7f606dd45c9f5df0"
 header Vary: Accept-Encoding
-body: 41379 bytes, sha256 775e11e9de34e0b381c97f09f521f807714378687a6a985352e558195ee9cb06
+body: 41777 bytes, sha256 0bb0ad547cd62cab8734d57cc27eb4ee1d0f4cb0ff7dac519e08f2bdbbaab7e2
 
 === GET /base.css
 status 200
 header Accept-Ranges: bytes
 header Cache-Control: no-cache
-header Content-Length: 29172
+header Content-Length: 29842
 header Content-Type: text/css; charset=utf-8
-header Etag: "d6de09611086bdd7"
+header Etag: "0042812158fdd63e"
 header Vary: Accept-Encoding
-body: 29172 bytes, sha256 a3fab77bfed6cac0ac02fe105ea5e9243557d64e58a931533aec7eb298756657
+body: 29842 bytes, sha256 a0eb005b9240b86f34407a4841183db829de39f8b5a1a35a96fe810d6ce04308
 
 === GET /remote.webmanifest
 status 200
@@ -497,9 +497,9 @@ header Accept-Ranges: bytes
 header Cache-Control: no-cache
 header Content-Encoding: gzip
 header Content-Type: text/javascript; charset=utf-8
-header Etag: "3f8f1c3442bf13de-gz"
+header Etag: "7f606dd45c9f5df0-gz"
 header Vary: Accept-Encoding
-gzip body: 41379 bytes, sha256 775e11e9de34e0b381c97f09f521f807714378687a6a985352e558195ee9cb06
+gzip body: 41777 bytes, sha256 0bb0ad547cd62cab8734d57cc27eb4ee1d0f4cb0ff7dac519e08f2bdbbaab7e2
 
 === GET /remote-awake.mp4
 request header Range: bytes=0-15
@@ -521,9 +521,9 @@ header Cache-Control: no-cache
 header Content-Length: 73767
 header Content-Security-Policy: default-src 'self'; script-src 'self'; connect-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; object-src 'none'; base-uri 'none'
 header Content-Type: text/html; charset=utf-8
-header Etag: "cfa142e583144b55"
+header Etag: "6632beaf25d7f7bf"
 header Vary: Accept-Encoding
-body: 73767 bytes, sha256 1e416cd3dec6fecd038e77adc1252b520ef02cdb7d5023e10b161e46064a3d9b
+body: 73767 bytes, sha256 8753cbca5ca46e8cac27e3e27db559e6b637c15e6d83ab4b2fa460527464b631
 
 === GET /debug/pprof/
 status 200
