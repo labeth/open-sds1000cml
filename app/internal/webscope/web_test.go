@@ -509,7 +509,8 @@ func TestRootServesUI(t *testing.T) {
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
 	rec := httptest.NewRecorder()
 	s.Handler().ServeHTTP(rec, req)
-	if rec.Code != 200 || !bytes.Contains(rec.Body.Bytes(), []byte("open-sds1000cml")) {
+	// The page is the core's UI; it names the firmware from the caps' identity.
+	if rec.Code != 200 || !bytes.Contains(rec.Body.Bytes(), []byte(`class="brand"`)) {
 		t.Fatalf("root: code=%d", rec.Code)
 	}
 }
