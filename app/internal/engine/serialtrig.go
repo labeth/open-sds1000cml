@@ -31,6 +31,7 @@ func (e *Engine) SetSerialParams(p SerialParams) {
 	e.ser.Mu.Unlock()
 	e.arincAux.Store(0)
 	e.serLv.ShiftS.Store(0)
+	e.inst().SetSerialParams(p)
 }
 
 // SerialConfig is the serial trigger's current decode settings and match
@@ -55,6 +56,7 @@ func (e *Engine) SetSerialMode(m int) {
 		e.serialMatches.Store(0) // reset the running count on the off→on edge
 	}
 	e.serialMode.Store(int32(m))
+	e.inst().SetSerialMode(m)
 }
 
 // autoGateLiveness is AUTO's rule for a capture the armed serial or zone gate
