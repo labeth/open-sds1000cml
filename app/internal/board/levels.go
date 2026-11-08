@@ -38,7 +38,8 @@ type FrontEnd interface {
 // the offsets the boot detent's law.
 type Levels struct {
 	eng Engine
-	fe  FrontEnd // nil: the global fits
+	fe  FrontEnd          // nil: the global fits
+	m   *instrument.Model // nil: no instrument model to hold the level
 }
 
 // New returns the levels over eng and fe; fe may be nil.
@@ -51,6 +52,31 @@ const (
 	trigZeroFit = 31437.0
 	trigCPVFit  = 911.0
 )
+
+// Project makes the instrument model hold the trigger level in volts at
+// its source's tip, as the comparator's code gives it: at every level
+// written here and at every Reproject.
+// TRLC-LINKS: REQ-SDS-098
+func (l *Levels) Project(m *instrument.Model) {
+	l.m = m
+	l.Reproject()
+}
+
+// Reproject puts the comparator's level into the instrument model again:
+// the code stays where it is when the source, its V/div or its probe
+// changes, and its volts move with them. A comparator never set (the boot
+// level) leaves the model's level unset.
+// TRLC-LINKS: REQ-SDS-098
+func (l *Levels) Reproject() {
+	if l.m == nil {
+		return
+	}
+	st := l.eng.Snapshot()
+	if st.TrigCode == 0 {
+		return
+	}
+	l.m.SetTrigLevel(l.trigVoltsOf(st.TrigCode, st.TrigSource))
+}
 
 // trigCodeOf is the DAC code for the trigger level at v volts at source
 // src's probe tip, unrounded.
@@ -82,7 +108,9 @@ func clampCode(code float64) uint16 {
 // level applied.
 // TRLC-LINKS: REQ-SDS-098, REQ-SDS-212
 func (l *Levels) SetTrigLevel(v float64, src int) float64 {
-	return l.trigVoltsOf(l.eng.SetTrigLevelCode(clampCode(l.trigCodeOf(v, src))), src)
+	c := l.eng.SetTrigLevelCode(clampCode(l.trigCodeOf(v, src)))
+	l.Reproject()
+	return l.trigVoltsOf(c, src)
 }
 
 // TrigLevel is the comparator's level in volts at source src's tip; ok false
@@ -133,7 +161,9 @@ func (l *Levels) StepTrigLevel(n, src int) float64 {
 	}
 	// The code falls as the level rises.
 	nc := min(max(int(c)-n, engine.TrigCodeMin), engine.TrigCodeMax)
-	return l.trigVoltsOf(l.eng.SetTrigLevelCode(uint16(nc)), src)
+	got := l.eng.SetTrigLevelCode(uint16(nc))
+	l.Reproject()
+	return l.trigVoltsOf(got, src)
 }
 
 // TrigLevelGrid is the level's step and range at source src's tip now: one
@@ -148,7 +178,11 @@ func (l *Levels) TrigLevelGrid(src int) hal.Grid {
 // trigger control, which converts its drag to a code with the calibration
 // the status document publishes. It returns the code staged.
 // TRLC-LINKS: REQ-SDS-098, REQ-SDS-162
-func (l *Levels) SetTrigLevelCode(c uint16) uint16 { return l.eng.SetTrigLevelCode(c) }
+func (l *Levels) SetTrigLevelCode(c uint16) uint16 {
+	got := l.eng.SetTrigLevelCode(c)
+	l.Reproject()
+	return got
+}
 
 // TrigLevelSaved is a trigger level kept to put back exactly: here the
 // comparator's DAC code. The zero value is no level (the boot comparator).
@@ -169,6 +203,7 @@ func SaveTrigLevelIn(st engine.Stats) TrigLevelSaved {
 func (l *Levels) RestoreTrigLevel(s TrigLevelSaved) {
 	if s.Set() {
 		l.eng.SetTrigLevelCode(uint16(s.Word)) //nolint:gosec // G115: the word is the DAC code SaveTrigLevelIn kept
+		l.Reproject()
 	}
 }
 
@@ -177,6 +212,7 @@ func (l *Levels) RestoreTrigLevel(s TrigLevelSaved) {
 // TRLC-LINKS: REQ-SDS-098
 func (l *Levels) ResetTrigLevel() {
 	l.eng.SetTrigLevelCode(uint16(l.trigCodeOf(0, 0)))
+	l.Reproject()
 }
 
 // SetOffset stages channel ch's offset at v volts at the BNC (the front end

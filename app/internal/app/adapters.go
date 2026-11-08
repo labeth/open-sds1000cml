@@ -12,11 +12,11 @@ import (
 	"github.com/labeth/open-sds1000cml/app/internal/engine"
 )
 
-// scopeSource wires the web layer: setters/stats from the engine, frames
+// scopeSource wires the web layer: setters/stats from the engine's controls, frames
 // from the fan-out (the arena's read slot belongs to the fan-out alone).
 // TRLC-LINKS: REQ-SDS-167
 type scopeSource struct {
-	*engine.Engine
+	cmlControls
 	fo *fanout.Fanout[sample.Frame]
 }
 

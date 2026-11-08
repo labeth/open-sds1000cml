@@ -18,6 +18,7 @@ import (
 	"time"
 
 	"github.com/labeth/open-dso-core/hal"
+	"github.com/labeth/open-dso-core/instrument"
 	"github.com/labeth/open-dso-core/render"
 	"github.com/labeth/open-dso-core/scopeapp"
 	scpihost "github.com/labeth/open-dso-core/scpi/host"
@@ -107,7 +108,9 @@ type composition struct {
 	bus    *bus.Dev
 	acq    *acq.Board
 	e      *engine.Engine
+	ctl    cmlControls      // the engine's settings as the controllers drive them, over the instrument model
 	fe     *analog.FrontEnd // nil without SPI to the front end
+	afe    *modelAnalog     // fe as the controllers drive it; nil with fe
 	levels *board.Levels
 	lcd    *lcd.Display // the panel; its framebuffer once the display loop opened it
 	keyFD  int
@@ -180,7 +183,10 @@ func newBoard(ctx context.Context) (*composition, bool) {
 		mem = sramBackend
 	}
 	acqBoard := acq.New(acq.Config{Memory: mem, Panel: b})
-	e := engine.New(engine.Config{Bus: b, Logf: logf, Board: acqBoard, InterleaveCalibration: interleaveCal})
+	// The instrument model every controller writes; the engine applies it on
+	// its owner (engine.Controls).
+	model := instrument.New(instrument.State{Channels: make([]hal.Channel, 2), Running: true, Sweep: hal.Auto}, nil)
+	e := engine.New(engine.Config{Bus: b, Logf: logf, Board: acqBoard, InterleaveCalibration: interleaveCal, Instrument: model})
 	e.SetImageSwitcher(imageSwitcher{fd: gpmcFD})
 
 	// Per-unit calibration (spec 10): file → backup → compiled defaults.
@@ -201,12 +207,22 @@ func newBoard(ctx context.Context) (*composition, bool) {
 	}
 	// The trigger level and the offsets in volts over the DACs the engine
 	// stages: the controllers' side of the board's levels.
+	// The controllers drive the front end through the model's projection
+	// of it; the board's staging and the owner's writes take it as it is.
 	var bfe board.FrontEnd
+	var afe *modelAnalog
 	if fe != nil {
-		bfe = fe
+		afe = &modelAnalog{FrontEnd: fe, m: model}
+		bfe = afe
 		acqBoard.SetFrontEnd(fe)
 	}
-	levels := board.New(e, bfe)
+	levels := board.New(e.Controls(), bfe)
+	levels.Project(model)
+	if afe != nil {
+		afe.levels = levels
+		afe.project(0)
+		afe.project(1)
+	}
 	acqBoard.SetLevelGrid(levels.TrigLevelGrid)
 	attachProfile(acqBoard)
 	acqBoard.SetHandover(hal.Handover{
@@ -219,7 +235,7 @@ func newBoard(ctx context.Context) (*composition, bool) {
 	panelLCD := lcd.NewDisplay(acqBoard.Profile().Display)
 	acqBoard.SetDevices(panelLCD, cmlpanel.NewInput(e, keyFD, logf),
 		settings.Storage{Dir: otaDir, Cal: hal.CalSource{Source: calTab.Source, Valid: true}})
-	return &composition{bus: b, acq: acqBoard, e: e, fe: fe, levels: levels, lcd: panelLCD, keyFD: keyFD}, true
+	return &composition{bus: b, acq: acqBoard, e: e, ctl: cmlControls{e.Controls(), levels}, fe: fe, afe: afe, levels: levels, lcd: panelLCD, keyFD: keyFD}, true
 }
 
 // options are the SDS1000CML+'s parts of the core's application: its own
@@ -228,8 +244,8 @@ func newBoard(ctx context.Context) (*composition, bool) {
 // TRLC-LINKS: REQ-SDS-167
 func (c *composition) options() scopeapp.Options {
 	var setFE coresettings.Analog
-	if c.fe != nil { // a nil *FrontEnd must leave the interface nil
-		setFE = c.fe
+	if c.afe != nil { // a nil *modelAnalog must leave the interface nil
+		setFE = c.afe
 	}
 	return scopeapp.Options{
 		Logf: logf, Mark: startMark,
@@ -239,10 +255,10 @@ func (c *composition) options() scopeapp.Options {
 		// left free. A soft limit makes the collector work harder near it
 		// instead of growing.
 		MemoryLimit: appMemoryLimit,
-		Owner:       c.e,
+		Owner:       c.ctl,
 		UI:          c.ui,
 		Display: scopeapp.Display{
-			Open: c.openLCD, Engine: c.e, HUD: c.hud, OnFrame: c.viewLease, URL: lcd.DeviceURL,
+			Open: c.openLCD, Engine: c.ctl, HUD: c.hud, OnFrame: c.viewLease, URL: lcd.DeviceURL,
 			Canvas: func() render.Canvas { return lcd.NewBackBuffer() },
 		},
 		// VXI-11 is this scope's only LAN SCPI path (spec 11 §1: no raw
@@ -283,10 +299,10 @@ func describe(d *scopeapp.Composition) {
 // TRLC-LINKS: REQ-SDS-167
 func (c *composition) ui(env *scopeapp.Env) (*panel.Controller, error) {
 	var pfe panel.Analog
-	if c.fe != nil {
-		pfe = c.fe
+	if c.afe != nil {
+		pfe = c.afe
 	}
-	pc := panel.New(c.e, pfe, c.levels, cmlpanel.Hardware{}, engine.SupportedTdivs(), uiStartTdiv, logf)
+	pc := panel.New(c.ctl, pfe, c.levels, cmlpanel.Hardware{}, engine.SupportedTdivs(), uiStartTdiv, logf)
 	sv := streamview.New(c.e, logf)
 	pc.SetDecodeStream(sv)
 	pc.SetHardcopy(func() (string, error) {
@@ -307,15 +323,15 @@ func (c *composition) ui(env *scopeapp.Env) (*panel.Controller, error) {
 // TRLC-LINKS: REQ-SDS-024, REQ-SDS-167
 func (c *composition) scpiEngine(env *scopeapp.Env) (scopeapp.SCPI, error) {
 	var sfe scpi.Analog
-	if c.fe != nil {
-		sfe = c.fe
+	if c.afe != nil {
+		sfe = c.afe
 	}
 	shot := func() []byte {
 		back := lcd.NewBackBuffer()
 		env.Render(back)
 		return lcd.EncodeBMP(back)
 	}
-	h := scpi.New(scopeSource{c.e, env.Frames}, sfe, c.levels, c.pc, shot, logf)
+	h := scpi.New(scopeSource{c.ctl, env.Frames}, sfe, c.levels, c.pc, shot, logf)
 	c.scpi = h
 	c.pc.SetInverter(panel.Inverter2(h)) // the CH tabs' Invert rows: the same INVS shadow
 	return scopeapp.SCPI{
@@ -330,10 +346,10 @@ func (c *composition) scpiEngine(env *scopeapp.Env) (scopeapp.SCPI, error) {
 // TRLC-LINKS: REQ-SDS-164, REQ-SDS-167
 func (c *composition) web(env *scopeapp.Env) (webserver.Scope, error) {
 	var feIface webscope.Analog
-	if c.fe != nil {
-		feIface = c.fe
+	if c.afe != nil {
+		feIface = c.afe
 	}
-	sc := webscope.New(scopeSource{c.e, env.Frames}, feIface, c.levels, c.pc, env.ScreenPNG, webscope.WithBoard(c.acq))
+	sc := webscope.New(scopeSource{c.ctl, env.Frames}, feIface, c.levels, c.pc, env.ScreenPNG, webscope.WithBoard(c.acq))
 	sc.SetInvertSource(c.scpi.Inverted)                             // display-level INVS: SCPI shadow → /api/status
 	sc.SetSetupMemory(scopeapp.WebSetups{SharedSetups: env.Setups}) // the web top bar's Setups: the same slots as *SAV/*RCL
 	return sc.WithCaps(), nil

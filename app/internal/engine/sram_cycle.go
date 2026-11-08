@@ -742,6 +742,7 @@ func (c *sramCycle) Done(doneAt time.Time, prevPace time.Duration) {
 // Pacing is the trigger holdoff and the display's share of the core.
 // TRLC-LINKS: REQ-SDS-008, REQ-SDS-011
 func (c *sramCycle) Pacing() (holdoff, display time.Duration) {
+	c.e.applyStaged() // a holdoff changed while the loop holds for it
 	return time.Duration(c.e.holdoffNs.Load()), time.Duration(c.e.displayPaceNs.Load())
 }
 

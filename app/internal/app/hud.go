@@ -22,7 +22,7 @@ import (
 // is scaled by the source channel's V/div.
 // TRLC-LINKS: REQ-SDS-168
 func (c *composition) hud() render.HUD {
-	e, fe := c.e, c.fe
+	e, fe := c.ctl, c.fe
 	st := e.Snapshot()
 	hud := render.HUD{
 		Ch: [render.MaxChans]render.Channel{{VdivV: 1, Show: true}, {VdivV: 1, Show: true}}, TdivS: st.TdivS,
@@ -52,7 +52,7 @@ func (c *composition) hud() render.HUD {
 		decided := st.Norm || hud.SerialArmed || hud.ZoneTrig || hud.TrigType != 0
 		hud.Waiting = decided && since > time.Duration(math.Max(1, 25*st.TdivS)*float64(time.Second))
 	}
-	hudTrigLevel(&hud, e, st)
+	hudTrigLevel(&hud, c.e, st)
 	if pc := c.pc; pc != nil {
 		if sv := c.sv; sv != nil && pc.StreamMode() {
 			c.hudStreamPage(&hud, pc, sv)
@@ -63,7 +63,7 @@ func (c *composition) hud() render.HUD {
 		inv := sh.Inverted()
 		hud.Ch[0].Inv, hud.Ch[1].Inv = inv[0], inv[1]
 	}
-	hudZonesMask(&hud, e, st)
+	hudZonesMask(&hud, c.e, st)
 	c.hudBode(&hud, st)
 	return hud
 }

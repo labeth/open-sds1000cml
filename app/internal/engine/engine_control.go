@@ -26,6 +26,7 @@ func (e *Engine) SetTrigType(t int) {
 		e.stats.TriggerBackend = "" // an edge needs no qualifier: not the last type's
 	}
 	e.mu.Unlock()
+	e.inst().SetTrigType(t)
 }
 
 // SetPulseParams sets the pulse qualifier: its level as a fraction of the
@@ -38,6 +39,7 @@ func (e *Engine) SetPulseParams(lvlFrac, wMinNs, wMaxNs float64, cond int) {
 	e.tp.PulseCond = cond & 3
 	e.stats.TrigQual = core.QualOf(e.tp)
 	e.mu.Unlock()
+	e.inst().SetPulseParams(lvlFrac, wMinNs, wMaxNs, cond)
 }
 
 // SetSlopeParams sets the slope qualifier: its low and high levels as
@@ -51,6 +53,7 @@ func (e *Engine) SetSlopeParams(loFrac, hiFrac, tMinNs, tMaxNs float64, cond int
 	e.tp.SlopeCond = cond & 3
 	e.stats.TrigQual = core.QualOf(e.tp)
 	e.mu.Unlock()
+	e.inst().SetSlopeParams(loFrac, hiFrac, tMinNs, tMaxNs, cond)
 }
 
 // SetVideoParams sets the video qualifier: the standard (0 or 1), the line
@@ -67,6 +70,7 @@ func (e *Engine) SetVideoParams(std, line int, neg bool) {
 	e.tp.VideoStd, e.tp.VideoLine, e.tp.VideoNeg = std, line, neg
 	e.stats.TrigQual = core.QualOf(e.tp)
 	e.mu.Unlock()
+	e.inst().SetVideoParams(std, line, neg)
 }
 
 // SetAcqMode selects the acquisition mode (Acq*; out of range is normal).
@@ -81,6 +85,7 @@ func (e *Engine) SetAcqMode(m int) {
 	e.mu.Lock()
 	e.stats.AcqMode = m
 	e.mu.Unlock()
+	e.inst().SetAcqMode(m)
 }
 
 // SetAvgCount sets how many frames the average holds, clamped to [1, 256].
@@ -97,6 +102,7 @@ func (e *Engine) SetAvgCount(n int) {
 	e.mu.Lock()
 	e.stats.AvgCount = n
 	e.mu.Unlock()
+	e.inst().SetAvgCount(n)
 }
 
 // SetEresLen sets the ERES boxcar length (clamped like EresLenForBits).
@@ -107,6 +113,7 @@ func (e *Engine) SetEresLen(l int) {
 	e.mu.Lock()
 	e.stats.EresLen = l
 	e.mu.Unlock()
+	e.inst().SetEresLen(l)
 }
 
 // SetRunning runs or stops acquisition; either cancels a pending single-shot.
@@ -253,6 +260,7 @@ func (e *Engine) SetTrigPosFrac(frac float64) {
 	e.mu.Lock()
 	e.stats.TrigPosFrac = frac
 	e.mu.Unlock()
+	e.inst().SetTrigPosFrac(frac)
 }
 
 // TRLC-LINKS: REQ-SDS-011
@@ -336,6 +344,7 @@ func (e *Engine) SetTdiv(tdivS float64) (instrument.Timebase, bool) {
 	e.mu.Unlock()
 	e.hintReset.Store(true)
 	e.clearNoiseTriggers()
+	e.inst().SetTdiv(b.TdivS)
 	return b.Timebase(), true
 }
 
@@ -403,6 +412,7 @@ func (e *Engine) SetHoldoff(sec float64) float64 {
 	e.mu.Lock()
 	e.stats.HoldoffS = sec
 	e.mu.Unlock()
+	e.inst().SetHoldoff(sec)
 	return sec
 }
 
@@ -557,6 +567,7 @@ func (e *Engine) SetTrigSlope(rising bool) {
 	e.mu.Unlock()
 	e.hintReset.Store(true)
 	e.clearNoiseTriggers()
+	e.inst().SetTrigSlope(rising)
 }
 
 // SetETS stages the equivalent-time opt-in (spec 04 §3: never auto-routed;
@@ -571,6 +582,7 @@ func (e *Engine) SetETS(on bool) {
 	e.etsWant = on
 	e.stats.ETS = on
 	e.mu.Unlock()
+	e.inst().SetETS(on)
 }
 
 // SetTrigSource selects the trigger channel (0 = C1, 1 = C2).
@@ -585,27 +597,35 @@ func (e *Engine) SetTrigSource(ch int) {
 	e.mu.Unlock()
 	e.hintReset.Store(true)
 	e.clearNoiseTriggers()
+	e.inst().SetTrigSource(ch)
 }
 
 // SetPrecisionRate selects the nearest hardware output sample rate per channel.
 // This setting is independent of the viewing timebase.
 // TRLC-LINKS: REQ-SDS-036
 func (e *Engine) SetPrecisionRate(hz float64) float64 {
-	log := 4
-	if hz > 0 && !math.IsNaN(hz) && !math.IsInf(hz, 0) {
-		log = int(math.Round(math.Log2(500e6 / hz)))
-	}
-	if log < 4 {
-		log = 4
-	}
-	if log > 20 {
-		log = 20
-	}
+	log := precisionLog(hz)
 	actual := 500e6 / float64(uint64(1)<<uint(log))
-	e.precisionLog.Store(int32(log))
+	e.precisionLog.Store(int32(log)) //nolint:gosec // G115: precisionLog bounds it to 4..20
 	e.avgGen.Add(1)
 	e.mu.Lock()
 	e.stats.PrecisionRateHz = actual
 	e.mu.Unlock()
+	e.inst().SetPrecisionRate(actual)
 	return actual
 }
+
+// precisionLog is the precision words' decimation for a rate of hz: the
+// nearest power of two of 500 MHz over it, 2^4 to 2^20 (2^4 for no rate).
+// TRLC-LINKS: REQ-SDS-036
+func precisionLog(hz float64) int {
+	log := 4
+	if hz > 0 && !math.IsNaN(hz) && !math.IsInf(hz, 0) {
+		log = int(math.Round(math.Log2(500e6 / hz)))
+	}
+	return min(max(log, 4), 20)
+}
+
+// precisionRate is the rate SetPrecisionRate resolves hz to.
+// TRLC-LINKS: REQ-SDS-036
+func precisionRate(hz float64) float64 { return 500e6 / float64(uint64(1)<<uint(precisionLog(hz))) }
