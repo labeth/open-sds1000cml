@@ -20,6 +20,9 @@ type trigState struct {
 	offsets    *[2][5]float64 // the converter cores' offsets in codes; nil: none measured
 	parts      [2]trigPart    // what Program staged last (parts[cur]) and the next one's buffer
 	cur        int
+	free       bool // parts[cur] runs free (TriggerSpec.FreeRun)
+	norm       bool // parts[cur]'s sweep is not AUTO
+	node       hal.TrigNode
 	kept       keptSpec // the spec and inputs parts[cur] was planned from
 	eventEpoch uint32
 	events     []sramcapture.DecodedEvent
@@ -67,7 +70,8 @@ func (t *triggerFacet) Program(s hal.TriggerSpec) error {
 	if err := b.trigConfig(&s, &in, &b.trig.parts[next]); err != nil {
 		return err
 	}
-	b.trig.cur = next
+	b.trig.cur, b.trig.free, b.trig.norm = next, s.FreeRun, s.Sweep != hal.Auto
+	b.trig.node = s.Stages[0].Node
 	b.trig.kept.keep(&s, &in)
 	b.restaged()
 	return nil
@@ -78,13 +82,13 @@ func (t *triggerFacet) Program(s hal.TriggerSpec) error {
 func (ts *trigState) stagedPart() *trigPart { return &ts.parts[ts.cur] }
 
 // levelScale is channel ch's record codes in volts at the probe tip: the
-// front end's V/div and offset, or without a front end (no SPI to it, the
+// front end's V/div and offset as the next Arm leaves them, or without a front end (no SPI to it, the
 // register path, the engine's tests) a nominal 1 V/div without offset, so
 // levels the owner converted the same way come back as the codes they were.
 // TRLC-LINKS: REQ-SDS-011
 func (b *Board) levelScale(ch int) sample.Scale {
 	if b.frontEnd != nil {
-		if fe := b.frontEnd.Get(ch & 1); fe.VoltsDiv > 0 {
+		if fe := b.frontEnd.pending(ch & 1); fe.VoltsDiv > 0 {
 			return sample.Scale{Zero: sample.Mid8, PerCode: fe.VoltsDiv / CodesPerDiv, OffsetV: fe.OffsetV}
 		}
 	}
@@ -431,7 +435,7 @@ func (t *triggerFacet) Default(node hal.TrigNode, src hal.Source) (hal.TrigStage
 	}
 	centre := 0.0
 	if b.frontEnd != nil {
-		centre = -b.frontEnd.Get(src.Index).OffsetV
+		centre = -b.frontEnd.pending(src.Index).OffsetV
 	}
 	st := hal.TrigStage{Node: node, Source: src, Levels: hal.Levels{High: centre, Slope: hal.Rising}}
 	switch node { //nolint:exhaustive // default: the other nodes have no single-source default here
@@ -441,7 +445,7 @@ func (t *triggerFacet) Default(node hal.TrigNode, src hal.Source) (hal.TrigStage
 	case hal.NodeSlope:
 		st.Qual = &hal.Qualifier{Op: hal.Shorter, MaxS: 100e-9}
 		if b.frontEnd != nil {
-			vd := b.frontEnd.Get(src.Index).VoltsDiv
+			vd := b.frontEnd.pending(src.Index).VoltsDiv
 			st.Levels.Low, st.Levels.High = centre-1.5*vd, centre+1.5*vd
 		}
 	case hal.NodeVideo:

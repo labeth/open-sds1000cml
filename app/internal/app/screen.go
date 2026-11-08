@@ -23,16 +23,19 @@ type lcdScreen struct {
 
 var _ scopeapp.Screen = (*lcdScreen)(nil)
 
-// openLCD brings the panel up (spec 07 §1.1); an error leaves the scope
-// running headless.
+// openLCD brings the panel up (spec 07 §1.1) and gives the board's display
+// its framebuffer; an error leaves the scope running headless.
 // TRLC-LINKS: REQ-SDS-168
-func openLCD() (scopeapp.Screen, error) {
+func (c *composition) openLCD() (scopeapp.Screen, error) {
 	if err := lcd.Bringup(logf); err != nil {
 		return nil, err
 	}
 	fb, err := lcd.OpenFB()
 	if err != nil {
 		return nil, fmt.Errorf("lcd: %w", err)
+	}
+	if c.lcd != nil {
+		c.lcd.Attach(fb)
 	}
 	logf("lcd: renderer up on /dev/fb0")
 	return &lcdScreen{fb: fb, back: lcd.NewBackBuffer(), persist: lcd.NewBackBuffer()}, nil

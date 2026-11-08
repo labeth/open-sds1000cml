@@ -3,6 +3,7 @@
 package acq
 
 import (
+	"fmt"
 	"math"
 	"math/bits"
 
@@ -17,7 +18,10 @@ type plannerFacet Board
 // Plan is the SRAM record for r: the full record at 2 ns a sample while
 // ten divisions fit, else the smallest decimation that fits them (PlanSRAM),
 // both channels always. A decimated record is filtered to Q8.8 precision
-// words (or box averages, or picked samples, on images that do so).
+// words (or box averages, or picked samples, on images that do so). The
+// record is always the whole memory, so any depth up to it is served; a
+// deeper one, or a feature of r.Need the record's content or depth cannot
+// serve, is refused.
 // TRLC-LINKS: REQ-SDS-010
 func (pl *plannerFacet) Plan(r hal.Request) (hal.Plan, error) {
 	b := (*Board)(pl)
@@ -26,8 +30,8 @@ func (pl *plannerFacet) Plan(r hal.Request) (hal.Plan, error) {
 		return hal.Plan{}, hal.Refuse("segmented memory", "the SRAM holds one record")
 	case r.Mode == hal.RollMode || r.Mode == hal.Stream:
 		return hal.Plan{}, hal.Refuse("roll and stream plans", "they run on the stream image through the Streamer")
-	case r.Depth != 0 && r.Depth != int(sramcapture.SamplesPerChannel):
-		return hal.Plan{}, hal.Refuse("record depth", "the SRAM record is always the full memory")
+	case r.Depth < 0:
+		return hal.Plan{}, hal.Refuse("record depth", "a depth is a count of samples")
 	}
 	for _, c := range r.Channels {
 		if c < 0 || c > 1 {
@@ -50,6 +54,17 @@ func (pl *plannerFacet) Plan(r hal.Request) (hal.Plan, error) {
 	}
 	if r.Mode == hal.PeakDetect && p.Log == 0 {
 		plan.Note = "peak detect at the full rate reads the samples themselves"
+	}
+	if r.Depth > plan.Depth {
+		return hal.Plan{}, hal.Refuse("record depth", fmt.Sprintf("%d samples: the SRAM record at this time/div holds %d", r.Depth, plan.Depth))
+	}
+	for _, f := range r.Need {
+		if f.Accepts&plan.Content == 0 {
+			return hal.Plan{}, hal.Refuse(f.Name, fmt.Sprintf("the record at this time/div holds %v, none of which it takes", plan.Content))
+		}
+		if f.MinDepth > plan.Depth {
+			return hal.Plan{}, hal.Refuse(f.Name, fmt.Sprintf("needs %d samples, the SRAM record holds %d", f.MinDepth, plan.Depth))
+		}
 	}
 	return plan, nil
 }

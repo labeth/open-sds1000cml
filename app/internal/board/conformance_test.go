@@ -14,6 +14,7 @@ import (
 	"github.com/labeth/open-sds1000cml/app/internal/board"
 	"github.com/labeth/open-sds1000cml/app/internal/board/acq"
 	"github.com/labeth/open-sds1000cml/app/internal/bus"
+	"github.com/labeth/open-sds1000cml/app/internal/lcd"
 	cmlpanel "github.com/labeth/open-sds1000cml/app/internal/panel"
 	"github.com/labeth/open-sds1000cml/app/internal/settings"
 	"github.com/labeth/open-sds1000cml/app/internal/sramcapture"
@@ -198,7 +199,7 @@ func cmlBoard(t *testing.T) *acq.Board {
 	b.SetProfile(p)
 	b.SetFrontEnd(fe)
 	b.SetLevelGrid(board.New(nil, fe).TrigLevelGrid)
-	b.SetDevices(nil, cmlpanel.NewInput(matrix{}, -1, t.Logf), settings.Storage{Dir: t.TempDir(), Cal: hal.CalSource{Source: "defaults", Valid: true}})
+	b.SetDevices(lcd.NewDisplay(p.Display), cmlpanel.NewInput(matrix{}, -1, t.Logf), settings.Storage{Dir: t.TempDir(), Cal: hal.CalSource{Source: "defaults", Valid: true}})
 	b.SetImages(images{})
 	b.ProbeImage(t.Logf)
 	return b
@@ -209,16 +210,5 @@ func cmlBoard(t *testing.T) *acq.Board {
 // TRLC-LINKS: REQ-SDS-001
 func TestHALConformance(t *testing.T) {
 	b := cmlBoard(t)
-	readout := "the board reads only windows of an explicit span into frames the caller sized; the core's main window (Span 0, an empty frame) is refused"
-	conformance.Run(t, b, conformance.Options{Skip: map[string]string{
-		"devices":         "the LCD is driven outside the board: Display() is nil",
-		"planner":         "a plan's depth counts full-rate samples past the profile's max_depth (1 Mi at 10 µs/div)",
-		"need-refusal":    "the planner does not check Request.Need",
-		"stage-commit":    "the analog front end applies a setting at Set, not at the next Arm",
-		"freerun":         readout,
-		"readout":         readout,
-		"readout-windows": readout,
-		"readout-refusal": readout,
-		"stopped-record":  readout,
-	}})
+	conformance.Run(t, b, conformance.Options{CommitArms: b.CommitArms})
 }
