@@ -227,7 +227,8 @@ func (a *acquirerFacet) Arm() error {
 		commit = commit || applied
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), armTimeout)
-	err := b.mem.Arm(ctx, *b.staged())
+	cfg := b.staged()
+	err := b.mem.Arm(ctx, *cfg)
 	cancel()
 	b.count(func(d *boardDiag) { d.Arms++ })
 	if err != nil {
@@ -239,6 +240,7 @@ func (a *acquirerFacet) Arm() error {
 	}
 	b.state, b.forced, b.stopped, b.armedGen = hal.Armed, false, false, b.stageGen
 	b.armedPlan, b.armedFree, b.armedNode, b.armedNorm = b.plan, b.trig.free, b.trig.node, b.trig.norm
+	b.cond.armedPick = cfg.Pick
 	return nil
 }
 

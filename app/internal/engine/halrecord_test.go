@@ -866,6 +866,16 @@ func (r recReader) Read(ctx context.Context, req hal.ReadRequest, dst []*sample.
 	return err
 }
 
+func (r recReader) ScreenWindow(q hal.ScreenRequest) (hal.Window, error) {
+	sr, ok := r.Readout.(hal.ScreenReader)
+	if !ok {
+		return hal.Window{}, errors.New("no screen reader")
+	}
+	w, err := sr.ScreenWindow(q)
+	r.h.add("Readout.ScreenWindow pos %.4g pre %d envelope %v -> {%v %d+%d points %d %v} %v", q.PosFrac, q.PreRoom, q.Envelope, w.Role, w.StartSample, w.Span, w.Points, w.Want, err)
+	return w, err
+}
+
 type recTrigger struct {
 	hal.Trigger
 	h *halLog

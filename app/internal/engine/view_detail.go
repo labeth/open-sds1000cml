@@ -117,7 +117,7 @@ func (r *viewRead) window(m sramcapture.Metadata, role sample.Role) hal.Window {
 // conditioning; at maps a record word to the frame's value index. nil when
 // the read did not fill it.
 // TRLC-LINKS: REQ-SDS-010, REQ-SDS-021
-func (e *Engine) window(m sramcapture.Metadata, r *viewRead, scale [2]core.ChScale, at func(w uint32) float64) *sample.Detail {
+func (e *Engine) window(m sramcapture.Metadata, r *viewRead, at func(w uint32) float64) *sample.Detail {
 	p, f, n := r.p, r.f, r.p.N
 	if r.got != n {
 		return nil
@@ -125,37 +125,12 @@ func (e *Engine) window(m sramcapture.Metadata, r *viewRead, scale [2]core.ChSca
 	sampleS := 1 / m.SampleRateHz
 	v := &sample.Detail{From: at(p.Start), To: at(p.Start + p.Length), Frame: f}
 	f.SampleS, f.Content = sampleS, sample.RawDecimated
-	f.Traces[0].Precision, f.Traces[1].Precision = nil, nil // the record's, not the calibrated codes'
 	if p.Bucket != 0 {
 		f.SampleS = sampleS * float64(p.Bucket) * float64(m.SamplesPerWord) / 2
 		f.Content = sample.PeakPairs
 		f.Flags = sample.Ordered
-		if cal := e.interleaveCalibration; cal != nil && m.Decimation <= 1 {
-			q1, q2 := e.viewQ8(n)
-			cal.debiasEnvelope(0, f.Codes8(0), q1, false)
-			cal.debiasEnvelope(1, f.Codes8(1), q2, false)
-		}
-		acq.OrderEnvelopeHead(f.Codes8(0), nil)
-		acq.OrderEnvelopeHead(f.Codes8(1), nil)
-		acq.OrderEnvelope(f.Codes8(0), nil)
-		acq.OrderEnvelope(f.Codes8(1), nil)
-	} else if cal := e.interleaveCalibration; cal != nil && m.FractionBits == 0 && n >= 2000 {
-		q1, q2 := e.viewQ8(n)
-		cal.apply(f.Codes8(0), f.Codes8(1), q1, q2, [2]float64{scale[0].Vdiv, scale[1].Vdiv}, sampleS)
 	}
 	return v
-}
-
-// viewQ8 is scratch for a view window's Q8.8 values (two channels of n),
-// which its calibration writes and the window does not keep: one buffer
-// for the engine goroutine's reads, not two allocations a window a frame.
-// TRLC-LINKS: REQ-SDS-010, REQ-SDS-021
-func (e *Engine) viewQ8(n int) (q1, q2 []uint16) {
-	if cap(e.viewQ) < 2*n {
-		e.viewQ = make([]uint16, 2*n)
-	}
-	q := e.viewQ[:2*n]
-	return q[:n:n], q[n:]
 }
 
 // viewReads is the view windows the surfaces ask for of a frame, planned:
@@ -228,13 +203,13 @@ func (v *viewReads) got(fs []*sample.Frame) {
 // windows gives frame f the view windows the reads filled (the frame read
 // from word offset in buckets of bucket words).
 // TRLC-LINKS: REQ-SDS-010, REQ-SDS-021
-func (e *Engine) windows(f *sample.Frame, v *viewReads, m sramcapture.Metadata, offset, bucket uint32, scale [2]core.ChScale) {
+func (e *Engine) windows(f *sample.Frame, v *viewReads, m sramcapture.Metadata, offset, bucket uint32) {
 	for s, r := range v {
 		if r == nil {
 			continue
 		}
 		if r.win == nil {
-			r.win = e.window(m, r, scale, core.EnvelopeValue(offset, bucket))
+			r.win = e.window(m, r, core.EnvelopeValue(offset, bucket))
 		}
 		if r.win != nil {
 			d := *r.win

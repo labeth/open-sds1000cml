@@ -1,6 +1,6 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-ENGINE
 
-package engine
+package acq
 
 import (
 	"math"
@@ -24,7 +24,7 @@ func TestInterleaveCalibrationRotationAndGuards(t *testing.T) {
 			a[i] = uint8(base + int(c.Offset[0][(i+r)%5]))
 			b[i] = uint8(base + int(c.Offset[1][(i+r)%5]))
 		}
-		if !c.apply(a, b, q1, q2, [2]float64{2, 2}, 2e-9) {
+		if !c.Apply(a, b, q1, q2, [2]float64{2, 2}, 2e-9) {
 			t.Fatalf("rotation %d rejected", r)
 		}
 		for i := range a {
@@ -62,7 +62,7 @@ func TestInterleaveCalibrationRotationAndGuards(t *testing.T) {
 	for _, kind := range []string{"scale", "highfrequency", "clipping"} {
 		a, b := build(kind)
 		q1, q2 := make([]uint16, n), make([]uint16, n)
-		if !c.apply(a, b, q1, q2, [2]float64{1, 2}, 2e-9) {
+		if !c.Apply(a, b, q1, q2, [2]float64{1, 2}, 2e-9) {
 			t.Fatalf("%s rejected", kind)
 		}
 		if b[7] != 128 {
@@ -77,7 +77,7 @@ func TestInterleaveCalibrationRotationAndGuards(t *testing.T) {
 		a, b := build(kind)
 		q1, q2 := make([]uint16, n), make([]uint16, n)
 		before := append([]uint8(nil), a...)
-		if c.apply(a, b, q1, q2, [2]float64{2, 2}, 2e-9) {
+		if c.Apply(a, b, q1, q2, [2]float64{2, 2}, 2e-9) {
 			t.Fatalf("%s accepted", kind)
 		}
 		for i := range a {
@@ -124,7 +124,7 @@ func TestInterleaveGainOnlyAtMeasuredScale(t *testing.T) {
 					x[i] = uint8(100 + (i/5)%50 + int(c.Offset[ch][(i+rotation)%5]))
 				}
 			}
-			if !c.apply(a, b, q1, q2, scale, 2e-9) {
+			if !c.Apply(a, b, q1, q2, scale, 2e-9) {
 				t.Fatal("calibration rejected")
 			}
 			for ch, q := range [][]uint16{q1, q2} {
@@ -188,7 +188,7 @@ func TestDebiasEnvelope(t *testing.T) {
 	c.Offset[0] = [5]float64{-4.5, -4.4, -3, 5.3, 6.5}
 	sig := []uint8{122, 216, 0, 255}
 	q := make([]uint16, len(sig))
-	c.debiasEnvelope(0, sig, q, false)
+	c.DebiasEnvelope(0, sig, q, false)
 	want := []float64{126.5, 209.5, 0, 255}
 	for i, w := range want {
 		if got := float64(q[i]) / 256; math.Abs(got-w) > 1.0/256 {

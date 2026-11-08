@@ -90,7 +90,8 @@ type readoutFacet Board
 
 // Read reads req's windows of the halted record into dst (one frame a
 // window), each frame sized by the caller or, left empty, by the board
-// (readSized: a Span of 0 is the plan's screen). yield runs between the bursts
+// (readSized: a Span of 0 is the plan's screen), and conditions each
+// window it filled (condition.go). yield runs between the bursts
 // of a long read; ctx abandons it between them (a raw read nobody wants
 // any more, a sound stream taking the fabric); without a deadline of its
 // own a read gives up after readTimeout. A main window that does not fill
@@ -123,7 +124,9 @@ func (r *readoutFacet) Read(ctx context.Context, req hal.ReadRequest, dst []*sam
 				return ErrShortRead
 			}
 			f.SetLen(n)
+			continue
 		}
+		b.condition(b.rec, req.Windows[i], b.scratch.windows[i], f)
 	}
 	return nil
 }
@@ -291,3 +294,38 @@ func (b *Board) Recall(ctx context.Context, offset, count uint32, dst io.Writer,
 // reason.
 // TRLC-LINKS: REQ-SDS-010, REQ-SDS-040
 func (b *Board) EnvelopeDiagnostics() (int, string) { return b.mem.EnvelopeDiagnostics() }
+
+var _ hal.ScreenReader = (*readoutFacet)(nil)
+
+// ScreenWindow is the live window of the halted record for the armed
+// plan's screen: the screen and a margin around it with the trigger at
+// r.PosFrac and r.PreRoom samples more before it (LiveSRAMWindowPre), as
+// an envelope of the fabric's display buckets when asked and the window is
+// long enough (EnvelopeWindow), else raw.
+// TRLC-LINKS: REQ-SDS-010
+func (r *readoutFacet) ScreenWindow(req hal.ScreenRequest) (hal.Window, error) {
+	b := (*Board)(r)
+	m := b.rec
+	if m.SamplesPerWord == 0 || m.Length == 0 {
+		return hal.Window{}, hal.Refuse("screen window", "no halted record")
+	}
+	pre := max(req.PreRoom, 0)
+	offset, words := LiveSRAMWindowPre(m, b.armedPlan.WinSamples, req.PosFrac, pre)
+	var bucket uint32
+	if req.Envelope {
+		buckets := uint32(sramcapture.EnvelopeBuckets)
+		if m.FractionBits == 8 {
+			buckets = sramcapture.EnvelopeBucketsQ8 // two words a bucket
+		}
+		bucket, offset, words = EnvelopeWindow(offset, words, buckets, m.Length, uint32(pre/max(1, int(m.SamplesPerWord)))) //nolint:gosec // G115: pre is a sample offset within the record
+	}
+	return Window(m, sample.Main, offset, words, bucket), nil
+}
+
+// WindowWords is window w of record m in record words: its offset, its
+// words and its bucket (0: every sample).
+// TRLC-LINKS: REQ-SDS-010
+func WindowWords(m sramcapture.Metadata, w hal.Window) (offset, words, bucket uint32, err error) {
+	ww, err := wordsOf(m, w)
+	return ww.offset, ww.words, ww.bucket, err
+}

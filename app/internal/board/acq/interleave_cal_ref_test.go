@@ -1,6 +1,6 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-ENGINE
 
-package engine
+package acq
 
 // supportsScale reports whether both channels sit at a measured scale. Offset
 // correction no longer needs it; it remains for range bookkeeping.

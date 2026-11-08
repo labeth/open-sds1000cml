@@ -30,7 +30,7 @@ const edgeWindowWords = 1024
 // centred on word w, and calibrates a raw record's converters (a decimated
 // record is filtered across them already); nil when the read fails.
 // TRLC-LINKS: REQ-SDS-021, REQ-SDS-016
-func (e *Engine) recallEdgeWindow(ctx context.Context, m sramcapture.Metadata, w uint32, scale [2]core.ChScale) *sample.Frame {
+func (e *Engine) recallEdgeWindow(ctx context.Context, m sramcapture.Metadata, w uint32) *sample.Frame {
 	if m.Length < edgeWindowWords || m.SamplesPerWord == 0 {
 		return nil
 	}
@@ -53,12 +53,6 @@ func (e *Engine) recallEdgeWindow(ctx context.Context, m sramcapture.Metadata, w
 	f.SampleS, f.Content = 1/m.SampleRateHz, sample.RawDecimated
 	if m.SamplesPerWord == 2 && m.FractionBits == 0 {
 		f.Content = sample.RawFullRate
-	}
-	if cal := e.interleaveCalibration; cal != nil && m.SamplesPerWord == 2 && m.FractionBits == 0 {
-		q1, q2 := make([]uint16, n), make([]uint16, n)
-		if cal.apply(f.Codes8(0), f.Codes8(1), q1, q2, [2]float64{scale[0].Vdiv, scale[1].Vdiv}, f.SampleS) {
-			f.Traces[0].Precision, f.Traces[1].Precision = q1, q2
-		}
 	}
 	return f
 }

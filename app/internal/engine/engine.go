@@ -246,7 +246,6 @@ type Engine struct {
 	busLease        atomic.Int64                     // records sampled every busSampleS for a bus decode until this time (LeaseBusSamples)
 	busSampleS      atomic.Uint64                    // the bus lease's coarsest sample interval (float64 bits)
 	views           [core.ViewSurfaces]core.ViewSlot // view windows at full detail (LeaseViewWindow)
-	viewQ           []uint16                         // a view window's Q8.8 scratch (viewQ8; engine goroutine)
 	adopt           *adoptedRecord                   // a decoded stream's record for the stopped loop to show (guarded by mu)
 	decodedCfg      sramcapture.Config               // the running decoded capture's configuration (acquisition owner)
 	decodedLines    bool                             // the worker builds the stream transcript; no event pumping (owner)
@@ -438,9 +437,8 @@ func (e *Engine) useBoard(b *acq.Board) {
 		e.mu.Unlock()
 	}, e.busErr)
 	b.SetImages(e.images)
-	if e.interleaveCalibration != nil {
-		b.SetConverterOffsets(&e.interleaveCalibration.Offset)
-	}
+	b.SetInterleaveCalibration(e.interleaveCalibration)
+	b.SetRawObserver(e.noteRecordCores)
 	e.acqr, e.plat, e.trg = b.Acquirer(), b.Platform(), b.Trigger()
 	e.readYield = e.plat.Service
 	e.rdx = b.Readout()
@@ -467,16 +465,13 @@ func (e *Engine) platform() hal.Platform { e.hw(); return e.plat }
 // TRLC-LINKS: REQ-SDS-011
 func (e *Engine) trigger() hal.Trigger { e.hw(); return e.trg }
 
-// setInterleaveCalibration uses converter calibration cal; the board's
-// trigger re-arm band spans its offsets.
+// setInterleaveCalibration uses converter calibration cal: the board
+// corrects its records with it, and its trigger re-arm band spans its
+// offsets.
 // TRLC-LINKS: REQ-SDS-016
 func (e *Engine) setInterleaveCalibration(cal *InterleaveCalibration) {
 	e.interleaveCalibration = cal
-	var off *[2][5]float64
-	if cal != nil {
-		off = &cal.Offset
-	}
-	e.hw().SetConverterOffsets(off)
+	e.hw().SetInterleaveCalibration(cal)
 }
 
 // TRLC-LINKS: REQ-SDS-001

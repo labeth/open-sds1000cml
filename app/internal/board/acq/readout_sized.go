@@ -92,6 +92,10 @@ func (b *Board) sizeWindows(req hal.ReadRequest, dst []*sample.Frame) (hal.ReadR
 		}
 		out.Windows[i] = hal.Window{Role: w.Role, StartSample: a0, Span: a1 - a0, Want: raw}
 		*f = *RecordFrame(int(a1 - a0))
+		f.SampleS = b.armedPlan.SampleS
+		if m.SampleRateHz > 0 {
+			f.SampleS = 1 / m.SampleRateHz
+		}
 		if m.FractionBits == 8 {
 			for ch := range f.Traces {
 				f.Traces[ch].Precision = make([]uint16, a1-a0)
@@ -173,11 +177,8 @@ func (b *Board) stateFrame(f *sample.Frame, s sized) {
 		content = sample.RawDecimated
 	}
 	f.Content = content
-	f.Flags = sample.Ordered
-	if f.Traces[0].Precision != nil {
-		f.Flags.Set(sample.Precision, true)
-		f.Cond = sample.Conditioning{Filter: "precision", Guard: p.Precision.Guard, PassbandHz: p.Precision.PassbandHz}
-	}
+	f.Flags.Set(sample.Ordered, true)
+	f.Flags.Set(sample.Precision, f.Traces[0].Precision != nil)
 	f.SampleS = p.SampleS * float64(s.bucket) / half
 	f.CaptureS = p.SampleS / float64(max(p.AcqDecim, 1))
 	f.AcqDecim = max(p.AcqDecim, 1)
@@ -286,7 +287,9 @@ func (b *Board) readSized(ctx context.Context, req hal.ReadRequest, dst []*sampl
 			}
 			f.SetLen(n)
 			sz[i].w.Span = int64(max(0, n-sz[i].skip))
+			continue
 		}
+		b.condition(b.rec, rr.Windows[i], b.scratch.windows[i], f)
 	}
 	b.finishSized(sz, dst)
 	return nil

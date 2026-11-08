@@ -998,7 +998,7 @@ func (s *softStream) feedPeak(raw []byte, cal *InterleaveCalibration) {
 		}
 		var off [2]int
 		if cal != nil {
-			off = cal.envelopeOffsets(ch)
+			off = cal.EnvelopeOffsets(ch)
 		}
 		// Each extreme is a byte: its debiased Q8.8 value and that value
 		// rounded come from a table, not from per-word arithmetic; one entry
@@ -1009,7 +1009,7 @@ func (s *softStream) feedPeak(raw []byte, cal *InterleaveCalibration) {
 			for b := range 256 {
 				x := b << 8
 				if cal != nil {
-					x = debiasQ(x, off[k])
+					x = acq.DebiasQ(x, off[k])
 				}
 				t[k][b] = int32(x)<<8 | int32(core.RoundQ8(uint16(x)))
 			}
