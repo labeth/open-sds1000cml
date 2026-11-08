@@ -542,6 +542,7 @@ func (e *Engine) oneFrame(norm bool) { //nolint:gocyclo,funlen // one native-fas
 		posFrac := math.Float64frombits(e.trigPosFrac.Load())
 		if failed, stop := e.maskEval(f, cols, liveDepth, edgeX, f.SampleS, posFrac); failed && stop {
 			e.maskStopped.Store(true)
+			e.inst().OwnerStop(false)
 			e.running.Store(false)
 			publish = true // show the failing frame itself
 			e.mu.Lock()
@@ -659,6 +660,7 @@ func (e *Engine) oneFrame(norm bool) { //nolint:gocyclo,funlen // one native-fas
 		// qualified edge/qualifier event (and a serial/zone NORM publish implies
 		// it — those gates only pass frames that would otherwise publish).
 		if e.singleArmed.Load() && lock {
+			e.inst().OwnerStop(true)
 			e.singleArmed.Store(false)
 			e.running.Store(false)
 			e.mu.Lock()

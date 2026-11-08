@@ -49,7 +49,7 @@ type Board struct {
 	armedNode  hal.TrigNode
 	armedNorm  bool       // the last arm's sweep was not AUTO
 	recStatus  hal.Status // the halted record's, as Wait reported it
-	stopped    bool       // Stop since the last arm: the next one is a commit arm
+	stopped    bool       // Stop, or a front-end write with nothing armed, since the last arm: the next one is a commit arm
 	commitArms int
 	composed   sramcapture.Config
 	composedOK bool // composed is the staged plan and trigger

@@ -7,6 +7,7 @@ import (
 	"time"
 
 	core "github.com/labeth/open-dso-core/engine"
+	"github.com/labeth/open-dso-core/hal"
 	"github.com/labeth/open-dso-core/instrument"
 	"github.com/labeth/open-dso-core/sample"
 	"github.com/labeth/open-sds1000cml/app/internal/sramcapture"
@@ -111,12 +112,14 @@ func (e *Engine) SetEresLen(l int) {
 // SetRunning runs or stops acquisition; either cancels a pending single-shot.
 // TRLC-LINKS: REQ-SDS-008
 func (e *Engine) SetRunning(on bool) {
+	replaced, restore := e.inst().SingleReplaced()
+	e.inst().SetRunning(on)
 	e.running.Store(on)
 	e.singleArmed.Store(false) // an explicit RUN or STOP both cancel a pending single-shot
 	if on {
 		e.maskStopped.Store(false) // resuming releases the stop-on-fail latch
-		if m := e.singleRestore.Swap(0); m != 0 {
-			e.setNorm(m == 2) // back to the trigger mode SINGLE replaced
+		if restore {
+			e.setNorm(replaced == hal.NormalSweep) // back to the trigger mode SINGLE replaced
 		}
 	}
 	e.mu.Lock()
@@ -132,18 +135,12 @@ func (e *Engine) SetRunning(on bool) {
 // TRLC-LINKS: REQ-SDS-011
 func (e *Engine) SetSingle() {
 	// A single shot waits for a real trigger (NORM); the mode it replaced comes
-	// back on the next RUN, unless the user picks one meanwhile.
-	e.mu.Lock()
-	prev := e.norm
-	e.mu.Unlock()
-	if prev {
-		e.singleRestore.CompareAndSwap(0, 2)
-	} else {
-		e.singleRestore.CompareAndSwap(0, 1)
-	}
+	// back on the next RUN, unless the user picks one meanwhile (the
+	// instrument model keeps it). Every press is a fresh shot.
+	e.inst().SetSingle()
 	e.setNorm(true)
 	e.running.Store(true)
-	e.singleGen.Add(1)
+	e.singleGen.Store(e.inst().Shots())
 	e.singleArmed.Store(true)
 	e.mu.Lock()
 	e.stats.Running, e.stats.Single = true, true
@@ -310,7 +307,7 @@ func (e *Engine) trigDispLevel(srcCh int) int {
 // SetNorm selects the NORM (on) or AUTO trigger mode as the user's choice.
 // TRLC-LINKS: REQ-SDS-011
 func (e *Engine) SetNorm(on bool) {
-	e.singleRestore.Store(0) // the user's own choice: nothing to restore after a SINGLE
+	e.inst().SetNorm(on) // the user's own choice: nothing to restore after a SINGLE
 	e.setNorm(on)
 }
 
