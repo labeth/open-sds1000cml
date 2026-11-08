@@ -206,7 +206,8 @@ func (d *Draft) Config() sramcapture.Config {
 // TRLC-LINKS: REQ-SDS-008
 func (d *Draft) ConfigInto(c *sramcapture.Config) { composeInto(c, &d.plan, d.trig) }
 
-// Arm applies the front end's staged settings, commits the staged capture
+// Arm applies the front end's staged settings and writes its due relay and
+// gain words, commits the staged capture
 // and starts it. It is a commit arm when the front end applied a setting,
 // the staged plan or trigger changed since the last arm, or it is the
 // first arm since Stop (CommitArms counts them); a plain re-arm commits the
@@ -219,7 +220,7 @@ func (a *acquirerFacet) Arm() error {
 	}
 	commit := b.stopped || b.stageGen != b.armedGen
 	if b.frontEnd != nil {
-		applied, err := b.frontEnd.commit()
+		applied, err := b.frontEnd.write()
 		if err != nil {
 			return err
 		}
@@ -322,6 +323,23 @@ func (a *acquirerFacet) State() hal.AcqState { return a.state }
 // samples a word and rate, which the owner's window arithmetic reads.
 // TRLC-LINKS: REQ-SDS-008
 func (b *Board) Record() sramcapture.Metadata { return b.rec }
+
+// ReleaseCapture is the owner leaving an armed capture to another owner of
+// the record memory (a decoded session, a stream): nothing is armed for the
+// Acquirer any more, so the front end's writes go at the next commit
+// point. OWNER.
+// TRLC-LINKS: REQ-SDS-008
+func (b *Board) ReleaseCapture() {
+	if b.state == hal.Armed {
+		b.state = hal.Idle
+	}
+}
+
+// FrontEndPending reports that the front end has a hardware write due,
+// which the board makes once no capture is armed: an owner waiting on a
+// capture abandons it for a fresh one. ANY.
+// TRLC-LINKS: REQ-SDS-008, REQ-SDS-015
+func (b *Board) FrontEndPending() bool { return b.frontEnd != nil && b.frontEnd.pendingWrite() }
 
 // SetRecord makes m the record Readout reads: a record the board did not
 // halt itself (a decoded stream's adopted capture, a stopped record read

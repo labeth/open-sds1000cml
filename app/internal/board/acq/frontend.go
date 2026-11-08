@@ -18,6 +18,14 @@ type Previewer interface {
 	Preview(ch int, c hal.Channel) (hal.Channel, error)
 }
 
+// Writer is a front end whose setters leave their hardware writes (the
+// relays and gains) for the acquisition owner (*analog.FrontEnd): the
+// board writes them while no capture is armed.
+type Writer interface {
+	Pending() bool
+	Flush() (wrote bool, err error)
+}
+
 // frontEndFacet is the analog front end behind the HAL's staging: Set
 // stages a channel's setting (snapped, or refused, by the front end's
 // Preview), Get reads what is applied, and Acquirer.Arm applies what is
@@ -25,6 +33,7 @@ type Previewer interface {
 type frontEndFacet struct {
 	hal.FrontEnd
 	pv Previewer // nil: Set applies at once
+	w  Writer    // nil: the front end writes its hardware itself
 
 	mu      sync.Mutex
 	staged  []hal.Channel // a channel's staged setting
@@ -37,6 +46,7 @@ type frontEndFacet struct {
 func newFrontEndFacet(fe hal.FrontEnd) *frontEndFacet {
 	f := &frontEndFacet{FrontEnd: fe, staged: make([]hal.Channel, 2), has: make([]bool, 2)}
 	f.pv, _ = fe.(Previewer)
+	f.w, _ = fe.(Writer)
 	return f
 }
 
@@ -96,4 +106,35 @@ func (f *frontEndFacet) commit() (bool, error) {
 		}
 	}
 	return applied, nil
+}
+
+// pendingWrite reports that the front end has a hardware write due: a
+// setting staged here, or one its own setters left. ANY.
+// TRLC-LINKS: REQ-SDS-015
+func (f *frontEndFacet) pendingWrite() bool {
+	return f.staging.Load() || f.w != nil && f.w.Pending()
+}
+
+// write applies what is staged and writes the front end's due hardware
+// words, and reports whether anything reached the hardware. OWNER, with
+// no capture armed.
+// TRLC-LINKS: REQ-SDS-015
+func (f *frontEndFacet) write() (bool, error) {
+	applied, err := f.commit()
+	if err != nil || f.w == nil {
+		return applied, err
+	}
+	wrote, err := f.w.Flush()
+	return applied || wrote, err
+}
+
+// flush writes the front end's due hardware words, what its own setters
+// left; settings staged here wait for Arm. OWNER, with no capture armed.
+// TRLC-LINKS: REQ-SDS-015
+func (f *frontEndFacet) flush() error {
+	if f.w == nil {
+		return nil
+	}
+	_, err := f.w.Flush()
+	return err
 }
