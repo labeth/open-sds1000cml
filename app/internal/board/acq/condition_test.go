@@ -12,7 +12,7 @@ import (
 )
 
 // The screen window is the live window and, asked for, its envelope, as
-// the record's words place them.
+// the record's words place them; a Record request is the whole record.
 // TRLC-LINKS: REQ-SDS-010
 func TestScreenWindow(t *testing.T) {
 	b, _, _ := newTestBoard()
@@ -37,6 +37,13 @@ func TestScreenWindow(t *testing.T) {
 		if err != nil || gotOff != off || gotWords != words || gotBucket != bucket {
 			t.Errorf("%+v: %d+%d /%d (%v), want %d+%d /%d", req, gotOff, gotWords, gotBucket, err, off, words, bucket)
 		}
+	}
+	w, err := rd.ScreenWindow(hal.ScreenRequest{PosFrac: .2, PreRoom: 1000, Envelope: true, Record: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if off, words, bucket, err := WindowWords(m, w); err != nil || off != 0 || words != m.Length || bucket != 0 {
+		t.Errorf("the whole record: %d+%d /%d (%v), want 0+%d raw", off, words, bucket, err, m.Length)
 	}
 }
 

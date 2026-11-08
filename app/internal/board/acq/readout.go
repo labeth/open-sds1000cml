@@ -301,13 +301,17 @@ var _ hal.ScreenReader = (*readoutFacet)(nil)
 // plan's screen: the screen and a margin around it with the trigger at
 // r.PosFrac and r.PreRoom samples more before it (LiveSRAMWindowPre), as
 // an envelope of the fabric's display buckets when asked and the window is
-// long enough (EnvelopeWindow), else raw.
+// long enough (EnvelopeWindow), else raw. A Record request is the whole
+// record, raw: what a stopped scope shows.
 // TRLC-LINKS: REQ-SDS-010
 func (r *readoutFacet) ScreenWindow(req hal.ScreenRequest) (hal.Window, error) {
 	b := (*Board)(r)
 	m := b.rec
 	if m.SamplesPerWord == 0 || m.Length == 0 {
 		return hal.Window{}, hal.Refuse("screen window", "no halted record")
+	}
+	if req.Record {
+		return Window(m, sample.Main, 0, m.Length, 0), nil
 	}
 	pre := max(req.PreRoom, 0)
 	offset, words := LiveSRAMWindowPre(m, b.armedPlan.WinSamples, req.PosFrac, pre)
