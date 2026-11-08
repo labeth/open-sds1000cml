@@ -55,5 +55,53 @@
       {"knob": "ch2vdiv", "label": "Volts/Div", "push": "ch2vdivpush", "c": 3, "r": 7, "rs": 2, "big": true},
       {"knob": "tdiv", "label": "Time/Div", "push": "tdivpush", "c": 4, "r": 7, "cs": 2, "rs": 2, "big": true}
     ]
+  },
+  "keytable": {
+    "keys": [
+      {"panel":"ch1pospush","name":"ch1pospush"},
+      {"panel":"triglvlpush","name":"triglvlpush"},
+      {"panel":"trigmenu","name":"trigmenu"},
+      {"panel":"acquire","name":"acquire"},
+      {"panel":"cursors","name":"cursors"},
+      {"panel":"menu","name":"menu"},
+      {"panel":"adjustpush","name":"adjustpush"},
+      {"panel":"run","name":"run"},
+      {"panel":"display","name":"display"},
+      {"panel":"measure","name":"measure"},
+      {"panel":"f1","name":"f1"},
+      {"panel":"ch1vdivpush","name":"ch1vdivpush"},
+      {"panel":"single","name":"single"},
+      {"panel":"saverecall","name":"saverecall"},
+      {"panel":"horizmenu","name":"horizmenu"},
+      {"panel":"f2","name":"f2"},
+      {"panel":"ch2vdivpush","name":"ch2vdivpush"},
+      {"panel":"set50","name":"set50"},
+      {"panel":"utility","name":"utility"},
+      {"panel":"ch1","name":"ch1"},
+      {"panel":"f3","name":"f3"},
+      {"panel":"tdivpush","name":"tdivpush"},
+      {"panel":"defaultsetup","name":"defaultsetup"},
+      {"panel":"math","name":"math"},
+      {"panel":"f4","name":"f4"},
+      {"panel":"ch2pospush","name":"ch2pospush"},
+      {"panel":"force","name":"force"},
+      {"panel":"ch2","name":"ch2"},
+      {"panel":"f5","name":"f5"},
+      {"panel":"horizpospush","name":"horizpospush"},
+      {"panel":"auto","name":"auto"},
+      {"panel":"help","name":"help"},
+      {"panel":"ref","name":"ref"},
+      {"panel":"print","name":"print"}
+    ],
+    "knobs": [
+      {"panel":"horizpos","name":"horizpos","steps":[1,2,3,4,5,6,7,8,9,50,100]},
+      {"panel":"ch2pos","name":"ch2pos","steps":[1,2,3,4,5,6,7,8,9,50,100]},
+      {"panel":"tdiv","name":"tdiv","max":1},
+      {"panel":"ch2vdiv","name":"ch2vdiv","max":1},
+      {"panel":"ch1vdiv","name":"ch1vdiv","max":1},
+      {"panel":"adjust","name":"adjust","steps":[1,2,3,4,5,6,7,8,9,50,100]},
+      {"panel":"triglevel","name":"triglevel","steps":[1,2,3,4,5,6,7,8,9,50,100]},
+      {"panel":"ch1pos","name":"ch1pos","steps":[1,2,3,4,5,6,7,8,9,50,100]}
+    ]
   }
 }
