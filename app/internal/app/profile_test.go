@@ -11,8 +11,8 @@ import (
 	"github.com/labeth/open-dso-core/profile"
 
 	"github.com/labeth/open-sds1000cml/app/internal/engine"
-	"github.com/labeth/open-sds1000cml/app/internal/iface"
 	"github.com/labeth/open-sds1000cml/app/internal/lcd"
+	"github.com/labeth/open-sds1000cml/app/internal/sramcapture"
 )
 
 // The scope's profile.yaml loads for the SDS1102CML+ and says what the
@@ -30,8 +30,8 @@ func TestProfileMatchesTheApp(t *testing.T) {
 	if !slices.Equal(p.Timebase.TdivS, engine.SupportedTdivs()) {
 		t.Errorf("timebase %v, the engine's ladder %v", p.Timebase.TdivS, engine.SupportedTdivs())
 	}
-	if p.MaxDepth != iface.PretrigMax+2 {
-		t.Errorf("max_depth %d, the record holds %d", p.MaxDepth, iface.PretrigMax+2)
+	if p.MaxDepth != int(sramcapture.SamplesPerChannel) || p.RawAccess.MaxDepth != p.MaxDepth {
+		t.Errorf("max_depth %d (raw access %d), the SRAM record holds %d", p.MaxDepth, p.RawAccess.MaxDepth, sramcapture.SamplesPerChannel)
 	}
 	if p.Display.W != lcd.W || p.Display.H != lcd.H || p.Display.Format != hal.RGB565 {
 		t.Errorf("display %+v, the LCD is %dx%d RGB565", p.Display, lcd.W, lcd.H)

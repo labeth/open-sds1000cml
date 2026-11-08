@@ -206,12 +206,24 @@ func (d *Draft) Config() sramcapture.Config {
 // TRLC-LINKS: REQ-SDS-008
 func (d *Draft) ConfigInto(c *sramcapture.Config) { composeInto(c, &d.plan, d.trig) }
 
-// Arm commits the staged capture and starts it. OWNER.
+// Arm applies the front end's staged settings, commits the staged capture
+// and starts it. It is a commit arm when the front end applied a setting,
+// the staged plan or trigger changed since the last arm, or it is the
+// first arm since Stop (CommitArms counts them); a plain re-arm commits the
+// same configuration again. OWNER.
 // TRLC-LINKS: REQ-SDS-008
 func (a *acquirerFacet) Arm() error {
 	b := (*Board)(a)
 	if b.mem == nil {
 		return hal.Refuse("acquisition", "no SRAM capture fabric")
+	}
+	commit := b.stopped || b.stageGen != b.armedGen
+	if b.frontEnd != nil {
+		applied, err := b.frontEnd.commit()
+		if err != nil {
+			return err
+		}
+		commit = commit || applied
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), armTimeout)
 	err := b.mem.Arm(ctx, *b.staged())
@@ -221,9 +233,17 @@ func (a *acquirerFacet) Arm() error {
 		b.state = hal.Idle
 		return err
 	}
-	b.state, b.forced = hal.Armed, false
+	if commit {
+		b.commitArms++
+	}
+	b.state, b.forced, b.stopped, b.armedGen = hal.Armed, false, false, b.stageGen
+	b.armedPlan, b.armedFree, b.armedNode, b.armedNorm = b.plan, b.trig.free, b.trig.node, b.trig.norm
 	return nil
 }
+
+// CommitArms counts the commit arms (Arm) so far. OWNER.
+// TRLC-LINKS: REQ-SDS-008
+func (b *Board) CommitArms() int { return b.commitArms }
 
 // Wait polls the capture: with timeout 0 once, else until the record is
 // ready, the timeout passes (ErrTimeout) or ctx ends (its error). A ready record is frozen and read for its
@@ -252,7 +272,8 @@ func (a *acquirerFacet) Wait(ctx context.Context, timeout time.Duration) (hal.St
 				return hal.Status{Triggered: m.Triggered}, ErrDataFault
 			}
 			b.state = hal.Ready
-			return hal.Status{Triggered: m.Triggered, Forced: b.forced && !m.Triggered, Done: true, Coherent: true, Record: recordID(m)}, nil
+			b.recStatus = hal.Status{Triggered: m.Triggered, Forced: b.forced && !m.Triggered, Done: true, Coherent: true, Record: recordID(m)}
+			return b.recStatus, nil
 		}
 		if err := ctx.Err(); err != nil {
 			return hal.Status{Triggered: m.Triggered}, err
@@ -285,6 +306,7 @@ func (a *acquirerFacet) Stop() error {
 	ctx, cancel := context.WithTimeout(context.Background(), haltTimeout)
 	defer cancel()
 	b.count(func(d *boardDiag) { d.Halts++ })
+	b.stopped = true
 	if b.state != hal.Ready {
 		b.state = hal.Idle
 	}

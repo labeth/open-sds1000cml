@@ -68,3 +68,45 @@ func TestFrontEndCalibrationAsHAL(t *testing.T) {
 		t.Errorf("self-calibration: %v, want a refusal", err)
 	}
 }
+
+// Preview says what Set applies, and applies nothing: across probes,
+// ladder steps, offsets past the tier's range, couplings and the bandwidth
+// limit, and a V/div off the ladder refused by both.
+// TRLC-LINKS: REQ-SDS-015, REQ-SDS-095, REQ-SDS-096, REQ-SDS-097
+func TestPreviewIsSet(t *testing.T) {
+	tr := &fakeTr{}
+	f := New(tr, func(time.Duration) {}, nil)
+	for _, probe := range []float64{1, 10} {
+		for i, d := range Detents {
+			for _, off := range []float64{0, 0.3, -2.5, 50} {
+				for _, cpl := range []hal.Coupling{hal.DC, hal.AC, hal.GND} {
+					c := f.Get(i % 2)
+					c.Probe, c.VoltsDiv, c.OffsetV, c.Coupling = probe, d.VdivV*probe, off*probe, cpl
+					c.BWLimit = float64(i%3) * 1e7
+					before, ops := f.Get(i%2), len(tr.ops)
+					want, err := f.Preview(i%2, c)
+					if err != nil {
+						t.Fatalf("Preview(%+v): %v", c, err)
+					}
+					if f.Get(i%2) != before || len(tr.ops) != ops {
+						t.Fatalf("Preview(%+v) applied something", c)
+					}
+					got, err := f.Set(i%2, c)
+					if err != nil || got != want {
+						t.Fatalf("Set(%+v) = %+v, %v; Preview said %+v", c, got, err, want)
+					}
+				}
+			}
+		}
+	}
+	c := f.Get(0)
+	c.VoltsDiv = 3 * c.Probe
+	_, perr := f.Preview(0, c)
+	_, serr := f.Set(0, c)
+	if _, ok := hal.AsRefusal(perr); !ok {
+		t.Errorf("Preview of a V/div off the ladder: %v", perr)
+	}
+	if _, ok := hal.AsRefusal(serr); !ok {
+		t.Errorf("Set of a V/div off the ladder: %v", serr)
+	}
+}

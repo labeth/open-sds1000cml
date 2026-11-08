@@ -29,7 +29,7 @@ type Board struct {
 	panel panelPort
 
 	profile   hal.Profile
-	frontEnd  hal.FrontEnd
+	frontEnd  *frontEndFacet // nil: none attached
 	levelGrid func(src int) hal.Grid
 	display   hal.Display
 	input     hal.Input
@@ -43,6 +43,14 @@ type Board struct {
 	plan       hal.Plan
 	planned    planPart // the configured plan's fields; the trigger's are trig.stagedPart
 	stageGen   uint64   // counts the changes of the staged plan or trigger
+	armedGen   uint64   // stageGen at the last arm
+	armedPlan  hal.Plan // the plan the last arm committed: its record's
+	armedFree  bool     // the last arm's trigger ran free (TriggerSpec.FreeRun)
+	armedNode  hal.TrigNode
+	armedNorm  bool       // the last arm's sweep was not AUTO
+	recStatus  hal.Status // the halted record's, as Wait reported it
+	stopped    bool       // Stop since the last arm: the next one is a commit arm
+	commitArms int
 	composed   sramcapture.Config
 	composedOK bool // composed is the staged plan and trigger
 	state      hal.AcqState
@@ -111,9 +119,15 @@ func (b *Board) Memory() Memory { return b.mem }
 // TRLC-LINKS: REQ-SDS-001
 func (b *Board) SetProfile(p hal.Profile) { b.profile = p }
 
-// SetFrontEnd attaches the analog front end.
+// SetFrontEnd attaches the analog front end; a Previewer's settings are
+// staged by FrontEnd().Set and applied at the next Arm.
 // TRLC-LINKS: REQ-SDS-001
-func (b *Board) SetFrontEnd(fe hal.FrontEnd) { b.frontEnd = fe }
+func (b *Board) SetFrontEnd(fe hal.FrontEnd) {
+	b.frontEnd = nil
+	if fe != nil {
+		b.frontEnd = newFrontEndFacet(fe)
+	}
+}
 
 // SetLevelGrid attaches the trigger level grid of each source.
 // TRLC-LINKS: REQ-SDS-001
@@ -153,9 +167,15 @@ func (b *Board) Readout() hal.Readout { return (*readoutFacet)(b) }
 // TRLC-LINKS: REQ-SDS-001
 func (b *Board) Trigger() hal.Trigger { return (*triggerFacet)(b) }
 
-// FrontEnd is the analog front end the composition attached.
+// FrontEnd is the analog front end the composition attached, its settings
+// staged until the next Arm.
 // TRLC-LINKS: REQ-SDS-001
-func (b *Board) FrontEnd() hal.FrontEnd { return b.frontEnd }
+func (b *Board) FrontEnd() hal.FrontEnd {
+	if b.frontEnd == nil {
+		return nil
+	}
+	return b.frontEnd
+}
 
 // Display is the display the composition attached.
 // TRLC-LINKS: REQ-SDS-001

@@ -109,6 +109,7 @@ type composition struct {
 	e      *engine.Engine
 	fe     *analog.FrontEnd // nil without SPI to the front end
 	levels *board.Levels
+	lcd    *lcd.Display // the panel; its framebuffer once the display loop opened it
 	keyFD  int
 
 	pc   *panel.Controller
@@ -215,9 +216,10 @@ func newBoard(ctx context.Context) (*composition, bool) {
 	// The front panel: the key matrix on SIGIO off the inherited
 	// /dev/fpga_key fd through the engine, the lamp latch. The settings and
 	// setups live in the stick's ota/ directory.
-	acqBoard.SetDevices(nil, cmlpanel.NewInput(e, keyFD, logf),
+	panelLCD := lcd.NewDisplay(acqBoard.Profile().Display)
+	acqBoard.SetDevices(panelLCD, cmlpanel.NewInput(e, keyFD, logf),
 		settings.Storage{Dir: otaDir, Cal: hal.CalSource{Source: calTab.Source, Valid: true}})
-	return &composition{bus: b, acq: acqBoard, e: e, fe: fe, levels: levels, keyFD: keyFD}, true
+	return &composition{bus: b, acq: acqBoard, e: e, fe: fe, levels: levels, lcd: panelLCD, keyFD: keyFD}, true
 }
 
 // options are the SDS1000CML+'s parts of the core's application: its own
@@ -240,7 +242,7 @@ func (c *composition) options() scopeapp.Options {
 		Owner:       c.e,
 		UI:          c.ui,
 		Display: scopeapp.Display{
-			Open: openLCD, Engine: c.e, HUD: c.hud, OnFrame: c.viewLease, URL: lcd.DeviceURL,
+			Open: c.openLCD, Engine: c.e, HUD: c.hud, OnFrame: c.viewLease, URL: lcd.DeviceURL,
 			Canvas: func() render.Canvas { return lcd.NewBackBuffer() },
 		},
 		// VXI-11 is this scope's only LAN SCPI path (spec 11 §1: no raw

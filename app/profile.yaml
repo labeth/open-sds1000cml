@@ -14,15 +14,16 @@ rates:
   - samples_per_s: 500e6
     max_channels: 2
 
-# One finalized record (engine maxRecordCols = iface.PretrigMax + 2).
-max_depth: 20480
+# The SRAM record: its whole memory, 2^19 words of two 2 ns samples a channel
+# (sramcapture.SamplesPerChannel); a decimated record holds one sample a word.
+max_depth: 1048576
 bandwidth: 100e6
 
 # Full-rate records, decimated records (with Q8.8 precision words) and
 # min/max envelopes.
 content: [raw-full-rate, raw-decimated, peak-pairs]
 raw_access:
-  max_depth: 20480
+  max_depth: 1048576
 
 # The nodes the FPGA images implement between them; each image narrows them.
 triggers:

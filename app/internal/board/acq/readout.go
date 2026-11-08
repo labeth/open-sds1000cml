@@ -89,7 +89,8 @@ const readTimeout = 10 * time.Second
 type readoutFacet Board
 
 // Read reads req's windows of the halted record into dst (one frame a
-// window), each frame sized by the caller. yield runs between the bursts
+// window), each frame sized by the caller or, left empty, by the board
+// (readSized: a Span of 0 is the plan's screen). yield runs between the bursts
 // of a long read; ctx abandons it between them (a raw read nobody wants
 // any more, a sound stream taking the fabric); without a deadline of its
 // own a read gives up after readTimeout. A main window that does not fill
@@ -101,6 +102,17 @@ func (r *readoutFacet) Read(ctx context.Context, req hal.ReadRequest, dst []*sam
 		var cancel context.CancelFunc
 		ctx, cancel = context.WithTimeout(ctx, readTimeout)
 		defer cancel()
+	}
+	if err := b.checkRequest(&req); err != nil {
+		return err
+	}
+	if len(dst) != len(req.Windows) {
+		return fmt.Errorf("%d frames for %d windows", len(dst), len(req.Windows))
+	}
+	for _, f := range dst {
+		if len(f.Traces) == 0 {
+			return b.readSized(ctx, req, dst, yield)
+		}
 	}
 	if err := b.readRecord(ctx, req, dst, yield); err != nil {
 		return err

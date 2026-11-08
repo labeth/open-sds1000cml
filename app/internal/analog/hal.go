@@ -5,6 +5,7 @@ package analog
 import (
 	"context"
 	"fmt"
+	"math"
 
 	"github.com/labeth/open-dso-core/hal"
 )
@@ -73,6 +74,51 @@ func (f *FrontEnd) Set(ch int, c hal.Channel) (hal.Channel, error) {
 		}
 	}
 	return f.Get(ch), nil
+}
+
+// Preview is what Set(ch, c) would apply, with nothing applied: the same
+// order (the probe first, as it scales the other values), the same ladder
+// step or refusal, the offset clamped to the new detent's tier, the
+// coupling and the bandwidth limit. A refusal applies nothing and returns
+// what is applied.
+// TRLC-LINKS: REQ-SDS-015, REQ-SDS-095, REQ-SDS-096, REQ-SDS-097
+func (f *FrontEnd) Preview(ch int, c hal.Channel) (hal.Channel, error) {
+	if ch < 0 || ch > 1 {
+		return f.Get(0), hal.Refuse(fmt.Sprintf("channel %d", ch+1), "this scope has two channels")
+	}
+	cur := f.Get(ch)
+	f.mu.Lock()
+	idx, offV, cpl := f.idx[ch], f.offReqV[ch], f.cpl[ch]
+	f.mu.Unlock()
+	p := cur.Probe
+	if c.Probe != cur.Probe && c.Probe >= 1 {
+		p = c.Probe
+	}
+	if c.VoltsDiv != cur.VoltsDiv {
+		i, ok := PlanVdiv(c.VoltsDiv / p)
+		if !ok {
+			return cur, hal.Refuse(fmt.Sprintf("%g V/div", c.VoltsDiv/p), "not a step of the V/div ladder")
+		}
+		idx = i
+	}
+	if c.OffsetV != cur.OffsetV {
+		limit := offsetTierRangeV(idx)
+		offV = math.Max(-limit, math.Min(limit, c.OffsetV/p))
+	}
+	if c.Coupling != cur.Coupling {
+		if m := int(c.Coupling); m < CplDC || m > CplGND {
+			return cur, hal.Refuse("coupling", fmt.Sprintf("analog: bad coupling ch=%d mode=%d", ch, m))
+		}
+		cpl = int(c.Coupling)
+	}
+	out := hal.Channel{
+		On: true, VoltsDiv: Detents[idx].VdivV * p, OffsetV: offV * p,
+		Coupling: hal.Coupling(cpl), Probe: p, Impedance: 1e6,
+	}
+	if c.BWLimit > 0 {
+		out.BWLimit = bwLimitHz
+	}
+	return out, nil
 }
 
 // Ladder is the V/div steps at the probe tip: the detents times the probe.
