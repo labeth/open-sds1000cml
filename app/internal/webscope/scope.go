@@ -232,6 +232,7 @@ func New(sc Engine, fe Analog, lv Levels, panel Panel, screen func() []byte, opt
 	cfg := scopeweb.Config{
 		Frames:   frameSource{s},
 		Version:  buildinfo.String(),
+		Product:  "open-sds1000cml",
 		Screen:   screen,
 		Routes:   s.extensions(),
 		Parts:    s.parts(),
