@@ -15,7 +15,7 @@
       "id": "fpga-uart",
       "provides": {
         "C1": {"kind": "uart", "rate": 115200, "vpp": 3.3, "offset": 1.65, "hex": "48692055aa0ff00a"},
-        "C2": {"kind": "dc", "offset": 0}
+        "C2": {"kind": "uart", "rate": 115200, "vpp": 3.3, "offset": 1.65, "hex": "48692055aa0ff00a"}
       },
       "select": ["$HOME/ws/fpga/openFPGALoader/build/openFPGALoader -b alchitry_au -m $HOME/ws/fpga-signal-source/out/a2-a11-uart/uart.bit"]
     },
