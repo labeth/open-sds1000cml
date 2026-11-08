@@ -117,7 +117,12 @@ func TestCapsBrowserSamePage(t *testing.T) {
 	if !reflect.DeepEqual(extra, []string{"GET /api/caps"}) {
 		t.Fatalf("with caps the page asked besides: %v", extra)
 	}
-	for _, k := range []string{"capsServed", "requests", "brand"} {
+	// the title and the brand name the firmware and the unit from the caps'
+	// identity: the things the caps change
+	if t0, _ := served["title"].(string); !strings.Contains(t0, "open-sds1000cml") || !strings.Contains(t0, "SDS1102CML+") {
+		t.Fatalf("with caps the title is %q, not the unit's", t0)
+	}
+	for _, k := range []string{"capsServed", "requests", "brand", "title", "brandName"} {
 		delete(plain, k)
 		delete(served, k)
 	}

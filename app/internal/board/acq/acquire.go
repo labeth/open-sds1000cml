@@ -221,12 +221,12 @@ func (a *acquirerFacet) Arm() error {
 		b.state = hal.Idle
 		return err
 	}
-	b.state = hal.Armed
+	b.state, b.forced = hal.Armed, false
 	return nil
 }
 
 // Wait polls the capture: with timeout 0 once, else until the record is
-// ready or the timeout passes. A ready record is frozen and read for its
+// ready, the timeout passes (ErrTimeout) or ctx ends (its error). A ready record is frozen and read for its
 // length and positions (Record). On ErrTimeout the status still says
 // whether the hardware triggered, which AUTO's forced trigger waits for.
 // OWNER.
@@ -252,9 +252,12 @@ func (a *acquirerFacet) Wait(ctx context.Context, timeout time.Duration) (hal.St
 				return hal.Status{Triggered: m.Triggered}, ErrDataFault
 			}
 			b.state = hal.Ready
-			return hal.Status{Triggered: m.Triggered, Done: true, Coherent: true, Record: recordID(m)}, nil
+			return hal.Status{Triggered: m.Triggered, Forced: b.forced && !m.Triggered, Done: true, Coherent: true, Record: recordID(m)}, nil
 		}
-		if timeout <= 0 || !time.Now().Before(deadline) || ctx.Err() != nil {
+		if err := ctx.Err(); err != nil {
+			return hal.Status{Triggered: m.Triggered}, err
+		}
+		if timeout <= 0 || !time.Now().Before(deadline) {
 			return hal.Status{Triggered: m.Triggered}, hal.ErrTimeout
 		}
 		time.Sleep(min(2*time.Millisecond, time.Until(deadline)))
@@ -268,7 +271,11 @@ func (a *acquirerFacet) Force() error {
 	ctx, cancel := context.WithTimeout(context.Background(), forceTimeout)
 	defer cancel()
 	b.count(func(d *boardDiag) { d.Forces++ })
-	return b.mem.Force(ctx)
+	if err := b.mem.Force(ctx); err != nil {
+		return err
+	}
+	b.forced = true
+	return nil
 }
 
 // Stop halts the capture; a frozen record stays readable. OWNER.
