@@ -7,6 +7,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/labeth/open-dso-core/hal"
+	"github.com/labeth/open-dso-core/instrument"
+	settings "github.com/labeth/open-dso-core/settings"
 	"github.com/labeth/open-sds1000cml/app/internal/analog"
 	"github.com/labeth/open-sds1000cml/app/internal/engine"
 )
@@ -112,5 +115,54 @@ func TestOffsetThroughTheFrontEnd(t *testing.T) {
 	got := l.SetOffset(0, -0.3)
 	if eng.st.OffC1 != fe.OffsetCode(0, -0.3) || got != fe.OffsetVolts(0, eng.st.OffC1) || l.Offset(0) != got {
 		t.Fatalf("offset: code %d applied %v", eng.st.OffC1, got)
+	}
+}
+
+// The instrument model holds the comparator's level in volts, set from the
+// first level written, moved with the source's calibration and probe while
+// the code stays; the settings file's level_code from the model is the
+// staged code exactly, on every detent, probe and source.
+// TRLC-LINKS: REQ-SDS-089, REQ-SDS-098
+func TestModelHoldsTheLevelCode(t *testing.T) {
+	eng := &fakeEngine{}
+	fe := analog.New(nil, func(time.Duration) {}, nil)
+	m := instrument.New(instrument.State{Channels: make([]hal.Channel, 2), Running: true}, nil)
+	l := New(eng, fe)
+	l.Project(m)
+	x := SettingsExtension{Levels: l}
+	var tr settings.Trigger
+	x.CollectTrigger(&tr)
+	if m.State().LevelSet || tr.LevelCode != 0 {
+		t.Fatalf("a boot comparator: set %v, level_code %d", m.State().LevelSet, tr.LevelCode)
+	}
+	for _, probe := range []float64{1, 10, 100} {
+		for src := range 2 {
+			eng.st.TrigSource = src
+			fe.SetProbe(src, probe)
+			for idx := range analog.Detents {
+				if err := fe.SetVdiv(src, idx); err != nil {
+					t.Fatal(err)
+				}
+				for c := engine.TrigCodeMin; c <= engine.TrigCodeMax; c += 997 {
+					l.SetTrigLevelCode(uint16(c))
+					x.CollectTrigger(&tr)
+					s := m.State()
+					if !s.LevelSet || tr.LevelCode != int(eng.st.TrigCode) {
+						t.Fatalf("x%g C%d detent %d code %d: level_code %d set %v", probe, src+1, idx, c, tr.LevelCode, s.LevelSet)
+					}
+					if v := fe.TrigVolts(eng.st.TrigCode, src); s.Trigger.LevelV() != v {
+						t.Fatalf("model level %v, the code's volts %v", s.Trigger.LevelV(), v)
+					}
+				}
+			}
+		}
+	}
+	code := eng.st.TrigCode
+	if err := fe.SetVdiv(1, 2); err != nil {
+		t.Fatal(err)
+	}
+	l.Reproject()
+	if v := m.State().Trigger.LevelV(); eng.st.TrigCode != code || v != fe.TrigVolts(code, 1) {
+		t.Fatalf("after a V/div change: code %d (was %d), model %v", eng.st.TrigCode, code, v)
 	}
 }

@@ -604,21 +604,28 @@ func (e *Engine) SetTrigSource(ch int) {
 // This setting is independent of the viewing timebase.
 // TRLC-LINKS: REQ-SDS-036
 func (e *Engine) SetPrecisionRate(hz float64) float64 {
-	log := 4
-	if hz > 0 && !math.IsNaN(hz) && !math.IsInf(hz, 0) {
-		log = int(math.Round(math.Log2(500e6 / hz)))
-	}
-	if log < 4 {
-		log = 4
-	}
-	if log > 20 {
-		log = 20
-	}
+	log := precisionLog(hz)
 	actual := 500e6 / float64(uint64(1)<<uint(log))
-	e.precisionLog.Store(int32(log))
+	e.precisionLog.Store(int32(log)) //nolint:gosec // G115: precisionLog bounds it to 4..20
 	e.avgGen.Add(1)
 	e.mu.Lock()
 	e.stats.PrecisionRateHz = actual
 	e.mu.Unlock()
+	e.inst().SetPrecisionRate(actual)
 	return actual
 }
+
+// precisionLog is the precision words' decimation for a rate of hz: the
+// nearest power of two of 500 MHz over it, 2^4 to 2^20 (2^4 for no rate).
+// TRLC-LINKS: REQ-SDS-036
+func precisionLog(hz float64) int {
+	log := 4
+	if hz > 0 && !math.IsNaN(hz) && !math.IsInf(hz, 0) {
+		log = int(math.Round(math.Log2(500e6 / hz)))
+	}
+	return min(max(log, 4), 20)
+}
+
+// precisionRate is the rate SetPrecisionRate resolves hz to.
+// TRLC-LINKS: REQ-SDS-036
+func precisionRate(hz float64) float64 { return 500e6 / float64(uint64(1)<<uint(precisionLog(hz))) }

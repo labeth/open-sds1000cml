@@ -32,7 +32,8 @@ func TestDemoComposition(t *testing.T) {
 		t.Fatal(err)
 	}
 	demotest.Composition(t, "open-sds1000cml", prof, demo, func(hal.Board) scopeapp.Options {
-		return (&composition{fe: &analog.FrontEnd{}}).options() // the front end as the unit has it
+		fe := &analog.FrontEnd{}
+		return (&composition{fe: fe, afe: &modelAnalog{FrontEnd: fe}}).options() // the front end as the unit has it
 	})
 }
 

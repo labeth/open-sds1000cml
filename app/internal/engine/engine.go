@@ -282,6 +282,7 @@ type Engine struct {
 	// the owner's hot path. inst() makes one for an engine built without New.
 	instModel *instrument.Model
 	instOnce  sync.Once
+	staged    staging       // the controllers' settings waiting for the owner (Controls)
 	maskCap   atomic.Uint64 // capture ordinal: counts every mask-tested frame
 	beatN     atomic.Uint64 // liveness heartbeat (see Beats)
 	zoneSkip  atomic.Int64  // zone-armed publishes that could not be tested (env/roll)

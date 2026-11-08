@@ -9,12 +9,13 @@ import (
 )
 
 // serviceCommands flushes staged work at the frame boundary — the engine is
-// armed+filling here, never inside a halt window: the decoded stream's
-// requests and events, then the board's housekeeping (its panel plane: the
+// armed+filling here, never inside a halt window: the controllers' settings
+// (Controls), the decoded stream's requests and events, then the board's housekeeping (its panel plane: the
 // LED latch, the offset DACs, the trigger level DAC), then on the register
 // path the trigger words.
 // TRLC-LINKS: REQ-SDS-001
 func (e *Engine) serviceCommands() {
+	e.applyStaged()
 	// The stages are timed for a decoded session's service figures only:
 	// without one a frame reads no clock here.
 	var stage time.Time
