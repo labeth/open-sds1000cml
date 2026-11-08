@@ -254,12 +254,24 @@ func (c *composition) options() scopeapp.Options {
 		Settings: scopeapp.Settings{
 			Analog: setFE, Extension: board.SettingsExtension{Levels: c.levels}, SlotKey: settings.SlotKey,
 		},
+		Describe: describe,
 		OnStop: func() {
 			if err := c.bus.CloseWorker(); err != nil {
 				logf("acquisition worker shutdown: %v", err)
 			}
 		},
 	}
+}
+
+// uiStartTdiv is the timebase the UI model starts at, before the setup is
+// restored.
+const uiStartTdiv = 500e-6
+
+// describe states the UI model's facts this scope builds it with (ui), for
+// the composition's description the browser demo is compared with.
+// TRLC-LINKS: REQ-SDS-167
+func describe(d *scopeapp.Composition) {
+	d.UI = scopeapp.UIFactsOf(cmlpanel.Hardware{}, engine.SupportedTdivs(), uiStartTdiv)
 }
 
 // ui is the core's UI model over this scope's engine, front end, levels
@@ -272,7 +284,7 @@ func (c *composition) ui(env *scopeapp.Env) (*panel.Controller, error) {
 	if c.fe != nil {
 		pfe = c.fe
 	}
-	pc := panel.New(c.e, pfe, c.levels, cmlpanel.Hardware{}, engine.SupportedTdivs(), 500e-6, logf)
+	pc := panel.New(c.e, pfe, c.levels, cmlpanel.Hardware{}, engine.SupportedTdivs(), uiStartTdiv, logf)
 	sv := streamview.New(c.e, logf)
 	pc.SetDecodeStream(sv)
 	pc.SetHardcopy(func() (string, error) {
