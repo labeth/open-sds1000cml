@@ -11,7 +11,6 @@ import (
 
 	"github.com/labeth/open-dso-core/hal"
 
-	"github.com/labeth/open-dso-core/dsp"
 	core "github.com/labeth/open-dso-core/engine"
 	"github.com/labeth/open-dso-core/sample"
 	"github.com/labeth/open-sds1000cml/app/internal/board/acq"
@@ -58,19 +57,21 @@ type heldKey struct {
 	offset, words uint32
 }
 
-// heldRecall keeps a stopped record's recalled codes in memory, so changing
-// the view of a stopped (often deep SINGLE) record does not read SRAM again.
+// heldRecall keeps a stopped record's recalled codes in memory, as the
+// board delivered them conditioned, so changing the view of a stopped
+// (often deep SINGLE) record does not read SRAM again.
 type heldRecall struct {
 	key    heldKey
 	n      int
 	c1, c2 []uint8
 	q1, q2 []uint16
+	read   sample.Conditioning // the board's conditioning of the read
 	cond   heldCond
 }
 
 // TRLC-LINKS: REQ-SDS-033
 func (h *heldRecall) store(k heldKey, f *sample.Frame) {
-	h.key, h.n = k, f.Len()
+	h.key, h.n, h.read = k, f.Len(), f.Cond
 	h.c1 = append(h.c1[:0], f.Codes8(0)[:f.Len()]...)
 	h.c2 = append(h.c2[:0], f.Codes8(1)[:f.Len()]...)
 	h.q1, h.q2 = h.q1[:0], h.q2[:0]
@@ -132,14 +133,20 @@ func (h *heldRecall) restoreCond(f *sample.Frame, q1, q2 []uint16) {
 
 // restore copies the held codes into f (sized as at store) and returns the
 // sample count, as the recall writer would.
+// restore puts the held read back into frame f: its codes, its precision
+// words in q1 and q2's storage (none when the read had none) and its
+// conditioning. It returns the samples a channel.
 // TRLC-LINKS: REQ-SDS-033
-func (h *heldRecall) restore(f *sample.Frame) int {
+func (h *heldRecall) restore(f *sample.Frame, q1, q2 []uint16) int {
 	copy(f.Codes8(0), h.c1)
 	copy(f.Codes8(1), h.c2)
-	if len(h.q1) == h.n && len(f.Precision(0)) == h.n && len(f.Precision(1)) == h.n {
+	f.Traces[0].Precision, f.Traces[1].Precision = nil, nil
+	if len(h.q1) == h.n && len(h.q2) == h.n {
+		f.Traces[0].Precision, f.Traces[1].Precision = core.QBuffer(q1, h.n), core.QBuffer(q2, h.n)
 		copy(f.Precision(0), h.q1)
 		copy(f.Precision(1), h.q2)
 	}
+	f.Cond = h.read
 	return h.n
 }
 
@@ -380,105 +387,21 @@ func (e *Engine) noteBackendsLocked(cfg *sramcapture.Config, tp core.TrigParams)
 	}
 }
 
-// frameConditioner is the conditioning's state carried between frames.
-type frameConditioner struct {
-	scratch           []uint16
-	responseReduction uint32  // the decimation responseGain and responseBW are for
-	responseGain      float64 // the precision filter's noise gain
-	responseBW        float64 // and bandwidth, of the output rate
-}
-
-// conditionFrame conditions recalled frame f of record m, in place: the
-// decimated record's filter (box average, picked samples or the precision
-// filter), the envelope's or the full-rate record's converter calibration,
-// and ERES. q1 and q2 are the frame's Q8.8 buffers, returned grown.
-// TRLC-LINKS: REQ-SDS-012, REQ-SDS-040
-func (e *Engine) conditionFrame(f *sample.Frame, m sramcapture.Metadata, cfg sramcapture.Config, bucket uint32, q1, q2 []uint16, savedScale [2]core.ChScale, c *frameConditioner) ([]uint16, []uint16) {
-	if len(f.Precision(0)) == f.Len() && len(f.Precision(1)) == f.Len() && bucket == 0 && (e.caps().BoxDecim || cfg.Pick) && m.Decimation > 1 {
-		// Box averages: no CIC droop to compensate; a sinc's -3 dB
-		// at 0.443 of the output rate. Picked samples: no filter.
-		f.Cond.PassbandHz, f.Cond.BandwidthHz = .2/f.SampleS, .443/f.SampleS
-		f.Cond.Filter = "box average"
-		if e.caps().PickDecim || cfg.Pick {
-			f.Cond.PassbandHz, f.Cond.BandwidthHz = .5/f.SampleS, .5/f.SampleS
-			f.Cond.Filter = "every 2^n-th sample"
-		}
-		dsp.RoundQ8(f.Codes8(0)[:f.Len()], f.Precision(0)[:f.Len()])
-		dsp.RoundQ8(f.Codes8(1)[:f.Len()], f.Precision(1)[:f.Len()])
-	} else if len(f.Precision(0)) == f.Len() && len(f.Precision(1)) == f.Len() && bucket == 0 {
-		c.scratch = core.QBuffer(c.scratch, f.Len())
-		dsp.ConditionQ8(f.Precision(0), c.scratch)
-		dsp.ConditionQ8(f.Precision(1), c.scratch)
-		f.Cond.Guard = dsp.PrecisionGuard
-		if c.responseReduction != m.Decimation {
-			c.responseGain, c.responseBW = dsp.PrecisionLimits(int(m.Decimation))
-			c.responseReduction = m.Decimation
-		}
-		f.Cond.NoiseGain = c.responseGain
-		f.Cond.PassbandHz = .075 / f.SampleS
-		f.Cond.BandwidthHz = c.responseBW / f.SampleS
-		f.Cond.Filter = "CIC3 + compensated FIR"
-		dsp.RoundQ8(f.Codes8(0)[:f.Len()], f.Precision(0)[:f.Len()])
-		dsp.RoundQ8(f.Codes8(1)[:f.Len()], f.Precision(1)[:f.Len()])
-	}
-	if bucket != 0 {
-		e.calibrateEnvelope(f, m, bucket, q1, q2)
-	} else if m.FractionBits == 0 && e.interleaveCalibration != nil {
-		q1, q2 = e.calibrateRecord(f, q1, q2, savedScale)
-	}
+// eres runs ERES on frame f when the acquisition asks for it, its
+// precision words in q1 and q2's storage; the board's conditioning working
+// buffer is its scratch.
+// TRLC-LINKS: REQ-SDS-012
+func (e *Engine) eres(f *sample.Frame, q1, q2 []uint16) {
 	if length := core.ClampEresLen(int(e.eresLen.Load())); e.acqMode.Load() == AcqEres && length > 1 {
-		core.Eres(f, length, &c.scratch, q1, q2)
+		core.Eres(f, length, e.hw().ConditionScratch(), q1, q2)
 	}
-	return q1, q2
-}
-
-// calibrateEnvelope readies an envelope frame f of bucket words a bucket:
-// extremes of whole buckets, so no per-core calibration or FIR applies, only
-// the converters' offsets on a full-rate record (a decimated one is
-// filtered across the converters already).
-// TRLC-LINKS: REQ-SDS-010, REQ-SDS-040
-func (e *Engine) calibrateEnvelope(f *sample.Frame, m sramcapture.Metadata, bucket uint32, q1, q2 []uint16) {
-	if len(f.Precision(0)) == f.Len() && len(f.Precision(1)) == f.Len() {
-		dsp.RoundQ8(f.Codes8(0)[:f.Len()], f.Precision(0)[:f.Len()])
-		dsp.RoundQ8(f.Codes8(1)[:f.Len()], f.Precision(1)[:f.Len()])
-	}
-	f.Cond.Filter = fmt.Sprintf("peak-detect display readout, %d words per bucket; full record in SRAM", bucket)
-	f.Content = sample.PeakPairs
-	if cal := e.interleaveCalibration; cal != nil && m.Decimation <= 1 {
-		f.Traces[0].Precision, f.Traces[1].Precision = core.QBuffer(q1, f.Len()), core.QBuffer(q2, f.Len())
-		cal.debiasEnvelope(0, f.Codes8(0)[:f.Len()], f.Precision(0), len(f.Precision(0)) == f.Len() && m.FractionBits == 8)
-		cal.debiasEnvelope(1, f.Codes8(1)[:f.Len()], f.Precision(1), len(f.Precision(1)) == f.Len() && m.FractionBits == 8)
-		f.Cond.Filter += "; converter offsets removed from the extremes"
-	}
-}
-
-// calibrateRecord applies the converters' interleave calibration, the
-// capture's detent's, to full-rate record frame f into q1 and q2 (returned
-// grown).
-// TRLC-LINKS: REQ-SDS-040
-func (e *Engine) calibrateRecord(f *sample.Frame, q1, q2 []uint16, savedScale [2]core.ChScale) ([]uint16, []uint16) {
-	q1 = core.QBuffer(q1, f.Len())
-	q2 = core.QBuffer(q2, f.Len())
-	scale := [2]float64{savedScale[0].Vdiv, savedScale[1].Vdiv}
-	if !e.interleaveCalibration.apply(f.Codes8(0)[:f.Len()], f.Codes8(1)[:f.Len()], q1, q2, scale, f.SampleS) {
-		f.Cond.Filter = "interleave calibration bypassed (scale, clipping or phase mismatch)"
-		return q1, q2
-	}
-	f.Traces[0].Precision = q1
-	f.Traces[1].Precision = q2
-	f.Cond.Filter = "interleave calibration (phase checked)"
-	if e.interleaveCalibration.hasTiming(scale, f.SampleS) {
-		f.Cond.Filter += "; aperture compensation"
-		f.Cond.Guard = 2
-	}
-	return q1, q2
 }
 
 // readEdgeWindows reads envelope frame f's trigger edge and the next edge
 // the other way at record m's rate: a live envelope holds no edge shape,
 // nor a mean where the signal is faster than a bucket of bucket words.
 // TRLC-LINKS: REQ-SDS-021, REQ-SDS-040
-func (e *Engine) readEdgeWindows(f *sample.Frame, m sramcapture.Metadata, cfg sramcapture.Config, tp core.TrigParams, recallOffset, bucket uint32, savedScale [2]core.ChScale) (edge, opp *sample.Frame) {
+func (e *Engine) readEdgeWindows(f *sample.Frame, m sramcapture.Metadata, cfg sramcapture.Config, tp core.TrigParams, recallOffset, bucket uint32) (edge, opp *sample.Frame) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
 	disc := f.Codes8(0)[:f.Len()]
@@ -492,9 +415,9 @@ func (e *Engine) readEdgeWindows(f *sample.Frame, m sramcapture.Metadata, cfg sr
 			at, trig, rising = recallOffset+uint32(b)*bucket+bucket/2, b, r //nolint:gosec // G115: b is a bucket index, non-negative here
 		}
 	}
-	edge = e.recallEdgeWindow(ctx, m, at, savedScale)
+	edge = e.recallEdgeWindow(ctx, m, at)
 	if b := core.OppositeEdgeBucket(disc, trig, rising); b >= 0 {
-		opp = e.recallEdgeWindow(ctx, m, recallOffset+uint32(b)*bucket+bucket/2, savedScale) //nolint:gosec // G115: b is a bucket index, non-negative here
+		opp = e.recallEdgeWindow(ctx, m, recallOffset+uint32(b)*bucket+bucket/2) //nolint:gosec // G115: b is a bucket index, non-negative here
 	}
 	return edge, opp
 }

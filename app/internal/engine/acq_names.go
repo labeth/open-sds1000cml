@@ -42,3 +42,6 @@ func SPIDelayFPGA(ns float64, clockCh int) float64 { return acq.SPIDelayFPGA(ns,
 
 // SRAMPlan is acq.SRAMPlan.
 type SRAMPlan = acq.SRAMPlan
+
+// InterleaveCalibration is the acquisition board's converter calibration.
+type InterleaveCalibration = acq.InterleaveCalibration

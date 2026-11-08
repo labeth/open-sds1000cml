@@ -8,6 +8,7 @@ Acquirer.Arm -> <nil>
 Service x1; Acquirer.Wait(0s) -> triggered false done false record {0 0} hal: wait timed out
 Acquirer.Force -> <nil>
 Service x1; Acquirer.Wait(0s) -> triggered false done true record {1 1} <nil>
+Readout.ScreenWindow pos 0.5 pre 0 envelope true -> {0 -78848+157696 points 1024 peak-pairs} <nil>
 Readout.Read {0 -78848+157696 points 1024 peak-pairs} -> <nil>
 Service x1; Trigger.Program edge C1 0 V rising normal -> <nil>
 Acquirer.Configure decim 16 depth 524288 -> <nil>

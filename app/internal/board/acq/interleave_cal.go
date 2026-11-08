@@ -1,6 +1,6 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-ENGINE
 
-package engine
+package acq
 
 import (
 	_ "embed"
@@ -92,7 +92,7 @@ func parseInterleaveCalibration(b []byte) (*InterleaveCalibration, error) {
 	return &c, nil
 }
 
-// apply corrects per-converter offsets (and, at their measured scales, gain
+// Apply corrects per-converter offsets (and, at their measured scales, gain
 // and aperture) on a raw 500 MS/s record. Converter offsets do not depend on
 // V/div (measured identical at 1, 0.5 and 0.1 V/div), so the offset
 // correction applies at every scale. The record's converter rotation is found
@@ -100,7 +100,7 @@ func parseInterleaveCalibration(b []byte) (*InterleaveCalibration, error) {
 // strong signal does not block the other — and clipped samples neither vote
 // nor change.
 // TRLC-LINKS: REQ-SDS-016
-func (c *InterleaveCalibration) apply(a, b []uint8, q1, q2 []uint16, scale [2]float64, sampleS float64) bool {
+func (c *InterleaveCalibration) Apply(a, b []uint8, q1, q2 []uint16, scale [2]float64, sampleS float64) bool {
 	if c == nil || len(a) < 2000 || len(a) != len(b) || len(q1) != len(a) || len(q2) != len(a) {
 		return false
 	}
@@ -299,8 +299,10 @@ func correctAperture(q []uint16, codes []uint8, delayNs [5]float64, rotation int
 	dsp.RoundQ8(codes[2:len(q)-2], q[2:len(q)-2])
 }
 
+// HasTiming reports whether the aperture correction applies to a record at
+// scale sampled sampleS apart.
 // TRLC-LINKS: REQ-SDS-016
-func (c *InterleaveCalibration) hasTiming(scale [2]float64, sampleS float64) bool {
+func (c *InterleaveCalibration) HasTiming(scale [2]float64, sampleS float64) bool {
 	return sampleS == 2e-9 && ((c.TimingVdiv[0] > 0 && c.TimingVdiv[0] == scale[0]) || (c.TimingVdiv[1] > 0 && c.TimingVdiv[1] == scale[1]))
 }
 
@@ -317,7 +319,7 @@ func DefaultInterleaveCalibration() (*InterleaveCalibration, error) {
 	return parseInterleaveCalibration(defaultInterleave)
 }
 
-// debiasEnvelope removes the converter offsets from peak-detect extremes.
+// DebiasEnvelope removes the converter offsets from peak-detect extremes.
 // Envelope buckets hold (min, max) pairs taken by the FPGA over raw samples of
 // all five converters, so a bucket's maximum is the signal plus the highest
 // converter offset and its minimum the signal plus the lowest: on CH1 a flat
@@ -326,28 +328,28 @@ func DefaultInterleaveCalibration() (*InterleaveCalibration, error) {
 // highest; rail values stay. q receives the result in Q8.8 (fromQ: q already
 // holds the samples), and sig its rounding.
 // TRLC-LINKS: REQ-SDS-016, REQ-SDS-010
-func (c *InterleaveCalibration) debiasEnvelope(ch int, sig []uint8, q []uint16, fromQ bool) {
-	off := c.envelopeOffsets(ch)
+func (c *InterleaveCalibration) DebiasEnvelope(ch int, sig []uint8, q []uint16, fromQ bool) {
+	off := c.EnvelopeOffsets(ch)
 	q = q[:len(sig)]
 	if fromQ { // the source chosen once, not per sample
 		for i, x := range q {
-			q[i] = uint16(debiasQ(int(x), off[i&1])) //nolint:gosec // G115: debiasQ keeps a Q8.8 code in 0..255*256
+			q[i] = uint16(DebiasQ(int(x), off[i&1])) //nolint:gosec // G115: DebiasQ keeps a Q8.8 code in 0..255*256
 			sig[i] = core.RoundQ8(q[i])
 		}
 		return
 	}
 	for i, v := range sig {
-		q[i] = uint16(debiasQ(int(v)<<8, off[i&1])) //nolint:gosec // G115: debiasQ keeps a Q8.8 code in 0..255*256
+		q[i] = uint16(DebiasQ(int(v)<<8, off[i&1])) //nolint:gosec // G115: DebiasQ keeps a Q8.8 code in 0..255*256
 		sig[i] = core.RoundQ8(q[i])
 	}
 }
 
-// envelopeOffsets are the lowest and highest converter offsets of channel ch
+// EnvelopeOffsets are the lowest and highest converter offsets of channel ch
 // in Q8.8, which an envelope bucket's minimum and maximum carry
-// (debiasEnvelope). Q8.8 integers, not float per sample: they run on every
+// (DebiasEnvelope). Q8.8 integers, not float per sample: they run on every
 // live envelope and every word of a software-decoded stream.
 // TRLC-LINKS: REQ-SDS-016, REQ-SDS-010
-func (c *InterleaveCalibration) envelopeOffsets(ch int) [2]int {
+func (c *InterleaveCalibration) EnvelopeOffsets(ch int) [2]int {
 	lo, hi := c.Offset[ch&1][0], c.Offset[ch&1][0]
 	for _, v := range c.Offset[ch&1] {
 		lo, hi = min(lo, v), max(hi, v)
@@ -355,10 +357,10 @@ func (c *InterleaveCalibration) envelopeOffsets(ch int) [2]int {
 	return [2]int{int(math.Round(lo * 256)), int(math.Round(hi * 256))}
 }
 
-// debiasQ removes offset off from the Q8.8 extreme x; rails (within half a
+// DebiasQ removes offset off from the Q8.8 extreme x; rails (within half a
 // code) stay.
 // TRLC-LINKS: REQ-SDS-016, REQ-SDS-010
-func debiasQ(x, off int) int {
+func DebiasQ(x, off int) int {
 	if x > 128 && x < 254*256+128 {
 		x = min(max(x-off, 0), 255*256)
 	}

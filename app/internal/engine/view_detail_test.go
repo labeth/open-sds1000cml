@@ -182,7 +182,7 @@ func TestViewsReadWithTheScreen(t *testing.T) {
 		t.Fatal(err)
 	}
 	r.got = w.N
-	e.windows(f, &v, m, offset, bucket, [2]core.ChScale{})
+	e.windows(f, &v, m, offset, bucket)
 	if w := ViewDetail(f, ViewScope); w == nil || w.Frame.Content != sample.PeakPairs || w.Frame.Len() != r.p.N || !(w.To > w.From) {
 		t.Fatalf("scope window %+v", w)
 	}

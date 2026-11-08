@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	core "github.com/labeth/open-dso-core/engine"
+	"github.com/labeth/open-sds1000cml/app/internal/board/acq"
 )
 
 // feedPeakRef is feedPeak's pair ordering a sample at a time with branches,
@@ -30,7 +31,7 @@ func feedPeakRef(s *softStream, raw []byte, cal *InterleaveCalibration) {
 		}
 		var off [2]int
 		if cal != nil {
-			off = cal.envelopeOffsets(ch)
+			off = cal.EnvelopeOffsets(ch)
 		}
 		var q [2][256]int32
 		var r [2][256]uint8
@@ -38,7 +39,7 @@ func feedPeakRef(s *softStream, raw []byte, cal *InterleaveCalibration) {
 			for b := range 256 {
 				x := b << 8
 				if cal != nil {
-					x = debiasQ(x, off[k])
+					x = acq.DebiasQ(x, off[k])
 				}
 				q[k][b], r[k][b] = int32(x), core.RoundQ8(uint16(x))
 			}

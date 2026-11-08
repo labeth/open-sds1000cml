@@ -117,7 +117,8 @@ func TestBusLeaseFinerThanTheDecimationTakesTheFullRate(t *testing.T) {
 	}
 }
 
-// A stopped record's recall and its conditioning come back byte-identical.
+// A stopped record's recall (its precision words and the board's
+// conditioning) and its own conditioning come back byte-identical.
 // TRLC-LINKS: REQ-SDS-033
 func TestHeldRecallRoundTrip(t *testing.T) {
 	var h heldRecall
@@ -129,13 +130,16 @@ func TestHeldRecallRoundTrip(t *testing.T) {
 		return f
 	}
 	src := mk(100, 7)
+	src.Cond.Filter = "read"
 	key := heldKey{offset: 0, words: 50}
 	h.store(key, src)
 	src.Cond.Filter, src.Cond.Guard, src.Cond.BandwidthHz = "cal", 3, 1e6
 	h.storeCond(heldCondKey{held: key}, src)
 	dst := mk(100, 0)
-	if n := h.restore(dst); n != 100 {
-		t.Fatalf("restored %d samples", n)
+	q1, q2 := dst.Precision(0)[:0], dst.Precision(1)[:0]
+	dst.Traces[0].Precision, dst.Traces[1].Precision = nil, nil // a full-rate frame: the storage only
+	if n := h.restore(dst, q1, q2); n != 100 || dst.Cond.Filter != "read" || len(dst.Precision(0)) != 100 {
+		t.Fatalf("restored %d samples, %+v", n, dst.Cond)
 	}
 	h.restoreCond(dst, dst.Precision(0), dst.Precision(1))
 	for i := range src.Codes8(0) {

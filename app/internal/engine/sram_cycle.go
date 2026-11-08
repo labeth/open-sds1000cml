@@ -28,7 +28,6 @@ type sramCycle struct {
 	e *Engine
 
 	previousFrozen  time.Time
-	cond            frameConditioner
 	average         core.SramAverage
 	retained        bool // a record is held for a stopped replay
 	recalled        bool // and it was shown whole
@@ -327,6 +326,7 @@ func (c *sramCycle) Frame(_ context.Context, _ core.Capture, a core.Armed) (*sam
 		c.savedScale = e.liveScale()
 		e.noteSymbolMatches(&c.cfg, c.symbols, e.clk.Now().Sub(armedAt))
 	}
+	e.hw().SetRecordScale([2]float64{c.savedScale[0].Vdiv, c.savedScale[1].Vdiv})
 	c.shownScaleGen = e.scaleGen.Load()
 	e.shownScaleGen.Store(c.shownScaleGen)
 	c.savedM, c.savedCfg, c.savedPlan, c.savedNorm, c.savedTP, c.savedForced = m, cfg, plan, norm, tp, forced
@@ -335,9 +335,6 @@ func (c *sramCycle) Frame(_ context.Context, _ core.Capture, a core.Armed) (*sam
 	e.viewHeld.Store(true)
 	recallOffset, recallWords := uint32(0), m.Length
 	posFrac := math.Float64frombits(e.trigPosFrac.Load())
-	// Pulse, slope and video triggers are the FPGA's: nothing is searched
-	// in software, only a video line moves back to its sync's start.
-	softQualify := false
 	// The capture that serves a SINGLE is first read as a live frame is, so
 	// it shows and stops at once; the stop that follows reads its full
 	// record (reading the whole record first kept the screen empty for
@@ -345,23 +342,19 @@ func (c *sramCycle) Frame(_ context.Context, _ core.Capture, a core.Armed) (*sam
 	singleShot := !replay && e.singleArmed.Load() && a.SingleGen == e.singleGen.Load()
 	pre := 0 // samples the live window holds before the screen's
 	if !fullRecall {
-		// A software-qualified trigger needs room to find its event away
-		// from the hardware edge and still fill the screen around it. The
-		// FPGA's serial trigger fires at the match's end and software
+		// The FPGA's serial trigger fires at the match's end and software
 		// moves the trigger point back to its start: the window holds
 		// that much more before the trigger (twice the screen would halve
 		// the live envelope's resolution, and a fast bus no longer
-		// decodes).
-		screen := plan.Screen
+		// decodes). Pulse, slope and video triggers are the FPGA's:
+		// nothing is searched in software, only a video line moves back
+		// to its sync's start.
 		switch {
-		case softQualify:
-			screen *= 2
 		case e.serialMode.Load() == SerialTrigger:
-			pre = e.serialPreRoom(plan.SampleS, screen)
+			pre = e.serialPreRoom(plan.SampleS, plan.Screen)
 		case cfg.Qualifier.Enabled && cfg.Qualifier.Kind == sramcapture.QualVideo && plan.SampleS > 0:
 			pre = int(8e-6 / plan.SampleS) // a line sync's width
 		}
-		recallOffset, recallWords = acq.LiveSRAMWindowPre(m, screen, posFrac, pre)
 	}
 	// While running, a window larger than the display needs is read as a
 	// peak-detect envelope; the deep record stays in SRAM for a stop.
@@ -373,9 +366,21 @@ func (c *sramCycle) Frame(_ context.Context, _ core.Capture, a core.Armed) (*sam
 	readout := "full record"
 	rawForLease := false // a live raw window read only for the raw leases: abandoned when they end
 	if !fullRecall {
+		// The board places the screen's window in its record (and makes it
+		// an envelope where the display needs fewer samples than it holds).
 		why := e.envelopeBlock()
-		if why == "" {
-			bucket, recallOffset, recallWords = acq.EnvelopeWindow(recallOffset, recallWords, envBuckets, m.Length, uint32(pre/max(1, int(m.SamplesPerWord)))) //nolint:gosec // G115: pre is a sample offset within the record
+		e.hw().SetRecord(m)
+		var w hal.Window
+		err := errors.New("the readout places no screen window")
+		if sr, ok := e.reader().(hal.ScreenReader); ok {
+			w, err = sr.ScreenWindow(hal.ScreenRequest{PosFrac: posFrac, PreRoom: pre, Envelope: why == ""})
+		}
+		if err == nil {
+			recallOffset, recallWords, bucket, err = acq.WindowWords(m, w)
+		}
+		if err != nil {
+			e.busErr(err)
+			return nil, core.Verdict{}, false
 		}
 		readout = liveReadoutName(why, bucket, singleShot)
 		rawForLease = why == blockRaw && !singleShot && !replay
@@ -416,6 +421,9 @@ func (c *sramCycle) Frame(_ context.Context, _ core.Capture, a core.Armed) (*sam
 	if m.FractionBits == 8 {
 		f.Traces[0].Precision = core.QBuffer(q1, f.Len())
 		f.Traces[1].Precision = core.QBuffer(q2, f.Len())
+	} else {
+		// the storage the board's calibration writes precision words into
+		f.Traces[0].Precision, f.Traces[1].Precision = q1[:0], q2[:0]
 	}
 	got := 0                // samples a channel the read gave
 	e.setBusy("reading", 0) // the recall's burst loop reports progress
@@ -467,8 +475,11 @@ func (c *sramCycle) Frame(_ context.Context, _ core.Capture, a core.Armed) (*sam
 		e.busErr(err)
 		return nil, core.Verdict{}, false
 	}
-	if bucket == 0 && !replay && m.Decimation <= 1 && m.FractionBits == 0 && m.SamplesPerWord == 2 {
-		e.noteRecordCores(f.Codes8(0)[:f.Len()], f.Codes8(1)[:f.Len()]) // raw codes, before any conditioning
+	if p := f.Precision(0); p != nil {
+		q1 = p
+	}
+	if p := f.Precision(1); p != nil {
+		q2 = p
 	}
 	// A live envelope holds no edge shape, nor a mean where the signal is
 	// faster than a bucket: read the trigger edge and the next edge the
@@ -477,14 +488,14 @@ func (c *sramCycle) Frame(_ context.Context, _ core.Capture, a core.Armed) (*sam
 	// RMS.
 	if bucket != 0 && !replay && f.Status.Triggered {
 		if key := (edgeKey{averageCfg(cfg), c.savedScale}); c.edges.due(key, e.clk.Now()) {
-			edge, opp := e.readEdgeWindows(f, m, cfg, tp, recallOffset, bucket, c.savedScale)
+			edge, opp := e.readEdgeWindows(f, m, cfg, tp, recallOffset, bucket)
 			c.edges.store(key, e.clk.Now(), edge, opp)
 		}
 		addEdgeWindows(f, &c.edges)
 	} else if !replay {
 		c.edges = edgeDetail{} // a capture of another kind: the windows no longer match
 	}
-	e.windows(f, &views, m, recallOffset, bucket, c.savedScale)
+	e.windows(f, &views, m, recallOffset, bucket)
 	detailAt := e.clk.Now()
 	c.detailAt = detailAt
 	if e.soundStarting() {
@@ -503,20 +514,11 @@ func (c *sramCycle) Frame(_ context.Context, _ core.Capture, a core.Armed) (*sam
 	} else {
 		e.contentGen++
 		f.ContentID = e.contentGen
-		q1, q2 = e.conditionFrame(f, m, cfg, bucket, q1, q2, c.savedScale, &c.cond)
+		e.eres(f, q1, q2)
 		if c.held.key == (heldKey{m, recallOffset, recallWords}) {
 			c.held.storeCond(condKey, f)
 			c.held.cond.content = f.ContentID
 		}
-	}
-	if bucket != 0 {
-		// After the (min, max)-pair calibration above: put each pair in
-		// time order so the live envelope also serves as samples.
-		acq.OrderEnvelopeHead(f.Codes8(0)[:f.Len()], f.Precision(0))
-		acq.OrderEnvelopeHead(f.Codes8(1)[:f.Len()], f.Precision(1))
-		acq.OrderEnvelope(f.Codes8(0)[:f.Len()], f.Precision(0))
-		acq.OrderEnvelope(f.Codes8(1)[:f.Len()], f.Precision(1))
-		f.Flags.Set(sample.Ordered, true)
 	}
 	switch {
 	case fullRateFrame(bucket, m.Decimation, e.acqMode.Load()):
@@ -673,7 +675,7 @@ func (c *sramCycle) readRaw(ctx context.Context, f *sample.Frame, m sramcapture.
 	e := c.e
 	key := heldKey{m, offset, words}
 	if c.replay && c.held.key == key {
-		return c.held.restore(f), nil
+		return c.held.restore(f, f.Precision(0), f.Precision(1)), nil
 	}
 	e.hw().SetRecord(m)
 	e.readWins = append(e.readWins[:0], acq.Window(m, sample.Main, offset, words, 0))

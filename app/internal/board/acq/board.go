@@ -61,6 +61,7 @@ type Board struct {
 	progress   func(done, total int)
 	trig       trigState
 	scratch    readScratch
+	cond       condState
 	stream     streamState
 
 	diagMu sync.Mutex

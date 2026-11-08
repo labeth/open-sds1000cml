@@ -773,7 +773,7 @@ func (e *Engine) peakSamples(r *rollView, raw []byte) ([]uint16, []uint16) {
 	for ch := range c {
 		body, qb := c[ch][2:], q[ch][2:]
 		if cal := e.interleaveCalibration; cal != nil {
-			cal.debiasEnvelope(ch, body, qb, false)
+			cal.DebiasEnvelope(ch, body, qb, false)
 		} else {
 			for i, v := range body {
 				qb[i] = uint16(v) << 8

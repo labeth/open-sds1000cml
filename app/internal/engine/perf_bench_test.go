@@ -282,29 +282,8 @@ func BenchmarkDebiasEnvelope(b *testing.B) {
 	sig, q := make([]uint8, len(src)), make([]uint16, len(src))
 	for b.Loop() {
 		copy(sig, src)
-		c.debiasEnvelope(0, sig, q, false)
-		c.debiasEnvelope(1, sig, q, true)
-	}
-}
-
-// TRLC-LINKS: REQ-SDS-010, REQ-SDS-021
-func BenchmarkViewWindow(b *testing.B) {
-	e, _ := newTestEngine(&testing.T{}, newFakeBus())
-	cal := &InterleaveCalibration{}
-	for k := range cal.Offset[0] {
-		cal.Offset[0][k], cal.Offset[1][k] = 0.3*float64(k)-0.5, -0.2*float64(k)
-	}
-	e.setInterleaveCalibration(cal)
-	m := sramcapture.Metadata{SampleRateHz: 500e6, SamplesPerWord: 2, Decimation: 1}
-	const n = 2048
-	src := discernSig(n)
-	f := &sample.Frame{Traces: []sample.Trace{{Codes8: make([]uint8, n), Valid: n}, {Ch: 1, Codes8: make([]uint8, n), Valid: n}}}
-	r := &viewRead{p: core.ViewPlan{Bucket: 4, Buckets: n / 2, Length: 2 * n, N: n}, f: f}
-	r.got = n
-	for b.Loop() {
-		copy(f.Codes8(0), src)
-		copy(f.Codes8(1), src)
-		e.window(m, r, [2]core.ChScale{{Vdiv: 1}, {Vdiv: 1}}, core.EnvelopeValue(0, 4))
+		c.DebiasEnvelope(0, sig, q, false)
+		c.DebiasEnvelope(1, sig, q, true)
 	}
 }
 
@@ -827,7 +806,7 @@ func BenchmarkInterleaveApply(b *testing.B) {
 	for b.Loop() {
 		copy(x, a0)
 		copy(y, b0)
-		if !c.apply(x, y, q1, q2, [2]float64{2, 2}, 2e-9) {
+		if !c.Apply(x, y, q1, q2, [2]float64{2, 2}, 2e-9) {
 			b.Fatal("rejected")
 		}
 	}

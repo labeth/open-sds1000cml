@@ -167,8 +167,8 @@ func newBoard(ctx context.Context) (*composition, bool) {
 		return nil, false
 	}
 
-	var interleaveCal *engine.InterleaveCalibration
-	if c, err := engine.DefaultInterleaveCalibration(); err != nil {
+	var interleaveCal *acq.InterleaveCalibration
+	if c, err := acq.DefaultInterleaveCalibration(); err != nil {
 		logf("interleave calibration: built-in default rejected: %v", err)
 	} else {
 		interleaveCal = c
