@@ -5,6 +5,7 @@ package acq
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 
 	"github.com/labeth/open-dso-core/hal"
 )
@@ -28,15 +29,23 @@ func (p *platformFacet) BringUp(context.Context) (hal.Identity, error) {
 // TRLC-LINKS: REQ-SDS-001
 func (p *platformFacet) Handover() hal.Handover { return p.handover }
 
-// Service writes what other goroutines staged on the panel plane: at a
-// commit point the lamp word, the offset DACs and the trigger level DAC;
-// inside a read (as a Readout yield) the lamp word only.
+// Service writes what other goroutines staged: at a commit point with no
+// capture armed the relay and gain words the front end's setters left
+// (settings staged through FrontEnd().Set wait for Arm) (a detent's
+// change re-stages its offset DAC), then on the panel plane the lamp word,
+// the offset DACs and the trigger level DAC; inside a read (as a Readout
+// yield) the lamp word only.
 // TRLC-LINKS: REQ-SDS-001
 func (p *platformFacet) Service() {
 	b := (*Board)(p)
 	if b.reading {
 		b.panel.flushLamps()
 		return
+	}
+	if b.state != hal.Armed && b.frontEnd != nil {
+		if err := b.frontEnd.flush(); err != nil && b.panel.writeErr != nil {
+			b.panel.writeErr(fmt.Errorf("front end: %w", err))
+		}
 	}
 	b.panel.flush()
 }

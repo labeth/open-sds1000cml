@@ -105,6 +105,8 @@ type FrontEnd struct {
 	trigSrc int     // relay byte2 source nibble: 0=C1, 1=C2, 2=EXT
 	bwl     [2]bool // 20 MHz bandwidth limit engaged (relay bit0 clear)
 	emitted bool    // seed-don't-emit: leave the inherited analog range alone
+	dirty   bool    // a relay or gain write waits for Flush
+	vdivDue [2]bool // a channel's detent changed since the last Flush
 
 	stage     func(ch int, code uint16)              // offset-DAC stager (engine.SetOffsetDAC)
 	onOffV    func(ch int, offV float64)             // applied-offset-volts hook (engine trigger reference)
@@ -387,7 +389,6 @@ func (f *FrontEnd) applyLocked() error {
 	if err := f.tr.WriteGain(f.gainFor(1, f.idx[1]), f.gainFor(0, f.idx[0])); err != nil {
 		return err
 	}
-	f.emitted = true
 	if f.onApply != nil {
 		f.onApply()
 	}
@@ -403,9 +404,10 @@ func (f *FrontEnd) OnApply(fn func()) {
 	f.mu.Unlock()
 }
 
-// SetBWL engages or releases a channel's 20 MHz bandwidth-limit relay. The
-// firmware re-applies the gain ladder after a BWL change (spec 06 §6), so the
-// whole relay word and both gain bytes are re-emitted.
+// SetBWL engages or releases a channel's 20 MHz bandwidth-limit relay at
+// the owner's next Flush. The firmware re-applies the gain ladder after a
+// BWL change (spec 06 §6), so the whole relay word and both gain bytes are
+// re-emitted.
 // TRLC-LINKS: REQ-SDS-015
 func (f *FrontEnd) SetBWL(ch int, on bool) error {
 	if ch < 0 || ch > 1 {
@@ -414,7 +416,8 @@ func (f *FrontEnd) SetBWL(ch int, on bool) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.bwl[ch] = on
-	return f.applyLocked()
+	f.dirty, f.emitted = true, true
+	return nil
 }
 
 // BWL reports whether a channel's bandwidth limit is engaged.
@@ -438,10 +441,11 @@ func (f *FrontEnd) ChannelState(ch int) (offV float64, cpl int, probe float64, b
 	return f.offReqV[ch&1], f.cpl[ch&1], probe, f.bwl[ch&1]
 }
 
-// SetVdiv applies a detent to a channel (0=C1, 1=C2). Gain takes effect on
-// the next frame; no readback or retry is needed. If a user offset is set,
-// its DAC code is re-derived against the new detent's calibrated zero and
-// re-staged (the input-referred offset must survive a range change).
+// SetVdiv sets a channel's detent (0=C1, 1=C2). The relay and gain words
+// go to the hardware at the owner's next Flush; then the engine's trigger
+// map hears the new range and the offset DAC code is re-derived against
+// the new detent's calibrated zero and re-staged (the input-referred offset
+// must survive a range change).
 // TRLC-LINKS: REQ-SDS-015, REQ-SDS-095
 func (f *FrontEnd) SetVdiv(ch, idx int) error {
 	if ch < 0 || ch > 1 || idx < 0 || idx >= len(Detents) {
@@ -449,12 +453,52 @@ func (f *FrontEnd) SetVdiv(ch, idx int) error {
 	}
 	f.mu.Lock()
 	f.idx[ch] = idx
-	err := f.applyLocked()
-	reReq := f.offReqV[ch] // unset requests 0 V
+	f.dirty, f.vdivDue[ch], f.emitted = true, true, true
+	f.mu.Unlock()
+	return nil
+}
+
+// Pending reports that a relay or gain write waits for Flush.
+// TRLC-LINKS: REQ-SDS-015
+func (f *FrontEnd) Pending() bool {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.dirty
+}
+
+// Flush writes what the setters left for the hardware, on the acquisition
+// owner while no capture is armed: the whole relay word, the ~400 µs relay
+// settle and both gain bytes (apply), then, for each channel whose detent
+// changed, the engine's trigger map and its offset DAC code on the new
+// detent. wrote is false when nothing was due.
+// TRLC-LINKS: REQ-SDS-015, REQ-SDS-095
+func (f *FrontEnd) Flush() (wrote bool, err error) {
+	f.mu.Lock()
+	if !f.dirty {
+		f.mu.Unlock()
+		return false, nil
+	}
+	f.dirty = false
+	due := f.vdivDue
+	f.vdivDue = [2]bool{}
+	idx, reReq := f.idx, f.offReqV // unset requests 0 V
+	err = f.applyLocked()
 	f.mu.Unlock()
 	if err != nil {
-		return err
+		return true, err
 	}
+	for ch := range due {
+		if due[ch] {
+			f.vdivApplied(ch, idx[ch], reReq[ch])
+		}
+	}
+	return true, nil
+}
+
+// vdivApplied tells the engine of channel ch's applied detent idx and
+// re-stages its offset of reReq volts on it.
+// TRLC-LINKS: REQ-SDS-015, REQ-SDS-095
+func (f *FrontEnd) vdivApplied(ch, idx int, reReq float64) {
 	if f.onVdiv != nil {
 		z, c := f.TrigCalActive(ch)
 		f.onVdiv(ch, Vdiv(idx), z, c) // codes are on the analog range: keep the engine's trigger map current
@@ -469,7 +513,6 @@ func (f *FrontEnd) SetVdiv(ch, idx int) error {
 			f.onOffV(ch, f.OffsetVolts(ch, code)) // detent change moves the offset code → refresh
 		}
 	}
-	return nil
 }
 
 // Snapshot returns the detent indices and whether the shadows were ever

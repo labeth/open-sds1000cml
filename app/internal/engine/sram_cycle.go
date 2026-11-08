@@ -254,8 +254,8 @@ func (c *sramCycle) Plan(context.Context) (core.Capture, bool) {
 }
 
 // Watch leaves the capture to a decoded or software stream that started,
-// aborts it for an image job, and for a fresh capture when the settings
-// changed.
+// aborts it for an image job, for a front-end write due (the board makes it
+// with nothing armed) and for a fresh capture when the settings changed.
 // TRLC-LINKS: REQ-SDS-008, REQ-SDS-013
 func (c *sramCycle) Watch(settings bool) core.Interrupt {
 	e := c.e
@@ -273,7 +273,11 @@ func (c *sramCycle) Watch(settings bool) core.Interrupt {
 		}
 		return core.Continue
 	}
+	if e.hw().FrontEndPending() {
+		return core.Abort // the relays switch with nothing armed: a fresh capture after them
+	}
 	if e.decodedSession != nil || e.soft != nil {
+		e.hw().ReleaseCapture()
 		return core.Leave
 	}
 	if len(e.sramJobs) != 0 {

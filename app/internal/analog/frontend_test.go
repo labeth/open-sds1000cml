@@ -60,7 +60,7 @@ func TestSetVdivSequence(t *testing.T) {
 	tr := &fakeTr{}
 	fe := newFE(tr)
 	// C1 to 100 mV (idx 5, sensitive, gain 12); C2 stays at boot 1 V (att, 57).
-	if err := fe.SetVdiv(0, 5); err != nil {
+	if err := setVdiv(fe, 0, 5); err != nil {
 		t.Fatal(err)
 	}
 	if len(tr.ops) != 2 || tr.ops[0].kind != "relay" || tr.ops[1].kind != "gain" {
@@ -89,7 +89,7 @@ func TestRelayWordReference(t *testing.T) {
 	// Spec 06 §4.2 reference: DC / BWL-off / both attenuated → 0x70ad2d.
 	tr := &fakeTr{}
 	fe := newFE(tr)
-	if err := fe.SetVdiv(0, BootDetent); err != nil { // both at boot detent
+	if err := setVdiv(fe, 0, BootDetent); err != nil { // both at boot detent
 		t.Fatal(err)
 	}
 	if got := tr.ops[0].word; got != 0x70ad2d {
@@ -129,7 +129,7 @@ func TestCouplingIsSoftwareOnly(t *testing.T) {
 	if err := fe.SetCoupling(0, CplGND); err != nil {
 		t.Fatal(err)
 	}
-	if err := fe.SetVdiv(0, BootDetent); err != nil {
+	if err := setVdiv(fe, 0, BootDetent); err != nil {
 		t.Fatal(err)
 	}
 	if w, _ := lastRelay(tr); w != 0x70ad2d {
@@ -179,7 +179,7 @@ func TestCalibratedGainAndZero(t *testing.T) {
 
 	// C1 → 100 mV (vd 5): gain bytes come from the cal table (CH2 stays at
 	// its boot detent's table code).
-	if err := fe.SetVdiv(0, 5); err != nil {
+	if err := setVdiv(fe, 0, 5); err != nil {
 		t.Fatal(err)
 	}
 	g := tr.ops[1]
@@ -208,7 +208,7 @@ func TestOffsetKPerDivision(t *testing.T) {
 		idx  int
 		want float64
 	}{{2, 4800}, {6, 4800}, {7, 100}, {8, 100}} {
-		if err := fe.SetVdiv(0, c.idx); err != nil {
+		if err := setVdiv(fe, 0, c.idx); err != nil {
 			t.Fatal(err)
 		}
 		if k := fe.OffsetK(0); k != c.want {
@@ -223,7 +223,7 @@ func TestOffsetKPerDivision(t *testing.T) {
 func TestOffsetTierRangeAndClamp(t *testing.T) {
 	tr := &fakeTr{}
 	fe := New(tr, func(time.Duration) {}, cal.Defaults()) // zeros 10223
-	if err := fe.SetVdiv(0, 6); err != nil {              // 200 mV sensitive
+	if err := setVdiv(fe, 0, 6); err != nil {             // 200 mV sensitive
 		t.Fatal(err)
 	}
 	if c := fe.OffsetCode(0, 1.6); c != 10223-7680 { // −4800·1.6: sensitive-tier slope, positive offset lowers the code
@@ -235,7 +235,7 @@ func TestOffsetTierRangeAndClamp(t *testing.T) {
 	if c := fe.OffsetCode(0, 5.0); c != 10223-7680 { // clamps to ±1.6 V (×1 tier)
 		t.Fatalf("200mV +5V clamps to %d, want %d", c, 10223-7680)
 	}
-	if err := fe.SetVdiv(0, 8); err != nil { // 1 V attenuated
+	if err := setVdiv(fe, 0, 8); err != nil { // 1 V attenuated
 		t.Fatal(err)
 	}
 	if c := fe.OffsetCode(0, 40); c != 10223-4000 { // 100·40=4000
@@ -346,10 +346,53 @@ func TestSetVdivStagesZeroWithoutOffset(t *testing.T) {
 	fe := New(&fakeTr{}, func(time.Duration) {}, tab)
 	var staged []uint16
 	fe.OnOffset(func(_ int, code uint16) { staged = append(staged, code) })
-	if err := fe.SetVdiv(0, 2); err != nil {
+	if err := setVdiv(fe, 0, 2); err != nil {
 		t.Fatal(err)
 	}
 	if len(staged) != 1 || staged[0] != 10426 {
 		t.Fatalf("staged %v, want [10426]", staged)
+	}
+}
+
+// setVdiv sets channel ch's detent and flushes it, as the owner does.
+// TRLC-LINKS: REQ-SDS-015
+func setVdiv(fe *FrontEnd, ch, idx int) error {
+	if err := fe.SetVdiv(ch, idx); err != nil {
+		return err
+	}
+	_, err := fe.Flush()
+	return err
+}
+
+// A detent or a bandwidth limit set waits for Flush: no relay or gain
+// write and no hook before it, one write for several settings, and nothing
+// when nothing is due.
+// TRLC-LINKS: REQ-SDS-015
+func TestWritesWaitForFlush(t *testing.T) {
+	tr := &fakeTr{}
+	fe := New(tr, func(time.Duration) {}, nil)
+	var vdivs []float64
+	fe.OnVdiv(func(_ int, v, _, _ float64) { vdivs = append(vdivs, v) })
+	vdivs = nil
+	if err := fe.SetVdiv(0, 5); err != nil {
+		t.Fatal(err)
+	}
+	if err := fe.SetVdiv(0, 6); err != nil {
+		t.Fatal(err)
+	}
+	if err := fe.SetBWL(1, true); err != nil {
+		t.Fatal(err)
+	}
+	if len(tr.ops) != 0 || len(vdivs) != 0 || !fe.Pending() || fe.VdivV(0) != Detents[6].VdivV || !fe.Emitted() {
+		t.Fatalf("before Flush: ops %v hooks %v pending %v", tr.ops, vdivs, fe.Pending())
+	}
+	if wrote, err := fe.Flush(); !wrote || err != nil {
+		t.Fatalf("Flush: %v %v", wrote, err)
+	}
+	if len(tr.ops) != 2 || len(vdivs) != 1 || vdivs[0] != Vdiv(6) || fe.Pending() {
+		t.Fatalf("after Flush: ops %v hooks %v", tr.ops, vdivs)
+	}
+	if wrote, _ := fe.Flush(); wrote || len(tr.ops) != 2 {
+		t.Fatalf("a second Flush wrote: %v", tr.ops)
 	}
 }
