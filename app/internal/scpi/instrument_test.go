@@ -16,13 +16,17 @@ func TestInstrumentAdapter(t *testing.T) {
 	h, fs, _ := newHFE(t)
 	in := instrument{h}
 	s := in.State()
-	if len(s.Channels) != 2 || s.TimeDivS != 500e-6 || !s.Running || s.Trigger.Slope != hal.Rising {
+	if len(s.Channels) != 2 || s.TimeDivS != 500e-6 || !s.Running || s.Trigger.Slope() != hal.Rising {
 		t.Fatalf("state %+v", s)
 	}
 	err := in.Change(func(s *core.State) error {
 		s.TimeDivS = 1e-6
-		s.Trigger.Slope = hal.Falling
-		s.Trigger.Source = hal.Source{Kind: hal.Analog, Index: 1}
+		if err := s.Trigger.SetSlope(hal.Falling, len(s.Channels)); err != nil {
+			return err
+		}
+		if err := s.Trigger.SetSource(hal.Source{Kind: hal.Analog, Index: 1}, len(s.Channels)); err != nil {
+			return err
+		}
 		s.Sweep = hal.NormalSweep
 		s.Channels[0].Probe = 10
 		s.Channels[0].VoltsDiv = 5
@@ -33,7 +37,7 @@ func TestInstrumentAdapter(t *testing.T) {
 		t.Fatal(err)
 	}
 	s = in.State()
-	if s.TimeDivS != 1e-6 || s.Trigger.Slope != hal.Falling || s.Trigger.Source.Index != 1 || s.Sweep != hal.NormalSweep ||
+	if s.TimeDivS != 1e-6 || s.Trigger.Slope() != hal.Falling || s.Trigger.Source().Index != 1 || s.Sweep != hal.NormalSweep ||
 		s.Channels[0].Probe != 10 || s.Channels[0].VoltsDiv != 5 || !s.Channels[1].Invert || !fs.stats.Norm {
 		t.Fatalf("after change %+v", s)
 	}
