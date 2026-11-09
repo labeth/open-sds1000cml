@@ -74,6 +74,7 @@ type Board struct {
 	scan       panelScanState
 	adc        adcHealth
 	tune       Tuning // the live tuning knobs (tuning.go)
+	acMean     acMean // the channels' means an AC-coupled channel's codes are read from (trigger_ac.go)
 
 	beatFn    func()                        // the owner's heartbeat (SetBeat); nil: none
 	levelDAC  func() (code uint16, ok bool) // the comparator DAC's code from the controllers' level (SetLevelDAC)

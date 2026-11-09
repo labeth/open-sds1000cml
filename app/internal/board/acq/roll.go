@@ -78,9 +78,15 @@ type rollState struct {
 	plan    RollPlan
 	cfg     sramcapture.Config
 	chans   []int
-	lastEnd time.Time // the host time of the newest sample
-	next    uint64    // the next view sample's number
-	last    [2]uint16 // the newest view sample, held over the gaps
+	// a chunk armed and not yet read (it outlived a lease), its arm time,
+	// the scale writes seen then and the channels' scales it was armed at
+	armed     bool
+	armAt     time.Time
+	armSeen   uint64
+	armScales []sample.Scale
+	lastEnd   time.Time // the host time of the newest sample
+	next      uint64    // the next view sample's number
+	last      [2]uint16 // the newest view sample, held over the gaps
 	// the channels' scale the newest samples were captured at, the scale
 	// writes seen and the settle after the newest
 	scales    []sample.Scale
@@ -126,39 +132,48 @@ func (b *Board) rollStart(spec hal.StreamSpec) error {
 // beyond the largest decimation), at the scale the front end stood at. An
 // empty block, with the scale, when a whole group is not in yet or the
 // chunk was dropped (captured across a scale change, or armed in the
-// settle after one). OWNER.
+// settle after one). A chunk that takes longer than ctx gives is left
+// capturing: the lease ends with ctx's error and the next lease waits for
+// that chunk, so a chunk longer than the owner's lease still arrives.
+// OWNER.
 // TRLC-LINKS: REQ-SDS-010, REQ-SDS-015
 func (b *Board) rollLease(ctx context.Context) (hal.StreamBlock, error) {
 	r := &b.roll
-	b.streamWrites() // the relays switch between chunks
-	seen := b.panel.scaleGen.Load()
-	if seen != r.scaleSeen {
-		// a scale change: the partial group is dropped, the chunks armed in
-		// its settle too
-		r.scaleSeen, r.settle = seen, b.now().Add(rollSettle)
-		r.accN, r.accHeld, r.acc = 0, 0, [2]int64{}
-	}
-	cfg := r.cfg
-	t := b.StagedTrigger()
-	cfg.TriggerChannel, cfg.TriggerLevel = t.TriggerChannel, t.TriggerLevel
-	scales := b.streamScales(r.chans)
-	armAt := b.now()
-	actx, cancel := context.WithTimeout(ctx, armTimeout)
-	err := b.mem.Arm(actx, cfg)
-	cancel()
-	if err != nil {
-		return hal.StreamBlock{}, err
+	if !r.armed {
+		b.streamWrites() // the relays switch between chunks
+		seen := b.panel.scaleGen.Load()
+		if seen != r.scaleSeen {
+			// a scale change: the partial group is dropped, the chunks armed in
+			// its settle too
+			r.scaleSeen, r.settle = seen, b.now().Add(rollSettle)
+			r.accN, r.accHeld, r.acc = 0, 0, [2]int64{}
+		}
+		cfg := r.cfg
+		t := b.StagedTrigger()
+		cfg.TriggerChannel, cfg.TriggerLevel = t.TriggerChannel, t.TriggerLevel
+		r.armScales = b.streamScales(r.chans)
+		r.armAt, r.armSeen = b.now(), seen
+		actx, cancel := context.WithTimeout(ctx, armTimeout)
+		err := b.mem.Arm(actx, cfg)
+		cancel()
+		if err != nil {
+			return hal.StreamBlock{}, err
+		}
+		r.armed = true
 	}
 	var m sramcapture.Metadata
+	var err error
 	for {
 		if m, err = b.mem.Status(); err != nil || m.DataFault || (m.Frozen && m.Ready) {
 			break
 		}
-		if err = ctx.Err(); err != nil {
-			break
+		if err := ctx.Err(); err != nil {
+			return hal.StreamBlock{}, err // the chunk goes on capturing for the next lease
 		}
 		b.pause(time.Millisecond)
 	}
+	r.armed = false
+	scales, armAt, seen := r.armScales, r.armAt, r.armSeen
 	end := b.now()
 	if err != nil || m.DataFault {
 		hctx, cancel := context.WithTimeout(context.Background(), haltTimeout)
@@ -170,7 +185,7 @@ func (b *Board) rollLease(ctx context.Context) (hal.StreamBlock, error) {
 		return hal.StreamBlock{}, errors.Join(err, herr)
 	}
 	var raw rawWords
-	rctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	rctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second) // the frozen chunk is read whole
 	recall := b.mem.Recall
 	if m.Revision == 10 {
 		recall = b.mem.RecallForward
@@ -271,7 +286,7 @@ func (r *rollState) block(gap int, raw []byte) hal.StreamBlock {
 // rollStop ends the roll captures: a capture in flight is halted. OWNER.
 // TRLC-LINKS: REQ-SDS-010
 func (b *Board) rollStop() error {
-	b.roll.running = false
+	b.roll.running, b.roll.armed = false, false
 	ctx, cancel := context.WithTimeout(context.Background(), haltTimeout)
 	defer cancel()
 	if err := b.mem.Halt(ctx); err != nil {

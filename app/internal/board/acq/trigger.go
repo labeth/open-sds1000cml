@@ -90,6 +90,9 @@ func (ts *trigState) stagedPart() *trigPart { return &ts.parts[ts.cur] }
 func (b *Board) levelScale(ch int) sample.Scale {
 	if b.frontEnd != nil {
 		if fe := b.frontEnd.pending(ch & 1); fe.VoltsDiv > 0 {
+			if s, ok := b.acScale(ch, fe); ok {
+				return s // an AC-coupled channel's codes from its mean (trigger_ac.go)
+			}
 			return sample.Scale{Zero: sample.Mid8, PerCode: fe.VoltsDiv / CodesPerDiv, OffsetV: fe.OffsetV}
 		}
 	}
@@ -252,9 +255,11 @@ func (b *Board) busConfig(bus *prototrig.Bus, in *trigInputs, c *sramcapture.Con
 	if !b.trig.caps.Serial() {
 		return hal.Refuse("serial trigger", "this FPGA image has no matcher for any bus")
 	}
+	// the levels are the request's thresholds whatever it named: a
+	// threshold left to the decoder is the one the owner learned
 	p := bus.Request
-	p.Threshold = in.scale[p.ChA&1].Word(bus.Levels[0])
-	p.ThresholdB = in.scale[p.ChB&1].Word(bus.Levels[1])
+	p.Threshold, p.HaveThr = in.scale[p.ChA&1].Word(bus.Levels[0]), true
+	p.ThresholdB, p.HaveThrB = in.scale[p.ChB&1].Word(bus.Levels[1]), true
 	var arinc uint32
 	if len(bus.ARINCSlicer) == 4 {
 		for _, v := range bus.ARINCSlicer {
@@ -490,6 +495,13 @@ func (t *triggerFacet) Events(dst []hal.Event) (int, error) {
 	b.trig.pending = b.trig.pending[n:]
 	return n, err
 }
+
+var _ hal.MatchEndTrigger = (*triggerFacet)(nil)
+
+// FiresAtMatchEnd is true: the fabric's receivers fire once the match's
+// last unit is in, and the owner places the trigger at its start.
+// TRLC-LINKS: REQ-SDS-013
+func (t *triggerFacet) FiresAtMatchEnd() bool { return true }
 
 // Matches is the symbol trigger's match counter.
 // TRLC-LINKS: REQ-SDS-011

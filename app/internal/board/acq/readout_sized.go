@@ -50,6 +50,7 @@ type sized struct {
 	w      hal.Window // the window asked for, resolved (Span > 0)
 	skip   int        // samples read before the window's first
 	bucket int        // samples a delivered point (1: every sample)
+	fabric bool       // peak pairs the fabric reduced (fabricEnvelope): read as they are
 }
 
 // sizeWindows resolves the windows of dst's empty frames (the board sizes
@@ -79,6 +80,19 @@ func (b *Board) sizeWindows(req hal.ReadRequest, dst []*sample.Frame) (hal.ReadR
 			return req, nil, hal.Refuse("readout window", fmt.Sprintf(
 				"samples %d…%d from the trigger lie outside the record (%d…%d)", w.StartSample, w.StartSample+w.Span, first, last))
 		}
+		if fabricEnvelope(m, w) {
+			// the fabric's own envelope: a (min, max) pair a bucket, read as
+			// it is, not the window's samples reduced here
+			sz[i] = sized{on: true, w: w, bucket: int(w.Span) / w.Points, fabric: true}
+			out.Windows[i] = w
+			*f = *RecordFrame(2 * w.Points)
+			if m.FractionBits == 8 {
+				for ch := range f.Traces {
+					f.Traces[ch].Precision = make([]uint16, 2*w.Points)
+				}
+			}
+			continue
+		}
 		a0 := floorTo(w.StartSample, per)
 		a1 := -floorTo(-(w.StartSample + w.Span), per)
 		s := sized{on: true, w: w, skip: int(w.StartSample - a0), bucket: 1}
@@ -103,6 +117,24 @@ func (b *Board) sizeWindows(req hal.ReadRequest, dst []*sample.Frame) (hal.ReadR
 		}
 	}
 	return out, sz, nil
+}
+
+// fabricEnvelope reports a peak-pairs window w of record m that the
+// fabric's envelope reads: whole buckets of an even number of words, a
+// bucket at least two words, within one SRAM's worth of words (the windows
+// ScreenWindow places, EnvelopeWindow).
+// TRLC-LINKS: REQ-SDS-010
+func fabricEnvelope(m sramcapture.Metadata, w hal.Window) bool {
+	per := int64(m.SamplesPerWord)
+	if w.Want != sample.PeakPairs || w.Points <= 0 || per <= 0 || w.Span <= 0 || w.Span%per != 0 || w.StartSample%per != 0 {
+		return false
+	}
+	words := w.Span / per
+	if words%int64(w.Points) != 0 || words > int64(sramcapture.Words-16) {
+		return false
+	}
+	bucket := words / int64(w.Points)
+	return bucket >= 2 && bucket%2 == 0
 }
 
 // floorTo is v rounded down to a multiple of n.
@@ -141,6 +173,15 @@ func (b *Board) finishSized(sz []sized, dst []*sample.Frame) {
 			continue
 		}
 		f := dst[i]
+		if s.fabric {
+			for ch := range f.Traces {
+				f.Traces[ch].Precision = nil // a pair is codes
+				f.Traces[ch].Valid = f.Len()
+			}
+			b.stateFrame(f, s)
+			f.Traces = keepChannels(f.Traces, s.w.Channels)
+			continue
+		}
 		n := int(s.w.Span)
 		for ch := range f.Traces {
 			t := &f.Traces[ch]
@@ -169,6 +210,8 @@ func (b *Board) stateFrame(f *sample.Frame, s sized) {
 	peak := s.w.Want == sample.PeakPairs
 	n, half := f.Len(), 1.0
 	switch {
+	case peak && s.fabric:
+		content, half = sample.PeakPairs, 2
 	case peak:
 		n = peakPairs(f, s.bucket)
 		content, half = sample.PeakPairs, 2
@@ -202,6 +245,9 @@ func (b *Board) stateFrame(f *sample.Frame, s sized) {
 	f.SetLen(n)
 	for ch := range f.Traces {
 		f.Traces[ch].Scale = b.levelScale(ch)
+	}
+	if s.w.Role == sample.Main {
+		b.noteMeans(f)
 	}
 }
 

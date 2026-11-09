@@ -122,3 +122,68 @@ func TestRollGroup(t *testing.T) {
 		t.Fatalf("held group %v %v first %d", w, blk.Held, blk.First)
 	}
 }
+
+// slowRollMem freezes a capture only after its status was polled polls times.
+type slowRollMem struct {
+	*rollMem
+	polls, left int
+}
+
+func (m *slowRollMem) Arm(ctx context.Context, c sramcapture.Config) error {
+	m.left = m.polls
+	return m.rollMem.Arm(ctx, c)
+}
+
+func (m *slowRollMem) Status() (sramcapture.Metadata, error) {
+	if m.left > 0 {
+		m.left--
+		return sramcapture.Metadata{}, nil
+	}
+	return m.rollMem.Status()
+}
+
+// A chunk that takes longer than the owner's lease keeps capturing: the
+// lease ends with its context's error, the next lease reads that chunk
+// without arming another, and a stop drops it.
+// TRLC-LINKS: REQ-SDS-010
+func TestRollChunkOutlivesALease(t *testing.T) {
+	b, fm, _ := newTestBoard()
+	m := &slowRollMem{rollMem: &rollMem{fakeMem: fm, base: 0x8000}, polls: 5}
+	b.mem = m
+	b.SetSleep(func(time.Duration) {})
+	plan, err := b.Planner().Plan(hal.Request{Channels: []int{0, 1}, TimePerDivS: 100e-3, Mode: hal.RollMode})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := b.Acquirer().Configure(plan); err != nil {
+		t.Fatal(err)
+	}
+	st, _ := b.Streamer()
+	if err := st.Start(hal.StreamSpec{Payload: hal.PayloadChunks, Channels: []int{0, 1}}); err != nil {
+		t.Fatal(err)
+	}
+	ended, cancel := context.WithCancel(context.Background())
+	cancel()
+	if _, err := st.Lease(ended); err == nil {
+		t.Fatal("a lease whose context ended before the chunk froze gave a block")
+	}
+	if len(fm.armed) != 1 {
+		t.Fatalf("%d arms", len(fm.armed))
+	}
+	blk, err := st.Lease(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, w := blk.Run(0); len(fm.armed) != 1 || len(w) != PlanRoll(100e-3).Chunk {
+		t.Fatalf("%d arms, %d samples", len(fm.armed), len(w))
+	}
+	if _, err := st.Lease(ended); err == nil {
+		t.Fatal("the next chunk froze at once")
+	}
+	if err := st.Stop(); err != nil {
+		t.Fatal(err)
+	}
+	if b.roll.armed {
+		t.Fatal("a stop kept the chunk in flight")
+	}
+}
