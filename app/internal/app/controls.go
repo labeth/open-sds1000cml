@@ -118,3 +118,8 @@ func (a *modelAnalog) SetOffsetV(ch int, volts float64) {
 	a.FrontEnd.SetOffsetV(ch, volts)
 	a.project(ch)
 }
+
+// OffsetSet reports that channel ch's offset was set (its DAC code is
+// staged), for the settings file.
+// TRLC-LINKS: REQ-SDS-095, REQ-SDS-089
+func (a *modelAnalog) OffsetSet(ch int) bool { return a.levels != nil && a.levels.OffsetSet(ch) }
