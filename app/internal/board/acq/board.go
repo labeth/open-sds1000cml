@@ -69,6 +69,7 @@ type Board struct {
 
 	log   func(string, ...any) // nil: the board says nothing
 	clock func() time.Time     // nil: time.Now
+	sleep func(time.Duration)  // nil: time.Sleep
 
 	diagMu sync.Mutex
 	diag   boardDiag
@@ -123,6 +124,20 @@ func (b *Board) SetReporting(lampLag func(time.Duration), writeErr func(error)) 
 // TRLC-LINKS: REQ-SDS-001
 func (b *Board) SetLog(logf func(string, ...any), now func() time.Time) {
 	b.log, b.clock = logf, now
+}
+
+// SetSleep attaches how the board waits between polls (nil: time.Sleep).
+// TRLC-LINKS: REQ-SDS-001
+func (b *Board) SetSleep(fn func(time.Duration)) { b.sleep = fn }
+
+// pause waits d.
+// TRLC-LINKS: REQ-SDS-001
+func (b *Board) pause(d time.Duration) {
+	if b.sleep != nil {
+		b.sleep(d)
+		return
+	}
+	time.Sleep(d)
 }
 
 // TRLC-LINKS: REQ-SDS-001

@@ -442,6 +442,7 @@ func (e *Engine) useBoard(b *acq.Board) {
 	b.SetInterleaveCalibration(e.interleaveCalibration)
 	b.SetRawObserver(e.noteRecordCores)
 	b.SetLog(func(format string, args ...any) { e.logf(format, args...) }, func() time.Time { return e.clk.Now() })
+	b.SetSleep(func(d time.Duration) { e.clk.Sleep(d) })
 	e.acqr, e.plat, e.trg = b.Acquirer(), b.Platform(), b.Trigger()
 	e.readYield = e.plat.Service
 	e.rdx = b.Readout()
