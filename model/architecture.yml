@@ -37,12 +37,13 @@ architecture:
     name: Application composition root
     group: FG-APP
     prose: 'One composition (ADR-ONE-APP): loads the general image over the inherited descriptors, verifies the SRAM
-      transport, starts the acquisition worker and wires acquisition, front-end, fanout, panel, settings, LCD, SCPI
-      and HTTP. Diagnostic health can precede
-      coherent frames; frame-labelled health refresh follows engine beats after an initial threshold. HUD
-      construction has Bode side effects and the LCD cache uses selected scalar state. Default shutdown flushes
-      settings and requests engine stop before process exit; it does not join all services. REQ-SDS-167 through
-      REQ-SDS-168 and existing descriptor, identity, health and timing contracts.'
+      transport, starts the acquisition worker, builds the board and runs the core''s application over its HAL cycle
+      (ADR-CML-ON-HAL-CYCLE), with the DAC codes and front-end channels kept beside the instrument model, the
+      board''s decoded streams as its session, the core''s HUD, and its own LCD, panel facts, SCPI dialect, web scope
+      and settings extension over the HAL scope''s engine. Diagnostic health can precede coherent frames; the health
+      refresh follows the cycle''s beats (ADR-HAL-HEALTH-BEAT). Default shutdown flushes settings and waits for the
+      cycle before the worker closes; it does not join all services. REQ-SDS-167 through REQ-SDS-168 and existing
+      descriptor, identity, health and timing contracts.'
     tags:
     - source-backed
   - id: FU-APP-BUILD

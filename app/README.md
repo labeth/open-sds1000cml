@@ -26,7 +26,7 @@ GOARCH=386 go test ./...   # the device is 32-bit
 
 | Package | Holds |
 |---|---|
-| `engine` | the single-owner acquisition engine: capture plans, triggers, image switching, streams |
+| `engine` | the board's decoded streams (the session the core's cycle runs), the scope's planning helpers, and the single-owner acquisition engine, which the device main does not run |
 | `bus`, `sramcapture`, `fpgaload`, `iface` | GPMC access and the bus worker (DMA), the SRAM record protocol, FPGA configuration, the fabric's register interface |
 | `analog`, `cal`, `dsp` | the vertical front end, the per-unit calibration, signal conditioning |
 | `decode`, `decodedlines`, `streamview` | the protocol decoders (with the Go models of the FPGA receivers), the stream transcript, the scope-side decoded stream |
