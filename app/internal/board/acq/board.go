@@ -28,13 +28,14 @@ type Board struct {
 	mem   Memory // nil without the SRAM fabric (the register-path tests)
 	panel panelPort
 
-	profile   hal.Profile
-	frontEnd  *frontEndFacet // nil: none attached
-	levelGrid func(src int) hal.Grid
-	display   hal.Display
-	input     hal.Input
-	storage   hal.Storage
-	handover  hal.Handover
+	profile    hal.Profile
+	frontEnd   *frontEndFacet // nil: none attached
+	levelGrid  func(src int) hal.Grid
+	display    hal.Display
+	input      hal.Input
+	storage    hal.Storage
+	handover   hal.Handover
+	extensions []hal.Extension
 
 	images      ImageSwitcher
 	imageLoaded string // the image in use: "" the general one
@@ -268,10 +269,16 @@ func (b *Board) LogicProbe() (hal.LogicProbe, bool) { return nil, false }
 // TRLC-LINKS: REQ-SDS-001
 func (b *Board) Generator() (hal.Generator, bool) { return nil, false }
 
-// Extensions are served by the composition's web adapter until the web
-// server moves to the core.
-// TRLC-LINKS: REQ-SDS-001
-func (b *Board) Extensions() []hal.Extension { return nil }
+// Extensions are the scope-only routes the composition attached: the web
+// adapter's (SetExtensions), served by the core's web server.
+// TRLC-LINKS: REQ-SDS-001, REQ-SDS-161
+func (b *Board) Extensions() []hal.Extension { return b.extensions }
+
+// SetExtensions attaches the scope-only routes: the decoded capture and the
+// stacking session hand their bus work to the owner, the panel scan reads
+// through the fabric's lock (ReadMatrix's).
+// TRLC-LINKS: REQ-SDS-001, REQ-SDS-161
+func (b *Board) SetExtensions(x []hal.Extension) { b.extensions = x }
 
 // TRLC-LINKS: REQ-SDS-001
 func (b *Board) count(f func(*boardDiag)) {
