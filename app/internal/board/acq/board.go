@@ -28,13 +28,14 @@ type Board struct {
 	mem   Memory // nil without the SRAM fabric (the register-path tests)
 	panel panelPort
 
-	profile   hal.Profile
-	frontEnd  *frontEndFacet // nil: none attached
-	levelGrid func(src int) hal.Grid
-	display   hal.Display
-	input     hal.Input
-	storage   hal.Storage
-	handover  hal.Handover
+	profile    hal.Profile
+	frontEnd   *frontEndFacet // nil: none attached
+	levelGrid  func(src int) hal.Grid
+	display    hal.Display
+	input      hal.Input
+	storage    hal.Storage
+	handover   hal.Handover
+	extensions []hal.Extension
 
 	images      ImageSwitcher
 	imageLoaded string // the image in use: "" the general one
@@ -47,9 +48,10 @@ type Board struct {
 	armedPlan  hal.Plan // the plan the last arm committed: its record's
 	armedFree  bool     // the last arm's trigger ran free (TriggerSpec.FreeRun)
 	armedNode  hal.TrigNode
-	armedNorm  bool       // the last arm's sweep was not AUTO
-	recStatus  hal.Status // the halted record's, as Wait reported it
-	stopped    bool       // Stop, or a front-end write with nothing armed, since the last arm: the next one is a commit arm
+	armedNorm  bool         // the last arm's sweep was not AUTO
+	armedPlace triggerPlace // how the last arm's trigger point is placed on its record
+	recStatus  hal.Status   // the halted record's, as Wait reported it
+	stopped    bool         // Stop, or a front-end write with nothing armed, since the last arm: the next one is a commit arm
 	commitArms int
 	composed   sramcapture.Config
 	composedOK bool // composed is the staged plan and trigger
@@ -63,6 +65,13 @@ type Board struct {
 	scratch    readScratch
 	cond       condState
 	stream     streamState
+	roll       rollState
+	scan       panelScanState
+	adc        adcHealth
+
+	log   func(string, ...any) // nil: the board says nothing
+	clock func() time.Time     // nil: time.Now
+	sleep func(time.Duration)  // nil: time.Sleep
 
 	diagMu sync.Mutex
 	diag   boardDiag
@@ -76,6 +85,13 @@ type boardDiag struct {
 	Reads    uint64 `json:"reads"`
 	ReadErrs uint64 `json:"read_errors"`
 	Image    string `json:"image"`
+	// The converter checks' findings (adc_health.go) and the panel scan's
+	// dropped reads (panel_scan.go).
+	ADCFault      string  `json:"adc_fault,omitempty"`
+	ADCRecoveries int64   `json:"adc_recoveries,omitempty"`
+	ADCRecovery   string  `json:"adc_recovery,omitempty"`
+	ADCCheckMs    float64 `json:"adc_check_ms,omitempty"`
+	PanelRejects  int     `json:"panel_rejects,omitempty"`
 }
 
 // Config is what the board is built from.
@@ -103,6 +119,42 @@ var _ hal.Board = (*Board)(nil)
 // TRLC-LINKS: REQ-SDS-001
 func (b *Board) SetReporting(lampLag func(time.Duration), writeErr func(error)) {
 	b.panel.lampLag, b.panel.writeErr = lampLag, writeErr
+}
+
+// SetLog attaches where the board's diagnostics go and its clock (nil:
+// time.Now).
+// TRLC-LINKS: REQ-SDS-001
+func (b *Board) SetLog(logf func(string, ...any), now func() time.Time) {
+	b.log, b.clock = logf, now
+}
+
+// SetSleep attaches how the board waits between polls (nil: time.Sleep).
+// TRLC-LINKS: REQ-SDS-001
+func (b *Board) SetSleep(fn func(time.Duration)) { b.sleep = fn }
+
+// pause waits d.
+// TRLC-LINKS: REQ-SDS-001
+func (b *Board) pause(d time.Duration) {
+	if b.sleep != nil {
+		b.sleep(d)
+		return
+	}
+	time.Sleep(d)
+}
+
+// TRLC-LINKS: REQ-SDS-001
+func (b *Board) logf(format string, args ...any) {
+	if b.log != nil {
+		b.log(format, args...)
+	}
+}
+
+// TRLC-LINKS: REQ-SDS-001
+func (b *Board) now() time.Time {
+	if b.clock != nil {
+		return b.clock()
+	}
+	return time.Now()
 }
 
 // HasMemory reports whether the SRAM fabric is there.
@@ -234,10 +286,16 @@ func (b *Board) LogicProbe() (hal.LogicProbe, bool) { return nil, false }
 // TRLC-LINKS: REQ-SDS-001
 func (b *Board) Generator() (hal.Generator, bool) { return nil, false }
 
-// Extensions are served by the composition's web adapter until the web
-// server moves to the core.
-// TRLC-LINKS: REQ-SDS-001
-func (b *Board) Extensions() []hal.Extension { return nil }
+// Extensions are the scope-only routes the composition attached: the web
+// adapter's (SetExtensions), served by the core's web server.
+// TRLC-LINKS: REQ-SDS-001, REQ-SDS-161
+func (b *Board) Extensions() []hal.Extension { return b.extensions }
+
+// SetExtensions attaches the scope-only routes: the decoded capture and the
+// stacking session hand their bus work to the owner, the panel scan reads
+// through the fabric's lock (ReadMatrix's).
+// TRLC-LINKS: REQ-SDS-001, REQ-SDS-161
+func (b *Board) SetExtensions(x []hal.Extension) { b.extensions = x }
 
 // TRLC-LINKS: REQ-SDS-001
 func (b *Board) count(f func(*boardDiag)) {
@@ -252,6 +310,11 @@ func (b *Board) diagJSON() json.RawMessage {
 	d := b.diag
 	b.diagMu.Unlock()
 	d.Image = imageName(b.imageLoaded)
+	h := b.ConverterHealth()
+	d.ADCFault, d.ADCRecoveries, d.ADCRecovery, d.ADCCheckMs = h.Fault, h.Recoveries, h.Recovery, h.CheckMs
+	b.scan.mu.Lock()
+	d.PanelRejects = b.scan.rejects
+	b.scan.mu.Unlock()
 	out, _ := json.Marshal(d)
 	return out
 }

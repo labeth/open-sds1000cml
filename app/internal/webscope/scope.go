@@ -224,6 +224,12 @@ func (f v1Frames) QuietRUnlock() {
 	}
 }
 
+// extensionHolder is a board that carries the scope's own routes as its
+// extensions.
+type extensionHolder interface {
+	SetExtensions([]hal.Extension)
+}
+
 // New is the SDS1000CML+ scope over the engine sc and the board's levels lv;
 // fe and panel may be nil, and screen renders the LCD as a PNG.
 // TRLC-LINKS: REQ-SDS-161, REQ-SDS-162, REQ-SDS-163, REQ-SDS-164
@@ -234,7 +240,6 @@ func New(sc Engine, fe Analog, lv Levels, panel Panel, screen func() []byte, opt
 		Version:  buildinfo.String(),
 		Product:  "open-sds1000cml",
 		Screen:   screen,
-		Routes:   s.extensions(),
 		Parts:    s.parts(),
 		Status:   s.status,
 		Controls: controlSetter{s},
@@ -246,6 +251,20 @@ func New(sc Engine, fe Analog, lv Levels, panel Panel, screen func() []byte, opt
 	}
 	for _, o := range opts {
 		o(&cfg)
+	}
+	// The scope's own routes are its board's extensions where the board
+	// holds them (scopeweb serves Board.Extensions); without a board they
+	// are the scope's routes. The panel scan is the board's, else the
+	// engine's.
+	ps, _ := sc.(panelScanner)
+	if b, ok := cfg.Board.(panelScanner); ok {
+		ps = b
+	}
+	ext := s.extensions(ps)
+	if h, ok := cfg.Board.(extensionHolder); ok {
+		h.SetExtensions(ext)
+	} else {
+		cfg.Routes = routesOf(ext)
 	}
 	if cfg.Board != nil {
 		s.capsOn = true

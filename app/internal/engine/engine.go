@@ -183,13 +183,6 @@ type Engine struct {
 	rdx                   hal.Readout     // the board's readout
 	readWins              []hal.Window    // a read's windows, kept between reads (owner)
 	readFrames            []*sample.Frame // and their frames
-	adc                   adcHealth       // the converters' health checks (adc_health.go)
-	panelScan             sramcapture.PanelConfig
-	panelScanSet          bool
-	panelMu               sync.Mutex
-	panelState            panelKnobs
-	panelRejects          int       // implausible scan reads dropped (panelMu)
-	panelRejectLog        time.Time // last logged reject (panelMu)
 	// protocolImage names the loaded protocol image ("" for general);
 	// failedImage stops reloading one after a failed load until the serial
 	// choice changes.
@@ -448,6 +441,8 @@ func (e *Engine) useBoard(b *acq.Board) {
 	b.SetImages(e.images)
 	b.SetInterleaveCalibration(e.interleaveCalibration)
 	b.SetRawObserver(e.noteRecordCores)
+	b.SetLog(func(format string, args ...any) { e.logf(format, args...) }, func() time.Time { return e.clk.Now() })
+	b.SetSleep(func(d time.Duration) { e.clk.Sleep(d) })
 	e.acqr, e.plat, e.trg = b.Acquirer(), b.Platform(), b.Trigger()
 	e.readYield = e.plat.Service
 	e.rdx = b.Readout()

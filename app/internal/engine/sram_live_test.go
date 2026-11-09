@@ -312,3 +312,17 @@ func TestRollHeldMarksGaps(t *testing.T) {
 		t.Fatalf("a frame without held samples: %d..%d", a, b)
 	}
 }
+
+// The board's roll plan is the engine's, at every timebase it rolls at.
+// TRLC-LINKS: REQ-SDS-010
+func TestBoardRollPlanIsTheEngines(t *testing.T) {
+	for _, tdiv := range SupportedTdivs() {
+		if tdiv < RollMinTdiv*0.999 {
+			continue
+		}
+		p, b := planRoll(tdiv), acq.PlanRoll(tdiv)
+		if b != (acq.RollPlan{Log: p.log, SampleS: p.sampleS, Screen: p.screen, Chunk: p.chunk, Group: p.group}) {
+			t.Errorf("%g s/div: the board plans %+v, the engine %+v", tdiv, b, p)
+		}
+	}
+}

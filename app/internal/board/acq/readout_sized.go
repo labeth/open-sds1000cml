@@ -292,5 +292,6 @@ func (b *Board) readSized(ctx context.Context, req hal.ReadRequest, dst []*sampl
 		b.condition(b.rec, rr.Windows[i], b.scratch.windows[i], f)
 	}
 	b.finishSized(sz, dst)
+	b.placeTrigger(rr.Windows, dst)
 	return nil
 }

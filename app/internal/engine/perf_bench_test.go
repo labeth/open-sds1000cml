@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"math"
-	"slices"
 	"testing"
 	"time"
 
@@ -347,84 +346,6 @@ func BenchmarkPlanSymbolPhys(b *testing.B) {
 	}
 }
 
-// TRLC-LINKS: REQ-SDS-231
-func BenchmarkRecordStuck(b *testing.B) {
-	c1, c2 := discernSig(100003), discernSig(100003)
-	for b.Loop() {
-		recordStuck(c1, c2)
-	}
-}
-
-// stuckCores by histogram names the cores the sorting version did.
-// TRLC-LINKS: REQ-SDS-231
-func TestStuckCoresSame(t *testing.T) {
-	ref := func(snaps [][10]uint8) uint16 {
-		n := len(snaps)
-		if n < adcSnaps/2 {
-			return 0
-		}
-		var stuck uint16
-		vals := make([]int, n)
-		for ch := range 2 {
-			var held [5]bool
-			moving := false
-			for p := range 5 {
-				for i, s := range snaps {
-					vals[i] = int(s[2*p+ch])
-				}
-				first, same := vals[0], true
-				for _, v := range vals {
-					same = same && v == first
-				}
-				held[p] = same
-				if same {
-					continue
-				}
-				slices.Sort(vals)
-				med, away := vals[n/2], 0
-				for _, v := range vals {
-					if v-med >= adcMoving || med-v >= adcMoving {
-						away++
-					}
-				}
-				if away >= n/8 {
-					moving = true
-				}
-			}
-			for p, h := range held {
-				if h && moving {
-					stuck |= 1 << (2*p + ch)
-				}
-			}
-		}
-		return stuck
-	}
-	for seed := range 300 {
-		n := adcSnaps/2 + seed%400
-		snaps := make([][10]uint8, n)
-		for j := range snaps {
-			for k := range 10 {
-				switch (seed + k) % 4 {
-				case 0: // held
-					snaps[j][k] = uint8(seed)
-				case 1: // moving widely
-					snaps[j][k] = uint8((j*7919 + k*31 + seed) % 256)
-				case 2: // a little noise
-					snaps[j][k] = uint8(128 + (j*seed+k)%3)
-				default: // mostly one code, sometimes away
-					snaps[j][k] = 100
-					if (j+seed)%7 == 0 {
-						snaps[j][k] = 200
-					}
-				}
-			}
-		}
-		if got, want := stuckCores(snaps), ref(snaps); got != want {
-			t.Fatalf("seed %d: %#x, want %#x", seed, got, want)
-		}
-	}
-}
-
 // TRLC-LINKS: REQ-SDS-011
 func BenchmarkQualifyPulse(b *testing.B) {
 	sig := discernSig(20000)
@@ -584,16 +505,6 @@ func TestETSFoldRange(t *testing.T) {
 				}
 			}
 		}
-	}
-}
-
-// TRLC-LINKS: REQ-SDS-022
-func BenchmarkPanelMatrix(b *testing.B) {
-	var k panelKnobs
-	f := sramcapture.PanelFrame{Words: [4]uint16{0xffff, 0xfffb, 0xffff, 0xffff}, Knobs: [4]uint16{0x0102, 0x0304, 0x0506, 0x0708}}
-	for b.Loop() {
-		f.Knobs[0]++
-		panelMatrix(f, &k)
 	}
 }
 

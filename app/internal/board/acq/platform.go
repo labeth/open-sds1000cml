@@ -63,6 +63,16 @@ func (p *platformFacet) Reboot(string) error {
 	return hal.Refuse("reboot", "the update agent reboots the unit, not the app")
 }
 
+// ConverterHealth is what the converter checks found (adc_health.go), as
+// the HAL reports it. ANY.
+// TRLC-LINKS: REQ-SDS-231
+func (p *platformFacet) ConverterHealth() hal.ConverterHealth {
+	h := (*Board)(p).ConverterHealth()
+	return hal.ConverterHealth{Fault: h.Fault, Recoveries: h.Recoveries, Recovery: h.Recovery, CheckMs: h.CheckMs}
+}
+
+var _ hal.ConverterMonitor = (*platformFacet)(nil)
+
 // Diag is the board's counters.
 // TRLC-LINKS: REQ-SDS-001
 func (p *platformFacet) Diag() json.RawMessage { return (*Board)(p).diagJSON() }
