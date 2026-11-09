@@ -180,12 +180,12 @@ func TestSoftRingStopState(t *testing.T) {
 	e, _ := newTestEngine(t, newFakeBus())
 	s = mk()
 	s.softRingDone(frozen, last, nil)
-	e.soft = s
-	meta, adopted, err := e.softFreeze(context.Background(), s.id)
+	e.streams().soft = s
+	meta, adopted, err := e.streams().softFreeze(context.Background(), s.id)
 	if err != nil || !adopted || !meta.Triggered || meta.SampleFirst != s.stopFirst {
 		t.Fatalf("freeze: %+v %v %v", meta, adopted, err)
 	}
-	a := e.takeAdopted()
+	a := e.streams().takeAdopted()
 	if a == nil || !a.m.HostTrigger || a.m.TriggerIndex != s.recMeta.TriggerIndex || a.cfg.DecimationLog2 != n {
 		t.Fatalf("adopted %+v", a)
 	}
@@ -260,7 +260,7 @@ func TestSoftRingStartFallsBackOnce(t *testing.T) {
 	e, _ := newTestEngine(t, newFakeBus())
 	s.dec = decode.NewStreamDecoder(s.decodeFunc(), 100, 1000)
 	s.id = sramcapture.RecordIdentity{Epoch: softEpochBase | 1}
-	e.softLoss(s, errors.New("stream overrun"))
+	e.streams().softLoss(s, errors.New("stream overrun"))
 	if s.ring || s.ringWhy == "" {
 		t.Fatalf("a ring stream that lost words kept the ring")
 	}

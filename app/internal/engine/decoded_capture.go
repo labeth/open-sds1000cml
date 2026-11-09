@@ -17,29 +17,6 @@ import (
 	"github.com/labeth/open-sds1000cml/app/internal/sramcapture"
 )
 
-// callOwner queues run for the owner loop and waits for its reply. A caller
-// whose context ends gets its error at once; a job already running still
-// runs to completion.
-// TRLC-LINKS: REQ-SDS-001
-func (e *Engine) callOwner(ctx context.Context, queue chan<- core.OwnerJob, run func() (any, error)) (any, error) {
-	job := core.OwnerJob{Cancelled: ctx.Err, Run: run, Done: make(chan core.OwnerReply, 1)}
-	select {
-	case queue <- job:
-	case <-ctx.Done():
-		return nil, ctx.Err()
-	case <-e.done:
-		return nil, ErrStopped
-	}
-	select {
-	case r := <-job.Done:
-		return r.Value, r.Err
-	case <-ctx.Done():
-		return nil, ctx.Err()
-	case <-e.done:
-		return nil, ErrStopped
-	}
-}
-
 const decodedBufferLimit = 131072 // 5 MiB; finite client-backpressure allowance
 
 // decodedAbandonAfter ends a web page's decoded capture no client has touched
@@ -71,20 +48,20 @@ type decodedServiceStats struct {
 // decodedCall stages SRAM work on the existing acquisition owner. Cancellation
 // of a queued request prevents it from touching hardware when serviced later.
 // TRLC-LINKS: REQ-SDS-013, REQ-SDS-001
-func (e *Engine) decodedCall(ctx context.Context, run func() (any, error)) (any, error) {
-	if e.sram == nil {
+func (d *DecodedStreams) decodedCall(ctx context.Context, run func() (any, error)) (any, error) {
+	if d.h.memory() == nil {
 		return nil, errors.New("decoded capture requires the general SRAM image")
 	}
-	return e.callOwner(ctx, e.decodedRequests, run)
+	return d.callOwner(ctx, d.decodedRequests, run)
 }
 
 // TRLC-LINKS: REQ-SDS-013, REQ-SDS-001
-func (e *Engine) serviceDecodedRequests() {
+func (d *DecodedStreams) serviceDecodedRequests() {
 	for range 8 {
 		select {
-		case job := <-e.decodedRequests:
+		case job := <-d.decodedRequests:
 			if job.Serve() {
-				e.beatN.Add(1)
+				d.h.beat()
 			}
 		default:
 			return
@@ -103,22 +80,22 @@ const decodedBatchMax = 32768
 const decodedPumpReads = 8
 
 // TRLC-LINKS: REQ-SDS-013
-func (e *Engine) pumpDecodedEvents() {
-	if e.decodedSession == nil || e.decodedLines {
+func (d *DecodedStreams) pumpDecodedEvents() {
+	if d.decodedSession == nil || d.decodedLines {
 		return // in line mode the worker keeps the events (ADR-STREAM-LINES-IN-WORKER)
 	}
-	if e.decodedError != nil {
+	if d.decodedError != nil {
 		// A failed transcript must not destroy an independently retained record
 		// through a stale-health restart. Probe hardware without consuming events;
 		// successful reads feed the existing bus heartbeat, failed reads do not.
-		_, _ = e.sram.SupportsDecodedCapture()
+		_, _ = d.h.memory().SupportsDecodedCapture()
 		return
 	}
-	if len(e.decodedScratch) != sramcapture.DecodedBatchMax {
-		e.decodedScratch = make([]sramcapture.DecodedEvent, sramcapture.DecodedBatchMax)
+	if len(d.decodedScratch) != sramcapture.DecodedBatchMax {
+		d.decodedScratch = make([]sramcapture.DecodedEvent, sramcapture.DecodedBatchMax)
 	}
 	now := time.Now()
-	s := &e.decodedService
+	s := &d.decodedService
 	if !s.last.IsZero() {
 		gap := now.Sub(s.last)
 		s.maxGap = max(s.maxGap, gap)
@@ -135,18 +112,18 @@ func (e *Engine) pumpDecodedEvents() {
 	// an iteration caps the transcript near 50 k events/s, and USB-LS and
 	// FlexRay streams overflow the worker's queue.
 	for range decodedPumpReads {
-		batch, err := e.sram.ReadDecodedEventsInto(e.decodedSession.Identity.Epoch, e.decodedScratch)
+		batch, err := d.h.memory().ReadDecodedEventsInto(d.decodedSession.Identity.Epoch, d.decodedScratch)
 		s.maxRead = max(s.maxRead, time.Since(now))
 		s.reads++
 		s.events += uint64(len(batch))
 		if err != nil {
-			e.decodedError = err
+			d.decodedError = err
 			return
 		}
-		if e.decodedError = e.bufferDecoded(batch); e.decodedError != nil {
+		if d.decodedError = d.bufferDecoded(batch); d.decodedError != nil {
 			return
 		}
-		if len(batch) < len(e.decodedScratch) {
+		if len(batch) < len(d.decodedScratch) {
 			return
 		}
 	}
@@ -157,14 +134,14 @@ func (e *Engine) pumpDecodedEvents() {
 // buffer is checked once a read and its slot found by wrapping, not a
 // modulo an event.
 // TRLC-LINKS: REQ-SDS-013
-func (e *Engine) bufferDecoded(batch []sramcapture.DecodedEvent) error {
+func (d *DecodedStreams) bufferDecoded(batch []sramcapture.DecodedEvent) error {
 	if len(batch) == 0 {
 		return nil
 	}
-	if len(e.decodedBuffer) != decodedBufferLimit {
-		e.decodedBuffer = make([]sramcapture.DecodedEvent, decodedBufferLimit)
+	if len(d.decodedBuffer) != decodedBufferLimit {
+		d.decodedBuffer = make([]sramcapture.DecodedEvent, decodedBufferLimit)
 	}
-	s := &e.decodedService
+	s := &d.decodedService
 	// The events that go in: those in sequence, while the buffer has room;
 	// the losses counted as the loop met them (it stopped at the first that
 	// could not go in, after counting its loss).
@@ -175,23 +152,23 @@ func (e *Engine) bufferDecoded(batch []sramcapture.DecodedEvent) error {
 		if v.Kind == sramcapture.EventLoss {
 			s.lost += uint64(v.Count)
 		}
-		if v.Sequence != e.decodedSequence+uint32(k) {
+		if v.Sequence != d.decodedSequence+uint32(k) {
 			err = errors.New("decoded event sequence discontinuity")
 			break
 		}
-		if e.decodedCount+k >= decodedBufferLimit {
+		if d.decodedCount+k >= decodedBufferLimit {
 			err = errors.New("decoded host buffer overflow; transcript incomplete")
 			break
 		}
 	}
 	// copied in at most two stretches: to the ring's end, then from its start
-	at := (e.decodedHead + e.decodedCount) % decodedBufferLimit
-	n := copy(e.decodedBuffer[at:], batch[:k])
-	copy(e.decodedBuffer, batch[n:k])
-	e.decodedSequence += uint32(k)
-	e.decodedCount += k
+	at := (d.decodedHead + d.decodedCount) % decodedBufferLimit
+	n := copy(d.decodedBuffer[at:], batch[:k])
+	copy(d.decodedBuffer, batch[n:k])
+	d.decodedSequence += uint32(k)
+	d.decodedCount += k
 	if k > 0 { // the mark moves with an event taken in
-		s.maxBuffered = max(s.maxBuffered, e.decodedCount)
+		s.maxBuffered = max(s.maxBuffered, d.decodedCount)
 	}
 	return err
 }
@@ -199,24 +176,24 @@ func (e *Engine) bufferDecoded(batch []sramcapture.DecodedEvent) error {
 // BeginDecodedCapture pauses normal frame rearming and keeps all register work
 // on the acquisition owner. It never changes the analog front-end settings.
 // TRLC-LINKS: REQ-SDS-013
-func (e *Engine) BeginDecodedCapture(ctx context.Context, cfg sramcapture.Config) (sramcapture.RecordIdentity, error) {
-	return e.beginDecodedCapture(ctx, cfg, 0, true)
+func (d *DecodedStreams) BeginDecodedCapture(ctx context.Context, cfg sramcapture.Config) (sramcapture.RecordIdentity, error) {
+	return d.beginDecodedCapture(ctx, cfg, 0, true)
 }
 
 // beginDecodedCapture starts a session; web marks a web page's (the scope's
 // keys end it, and it ends itself when abandoned), not the scope's stream.
 // TRLC-LINKS: REQ-SDS-013
-func (e *Engine) beginDecodedCapture(ctx context.Context, cfg sramcapture.Config, lineProto int, web bool) (sramcapture.RecordIdentity, error) {
-	value, err := e.decodedCall(ctx, func() (any, error) {
-		e.decodedStarting = time.Time{} // the session (or its failure) takes over the image
-		if e.soft != nil {
+func (d *DecodedStreams) beginDecodedCapture(ctx context.Context, cfg sramcapture.Config, lineProto int, web bool) (sramcapture.RecordIdentity, error) {
+	value, err := d.decodedCall(ctx, func() (any, error) {
+		d.decodedStarting = time.Time{} // the session (or its failure) takes over the image
+		if d.soft != nil {
 			return nil, errors.New("a decoded stream is already running")
 		}
-		if err := e.decodedTaken(web); err != nil {
+		if err := d.decodedTaken(web); err != nil {
 			return nil, err
 		}
 		if cfg.Packet.Enabled && cfg.Packet.Protocol == sramcapture.PacketARINC && cfg.Packet.Aux == 0 {
-			if cfg.Packet.Aux = e.arincAux.Load(); cfg.Packet.Aux == 0 {
+			if cfg.Packet.Aux = d.h.arincAux(); cfg.Packet.Aux == 0 {
 				return nil, errors.New("ARINC 429 levels are not known yet: show the signal with ARINC decoding and a manual threshold first")
 			}
 		}
@@ -230,7 +207,7 @@ func (e *Engine) beginDecodedCapture(ctx context.Context, cfg sramcapture.Config
 		if cfg.Symbol.Enabled {
 			return nil, errors.New("the image that triggers this protocol cannot stream its decoded events")
 		}
-		e.soundYield()
+		d.h.soundYield()
 		// Only UART, I2C and SPI stream from the general image; a request for
 		// a receiver on the samples streams from the fast image: SPI framed
 		// tighter than its level receiver takes (a clock past about 20 MHz)
@@ -247,64 +224,64 @@ func (e *Engine) beginDecodedCapture(ctx context.Context, cfg sramcapture.Config
 		case (cfg.SPI.Enabled && (cfg.SPI.GapTicks < 9 || cfg.SPI.Delay != 0)) || (cfg.UART.Enabled && cfg.UART.Period16 != 0) || (cfg.I2C.Enabled && cfg.I2C.Samples):
 			want = acq.ImageFast
 		}
-		if e.images != nil && e.hasImage(want) && want != e.protocolImage {
-			if err := e.sram.Halt(ctx); err != nil {
+		if d.h.hasImages() && d.h.hasImage(want) && want != d.h.protocolImage() {
+			if err := d.h.memory().Halt(ctx); err != nil {
 				return nil, err
 			}
-			e.loadImage(want)
+			d.h.loadImage(want)
 		}
-		supported, err := e.sram.SupportsDecodedCapture()
+		supported, err := d.h.memory().SupportsDecodedCapture()
 		if err != nil {
 			return nil, err
 		}
 		if !supported {
 			return nil, errors.New("loaded image lacks decoded capture support")
 		}
-		e.SetRunning(false) // keeps the status in step: streaming is not RUN
-		if err := e.sram.Halt(ctx); err != nil {
+		d.h.setRunning(false) // keeps the status in step: streaming is not RUN
+		if err := d.h.memory().Halt(ctx); err != nil {
 			return nil, err
 		}
-		if _, err := e.sram.EnableDecodedEvents(false); err != nil {
+		if _, err := d.h.memory().EnableDecodedEvents(false); err != nil {
 			return nil, err
 		}
-		e.decodedSession = nil
-		e.decodedBuffer = make([]sramcapture.DecodedEvent, decodedBufferLimit)
-		e.decodedHead, e.decodedCount = 0, 0
-		if len(e.decodedScratch) != sramcapture.DecodedBatchMax {
-			e.decodedScratch = make([]sramcapture.DecodedEvent, sramcapture.DecodedBatchMax)
+		d.decodedSession = nil
+		d.decodedBuffer = make([]sramcapture.DecodedEvent, decodedBufferLimit)
+		d.decodedHead, d.decodedCount = 0, 0
+		if len(d.decodedScratch) != sramcapture.DecodedBatchMax {
+			d.decodedScratch = make([]sramcapture.DecodedEvent, sramcapture.DecodedBatchMax)
 		}
-		e.decodedError = nil
-		e.decodedSequence = 0
+		d.decodedError = nil
+		d.decodedSequence = 0
 		var mem runtime.MemStats
 		runtime.ReadMemStats(&mem)
-		e.decodedService = decodedServiceStats{started: time.Now(), pauseTotal: mem.PauseTotalNs}
-		if dev, ok := e.b.(*bus.Dev); ok && e.decodedDeadline == nil {
-			e.decodedDeadline, err = dev.StartDecodedDeadline()
+		d.decodedService = decodedServiceStats{started: time.Now(), pauseTotal: mem.PauseTotalNs}
+		if dev, ok := d.h.bus().(*bus.Dev); ok && d.decodedDeadline == nil {
+			d.decodedDeadline, err = dev.StartDecodedDeadline()
 			if err != nil {
 				return nil, err
 			}
 		}
-		session, err := e.sram.StartDecodedCapture(ctx, cfg)
+		session, err := d.h.memory().StartDecodedCapture(ctx, cfg)
 		// Select the transcript consumer before the owner can pump events. A
 		// second owner call would strand the first batch in decodedBuffer.
 		lines := false
 		if err == nil && lineProto != 0 {
-			lines, err = e.sram.SetDecodedLineMode(lineProto)
+			lines, err = d.h.memory().SetDecodedLineMode(lineProto)
 		}
 		if err != nil {
 			cleanup, cancel := context.WithTimeout(context.Background(), time.Second)
 			defer cancel()
-			haltErr := e.sram.Halt(cleanup)
-			_, streamErr := e.sram.EnableDecodedEvents(false)
-			return nil, errors.Join(err, haltErr, streamErr, e.closeDecodedDeadline())
+			haltErr := d.h.memory().Halt(cleanup)
+			_, streamErr := d.h.memory().EnableDecodedEvents(false)
+			return nil, errors.Join(err, haltErr, streamErr, d.closeDecodedDeadline())
 		}
-		e.decodedSession = session
-		e.decodedCfg = cfg
-		e.decodedLines = lines
-		e.decodedWeb, e.decodedContact = web, time.Now()
-		e.mu.Lock()
-		e.stats.DecodedWeb = web
-		e.mu.Unlock()
+		d.decodedSession = session
+		d.decodedCfg = cfg
+		d.decodedLines = lines
+		d.decodedWeb, d.decodedContact = web, time.Now()
+		d.mu.Lock()
+		d.stats.DecodedWeb = web
+		d.mu.Unlock()
 		return session.Identity, nil
 	})
 	return core.OwnerResult[sramcapture.RecordIdentity](value, err)
@@ -317,16 +294,16 @@ func (e *Engine) beginDecodedCapture(ctx context.Context, cfg sramcapture.Config
 // reader failed), gives way; the scope's own stream always ends its old
 // session first.
 // TRLC-LINKS: REQ-SDS-013
-func (e *Engine) decodedTaken(web bool) error {
-	if !web || e.decodedSession == nil || e.decodedWeb || time.Since(e.decodedContact) >= decodedOrphanAfter {
+func (d *DecodedStreams) decodedTaken(web bool) error {
+	if !web || d.decodedSession == nil || d.decodedWeb || time.Since(d.decodedContact) >= decodedOrphanAfter {
 		return nil
 	}
 	return errors.New("the scope is streaming this bus (BUS Stream): end it there first")
 }
 
 // TRLC-LINKS: REQ-SDS-013
-func (e *Engine) decodedIdentity(id sramcapture.RecordIdentity) error {
-	if e.decodedSession == nil || e.decodedSession.Identity != id {
+func (d *DecodedStreams) decodedIdentity(id sramcapture.RecordIdentity) error {
+	if d.decodedSession == nil || d.decodedSession.Identity != id {
 		return errors.New("decoded capture identity is no longer active")
 	}
 	return nil
@@ -335,9 +312,9 @@ func (e *Engine) decodedIdentity(id sramcapture.RecordIdentity) error {
 // ReadDecodedBatch returns independent event values, never a shared buffer.
 // One consumer owns the transcript; sequence numbers detect competing readers.
 // TRLC-LINKS: REQ-SDS-013
-func (e *Engine) ReadDecodedBatch(ctx context.Context, id sramcapture.RecordIdentity) ([]sramcapture.DecodedEvent, error) {
+func (d *DecodedStreams) ReadDecodedBatch(ctx context.Context, id sramcapture.RecordIdentity) ([]sramcapture.DecodedEvent, error) {
 	out := make([]sramcapture.DecodedEvent, 4096)
-	n, err := e.ReadDecodedBatchInto(ctx, id, out)
+	n, err := d.ReadDecodedBatchInto(ctx, id, out)
 	if err != nil {
 		return nil, err
 	}
@@ -348,41 +325,41 @@ func (e *Engine) ReadDecodedBatch(ctx context.Context, id sramcapture.RecordIden
 // Allocation and serialization stay outside the acquisition owner's goroutine.
 // Cancellation waits for an in-flight copy before the caller may reuse dst.
 // TRLC-LINKS: REQ-SDS-013
-func (e *Engine) ReadDecodedBatchInto(ctx context.Context, id sramcapture.RecordIdentity, dst []sramcapture.DecodedEvent) (int, error) {
+func (d *DecodedStreams) ReadDecodedBatchInto(ctx context.Context, id sramcapture.RecordIdentity, dst []sramcapture.DecodedEvent) (int, error) {
 	if len(dst) < 1 || len(dst) > decodedBatchMax {
 		return 0, fmt.Errorf("decoded batch storage must hold 1..%d events", decodedBatchMax)
 	}
 	var guard sync.Mutex
 	n := 0
-	_, err := e.decodedCall(ctx, func() (any, error) {
+	_, err := d.decodedCall(ctx, func() (any, error) {
 		guard.Lock()
 		defer guard.Unlock()
 		if err := ctx.Err(); err != nil {
 			return nil, err
 		}
-		if e.softFor(id) {
+		if d.softFor(id) {
 			var err error
-			n, err = e.softRead(id, dst)
+			n, err = d.softRead(id, dst)
 			return nil, err
 		}
-		if err := e.decodedIdentity(id); err != nil {
+		if err := d.decodedIdentity(id); err != nil {
 			return nil, err
 		}
-		if e.decodedError != nil {
-			return nil, e.decodedError
+		if d.decodedError != nil {
+			return nil, d.decodedError
 		}
 		now := time.Now()
-		e.decodedContact = now
-		if !e.decodedService.lastConsumer.IsZero() {
-			e.decodedService.maxConsumerGap = max(e.decodedService.maxConsumerGap, now.Sub(e.decodedService.lastConsumer))
+		d.decodedContact = now
+		if !d.decodedService.lastConsumer.IsZero() {
+			d.decodedService.maxConsumerGap = max(d.decodedService.maxConsumerGap, now.Sub(d.decodedService.lastConsumer))
 		}
-		e.decodedService.lastConsumer = now
-		n = min(len(dst), e.decodedCount)
-		first := min(n, decodedBufferLimit-e.decodedHead)
-		copy(dst[:first], e.decodedBuffer[e.decodedHead:e.decodedHead+first])
-		copy(dst[first:n], e.decodedBuffer[:n-first])
-		e.decodedHead = (e.decodedHead + n) % decodedBufferLimit
-		e.decodedCount -= n
+		d.decodedService.lastConsumer = now
+		n = min(len(dst), d.decodedCount)
+		first := min(n, decodedBufferLimit-d.decodedHead)
+		copy(dst[:first], d.decodedBuffer[d.decodedHead:d.decodedHead+first])
+		copy(dst[first:n], d.decodedBuffer[:n-first])
+		d.decodedHead = (d.decodedHead + n) % decodedBufferLimit
+		d.decodedCount -= n
 		return nil, nil
 	})
 	guard.Lock()
@@ -396,16 +373,16 @@ func (e *Engine) ReadDecodedBatchInto(ctx context.Context, id sramcapture.Record
 // DecodedCaptureStatus reads the status of the retained record id names,
 // failing when that record is no longer the one the capture holds.
 // TRLC-LINKS: REQ-SDS-013
-func (e *Engine) DecodedCaptureStatus(ctx context.Context, id sramcapture.RecordIdentity) (sramcapture.Metadata, error) {
-	value, err := e.decodedCall(ctx, func() (any, error) {
-		if e.softFor(id) {
-			return e.softStatus(id)
+func (d *DecodedStreams) DecodedCaptureStatus(ctx context.Context, id sramcapture.RecordIdentity) (sramcapture.Metadata, error) {
+	value, err := d.decodedCall(ctx, func() (any, error) {
+		if d.softFor(id) {
+			return d.softStatus(id)
 		}
-		if err := e.decodedIdentity(id); err != nil {
+		if err := d.decodedIdentity(id); err != nil {
 			return nil, err
 		}
-		e.decodedContact = time.Now()
-		m, err := e.sram.Status()
+		d.decodedContact = time.Now()
+		m, err := d.h.memory().Status()
 		if err != nil {
 			return nil, err
 		}
@@ -420,7 +397,7 @@ func (e *Engine) DecodedCaptureStatus(ctx context.Context, id sramcapture.Record
 // RecallDecodedRecord stages raw data before returning to the network layer.
 // A stalled client cannot own the hardware or cause SRAM to be rearmed.
 // TRLC-LINKS: REQ-SDS-013, REQ-SDS-033
-func (e *Engine) RecallDecodedRecord(ctx context.Context, id sramcapture.RecordIdentity, offset, count uint32) ([]byte, error) {
+func (d *DecodedStreams) RecallDecodedRecord(ctx context.Context, id sramcapture.RecordIdentity, offset, count uint32) ([]byte, error) {
 	if uint64(offset)+uint64(count) > uint64(sramcapture.Words) {
 		return nil, errors.New("decoded recall exceeds SRAM capacity")
 	}
@@ -436,16 +413,16 @@ func (e *Engine) RecallDecodedRecord(ctx context.Context, id sramcapture.RecordI
 		// Each checked chunk writes directly into its own bounded window. The
 		// response remains private until every chunk succeeds.
 		chunk := bytes.NewBuffer(out[done*4 : done*4 : (done+n)*4])
-		_, err := e.decodedCall(ctx, func() (any, error) {
-			if err := e.decodedIdentity(id); err != nil {
+		_, err := d.decodedCall(ctx, func() (any, error) {
+			if err := d.decodedIdentity(id); err != nil {
 				return nil, err
 			}
-			e.decodedContact = time.Now()
-			e.pumpDecodedEvents()
-			if _, err := e.decodedSession.Recall(ctx, position, n, chunk); err != nil {
+			d.decodedContact = time.Now()
+			d.pumpDecodedEvents()
+			if _, err := d.decodedSession.Recall(ctx, position, n, chunk); err != nil {
 				return nil, err
 			}
-			e.pumpDecodedEvents()
+			d.pumpDecodedEvents()
 			if chunk.Len() != int(n)*4 {
 				return nil, errors.New("decoded recall returned a short chunk")
 			}
@@ -465,15 +442,15 @@ func (e *Engine) RecallDecodedRecord(ctx context.Context, id sramcapture.RecordI
 // EndDecodedCapture leaves normal acquisition stopped until the operator runs it.
 // Halting preserves the SRAM record; disabling streaming only flushes events.
 // TRLC-LINKS: REQ-SDS-013
-func (e *Engine) EndDecodedCapture(ctx context.Context, id sramcapture.RecordIdentity) error {
-	_, err := e.decodedCall(ctx, func() (any, error) {
-		if e.softFor(id) {
-			return nil, e.softEnd(ctx, id)
+func (d *DecodedStreams) EndDecodedCapture(ctx context.Context, id sramcapture.RecordIdentity) error {
+	_, err := d.decodedCall(ctx, func() (any, error) {
+		if d.softFor(id) {
+			return nil, d.softEnd(ctx, id)
 		}
-		if err := e.decodedIdentity(id); err != nil {
+		if err := d.decodedIdentity(id); err != nil {
 			return nil, err
 		}
-		return nil, e.endDecoded(ctx, false)
+		return nil, d.endDecoded(ctx, false)
 	})
 	return err
 }
@@ -483,13 +460,13 @@ func (e *Engine) EndDecodedCapture(ctx context.Context, id sramcapture.RecordIde
 // reports whether there was one. The scope's own stream is left alone (its
 // keys stop and restart it).
 // TRLC-LINKS: REQ-SDS-013
-func (e *Engine) EndWebDecodedCapture(ctx context.Context) (bool, error) {
-	v, err := e.decodedCall(ctx, func() (any, error) {
-		if e.decodedSession == nil || !e.decodedWeb {
+func (d *DecodedStreams) EndWebDecodedCapture(ctx context.Context) (bool, error) {
+	v, err := d.decodedCall(ctx, func() (any, error) {
+		if d.decodedSession == nil || !d.decodedWeb {
 			return false, nil
 		}
-		e.logf("engine: the scope's keys end the web page's decoded capture")
-		return true, e.endDecoded(ctx, false)
+		d.h.logf("engine: the scope's keys end the web page's decoded capture")
+		return true, d.endDecoded(ctx, false)
 	})
 	return core.OwnerResult[bool](v, err)
 }
@@ -497,20 +474,20 @@ func (e *Engine) EndWebDecodedCapture(ctx context.Context) (bool, error) {
 // expireDecoded ends a web page's session no client has touched for
 // decodedAbandonAfter, on the acquisition owner (serviceCommands).
 // TRLC-LINKS: REQ-SDS-013
-func (e *Engine) expireDecoded() {
-	if e.decodedSession == nil {
+func (d *DecodedStreams) expireDecoded() {
+	if d.decodedSession == nil {
 		return
 	}
-	idle := time.Since(e.decodedContact)
-	if e.decodedWeb {
+	idle := time.Since(d.decodedContact)
+	if d.decodedWeb {
 		if idle < decodedAbandonAfter {
 			return
 		}
-		e.logf("engine: no client on the web page's decoded capture for %s - ended", decodedAbandonAfter)
+		d.h.logf("engine: no client on the web page's decoded capture for %s - ended", decodedAbandonAfter)
 		ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 		defer cancel()
-		if err := e.endDecoded(ctx, true); err != nil {
-			e.logf("engine: ending the abandoned decoded capture: %v", err)
+		if err := d.endDecoded(ctx, true); err != nil {
+			d.h.logf("engine: ending the abandoned decoded capture: %v", err)
 		}
 		return
 	}
@@ -520,56 +497,81 @@ func (e *Engine) expireDecoded() {
 	if idle < decodedOrphanAfter {
 		return
 	}
-	e.logf("engine: the scope's decoded stream has had no reader for %s - ended, capturing again", decodedOrphanAfter)
+	d.h.logf("engine: the scope's decoded stream has had no reader for %s - ended, capturing again", decodedOrphanAfter)
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
-	if err := e.endDecoded(ctx, true); err != nil {
-		e.logf("engine: ending the orphaned decoded capture: %v", err)
+	if err := d.endDecoded(ctx, true); err != nil {
+		d.h.logf("engine: ending the orphaned decoded capture: %v", err)
 	}
-	e.SetRunning(true)
+	d.h.setRunning(true)
 }
 
 // endDecoded tears the open session down on the acquisition owner; force
 // clears it even when the fabric does not answer (an abandoned session must
 // not keep the acquisition). Normal acquisition stays stopped until RUN.
 // TRLC-LINKS: REQ-SDS-013
-func (e *Engine) endDecoded(ctx context.Context, force bool) error {
-	haltErr := e.sram.Halt(ctx)
+func (d *DecodedStreams) endDecoded(ctx context.Context, force bool) error {
+	haltErr := d.h.memory().Halt(ctx)
 	var streamErr error
 	if haltErr == nil {
-		_, streamErr = e.sram.EnableDecodedEvents(false)
+		_, streamErr = d.h.memory().EnableDecodedEvents(false)
 	}
 	if err := errors.Join(haltErr, streamErr); err != nil && !force {
 		return err
 	}
-	id := e.decodedSession.Identity
-	e.decodedSession = nil
-	e.decodedLines = false
-	e.decodedBuffer = nil
-	e.decodedHead, e.decodedCount = 0, 0
-	e.decodedWeb = false
-	e.mu.Lock()
-	e.stats.DecodedWeb = false
-	e.mu.Unlock()
-	if err := e.closeDecodedDeadline(); err != nil {
+	id := d.decodedSession.Identity
+	d.decodedSession = nil
+	d.decodedLines = false
+	d.decodedBuffer = nil
+	d.decodedHead, d.decodedCount = 0, 0
+	d.decodedWeb = false
+	d.mu.Lock()
+	d.stats.DecodedWeb = false
+	d.mu.Unlock()
+	if err := d.closeDecodedDeadline(); err != nil {
 		return err
 	}
 	var mem runtime.MemStats
 	runtime.ReadMemStats(&mem)
-	s := &e.decodedService
-	e.logf("decoded service: epoch=%d reads=%d events=%d lost=%d max_gap=%s max_read=%s gc_pause=%s slow_gaps=%d first=%v buffered_peak=%d consumer_gap=%s requests=%s controls=%s pause=%s", id.Epoch, s.reads, s.events, s.lost, s.maxGap, s.maxRead, time.Duration(mem.PauseTotalNs-s.pauseTotal), s.slow, s.gaps[:min(s.slow, uint64(len(s.gaps)))], s.maxBuffered, s.maxConsumerGap, s.maxRequests, s.maxControl, s.maxPause) //nolint:gosec // G115: GC pause nanoseconds of one session, far below 2^63
-	e.SetRunning(false)                                                                                                                                                                                                                                                                                                                                                                                                            // keeps the status in step: streaming is not RUN
+	s := &d.decodedService
+	d.h.logf("decoded service: epoch=%d reads=%d events=%d lost=%d max_gap=%s max_read=%s gc_pause=%s slow_gaps=%d first=%v buffered_peak=%d consumer_gap=%s requests=%s controls=%s pause=%s", id.Epoch, s.reads, s.events, s.lost, s.maxGap, s.maxRead, time.Duration(mem.PauseTotalNs-s.pauseTotal), s.slow, s.gaps[:min(s.slow, uint64(len(s.gaps)))], s.maxBuffered, s.maxConsumerGap, s.maxRequests, s.maxControl, s.maxPause) //nolint:gosec // G115: GC pause nanoseconds of one session, far below 2^63
+	d.h.setRunning(false)                                                                                                                                                                                                                                                                                                                                                                                                            // keeps the status in step: streaming is not RUN
 	return nil
 }
 
 // TRLC-LINKS: REQ-SDS-013, REQ-SDS-001
-func (e *Engine) closeDecodedDeadline() error {
-	if e.decodedDeadline == nil {
+func (d *DecodedStreams) closeDecodedDeadline() error {
+	if d.decodedDeadline == nil {
 		return nil
 	}
-	if err := e.decodedDeadline.Close(); err != nil {
+	if err := d.decodedDeadline.Close(); err != nil {
 		return err
 	}
-	e.decodedDeadline = nil
+	d.decodedDeadline = nil
 	return nil
+}
+
+// decodedIdlePause is the wait between the owner loop's passes while a
+// decoded stream's worker builds its lines: a reader's request waits at most
+// this long.
+const decodedIdlePause = time.Millisecond
+
+// decodedIdle is the owner loop's pass while a decoded capture runs: the
+// events are pumped elsewhere, so it waits on the FIFO service, or a little
+// between passes when the worker builds the lines (a pass with nothing to
+// do spun a whole core).
+// TRLC-LINKS: REQ-SDS-013, REQ-SDS-001
+func (d *DecodedStreams) decodedIdle() {
+	if d.decodedError != nil {
+		d.h.clock().Sleep(20 * time.Millisecond)
+	}
+	if d.decodedDeadline != nil {
+		stage := time.Now()
+		if err := d.decodedDeadline.Pause(); err != nil {
+			d.decodedError = err
+		}
+		d.decodedService.maxPause = max(d.decodedService.maxPause, time.Since(stage))
+	} else if d.decodedLines {
+		d.h.clock().Sleep(decodedIdlePause)
+	}
 }

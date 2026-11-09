@@ -260,7 +260,7 @@ func New(sc Engine, fe Analog, lv Levels, panel Panel, screen func() []byte, opt
 	if b, ok := cfg.Board.(panelScanner); ok {
 		ps = b
 	}
-	ext := s.extensions(ps)
+	ext := s.extensions(ps, cfg.Board)
 	if h, ok := cfg.Board.(extensionHolder); ok {
 		h.SetExtensions(ext)
 	} else {

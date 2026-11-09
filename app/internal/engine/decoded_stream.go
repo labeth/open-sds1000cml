@@ -45,12 +45,12 @@ var ErrLevelsLearning = core.ErrLevelsLearning
 // configuration with p's decoder and the chosen trigger, and starts the
 // capture. value is the unit StreamOnValue matches.
 // TRLC-LINKS: REQ-SDS-013, REQ-SDS-018
-func (e *Engine) BeginDecodedStream(ctx context.Context, p SerialParams, trig StreamTrigger, value int) (sramcapture.RecordIdentity, error) {
+func (d *DecodedStreams) BeginDecodedStream(ctx context.Context, p SerialParams, trig StreamTrigger, value int) (sramcapture.RecordIdentity, error) {
 	p.Bytes, p.Addr, p.RW = nil, -1, 2
 	if acq.SymbolProtocol(p.Proto) {
 		// ADR-STREAM-SOFT-DECODE: the symbol trigger's image has no decoded
 		// event transport; these buses are decoded in software.
-		return e.beginSoftStream(ctx, p, trig, value)
+		return d.beginSoftStream(ctx, p, trig, value)
 	}
 	// An error trigger; a manual stream is planned as one, then made
 	// unmatchable below.
@@ -58,43 +58,43 @@ func (e *Engine) BeginDecodedStream(ctx context.Context, p SerialParams, trig St
 	if trig == StreamOnValue {
 		p.Pattern = []PatternElem{{Kind: core.PatternData, Value: value & core.UnitMask(p), Mask: core.UnitMask(p)}}
 	}
-	cfgValue, err := e.decodedCall(ctx, func() (cfg any, err error) {
+	cfgValue, err := d.decodedCall(ctx, func() (cfg any, err error) {
 		// Hold the image until BeginDecodedCapture takes over: between the two
 		// owner calls the acquisition loop sees no session and puts the general
 		// image back, so a packet stream loads packet, general, packet (three
 		// multi-second loads).
-		e.decodedStarting = e.clk.Now().Add(30 * time.Second) // lapses if the capture never begins
+		d.decodedStarting = d.h.clock().Now().Add(30 * time.Second) // lapses if the capture never begins
 		// The audio stream ends before this image load: left running, the load
 		// lost its words, it loaded the stream image back, and the BUS stream
 		// fought it for the fabric (or failed).
-		e.soundYield()
+		d.h.soundYield()
 		defer func() {
 			if err != nil {
-				e.decodedStarting = time.Time{}
+				d.decodedStarting = time.Time{}
 			}
 		}()
 		want := acq.ProtocolImage(p)
-		if e.images != nil && e.hasImage(want) && want != e.protocolImage {
-			if err := e.sram.Halt(ctx); err != nil {
+		if d.h.hasImages() && d.h.hasImage(want) && want != d.h.protocolImage() {
+			if err := d.h.memory().Halt(ctx); err != nil {
 				return nil, err
 			}
-			e.loadImage(want)
+			d.h.loadImage(want)
 		}
-		if p.Proto == core.SerARINC && e.arincAux.Load() == 0 {
+		if p.Proto == core.SerARINC && d.h.arincAux() == 0 {
 			return nil, fmt.Errorf("%w: show the bus decoded a moment, then start again", ErrLevelsLearning)
 		}
-		return e.decodedStreamConfig(p, trig)
+		return d.decodedStreamConfig(p, trig)
 	})
 	cfg, err := core.OwnerResult[sramcapture.Config](cfgValue, err)
 	if err != nil {
 		return sramcapture.RecordIdentity{}, err
 	}
 	// Install worker transcript mode in the same owner call that starts capture.
-	id, err := e.beginDecodedCapture(ctx, cfg, p.Proto, false)
+	id, err := d.beginDecodedCapture(ctx, cfg, p.Proto, false)
 	if err == nil {
-		e.mu.Lock()
-		e.stats.DecodedStreamMode = "gap-free, the FPGA's decoded events"
-		e.mu.Unlock()
+		d.mu.Lock()
+		d.stats.DecodedStreamMode = "gap-free, the FPGA's decoded events"
+		d.mu.Unlock()
 	}
 	return id, err
 }
@@ -103,10 +103,10 @@ func (e *Engine) BeginDecodedStream(ctx context.Context, p SerialParams, trig St
 // image: a full-depth record, p's decoder and its pattern (the stop: an error
 // token, a value, or for a manual stream an element no unit matches).
 // TRLC-LINKS: REQ-SDS-013, REQ-SDS-018
-func (e *Engine) decodedStreamConfig(p SerialParams, trig StreamTrigger) (sramcapture.Config, error) {
+func (d *DecodedStreams) decodedStreamConfig(p SerialParams, trig StreamTrigger) (sramcapture.Config, error) {
 	words := sramcapture.SamplesPerChannel / 2
 	c := sramcapture.Config{Source: sramcapture.ADC, PreWords: words / 2, PostWords: words - words/2, Normal: true}
-	e.planSerial(&c, p, false)
+	d.h.planSerial(&c, p, false)
 	if acq.HardwareSerialName(&c) == "" {
 		return c, errors.New("the loaded image cannot stream this protocol with that trigger")
 	}
@@ -117,7 +117,7 @@ func (e *Engine) decodedStreamConfig(p SerialParams, trig StreamTrigger) (sramca
 		c.Sequence.Qualify = false
 		c.Sequence.Elements[0] = sramcapture.SequenceElement{Kind: sramcapture.SequenceData, Value: streamNever, Mask: streamNever}
 	}
-	e.planHysteresis(&c)
+	d.h.planHysteresis(&c)
 	return c, nil
 }
 
@@ -125,24 +125,24 @@ func (e *Engine) decodedStreamConfig(p SerialParams, trig StreamTrigger) (sramca
 // line index from; flush completes its line in progress. ok is false when the
 // stream runs in event mode (no worker).
 // TRLC-LINKS: REQ-SDS-013, REQ-SDS-018
-func (e *Engine) ReadDecodedLines(ctx context.Context, id sramcapture.RecordIdentity, from int, flush bool) (decodedlines.Batch, bool, error) {
+func (d *DecodedStreams) ReadDecodedLines(ctx context.Context, id sramcapture.RecordIdentity, from int, flush bool) (decodedlines.Batch, bool, error) {
 	bp := getLineBuf()
 	buf := *bp
 	var n int
 	var lines bool
-	_, err := e.decodedCall(ctx, func() (any, error) {
-		if e.softFor(id) {
-			return nil, e.softIdentity(id) // event mode
+	_, err := d.decodedCall(ctx, func() (any, error) {
+		if d.softFor(id) {
+			return nil, d.softIdentity(id) // event mode
 		}
-		if err := e.decodedIdentity(id); err != nil {
+		if err := d.decodedIdentity(id); err != nil {
 			return nil, err
 		}
-		e.decodedContact = time.Now() // a reader follows the session
-		if lines = e.decodedLines; !lines {
+		d.decodedContact = time.Now() // a reader follows the session
+		if lines = d.decodedLines; !lines {
 			return nil, nil
 		}
 		var rerr error
-		n, _, rerr = e.sram.ReadDecodedLines(id.Epoch, from, flush, buf)
+		n, _, rerr = d.h.memory().ReadDecodedLines(id.Epoch, from, flush, buf)
 		return nil, rerr
 	})
 	if err != nil && ctx.Err() != nil {
@@ -182,34 +182,34 @@ func getLineBuf() *[]byte {
 // becomes the stopped capture the display recalls once the session ends. It
 // returns the record's metadata (its sample span and trigger).
 // TRLC-LINKS: REQ-SDS-013, REQ-SDS-018
-func (e *Engine) FreezeDecodedStream(ctx context.Context, id sramcapture.RecordIdentity) (sramcapture.Metadata, bool, error) {
+func (d *DecodedStreams) FreezeDecodedStream(ctx context.Context, id sramcapture.RecordIdentity) (sramcapture.Metadata, bool, error) {
 	var adopted bool
 	var meta sramcapture.Metadata
-	if e.softFor(id) {
-		_, err := e.decodedCall(ctx, func() (any, error) {
+	if d.softFor(id) {
+		_, err := d.decodedCall(ctx, func() (any, error) {
 			var err error
-			meta, adopted, err = e.softFreeze(ctx, id)
+			meta, adopted, err = d.softFreeze(ctx, id)
 			return nil, err
 		})
 		return meta, adopted, err
 	}
 	{
-		_, err := e.decodedCall(ctx, func() (any, error) {
-			if err := e.decodedIdentity(id); err != nil {
+		_, err := d.decodedCall(ctx, func() (any, error) {
+			if err := d.decodedIdentity(id); err != nil {
 				return nil, err
 			}
 			// A manual stop has no trigger yet: force one so the fabric fills
 			// the post-trigger half and freezes the record around this moment.
-			m, err := e.sram.Status()
+			m, err := d.h.memory().Status()
 			if err != nil {
 				return nil, err
 			}
 			if !m.Frozen || !m.Ready {
-				if err := e.sram.Force(ctx); err != nil {
+				if err := d.h.memory().Force(ctx); err != nil {
 					return nil, err
 				}
 				for deadline := time.Now().Add(500 * time.Millisecond); time.Now().Before(deadline); time.Sleep(time.Millisecond) {
-					if m, err = e.sram.Status(); err != nil || (m.Frozen && m.Ready) {
+					if m, err = d.h.memory().Status(); err != nil || (m.Frozen && m.Ready) {
 						break
 					}
 				}
@@ -217,15 +217,15 @@ func (e *Engine) FreezeDecodedStream(ctx context.Context, id sramcapture.RecordI
 					return nil, err
 				}
 			}
-			if err := e.sram.Halt(ctx); err != nil {
+			if err := d.h.memory().Halt(ctx); err != nil {
 				return nil, err
 			}
-			e.logf("decoded stream end: triggered=%v frozen=%v ready=%v words=%d trigger_index=%d", m.Triggered, m.Frozen, m.Ready, m.Length, m.TriggerIndex)
+			d.h.logf("decoded stream end: triggered=%v frozen=%v ready=%v words=%d trigger_index=%d", m.Triggered, m.Frozen, m.Ready, m.Length, m.TriggerIndex)
 			meta = m
 			if m.Frozen && m.Ready && m.Length > 0 {
-				e.mu.Lock()
-				e.adopt = &adoptedRecord{m: m, cfg: e.decodedCfg}
-				e.mu.Unlock()
+				d.mu.Lock()
+				d.adopt = &adoptedRecord{m: m, cfg: d.decodedCfg}
+				d.mu.Unlock()
 				adopted = true
 			}
 			return nil, nil
@@ -242,9 +242,9 @@ func (e *Engine) FreezeDecodedStream(ctx context.Context, id sramcapture.RecordI
 // the next stream's capture begins: between the two the acquisition loop
 // would load the trigger's image and the next stream its own again.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-228
-func (e *Engine) HoldDecodedImage(ctx context.Context) error {
-	_, err := e.decodedCall(ctx, func() (any, error) {
-		e.decodedStarting = e.clk.Now().Add(10 * time.Second)
+func (d *DecodedStreams) HoldDecodedImage(ctx context.Context) error {
+	_, err := d.decodedCall(ctx, func() (any, error) {
+		d.decodedStarting = d.h.clock().Now().Add(10 * time.Second)
 		return nil, nil
 	})
 	return err
@@ -255,18 +255,18 @@ func (e *Engine) HoldDecodedImage(ctx context.Context) error {
 // started again) needs no recall of it, which reads the full record (about
 // 2.5 s) before the next capture or image load.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-228
-func (e *Engine) DiscardDecodedRecord() {
-	e.mu.Lock()
-	defer e.mu.Unlock()
-	e.adopt = nil
+func (d *DecodedStreams) DiscardDecodedRecord() {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	d.adopt = nil
 }
 
 // takeAdopted hands an adopted record to the acquisition loop once.
 // TRLC-LINKS: REQ-SDS-013
-func (e *Engine) takeAdopted() *adoptedRecord {
-	e.mu.Lock()
-	defer e.mu.Unlock()
-	a := e.adopt
-	e.adopt = nil
+func (d *DecodedStreams) takeAdopted() *adoptedRecord {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	a := d.adopt
+	d.adopt = nil
 	return a
 }

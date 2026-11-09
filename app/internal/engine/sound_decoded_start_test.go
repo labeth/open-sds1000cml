@@ -16,7 +16,7 @@ import (
 func TestSoundWaitsForAStartingDecodedStream(t *testing.T) {
 	e, clk := newTestEngine(t, newFakeBus())
 	e.LeaseSound(3 * time.Second)
-	e.decodedStarting = clk.clock().Now().Add(30 * time.Second)
+	e.streams().decodedStarting = clk.clock().Now().Add(30 * time.Second)
 	if e.soundStep() {
 		t.Fatal("the audio stream started under a starting decoded stream")
 	}

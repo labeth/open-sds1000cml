@@ -20,26 +20,26 @@ func (e *Engine) serviceCommands() {
 	// without one a frame reads no clock here.
 	var stage time.Time
 	if e.sram != nil {
-		if e.decodedSession != nil {
+		if e.streams().decodedSession != nil {
 			stage = time.Now()
 		}
-		e.serviceDecodedRequests()
-		if e.decodedSession != nil {
-			e.decodedService.maxRequests = max(e.decodedService.maxRequests, time.Since(stage))
+		e.streams().serviceDecodedRequests()
+		if e.streams().decodedSession != nil {
+			e.streams().decodedService.maxRequests = max(e.streams().decodedService.maxRequests, time.Since(stage))
 		}
-		e.pumpDecodedEvents()
-		e.expireDecoded()
+		e.streams().pumpDecodedEvents()
+		e.streams().expireDecoded()
 	}
 
-	if e.decodedSession != nil {
+	if e.streams().decodedSession != nil {
 		stage = time.Now()
 	}
 	// The panel plane's staged words: the lamp latch, the offset DACs, the
 	// trigger level DAC (the board's commit-point housekeeping).
 	if e.sram != nil {
 		e.platform().Service()
-		if e.decodedSession != nil {
-			e.decodedService.maxControl = max(e.decodedService.maxControl, time.Since(stage))
+		if e.streams().decodedSession != nil {
+			e.streams().decodedService.maxControl = max(e.streams().decodedService.maxControl, time.Since(stage))
 		}
 		return
 	}

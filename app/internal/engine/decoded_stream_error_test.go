@@ -26,7 +26,7 @@ func TestDecodedStreamOnErrorPlansTheErrorToken(t *testing.T) {
 		},
 		"line": {Manchester: true, USBLS: true, Sequence: true, SequenceOnly: true},
 	} {
-		e := &Engine{}
+		e := testEngine(&Engine{}, nil)
 		e.hw().SetImageCaps(c)
 		images[name] = e
 	}
@@ -52,7 +52,7 @@ func TestDecodedStreamOnErrorPlansTheErrorToken(t *testing.T) {
 		p.Threshold, p.HaveThr, p.ThresholdB, p.HaveThrB = 128, true, 128, true
 		p.Addr, p.RW = -1, 2
 		p.Pattern = []PatternElem{{Kind: core.PatternError}}
-		cfg, err := e.decodedStreamConfig(p, StreamOnError)
+		cfg, err := e.streams().decodedStreamConfig(p, StreamOnError)
 		if err != nil {
 			t.Errorf("protocol %d on the %s image: %v", c.p.Proto, c.image, err)
 			continue

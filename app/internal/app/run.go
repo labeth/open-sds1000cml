@@ -301,7 +301,7 @@ func (c *composition) ui(env *scopeapp.Env) (*panel.Controller, error) {
 		pfe = c.afe
 	}
 	pc := panel.New(c.ctl, pfe, c.levels, cmlpanel.Hardware{}, engine.SupportedTdivs(), uiStartTdiv, logf)
-	sv := streamview.New(streamSource{c.e}, logf)
+	sv := streamview.New(c.e.DecodedStreams().StreamSource(), logf)
 	pc.SetDecodeStream(sv)
 	pc.SetHardcopy(func() (string, error) {
 		if !mountedAt(uDisk) { // the bare directory would be the internal flash

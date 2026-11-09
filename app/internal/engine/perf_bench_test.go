@@ -446,7 +446,7 @@ func TestDecimReciprocal(t *testing.T) {
 // etsBenchEngine has ETS scratch and sums for nCols columns.
 // TRLC-LINKS: REQ-SDS-019
 func etsBenchEngine(nCols int) *Engine {
-	e := &Engine{etsSum1: make([]int64, nCols), etsSum2: make([]int64, nCols), etsCnt: make([]int32, nCols)}
+	e := testEngine(&Engine{etsSum1: make([]int64, nCols), etsSum2: make([]int64, nCols), etsCnt: make([]int32, nCols)}, nil)
 	e.etsScratch1, e.etsScratch2 = discernSig(etsDrainCols), discernSig(etsDrainCols)
 	return e
 }
@@ -538,12 +538,12 @@ func BenchmarkBufferDecoded(b *testing.B) {
 	batch := make([]sramcapture.DecodedEvent, 1024)
 	for b.Loop() {
 		for i := range batch {
-			batch[i].Sequence = e.decodedSequence + uint32(i)
+			batch[i].Sequence = e.streams().decodedSequence + uint32(i)
 		}
-		if err := e.bufferDecoded(batch); err != nil {
+		if err := e.streams().bufferDecoded(batch); err != nil {
 			b.Fatal(err)
 		}
-		e.decodedHead, e.decodedCount = (e.decodedHead+e.decodedCount)%decodedBufferLimit, 0 // a consumer took them
+		e.streams().decodedHead, e.streams().decodedCount = (e.streams().decodedHead+e.streams().decodedCount)%decodedBufferLimit, 0 // a consumer took them
 	}
 }
 
@@ -551,27 +551,27 @@ func BenchmarkBufferDecoded(b *testing.B) {
 func BenchmarkBufferDecodedRef(b *testing.B) {
 	e, _ := newTestEngine(&testing.T{}, newFakeBus())
 	batch := make([]sramcapture.DecodedEvent, 1024)
-	s := &e.decodedService
+	s := &e.streams().decodedService
 	for b.Loop() {
 		for i := range batch {
-			batch[i].Sequence = e.decodedSequence + uint32(i)
+			batch[i].Sequence = e.streams().decodedSequence + uint32(i)
 		}
 		for _, v := range batch { // the per-event loop it replaced
 			if v.Kind == sramcapture.EventLoss {
 				s.lost += uint64(v.Count)
 			}
-			if v.Sequence != e.decodedSequence || e.decodedCount >= decodedBufferLimit {
+			if v.Sequence != e.streams().decodedSequence || e.streams().decodedCount >= decodedBufferLimit {
 				break
 			}
-			e.decodedSequence++
-			if len(e.decodedBuffer) != decodedBufferLimit {
-				e.decodedBuffer = make([]sramcapture.DecodedEvent, decodedBufferLimit)
+			e.streams().decodedSequence++
+			if len(e.streams().decodedBuffer) != decodedBufferLimit {
+				e.streams().decodedBuffer = make([]sramcapture.DecodedEvent, decodedBufferLimit)
 			}
-			e.decodedBuffer[(e.decodedHead+e.decodedCount)%decodedBufferLimit] = v
-			e.decodedCount++
-			s.maxBuffered = max(s.maxBuffered, e.decodedCount)
+			e.streams().decodedBuffer[(e.streams().decodedHead+e.streams().decodedCount)%decodedBufferLimit] = v
+			e.streams().decodedCount++
+			s.maxBuffered = max(s.maxBuffered, e.streams().decodedCount)
 		}
-		e.decodedHead, e.decodedCount = (e.decodedHead+e.decodedCount)%decodedBufferLimit, 0
+		e.streams().decodedHead, e.streams().decodedCount = (e.streams().decodedHead+e.streams().decodedCount)%decodedBufferLimit, 0
 	}
 }
 
@@ -581,36 +581,36 @@ func BenchmarkBufferDecodedRef(b *testing.B) {
 func TestBufferDecodedSame(t *testing.T) {
 	run := func(head, count int, seq uint32, batch []sramcapture.DecodedEvent, ref bool) (string, error) {
 		e, _ := newTestEngine(t, newFakeBus())
-		e.decodedBuffer = make([]sramcapture.DecodedEvent, decodedBufferLimit)
-		e.decodedHead, e.decodedCount, e.decodedSequence = head, count, seq
+		e.streams().decodedBuffer = make([]sramcapture.DecodedEvent, decodedBufferLimit)
+		e.streams().decodedHead, e.streams().decodedCount, e.streams().decodedSequence = head, count, seq
 		var err error
 		if ref {
-			s := &e.decodedService
+			s := &e.streams().decodedService
 			for _, v := range batch {
 				if v.Kind == sramcapture.EventLoss {
 					s.lost += uint64(v.Count)
 				}
-				if v.Sequence != e.decodedSequence {
+				if v.Sequence != e.streams().decodedSequence {
 					err = errors.New("decoded event sequence discontinuity")
 					break
 				}
-				if e.decodedCount >= decodedBufferLimit {
+				if e.streams().decodedCount >= decodedBufferLimit {
 					err = errors.New("decoded host buffer overflow; transcript incomplete")
 					break
 				}
-				e.decodedSequence++
-				e.decodedBuffer[(e.decodedHead+e.decodedCount)%decodedBufferLimit] = v
-				e.decodedCount++
-				s.maxBuffered = max(s.maxBuffered, e.decodedCount)
+				e.streams().decodedSequence++
+				e.streams().decodedBuffer[(e.streams().decodedHead+e.streams().decodedCount)%decodedBufferLimit] = v
+				e.streams().decodedCount++
+				s.maxBuffered = max(s.maxBuffered, e.streams().decodedCount)
 			}
 		} else {
-			err = e.bufferDecoded(batch)
+			err = e.streams().bufferDecoded(batch)
 		}
 		var tail []sramcapture.DecodedEvent
-		for i := 0; i < e.decodedCount && i < 50; i++ {
-			tail = append(tail, e.decodedBuffer[(e.decodedHead+e.decodedCount-1-i)%decodedBufferLimit])
+		for i := 0; i < e.streams().decodedCount && i < 50; i++ {
+			tail = append(tail, e.streams().decodedBuffer[(e.streams().decodedHead+e.streams().decodedCount-1-i)%decodedBufferLimit])
 		}
-		return fmt.Sprint(e.decodedCount, e.decodedSequence, e.decodedService.lost, e.decodedService.maxBuffered, tail), err
+		return fmt.Sprint(e.streams().decodedCount, e.streams().decodedSequence, e.streams().decodedService.lost, e.streams().decodedService.maxBuffered, tail), err
 	}
 	mk := func(seq uint32, n, gapAt int) []sramcapture.DecodedEvent {
 		b := make([]sramcapture.DecodedEvent, n)

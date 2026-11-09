@@ -36,6 +36,7 @@ type Board struct {
 	storage    hal.Storage
 	handover   hal.Handover
 	extensions []hal.Extension
+	session    hal.Session // the board's own stream sessions (session.go); nil: none
 
 	images      ImageSwitcher
 	imageLoaded string // the image in use: "" the general one

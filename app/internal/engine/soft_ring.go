@@ -149,24 +149,24 @@ func (s *softStream) softRingRecord(m sramcapture.Metadata, last uint32) (sramca
 // stream: the ring becomes the record shown, or, when it is not to be had,
 // the symbol trigger's record of the value coming again is armed.
 // TRLC-LINKS: REQ-SDS-035, REQ-SDS-240
-func (e *Engine) softRingStop(s *softStream) {
+func (d *DecodedStreams) softRingStop(s *softStream) {
 	// The ring first, while the worker still drains the stream: a stream
 	// left undrained overflows the drum's FIFO within 50 ms, and its fault
 	// stops the acquisition.
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-	m, last, err := e.sram.FreezeRing(ctx)
+	m, last, err := d.h.memory().FreezeRing(ctx)
 	cancel()
-	e.softStreamStop(s)
+	d.softStreamStop(s)
 	// What places the record: the ring's geometry and pointer, its stamp,
 	// the frame's ordinal on the session's clock and what the host received.
-	e.logf("engine: history ring frozen: words=%d start=%d origin=%d position=%d (%d past the origin) stamp=%d (%.1f ms) frame=%d session=%d words received=%d after %v",
+	d.h.logf("engine: history ring frozen: words=%d start=%d origin=%d position=%d (%d past the origin) stamp=%d (%.1f ms) frame=%d session=%d words received=%d after %v",
 		m.Length, m.Start, m.Origin, m.Position, (m.Position-m.Origin)&(sramcapture.Words-1), last, float64(last)*4e-6,
-		s.stopFirst, uint64(float64(s.sessBase)*s.ordStep), s.expected, e.clk.Now().Sub(s.sessAt).Round(time.Millisecond))
+		s.stopFirst, uint64(float64(s.sessBase)*s.ordStep), s.expected, d.h.clock().Now().Sub(s.sessAt).Round(time.Millisecond))
 	s.softRingDone(m, last, err)
 	if s.recOK {
-		e.logf("engine: %s stream stopped on %X: history ring of %d words, trigger word %d", s.decoder.Name, s.value, s.recMeta.Length, s.recMeta.TriggerIndex)
+		d.h.logf("engine: %s stream stopped on %X: history ring of %d words, trigger word %d", s.decoder.Name, s.value, s.recMeta.Length, s.recMeta.TriggerIndex)
 	} else {
-		e.logf("engine: %s stream stopped on %X: %v; the symbol trigger's record instead", s.decoder.Name, s.value, s.ringErr)
+		d.h.logf("engine: %s stream stopped on %X: %v; the symbol trigger's record instead", s.decoder.Name, s.value, s.ringErr)
 	}
 }
 

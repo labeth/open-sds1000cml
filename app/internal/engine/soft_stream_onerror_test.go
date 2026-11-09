@@ -26,7 +26,7 @@ func TestSymbolStreamOnErrorRunsByHand(t *testing.T) {
 	e := New(Config{Bus: newFakeBus(), SRAM: capture, Clock: clk.clock(), Logf: t.Logf})
 	done := make(chan error, 1)
 	go func() {
-		_, err := e.beginSoftStream(context.Background(), SerialParams{Proto: core.SerLIN, Baud: 19200, HaveThr: true, Threshold: 128}, StreamOnError, 0)
+		_, err := e.streams().beginSoftStream(context.Background(), SerialParams{Proto: core.SerLIN, Baud: 19200, HaveThr: true, Threshold: 128}, StreamOnError, 0)
 		done <- err
 	}()
 	var got error
@@ -35,7 +35,7 @@ func TestSymbolStreamOnErrorRunsByHand(t *testing.T) {
 		case got = <-done:
 			wait = false
 		default:
-			e.serviceDecodedRequests()
+			e.streams().serviceDecodedRequests()
 			time.Sleep(time.Millisecond)
 		}
 	}

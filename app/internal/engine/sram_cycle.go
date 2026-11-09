@@ -95,23 +95,7 @@ func (c *sramCycle) Open() {
 
 // Close ends a decoded capture and a software stream still running.
 // TRLC-LINKS: REQ-SDS-013
-func (c *sramCycle) Close() {
-	e := c.e
-	if e.decodedSession != nil {
-		if err := e.acquirer().Stop(); err != nil {
-			e.logf("decoded shutdown halt: %v", err)
-		}
-		if _, err := e.sram.EnableDecodedEvents(false); err != nil {
-			e.logf("decoded shutdown stream: %v", err)
-		}
-	}
-	if err := e.closeDecodedDeadline(); err != nil {
-		e.logf("decoded shutdown scheduling: %v", err)
-	}
-	if e.soft != nil {
-		e.softStreamStop(e.soft)
-	}
-}
+func (c *sramCycle) Close() { c.e.streams().Close() }
 
 // Serve is the commit point: the decoded capture's requests and events,
 // the board's housekeeping.
@@ -135,8 +119,8 @@ func (c *sramCycle) Claim(context.Context) bool {
 	// Only once the capture has ended: the adoption and the end are two
 	// owner calls, and an iteration between them must leave the record.
 	var a *adoptedRecord
-	if e.decodedSession == nil && e.soft == nil {
-		a = e.takeAdopted()
+	if e.streams().decodedSession == nil && e.streams().soft == nil {
+		a = e.streams().takeAdopted()
 	}
 	if a != nil {
 		c.savedM, c.savedCfg = a.m, a.cfg
@@ -154,9 +138,9 @@ func (c *sramCycle) Claim(context.Context) bool {
 	// switch drops the record, and the stream started again (RUN/STOP in
 	// BUS Stream) needs that image back (two loads of about four seconds).
 	c.streamShown = (c.streamShown || adopting) && c.retained && !e.running.Load()
-	if e.soft != nil { // a software-decoded stream owns the acquisition (soft_stream.go)
+	if e.streams().soft != nil { // a software-decoded stream owns the acquisition (soft_stream.go)
 		c.retained, c.recalled = false, false
-		e.softStep()
+		e.streams().softStep()
 		return true
 	}
 	if (e.soundWanted() || e.soundStreaming()) && e.soundStep() { // the audio stream (sound_stream.go)
@@ -165,17 +149,17 @@ func (c *sramCycle) Claim(context.Context) bool {
 	}
 	// Image-switching jobs run only here, between acquisitions. The switch
 	// drops the fabric's record metadata, so the retained record is gone.
-	if !adopting && e.decodedSession == nil && e.serviceSRAMJobs() {
+	if !adopting && e.streams().decodedSession == nil && e.serviceSRAMJobs() {
 		c.retained, c.recalled = false, false
 		return true
 	}
-	if !adopting && !c.streamShown && e.decodedSession == nil && !e.clk.Now().Before(e.decodedStarting) && e.images != nil && e.serviceImage() {
+	if !adopting && !c.streamShown && e.streams().decodedSession == nil && !e.clk.Now().Before(e.streams().decodedStarting) && e.images != nil && e.serviceImage() {
 		c.retained, c.recalled = false, false
 		return true
 	}
-	if e.decodedSession != nil {
+	if e.streams().decodedSession != nil {
 		c.retained, c.recalled = false, false
-		e.decodedIdle()
+		e.streams().decodedIdle()
 		return true
 	}
 	// Between acquisitions: a stopped record stays (a recovery reloads).
@@ -275,7 +259,7 @@ func (c *sramCycle) Watch(settings bool) core.Interrupt {
 	if e.hw().FrontEndPending() {
 		return core.Abort // the relays switch with nothing armed: a fresh capture after them
 	}
-	if e.decodedSession != nil || e.soft != nil {
+	if e.streams().decodedSession != nil || e.streams().soft != nil {
 		e.hw().ReleaseCapture()
 		return core.Leave
 	}
