@@ -82,15 +82,21 @@ budget:
 # This firmware loads its own FPGA images.
 stage: 2
 
+# The edge trigger's index names a record word of two samples, and the
+# comparator on raw interleaved codes can fire on converter noise: the
+# trigger is checked and placed on the calibrated record.
+trigger_index: 2
+
 # engine/bands.go: the 33-detent ladder (the fast decade uses 25 ns, not
-# 20 ns); native full-rate records up to 1 us/div; roll from 100 ms/div.
+# 20 ns); native full-rate records up to 1 us/div; roll from 10 ms/div
+# (the engine's RollMinTdiv).
 timebase:
   tdiv_s: [1e-9, 2e-9, 5e-9, 10e-9, 25e-9, 50e-9, 100e-9, 200e-9, 500e-9,
     1e-6, 2e-6, 5e-6, 10e-6, 20e-6, 50e-6, 100e-6, 200e-6, 500e-6,
     1e-3, 2e-3, 5e-3, 10e-3, 20e-3, 50e-3, 100e-3, 200e-3, 500e-3,
     1, 2, 5, 10, 20, 50]
   full_rate_tdiv_s: 1e-6
-  roll_from_s: 100e-3
+  roll_from_s: 10e-3
 
 limits:
   setup_slots: 20     # the *SAV/*RCL range

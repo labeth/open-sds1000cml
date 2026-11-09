@@ -30,6 +30,12 @@ func TestProfileMatchesTheApp(t *testing.T) {
 	if !slices.Equal(p.Timebase.TdivS, engine.SupportedTdivs()) {
 		t.Errorf("timebase %v, the engine's ladder %v", p.Timebase.TdivS, engine.SupportedTdivs())
 	}
+	if p.Timebase.RollFromS != engine.RollMinTdiv {
+		t.Errorf("roll_from_s %g, the engine rolls from %g", p.Timebase.RollFromS, engine.RollMinTdiv)
+	}
+	if p.TriggerIndex != 2 { // the fabric's trigger index names a word of two samples (Metadata.SamplesPerWord)
+		t.Errorf("trigger_index %d, a record word holds 2 samples", p.TriggerIndex)
+	}
 	if p.MaxDepth != int(sramcapture.SamplesPerChannel) || p.RawAccess.MaxDepth != p.MaxDepth {
 		t.Errorf("max_depth %d (raw access %d), the SRAM record holds %d", p.MaxDepth, p.RawAccess.MaxDepth, sramcapture.SamplesPerChannel)
 	}
