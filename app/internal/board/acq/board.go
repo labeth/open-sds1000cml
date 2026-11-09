@@ -64,6 +64,7 @@ type Board struct {
 	scratch    readScratch
 	cond       condState
 	stream     streamState
+	roll       rollState
 	scan       panelScanState
 	adc        adcHealth
 

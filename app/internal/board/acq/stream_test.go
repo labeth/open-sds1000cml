@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"io"
+	"slices"
 	"testing"
 	"time"
 
@@ -127,7 +128,7 @@ func TestAudioStream(t *testing.T) {
 		t.Fatal(err)
 	}
 	st, ok := b.Streamer()
-	if !ok || len(st.Kinds()) != 1 || st.Kinds()[0] != hal.PayloadCodes {
+	if !ok || !slices.Contains(st.Kinds(), hal.PayloadCodes) {
 		t.Fatal("no stream of codes")
 	}
 	mk, ok := st.(hal.StreamMarker)

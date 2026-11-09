@@ -83,14 +83,14 @@ type streamState struct {
 // TRLC-LINKS: REQ-SDS-035
 func (s *streamerFacet) streamOf() *streamState { return &s.stream }
 
-// Kinds is what the board streams: averaged codes of both channels, on the
-// stream image (Start loads it).
-// TRLC-LINKS: REQ-SDS-035
+// Kinds is what the board streams: roll captures on any image, and
+// averaged codes of both channels on the stream image (Start loads it).
+// TRLC-LINKS: REQ-SDS-035, REQ-SDS-010
 func (s *streamerFacet) Kinds() []hal.Payload {
 	if !(*Board)(s).HasImage(ImageStream) {
-		return nil
+		return []hal.Payload{hal.PayloadChunks}
 	}
-	return []hal.Payload{hal.PayloadCodes}
+	return []hal.Payload{hal.PayloadChunks, hal.PayloadCodes}
 }
 
 // Start streams the staged plan's decimated words: the stream image is
@@ -103,17 +103,24 @@ func (s *streamerFacet) Kinds() []hal.Payload {
 func (s *streamerFacet) Start(spec hal.StreamSpec) error {
 	b := (*Board)(s)
 	st := s.streamOf()
+	if b.roll.running || st.running {
+		return hal.Refuse("stream", "a stream is running")
+	}
+	if spec.Payload == hal.PayloadChunks {
+		if err := b.rollStart(spec); err != nil {
+			return err
+		}
+		b.state = hal.Armed
+		return nil
+	}
 	if spec.Payload != hal.PayloadCodes {
 		return hal.Refuse("stream payload", "the drum streams sample codes; decoded and digital streams run through the engine's stream view")
 	}
 	if len(spec.Channels) == 0 || len(spec.Channels) > 2 || slices.ContainsFunc(spec.Channels, func(c int) bool { return c < 0 || c > 1 }) {
 		return hal.Refuse("stream channels", "the drum streams C1 and C2")
 	}
-	if len(s.Kinds()) == 0 {
+	if !b.HasImage(ImageStream) {
 		return hal.Refuse("stream", "this build has no stream image")
-	}
-	if st.running {
-		return hal.Refuse("stream", "a stream is running")
 	}
 	cfg := b.Staged()
 	if cfg.DecimationLog2 < 8 {
@@ -171,6 +178,9 @@ func (s *streamerFacet) Start(spec hal.StreamSpec) error {
 // OWNER on this board (the drain is a bus access).
 // TRLC-LINKS: REQ-SDS-035, REQ-SDS-265, REQ-SDS-272
 func (s *streamerFacet) Lease(ctx context.Context) (hal.StreamBlock, error) {
+	if b := (*Board)(s); b.roll.running {
+		return b.rollLease(ctx)
+	}
 	st := s.streamOf()
 	st.mu.Lock()
 	defer st.mu.Unlock()
@@ -358,6 +368,10 @@ func (s *streamerFacet) Release(hal.StreamBlock) {}
 // TRLC-LINKS: REQ-SDS-035
 func (s *streamerFacet) Stop() error {
 	b := (*Board)(s)
+	if b.roll.running {
+		b.state = hal.Idle
+		return b.rollStop()
+	}
 	st := s.streamOf()
 	st.mu.Lock()
 	defer st.mu.Unlock()

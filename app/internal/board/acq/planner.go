@@ -31,6 +31,8 @@ func (pl *plannerFacet) Plan(r hal.Request) (hal.Plan, error) {
 		return hal.Plan{}, hal.Refuse("segmented memory", "the SRAM holds one record")
 	case r.Mode == hal.Stream && slices.ContainsFunc(r.Need, func(f hal.Feature) bool { return f.Name == FeatureSound }):
 		return soundPlan(r), nil
+	case r.Mode == hal.RollMode && b.mem != nil:
+		return rollPlanOf(r), nil
 	case r.Mode == hal.RollMode || r.Mode == hal.Stream:
 		return hal.Plan{}, hal.Refuse("roll and stream plans", "they run on the stream image through the Streamer")
 	case r.Depth < 0:
