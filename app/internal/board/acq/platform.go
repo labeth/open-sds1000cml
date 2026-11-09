@@ -71,7 +71,29 @@ func (p *platformFacet) ConverterHealth() hal.ConverterHealth {
 	return hal.ConverterHealth{Fault: h.Fault, Recoveries: h.Recoveries, Recovery: h.Recovery, CheckMs: h.CheckMs}
 }
 
-var _ hal.ConverterMonitor = (*platformFacet)(nil)
+// CheckDue reports the periodic converter check due (adc_health.go). ANY
+// from the owner's view.
+// TRLC-LINKS: REQ-SDS-231
+func (p *platformFacet) CheckDue() bool {
+	b := (*Board)(p)
+	return (b.mem != nil || b.adc.port.Snapshot != nil) && !b.now().Before(b.adc.next)
+}
+
+// CheckConverters runs the periodic converter check, with the image loaded
+// again as the recovery, and reports whether it was (the record is lost,
+// and what the fabric had applied). OWNER, LONG.
+// TRLC-LINKS: REQ-SDS-231
+func (p *platformFacet) CheckConverters(context.Context) bool {
+	b := (*Board)(p)
+	n := b.reloads
+	b.CheckCoresDue(b.reloadImage)
+	return b.reloads != n
+}
+
+var (
+	_ hal.ConverterMonitor = (*platformFacet)(nil)
+	_ hal.ConverterChecker = (*platformFacet)(nil)
+)
 
 // Diag is the board's counters.
 // TRLC-LINKS: REQ-SDS-001

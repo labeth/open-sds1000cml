@@ -36,6 +36,9 @@ func TestProfileMatchesTheApp(t *testing.T) {
 	if p.TriggerIndex != 2 { // the fabric's trigger index names a word of two samples (Metadata.SamplesPerWord)
 		t.Errorf("trigger_index %d, a record word holds 2 samples", p.TriggerIndex)
 	}
+	if p.StatusBand != "sram" { // the engine's BandKind on every SRAM record (sram_cycle.go, sram_roll.go)
+		t.Errorf("status_band %q, the engine reports sram", p.StatusBand)
+	}
 	if p.MaxDepth != int(sramcapture.SamplesPerChannel) || p.RawAccess.MaxDepth != p.MaxDepth {
 		t.Errorf("max_depth %d (raw access %d), the SRAM record holds %d", p.MaxDepth, p.RawAccess.MaxDepth, sramcapture.SamplesPerChannel)
 	}
