@@ -3,12 +3,11 @@
 package app
 
 import (
-	"fmt"
-	"strings"
 	"time"
 
 	"github.com/labeth/open-dso-core/engine/fanout"
 	"github.com/labeth/open-dso-core/sample"
+	"github.com/labeth/open-dso-core/uimodel/panel"
 	"github.com/labeth/open-sds1000cml/app/internal/engine"
 )
 
@@ -31,37 +30,7 @@ func (s scopeSource) WaitNextFrame(last uint64, timeout time.Duration) uint64 {
 	return s.fo.WaitNext(last, timeout)
 }
 
-// matchText is a serial trigger's match as the BUS table writes its units:
-// hex, "?" for a masked nibble, ERR for an error, SOF for a frame's start
-// and CMD for a MIL-1553 command word.
+// matchText is a serial trigger's match as the BUS table writes its units
+// (panel.SerialMatchText).
 // TRLC-LINKS: REQ-SDS-168
-func matchText(p engine.SerialParams) string {
-	var toks []string
-	if len(p.Pattern) == 0 {
-		for _, b := range p.Bytes {
-			toks = append(toks, fmt.Sprintf("%02X", b))
-		}
-		return strings.Join(toks, " ")
-	}
-	for _, u := range p.Pattern {
-		switch {
-		case u.Kind == 4:
-			toks = append(toks, "ERR")
-			continue
-		case u.Kind == 1: // a frame's start
-			toks = append(toks, "SOF")
-			continue
-		case u.Mask&engine.MILCommand != 0 && u.Value&engine.MILCommand != 0:
-			toks = append(toks, "CMD")
-			continue
-		}
-		h := []byte(fmt.Sprintf("%02X", u.Value))
-		for i := range h {
-			if shift := 4 * (len(h) - 1 - i); (u.Mask>>shift)&15 != 15 {
-				h[i] = '?'
-			}
-		}
-		toks = append(toks, string(h))
-	}
-	return strings.Join(toks, " ")
-}
+func matchText(p engine.SerialParams) string { return panel.SerialMatchText(p) }
