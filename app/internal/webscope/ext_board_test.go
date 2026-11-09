@@ -25,7 +25,7 @@ func TestExtensionsOnTheBoard(t *testing.T) {
 	}
 	served := func(sc *Scope) []string {
 		var out []string
-		for _, r := range sc.Scope.Extensions() {
+		for _, r := range sc.Extensions() {
 			out = append(out, r.Feature+" "+r.Pattern)
 		}
 		return out
