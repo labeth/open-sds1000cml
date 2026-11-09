@@ -9,14 +9,13 @@ import (
 	"math"
 	"math/bits"
 	"slices"
-	"sync"
 	"time"
 
 	"github.com/labeth/open-dso-core/decode"
+	"github.com/labeth/open-dso-core/decodedlines"
 	core "github.com/labeth/open-dso-core/engine"
 	"github.com/labeth/open-sds1000cml/app/internal/board/acq"
 	"github.com/labeth/open-sds1000cml/app/internal/bus"
-	"github.com/labeth/open-sds1000cml/app/internal/decodedlines"
 	"github.com/labeth/open-sds1000cml/app/internal/sramcapture"
 )
 
@@ -184,44 +183,13 @@ const softValueMisses = 8
 
 // softOneWire is the decode package's name of 1-Wire, whose overdrive
 // speed the stream plans apart.
-const softOneWire = "onewire"
+const softOneWire = core.SoftOneWire
 
 // softProtoNames are the decode package's names of the symbol protocols.
-var softProtoNames = map[int]string{
-	core.SerLIN: "lin", core.SerDMX: "dmx512", core.SerModbus: "modbus", core.SerOneWire: softOneWire,
-	core.SerWS281x: "ws281x", core.SerDHT: "dht", core.SerCEC: "cec", core.SerJ1850: "j1850", core.SerIRNEC: "irnec", core.SerIRSIRC: "irsirc",
-	core.SerIRRC5: "irrc5", core.SerIRRC6: "irrc6", core.SerDALI: "dali", core.SerUSBPD: "usbpd", core.SerSPDIF: "spdif", core.SerPS2: "ps2",
-	core.SerSWD: "swd", core.SerMDIO: "mdio", core.SerWiegand: "wiegand", core.SerQuad: "quad", core.SerStepper: "stepper", core.SerPWM: "pwm",
-	core.SerRCEncode: "rcencode", core.SerOOK: "ook", core.SerMiller: "miller", core.SerMorse: "morse", core.SerDCF77: "dcf77", core.SerEM4100: "em4100",
-	core.SerEM4305: "em4305", core.SerT55xx: "t55xx", core.SerSWIM: "swim", core.SerSDQ: "sdq", core.SerPJDL: "pjdl", core.SerDSI: "dsi", core.SerQi: "qi",
-	core.SerSDCard: "sdcard", core.SerPDI: "pdi", core.SerCJTAG: "cjtag", core.SerMaple: "maple", core.SerCaliper: "caliper", core.SerIRMP: "irmp",
-}
+var softProtoNames = core.SoftStreamNames()
 
-// softProtoName is softProtoNames[proto] from a table by id, built once
-// (the map is hashed on every stream view's frame otherwise).
-// TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
-func softProtoName(proto int) (string, bool) {
-	t := softNameTable()
-	if proto < 0 || proto >= len(t) || t[proto] == "" {
-		return "", false
-	}
-	return t[proto], true
-}
-
-// softNameTable is softProtoNames indexed by protocol id.
-var softNameTable = sync.OnceValue(func() []string {
-	n := 0
-	for id := range softProtoNames {
-		n = max(n, id+1)
-	}
-	t := make([]string, n)
-	for id, name := range softProtoNames {
-		if id >= 0 {
-			t[id] = name
-		}
-	}
-	return t
-})
+// softProtoName is softProtoNames[proto] from a table by id built once.
+var softProtoName = core.SoftStreamName
 
 // SoftStreamMode says how the scope streams proto at bit rate baud (the
 // decoder settings'): "gap-free" from the continuous stream, "captures" of

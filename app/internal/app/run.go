@@ -23,6 +23,7 @@ import (
 	"github.com/labeth/open-dso-core/scopeapp"
 	scpihost "github.com/labeth/open-dso-core/scpi/host"
 	coresettings "github.com/labeth/open-dso-core/settings"
+	"github.com/labeth/open-dso-core/streamview"
 	"github.com/labeth/open-dso-core/uimodel/panel"
 	"github.com/labeth/open-dso-core/webserver"
 	scope "github.com/labeth/open-sds1000cml/app"
@@ -38,7 +39,6 @@ import (
 	"github.com/labeth/open-sds1000cml/app/internal/scpi"
 	"github.com/labeth/open-sds1000cml/app/internal/settings"
 	"github.com/labeth/open-sds1000cml/app/internal/sramcapture"
-	"github.com/labeth/open-sds1000cml/app/internal/streamview"
 	"github.com/labeth/open-sds1000cml/app/internal/webscope"
 )
 
@@ -116,14 +116,12 @@ type composition struct {
 	keyFD  int
 
 	pc   *panel.Controller
-	sv   *streamview.Controller
 	scpi *scpi.Handler
 
 	// lastViewWasBode tracks whether the device's BODE view armed FRA, so
 	// leaving the view disarms only the device's own auto-arm (a web-armed
 	// sweep persists).
 	lastViewWasBode atomic.Bool
-	lastStreamPage  atomic.Pointer[cachedStreamPage] // the HUD's cached transcript page
 }
 
 // newBoard brings the unit up to a board the core can run: the OTA agent's
@@ -303,7 +301,7 @@ func (c *composition) ui(env *scopeapp.Env) (*panel.Controller, error) {
 		pfe = c.afe
 	}
 	pc := panel.New(c.ctl, pfe, c.levels, cmlpanel.Hardware{}, engine.SupportedTdivs(), uiStartTdiv, logf)
-	sv := streamview.New(c.e, logf)
+	sv := streamview.New(streamSource{c.e}, logf)
 	pc.SetDecodeStream(sv)
 	pc.SetHardcopy(func() (string, error) {
 		if !mountedAt(uDisk) { // the bare directory would be the internal flash
@@ -311,7 +309,7 @@ func (c *composition) ui(env *scopeapp.Env) (*panel.Controller, error) {
 		}
 		return saveHardcopy(uDisk, env.ScreenPNG())
 	})
-	c.pc, c.sv = pc, sv
+	c.pc = pc
 	logf("panel controller up (fpga_key fd=%d)", c.keyFD)
 	return pc, nil
 }

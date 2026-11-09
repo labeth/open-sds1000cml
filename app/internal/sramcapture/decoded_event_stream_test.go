@@ -75,7 +75,7 @@ func (b *eventBus) RawWrite(s, v uint16) error {
 // TRLC-LINKS: REQ-SDS-013
 func TestDecodedEventHostRecovery(t *testing.T) {
 	want := DecodedEvent{Epoch: 0x10002, Sequence: 7, Sample: 1 << 40, Protocol: 1, Kind: EventData, Value: 0xa5, Valid: true, Channels: 2}
-	data, _ := want.MarshalBinary()
+	data, _ := marshalBinary(want)
 	b := &eventBus{data: data, epoch: want.Epoch, enabled: true, fail: 6}
 	c := &Capture{bus: b}
 	if _, ok, err := c.ReadDecodedEvent(want.Epoch); err == nil || ok {
@@ -102,7 +102,7 @@ func TestDecodedEventHostEpoch(t *testing.T) {
 		t.Fatal("accepted old reader epoch")
 	}
 	stale := DecodedEvent{Epoch: 12, Protocol: 1, Kind: EventData}
-	b.data, _ = stale.MarshalBinary()
+	b.data, _ = marshalBinary(stale)
 	if _, ok, err := c.ReadDecodedEvent(epoch); err == nil || ok {
 		t.Fatal("accepted old event epoch")
 	}
@@ -138,7 +138,7 @@ func (b *dmaEventBus) PopBytesChecked(selector uint16, dst []byte) error {
 func TestDecodedEventDMAConsumption(t *testing.T) {
 	want := DecodedEvent{Epoch: 7, Sequence: 3, Protocol: 2, Kind: EventData, Value: 0xaa, Valid: true, Channels: 3}
 	for _, failure := range []bool{false, true} {
-		data, _ := want.MarshalBinary()
+		data, _ := marshalBinary(want)
 		b := &dmaEventBus{eventBus: &eventBus{data: data, epoch: 7, enabled: true, fail: -1}, failDMA: failure}
 		c := &Capture{bus: b}
 		got, available, err := c.ReadDecodedEvent(7)
@@ -201,7 +201,7 @@ func TestDecodedReservedBatch(t *testing.T) {
 	for _, failure := range []bool{false, true} {
 		b := &batchEventBus{eventBus: &eventBus{epoch: 7, enabled: true, fail: -1, cursor: 3}, failDMA: failure}
 		for i := range 3 {
-			data, _ := (DecodedEvent{Epoch: 7, Sequence: uint32(i), Protocol: 2, Kind: EventData, Value: uint32(i + 85)}).MarshalBinary()
+			data, _ := marshalBinary(DecodedEvent{Epoch: 7, Sequence: uint32(i), Protocol: 2, Kind: EventData, Value: uint32(i + 85)})
 			b.data = append(b.data, data...)
 		}
 		c := &Capture{bus: b}
@@ -235,7 +235,7 @@ func TestDecodedReservedBatch(t *testing.T) {
 
 // TRLC-LINKS: REQ-SDS-013
 func TestDecodedCallerBufferDrainDoesNotAllocate(t *testing.T) {
-	data, err := (DecodedEvent{Epoch: 7, Protocol: 2, Kind: EventData, Value: 85}).MarshalBinary()
+	data, err := marshalBinary(DecodedEvent{Epoch: 7, Protocol: 2, Kind: EventData, Value: 85})
 	if err != nil {
 		t.Fatal(err)
 	}

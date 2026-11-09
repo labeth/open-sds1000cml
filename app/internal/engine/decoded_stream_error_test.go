@@ -5,9 +5,9 @@ package engine
 import (
 	"testing"
 
+	"github.com/labeth/open-dso-core/decodedlines"
 	core "github.com/labeth/open-dso-core/engine"
 	"github.com/labeth/open-sds1000cml/app/internal/board/acq"
-	"github.com/labeth/open-sds1000cml/app/internal/decodedlines"
 	"github.com/labeth/open-sds1000cml/app/internal/sramcapture"
 )
 

@@ -80,7 +80,7 @@ func (f *workerFake) PopBytesChecked(sel uint16, dst []byte) error {
 	}
 	for i := 0; i < len(dst); i += 32 {
 		e := sramcapture.DecodedEvent{Epoch: 7, Sequence: f.sequence, Sample: 0xfffffff0 + uint64(f.sequence)*4, Kind: sramcapture.EventData, Protocol: 9, Value: f.sequence & 255, Valid: true}
-		if err := e.MarshalTo(dst[i : i+32]); err != nil {
+		if err := sramcapture.MarshalEvent(e, dst[i:i+32]); err != nil {
 			return err
 		}
 		f.sequence++

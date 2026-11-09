@@ -12,7 +12,7 @@ import (
 	"time"
 	"unsafe"
 
-	"github.com/labeth/open-sds1000cml/app/internal/decodedlines"
+	"github.com/labeth/open-dso-core/decodedlines"
 	"github.com/labeth/open-sds1000cml/app/internal/sramcapture"
 )
 
@@ -340,7 +340,7 @@ func (w *acquisitionWorker) pump() {
 			return
 		}
 		index := (w.head + w.count) % workerQueueEvents
-		if err := event.MarshalTo(w.ring[index*32 : (index+1)*32]); err != nil {
+		if err := sramcapture.MarshalEvent(event, w.ring[index*32:(index+1)*32]); err != nil {
 			w.fault = err
 			return
 		}

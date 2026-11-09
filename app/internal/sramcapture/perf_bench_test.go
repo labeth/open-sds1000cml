@@ -54,7 +54,7 @@ func BenchmarkDecodedEventCodec(b *testing.B) {
 	e := DecodedEvent{Epoch: 7, Sequence: 99, Sample: 123456789, Kind: EventData, Protocol: 9, Value: 0x41, Valid: true}
 	var buf [DecodedEventBytes]byte
 	for b.Loop() {
-		if err := e.MarshalTo(buf[:]); err != nil {
+		if err := MarshalEvent(e, buf[:]); err != nil {
 			b.Fatal(err)
 		}
 		if _, err := ParseDecodedEvent(buf[:]); err != nil {
