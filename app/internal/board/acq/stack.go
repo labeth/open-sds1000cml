@@ -51,6 +51,7 @@ func (b *Board) StackSession(ctx context.Context, cfg sramcapture.Config, req su
 	halt, cancel := context.WithTimeout(context.Background(), haltTimeout)
 	err = b.mem.Halt(halt)
 	cancel()
+	b.beat()
 	if err != nil {
 		return res, err
 	}
@@ -62,12 +63,15 @@ func (b *Board) StackSession(ctx context.Context, cfg sramcapture.Config, req su
 				err = fmt.Errorf("general image restore: %w", restore)
 			}
 		}
+		b.beat()
 		b.reprobe()
+		b.beat()
 	}()
 	if err = b.LoadImage(ImageStack); err != nil {
 		return res, fmt.Errorf("stacking image: %w", err)
 	}
 	loadS := time.Since(start).Seconds()
+	b.beat()
 	b.reprobe()
 	if b.panel.bus != nil {
 		if _, err = sramcapture.New(b.panel.bus); err != nil { // the fabric answers on the new image
@@ -129,6 +133,7 @@ func (b *Board) StackRecords(ctx context.Context, cfg sramcapture.Config, req su
 			}
 			addTileMoments(state, part)
 			res.DownloadS += time.Since(t0).Seconds()
+			b.beat() // a tile of a record stacked
 		}
 		if req.Progress != nil {
 			req.Progress(r+1, req.Records)

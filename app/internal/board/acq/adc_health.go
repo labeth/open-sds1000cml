@@ -293,7 +293,9 @@ func (b *Board) StartConverters(why string, reload func() error) {
 	if err := b.restartEncode(); err != nil {
 		b.logf("engine: encode restart: %v", err)
 	}
+	b.beat()
 	b.EnsureCores(why, reload)
+	b.beat()
 }
 
 // EnsureCores checks the converters after why (an image load, the start, a
@@ -322,6 +324,7 @@ func (b *Board) EnsureCores(why string, reload func() error) {
 	b.logf("engine: converter cores stuck after %s: %s", why, coreNames(stuck))
 	found := stuck
 	for attempt := 0; attempt <= adcReloads; attempt++ {
+		b.beat() // each recovery is a step of LONG work
 		action := "an encode restart"
 		if attempt == 0 {
 			err = b.restartEncode()

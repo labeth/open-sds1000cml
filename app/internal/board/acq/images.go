@@ -85,6 +85,19 @@ func imageName(image string) string {
 	return image
 }
 
+// imageCalled is image as a trigger waiting for its load says it
+// ("loading the qualifier FPGA image"), as the engine's status says it.
+// TRLC-LINKS: REQ-SDS-005, REQ-SDS-011
+func imageCalled(image string) string {
+	switch image {
+	case ImageQualify:
+		return "qualifier"
+	case ImageBits:
+		return "digital stream"
+	}
+	return imageName(image)
+}
+
 // FeatureOf is image's feature name; "" for an unknown image.
 // TRLC-LINKS: REQ-SDS-005
 func FeatureOf(image string) string {
@@ -186,7 +199,7 @@ func (i *imagesFacet) Provides() []hal.ImageSet {
 	var out []hal.ImageSet
 	for _, f := range imageFeatures {
 		if b.HasImage(f.image) {
-			out = append(out, hal.ImageSet{Name: imageName(f.image), Features: []string{f.feature}, Needs: []string{"sram"}, ReloadCost: imageReload})
+			out = append(out, hal.ImageSet{Name: imageName(f.image), Called: imageCalled(f.image), Features: []string{f.feature}, Needs: []string{"sram"}, ReloadCost: imageReload})
 		}
 	}
 	return out
@@ -196,7 +209,7 @@ func (i *imagesFacet) Provides() []hal.ImageSet {
 // TRLC-LINKS: REQ-SDS-005
 func (i *imagesFacet) Current() hal.ImageSet {
 	b := (*Board)(i)
-	return hal.ImageSet{Name: imageName(b.imageLoaded), Features: []string{FeatureOf(b.imageLoaded)}, Triggers: b.trigCaps(), Needs: []string{"sram"}, ReloadCost: imageReload}
+	return hal.ImageSet{Name: imageName(b.imageLoaded), Called: imageCalled(b.imageLoaded), Features: []string{FeatureOf(b.imageLoaded)}, Triggers: b.trigCaps(), Needs: []string{"sram"}, ReloadCost: imageReload}
 }
 
 // Load loads the image that has every feature asked: each image has one, so
@@ -241,13 +254,16 @@ func (b *Board) loadFresh(image string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), haltTimeout)
 	err := b.mem.Halt(ctx)
 	cancel()
+	b.beat()
 	if err != nil {
 		return err
 	}
 	if err := b.LoadImage(image); err != nil {
 		return fmt.Errorf("the %s image: %w", imageName(image), err)
 	}
+	b.beat()
 	b.reprobe()
+	b.beat()
 	b.StartConverters("loading the "+imageName(image)+" image", b.reloadImage)
 	return nil
 }
@@ -272,6 +288,7 @@ func (b *Board) reloadImage() error {
 	if err := b.LoadImage(b.imageLoaded); err != nil {
 		return err
 	}
+	b.beat()
 	b.reprobe()
 	return nil
 }

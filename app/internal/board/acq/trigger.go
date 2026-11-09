@@ -62,6 +62,7 @@ type triggerFacet Board
 // TRLC-LINKS: REQ-SDS-011, REQ-SDS-013, REQ-SDS-014
 func (t *triggerFacet) Program(s hal.TriggerSpec) error {
 	b := (*Board)(t)
+	b.stageLevelDAC()
 	in := b.trigInputs()
 	if b.trig.kept.matches(&s, &in) {
 		return nil // staged from the same spec and inputs: the same trigger
@@ -261,6 +262,9 @@ func (b *Board) busConfig(bus *prototrig.Bus, in *trigInputs, c *sramcapture.Con
 		}
 	}
 	c.Normal = false
+	if arinc != 0 {
+		b.arincAux.Store(arinc)
+	}
 	b.PlanSerial(c, p, false, arinc)
 	if !c.Normal && !free {
 		return hal.Refuse("serial trigger", "no receiver of this FPGA image takes the request")

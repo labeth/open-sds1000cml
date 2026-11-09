@@ -18,12 +18,23 @@ import (
 // TRLC-LINKS: REQ-SDS-005, REQ-SDS-013, REQ-SDS-223
 func (i *imagesFacet) Choose(t hal.TriggerSpec, keep bool) []string {
 	b := (*Board)(i)
-	return []string{FeatureOf(b.chooseImage(t, keep))}
+	return []string{FeatureOf(b.chooseImage(t, keep, keep))}
 }
 
-// chooseImage is Choose's image.
+// ChooseHeld is Choose with the owner's measuring and the user's hold
+// apart (hal.HeldChooser), as the engine's image switch keeps them: an SPI
+// clock measured again keeps the fast image (or the qualifier image it
+// runs on), the hold in BUS keeps the qualifier image only. ANY.
+// TRLC-LINKS: REQ-SDS-005, REQ-SDS-013, REQ-SDS-223
+func (i *imagesFacet) ChooseHeld(t hal.TriggerSpec, measuring, held bool) []string {
+	b := (*Board)(i)
+	return []string{FeatureOf(b.chooseImage(t, measuring || held, measuring))}
+}
+
+// chooseImage is Choose's image: keep stays on the qualifier image,
+// keepFast on the fast image too.
 // TRLC-LINKS: REQ-SDS-005, REQ-SDS-013
-func (b *Board) chooseImage(t hal.TriggerSpec, keep bool) string {
+func (b *Board) chooseImage(t hal.TriggerSpec, keep, keepFast bool) string {
 	have := func(image string) string {
 		if b.HasImage(image) {
 			return image
@@ -46,10 +57,13 @@ func (b *Board) chooseImage(t hal.TriggerSpec, keep bool) string {
 	switch {
 	case g.Node == hal.NodePulse || g.Node == hal.NodeSlope || g.Node == hal.NodeVideo || len(g.Zones) != 0:
 		return have(ImageQualify)
-	case keep && (b.imageLoaded == ImageQualify || b.imageLoaded == ImageFast):
+	case keep && b.imageLoaded == ImageQualify, keepFast && b.imageLoaded == ImageFast:
 		return b.imageLoaded
 	}
 	return ImageGeneral
 }
 
-var _ hal.ImageChooser = (*imagesFacet)(nil)
+var (
+	_ hal.ImageChooser = (*imagesFacet)(nil)
+	_ hal.HeldChooser  = (*imagesFacet)(nil)
+)
