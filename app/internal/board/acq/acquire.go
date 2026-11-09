@@ -240,6 +240,7 @@ func (a *acquirerFacet) Arm() error {
 	}
 	b.state, b.forced, b.stopped, b.armedGen = hal.Armed, false, false, b.stageGen
 	b.armedPlan, b.armedFree, b.armedNode, b.armedNorm = b.plan, b.trig.free, b.trig.node, b.trig.norm
+	b.armedPlace = placeOf(cfg, b.trig.stagedPart().zoneDelayS)
 	b.cond.armedPick = cfg.Pick
 	return nil
 }

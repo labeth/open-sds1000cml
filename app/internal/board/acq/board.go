@@ -47,9 +47,10 @@ type Board struct {
 	armedPlan  hal.Plan // the plan the last arm committed: its record's
 	armedFree  bool     // the last arm's trigger ran free (TriggerSpec.FreeRun)
 	armedNode  hal.TrigNode
-	armedNorm  bool       // the last arm's sweep was not AUTO
-	recStatus  hal.Status // the halted record's, as Wait reported it
-	stopped    bool       // Stop, or a front-end write with nothing armed, since the last arm: the next one is a commit arm
+	armedNorm  bool         // the last arm's sweep was not AUTO
+	armedPlace triggerPlace // how the last arm's trigger point is placed on its record
+	recStatus  hal.Status   // the halted record's, as Wait reported it
+	stopped    bool         // Stop, or a front-end write with nothing armed, since the last arm: the next one is a commit arm
 	commitArms int
 	composed   sramcapture.Config
 	composedOK bool // composed is the staged plan and trigger
