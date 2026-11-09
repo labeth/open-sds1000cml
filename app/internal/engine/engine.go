@@ -105,27 +105,9 @@ const (
 // the ARM at 0.00 load average. See the acq2 analysis branch
 const defaultFramePeriod = 10 * time.Millisecond
 
-// defaultArmSettle is the pause between re-programming and OPCODE = GO. It was
-// 2 ms, copied from the vendor's own arm sequence ("~2 ms settle",
-// fpga-specs/22 §4.2 step 2). Measured on the instrument, halving
-// it takes the frame rate from 62 to 72.6 fps and going further buys almost
-// nothing (73.8 at 100 us, 75.0 at 50 us), so 1 ms keeps the largest margin
-// among the settings that actually help — still half the vendor's, not a
-// quarter. 90 s soak at 1 ms: 6,540 frames at 72.7 fps, 0 incoherent, 0 bus
-// errors, 0 held, 0 dead runs, 0 short drains, and a TSRC ramp read back
-// afterwards with 0 breaks over 256 distinct codes.
-const defaultArmSettle = 1 * time.Millisecond
-
-// defaultMatureUs is the native-fast maturation floor: how long a frame must
-// run before it may halt once the record is full. It was 3000 us. The gate only
-// shortcuts AUTO and anchored frames — NORM without a trigger waits the full
-// budget either way (see engine_capture.go) — so this is a liveness knob, not a
-// trigger-sensitivity one. Measured on the instrument: 72.7 fps
-// at 3000 us, 80.0 at 1500, and 89.2 at 750 where it saturates (300 us and
-// 100 us give the same 89). 750 us it is, the knee. 90 s soak: 8,025 frames at
-// 89.2 fps, 0 incoherent, 0 bus errors, 0 held, 0 dead runs, 0 short drains,
-// TSRC ramp afterwards 0 breaks over 256 distinct codes.
-const defaultMatureUs = 750
+// defaultArmSettle is the pause between re-programming and OPCODE = GO
+// (acq.DefaultArmSettle, measured on the instrument).
+const defaultArmSettle = acq.DefaultArmSettle
 
 // Config wires an Engine.
 // TRLC-LINKS: REQ-SDS-001, REQ-SDS-007, REQ-SDS-008
@@ -200,22 +182,11 @@ type Engine struct {
 	armBusy       bool // busy-wait the settle (real clock) instead of Sleep — the native-fast root-cause fix
 	pollEvery     time.Duration
 
-	// Live tuning knobs (debug /api/debug/tune) for frame rate and CPU —
-	// atomics so the web handler sets them lock-free and
-	// the owner loop reads them each frame. Defaults mirror the compile-time
-	// constants; gated on armBusy (device) so tests are unaffected.
-	tuneArmSettleUs  atomic.Int64 // arm settle duration (µs)
-	tuneArmSpin      atomic.Bool  // busy-wait the settle vs Sleep
-	tuneBusyFillUs   atomic.Int64 // native-fast fill busy-poll window (µs; 0 = off)
-	tuneGcCtl        atomic.Bool  // controlled GC (SetGCPercent(-1)+manual) vs stock
-	tuneMaxRetry     atomic.Int64 // native-fast re-capture cap
-	tuneRenderMs     atomic.Int64 // LCD render period (ms)
-	tuneFillExtraUs  atomic.Int64 // native-fast: extra fill time after done, before halt (µs)
-	tuneHaltSettleUs atomic.Int64 // native-fast: post-halt settle before deep-port reads (µs)
-	tuneMatureUs     atomic.Int64 // native-fast maturation floor before halt (µs)
-	tuneHwTrig       atomic.Bool  // TRIG_LEVEL.HW_SEL: trigger on the A12 comparator (MAX V DAC) instead of the fabric's software compare
-	tuneSigK         atomic.Int64 // decimated small-signal gate: min ptp / noiseFloor ratio to lock
-	reinitReq        atomic.Int64 // staged FSM re-init level (debug/recovery); serviced at the loop boundary
+	// The live tuning knobs (debug /api/debug/tune) are the board's
+	// (acq.Tuning): the web handler sets them lock-free and the owner loop
+	// reads them each frame. Defaults mirror the compile-time constants;
+	// gated on armBusy (device) so tests are unaffected.
+	tune *acq.Tuning
 
 	// Lock-free control reads by the owner.
 	running       atomic.Bool
@@ -320,7 +291,6 @@ type Engine struct {
 	// front-end scale it is shown at, for ViewPending.
 	viewHeld      atomic.Bool
 	rolling       atomic.Bool // the SRAM loop is in roll mode (Stats.Roll)
-	rollStream    atomic.Bool // roll runs gap-free on the stream image (opt-in; SetRollStream)
 	holdQualify   atomic.Bool // an edge trigger keeps a loaded qualifier image (HoldQualifyImage)
 	shownScaleGen atomic.Uint64
 	etsWant       bool // staged ETS opt-in; applied at the frame boundary
@@ -415,6 +385,7 @@ func (e *Engine) useMemory(m acq.Memory) {
 func (e *Engine) useBoard(b *acq.Board) {
 	e.sram = b.Memory()
 	e.board = b
+	e.tune = b.Tuning()
 	b.SetReporting(func(d time.Duration) {
 		e.mu.Lock()
 		e.stats.LEDLagMs = float64(d) / float64(time.Millisecond)
@@ -541,39 +512,7 @@ func New(cfg Config) *Engine {
 	// tuning (no busy spins, slowed change-detected render, stock GC) this beats the
 	// original defaults on all three: CPU ~96%→~86%, fps ~13.4→~18, frame_success
 	// (real content, not valid_depth) ~5%→100%.
-	e.tuneArmSettleUs.Store(cfg.ArmSettle.Microseconds())
-	// The settle busy-spin and manual GC control were workarounds tuned against
-	// the UNTRIGGERED half-record state. With captures gated on trigger
-	// evidence, HW A/B under web-stream load shows a plain Sleep settle and
-	// stock GC are strictly better (spin: 16 fps / 20% idle → sleep: 18-19 fps
-	// / 27% idle, both 20/20 full records, half_rate 0).
-	e.tuneArmSpin.Store(false)
-	e.tuneBusyFillUs.Store(0) // no fill busy-poll (pure CPU cost)
-	e.tuneGcCtl.Store(false)
-	e.tuneMaxRetry.Store(2)   // light backstop; full records are now the norm
-	e.tuneRenderMs.Store(120) // legacy capture cadence
-	if hasSRAM {
-		e.tuneRenderMs.Store(2)
-	}
-	// fill-extra and halt-settle were workarounds tuned against what turned out
-	// to be the UNTRIGGERED half-record state (level outside the signal band);
-	// with triggered captures they buy nothing (HW A/B: 15/15 full without
-	// them) and cost 4 ms/frame. Knobs kept at 0 for experiments.
-	e.tuneFillExtraUs.Store(0)
-	e.tuneHaltSettleUs.Store(0)
-	// Trigger on the fabric's software level compare by default; the A12
-	// comparator (MAX V DAC threshold) is a live knob for the bench.
-	e.tuneHwTrig.Store(false)
-	// HW sweep 40→2 ms: full records at every step once captures are gated on
-	// trigger evidence (the historical 40 ms bound was measured in the
-	// untriggered parked state). 3 ms keeps margin over the proven 2 ms.
-	e.tuneMatureUs.Store(defaultMatureUs)
-	// Decimated small-signal lock gate: a real signal has ptp ≥ SigK × noiseFloor
-	// (period-independent 2nd-difference noise estimate), which separates a real
-	// sub-1.6-div signal from a noisy flat rail at EVERY timebase — raw ptp alone
-	// cannot (a noisy rail's ptp can exceed a small real signal's). Bench-tuned:
-	// real signals ratio ≥16, flat rails ≤7 (σ up to 3.5). See docs/trigcal-notes.md.
-	e.tuneSigK.Store(8)
+	e.tune.Defaults(cfg.ArmSettle, hasSRAM, realTime)
 	e.running.Store(true)
 	e.trigRising.Store(true)
 	e.precisionLog.Store(4)
@@ -635,85 +574,23 @@ func (e *Engine) QuietRLock() { e.quiet.RLock() }
 // TRLC-LINKS: REQ-SDS-001
 func (e *Engine) QuietRUnlock() { e.quiet.RUnlock() }
 
-// TuneVals is the live-tunable knob set (see the tune* atomics).
-// TRLC-LINKS: REQ-SDS-127
-type TuneVals struct {
-	ArmSettleUs  int64 `json:"arm_settle_us"`
-	ArmSpin      bool  `json:"arm_spin"`
-	BusyFillUs   int64 `json:"busy_fill_us"`
-	GcCtl        bool  `json:"gc_ctl"`
-	MaxRetry     int64 `json:"max_retry"`
-	RenderMs     int64 `json:"render_ms"`
-	FillExtraUs  int64 `json:"fill_extra_us"`
-	HaltSettleUs int64 `json:"halt_settle_us"`
-	MatureUs     int64 `json:"mature_us"`        // native-fast maturation floor before halt (µs)
-	HwTrig       bool  `json:"hw_trig"`          // trigger on the A12 hardware comparator (TRIG_LEVEL.HW_SEL) instead of the software compare
-	SigK         int64 `json:"sig_k"`            // decimated small-signal gate: min ptp/noiseFloor ratio to lock (default 8)
-	Reinit       int64 `json:"reinit,omitempty"` // one-shot: stage an FSM re-init at this level (1=bringUp, 2=+runword/reset pulses)
-}
+// TuneVals is the live-tunable knob set (the board's tuning).
+type TuneVals = acq.TuneVals
 
-// Tune applies a knob set (debug /api/debug/tune) and returns the effective
-// values. Ignored on a non-device (fake clock) engine so tests stay stock.
+// Tune applies a knob set (debug /api/debug/tune) to the board's tuning and
+// returns the effective values. Ignored on a non-device (fake clock) engine
+// so tests stay stock.
 // TRLC-LINKS: REQ-SDS-127
-func (e *Engine) Tune(t TuneVals) TuneVals {
-	if !e.armBusy {
-		return e.TuneSnapshot()
-	}
-	if t.ArmSettleUs > 0 {
-		e.tuneArmSettleUs.Store(t.ArmSettleUs)
-	}
-	if t.BusyFillUs >= 0 {
-		e.tuneBusyFillUs.Store(t.BusyFillUs)
-	}
-	if t.MaxRetry >= 0 {
-		e.tuneMaxRetry.Store(t.MaxRetry)
-	}
-	if t.RenderMs > 0 {
-		e.tuneRenderMs.Store(t.RenderMs)
-	}
-	if t.FillExtraUs >= 0 {
-		e.tuneFillExtraUs.Store(t.FillExtraUs)
-	}
-	if t.HaltSettleUs >= 0 {
-		e.tuneHaltSettleUs.Store(t.HaltSettleUs)
-	}
-	if t.MatureUs > 0 {
-		e.tuneMatureUs.Store(t.MatureUs)
-	}
-	if t.SigK > 0 {
-		e.tuneSigK.Store(t.SigK)
-	}
-	if t.Reinit > 0 {
-		e.reinitReq.Store(t.Reinit) // one-shot; the owner loop consumes it
-	}
-	e.tuneArmSpin.Store(t.ArmSpin)
-	e.tuneGcCtl.Store(t.GcCtl)
-	e.tuneHwTrig.Store(t.HwTrig)
-	return e.TuneSnapshot()
-}
+func (e *Engine) Tune(t TuneVals) TuneVals { return e.tune.Tune(t) }
 
 // TuneSnapshot reports the current knob values.
 // TRLC-LINKS: REQ-SDS-127
-func (e *Engine) TuneSnapshot() TuneVals {
-	return TuneVals{
-		ArmSettleUs:  e.tuneArmSettleUs.Load(),
-		ArmSpin:      e.tuneArmSpin.Load(),
-		BusyFillUs:   e.tuneBusyFillUs.Load(),
-		GcCtl:        e.tuneGcCtl.Load(),
-		MaxRetry:     e.tuneMaxRetry.Load(),
-		RenderMs:     e.tuneRenderMs.Load(),
-		FillExtraUs:  e.tuneFillExtraUs.Load(),
-		HaltSettleUs: e.tuneHaltSettleUs.Load(),
-		MatureUs:     e.tuneMatureUs.Load(),
-		HwTrig:       e.tuneHwTrig.Load(),
-		SigK:         e.tuneSigK.Load(),
-	}
-}
+func (e *Engine) TuneSnapshot() TuneVals { return e.tune.Snapshot() }
 
 // RenderPeriod is the LCD loop's tunable tick (read each render tick).
 // TRLC-LINKS: REQ-SDS-021, REQ-SDS-127
 func (e *Engine) RenderPeriod() time.Duration {
-	ms := max(e.tuneRenderMs.Load(), 1)
+	ms := max(e.tune.RenderMs.Load(), 1)
 	return time.Duration(ms) * time.Millisecond
 }
 
@@ -725,7 +602,7 @@ func (e *Engine) Snapshot() Stats {
 	s := e.stats
 	e.streams().fillStats(&s)
 	s.Roll = e.rolling.Load() && s.Running
-	s.RollStream = e.rollStream.Load()
+	s.RollStream = e.hw().RollStream()
 	s.ViewPending = e.sram != nil && !s.Running && e.viewHeld.Load() && (e.pendSet || e.scaleGen.Load() != e.shownScaleGen.Load())
 	s.TdivSetS = s.TdivS
 	if e.pendSet {

@@ -99,8 +99,8 @@ func (e *Engine) armEngineQuiet(quietHeld bool) {
 	if e.capDepth() != e.lastCapCols {
 		e.bringUp()
 	}
-	settle := time.Duration(e.tuneArmSettleUs.Load()) * time.Microsecond
-	if e.armBusy && e.tuneArmSpin.Load() {
+	settle := time.Duration(e.tune.ArmSettleUs.Load()) * time.Microsecond
+	if e.armBusy && e.tune.ArmSpin.Load() {
 		spinFor(settle)
 	} else {
 		e.clk.Sleep(settle)
@@ -144,7 +144,7 @@ func (e *Engine) waitCapture(norm bool) (anchored, sawTrig, filled, fillMoved bo
 	denseNs := int64(float64(e.effDrainCols()) * e.band.CaptureIntervalNs())
 	// Native-fast maturation: DONE can assert before the deep record is fully
 	// written; hold a short floor before halting (tunable).
-	nativeMature := time.Duration(e.tuneMatureUs.Load()) * time.Microsecond
+	nativeMature := time.Duration(e.tune.MatureUs.Load()) * time.Microsecond
 	capCols := uint16(e.lastCapCols) //nolint:gosec // G115: capDepth is 2..maxRecordCols
 	fill0 := e.r(iface.SelFill) & fillMask
 	var trigAt time.Time
@@ -204,7 +204,7 @@ func (e *Engine) waitCapture(norm bool) (anchored, sawTrig, filled, fillMoved bo
 			return anchored, sawTrig, filled, fillMoved, trigPos // budget expired: AUTO free-runs a refresh, NORM holds
 		}
 		e.beatN.Add(1)
-		busyFill := time.Duration(e.tuneBusyFillUs.Load()) * time.Microsecond
+		busyFill := time.Duration(e.tune.BusyFillUs.Load()) * time.Microsecond
 		if nativeFast && e.armBusy && busyFill > 0 && e.clk.Now().Sub(start) < busyFill {
 			continue // spin-poll: deny the core to competing bus traffic
 		}
@@ -256,7 +256,7 @@ func (e *Engine) haltSettle(nativeFast bool) {
 	if !nativeFast || !e.armBusy {
 		return
 	}
-	spinFor(time.Duration(e.tuneHaltSettleUs.Load()) * time.Microsecond)
+	spinFor(time.Duration(e.tune.HaltSettleUs.Load()) * time.Microsecond)
 }
 
 // spinFor busy-waits d on the monotonic clock. The arm, fill and halt

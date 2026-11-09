@@ -60,7 +60,7 @@ func TestTriggerLevelRecommit(t *testing.T) {
 		{1, iface.SelOpcode, iface.OpGo},
 	})
 	fb.clearWrites()
-	e.tuneHwTrig.Store(true)
+	e.tune.HwTrig.Store(true)
 	e.serviceCommands()
 	got := fb.snapWrites()
 	if len(got) != 2 || got[0].sel != iface.SelTrigLevel || got[0].val&iface.TrigLevelHwSelMask == 0 {
@@ -68,7 +68,7 @@ func TestTriggerLevelRecommit(t *testing.T) {
 	}
 	// Stopped: the words still flush, but nothing re-arms.
 	e.SetRunning(false)
-	e.tuneHwTrig.Store(false)
+	e.tune.HwTrig.Store(false)
 	fb.clearWrites()
 	e.serviceCommands()
 	got = fb.snapWrites()

@@ -62,7 +62,7 @@ func (e *Engine) wantImage() string {
 	}
 	// Roll streaming (opt-in) runs gap-free on the stream image; a stop keeps
 	// it, so RUN resumes without a reload.
-	if e.rollStream.Load() && e.images.HasStream() && (e.rollActive() || (!e.running.Load() && e.protocolImage == acq.ImageStream)) {
+	if e.hw().RollStream() && e.images.HasStream() && (e.rollActive() || (!e.running.Load() && e.protocolImage == acq.ImageStream)) {
 		return acq.ImageStream
 	}
 	if e.serialMode.Load() != SerialTrigger {

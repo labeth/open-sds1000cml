@@ -22,7 +22,11 @@ import (
 // before; the samples between them, the re-arm and the readout, hold the
 // last value and are marked Held. Beyond the largest decimation a software
 // group averages captured samples, so a screen stays within
-// rollScreenSamples.
+// rollScreenSamples. Settings go on while it rolls: each chunk is armed on
+// the trigger staged then, the front end is written between chunks, and a
+// chunk captured across a change of a channel's scale, or armed while the
+// front end settles after one, is dropped (the next chunk's placement
+// holds over it).
 
 // rollScreenSamples bounds the roll view; a screen is decimated to fit.
 const rollScreenSamples = 4096
@@ -60,7 +64,7 @@ func PlanRoll(tdiv float64) RollPlan {
 // TRLC-LINKS: REQ-SDS-010
 func rollPlanOf(r hal.Request) hal.Plan {
 	p := PlanRoll(r.TimePerDivS)
-	r.Channels = slices.DeleteFunc(slices.Clone(r.Channels), func(c int) bool { return c < 0 || c > 1 })
+	r.Channels = []int{0, 1} // the record holds both: a channel turned on keeps its view
 	return hal.Plan{
 		Request: r, Mode: hal.RollMode, SampleS: p.SampleS, Depth: p.Chunk, AcqDecim: 1 << p.Log,
 		ETSFactor: 1, Segments: 1, WinSamples: p.Screen, Content: sample.ContentSetOf(sample.RawDecimated),
@@ -77,6 +81,11 @@ type rollState struct {
 	lastEnd time.Time // the host time of the newest sample
 	next    uint64    // the next view sample's number
 	last    [2]uint16 // the newest view sample, held over the gaps
+	// the channels' scale the newest samples were captured at, the scale
+	// writes seen and the settle after the newest
+	scales    []sample.Scale
+	scaleSeen uint64
+	settle    time.Time
 	// a partial software group carried to the next capture
 	accN, accHeld int
 	acc           [2]int64
@@ -95,27 +104,47 @@ func (b *Board) rollStart(spec hal.StreamSpec) error {
 	if len(spec.Channels) == 0 || len(spec.Channels) > 2 || slices.ContainsFunc(spec.Channels, func(c int) bool { return c < 0 || c > 1 }) {
 		return hal.Refuse("stream channels", "the record holds C1 and C2")
 	}
+	if b.imageLoaded == ImageStream {
+		// the stream image streams; the chunks are captured on the general one
+		if err := b.loadFresh(ImageGeneral); err != nil {
+			return err
+		}
+	}
 	p := PlanRoll(b.plan.Request.TimePerDivS)
-	t := b.StagedTrigger()
 	b.roll = rollState{
-		running: true, plan: p, chans: slices.Clone(spec.Channels),
+		running: true, plan: p, chans: slices.Clone(spec.Channels), scaleSeen: b.panel.scaleGen.Load(),
 		cfg: sramcapture.Config{
 			Source: sramcapture.ADC, DecimationLog2: p.Log, PreWords: uint32(p.Chunk - 1), PostWords: 1, //nolint:gosec // G115: a chunk is 8..Words words
-			TriggerChannel: t.TriggerChannel, TriggerLevel: t.TriggerLevel,
 		},
 	}
 	return nil
 }
 
-// rollLease captures the next chunk and hands it out after the samples
-// that held since the chunk before, as view samples (a software group's
-// averages beyond the largest decimation). An empty block when a whole
-// group is not in yet. OWNER.
-// TRLC-LINKS: REQ-SDS-010
+// rollLease writes what the front end staged, captures the next chunk on
+// the trigger staged now and hands it out after the samples that held
+// since the chunk before, as view samples (a software group's averages
+// beyond the largest decimation), at the scale the front end stood at. An
+// empty block, with the scale, when a whole group is not in yet or the
+// chunk was dropped (captured across a scale change, or armed in the
+// settle after one). OWNER.
+// TRLC-LINKS: REQ-SDS-010, REQ-SDS-015
 func (b *Board) rollLease(ctx context.Context) (hal.StreamBlock, error) {
 	r := &b.roll
+	b.streamWrites() // the relays switch between chunks
+	seen := b.panel.scaleGen.Load()
+	if seen != r.scaleSeen {
+		// a scale change: the partial group is dropped, the chunks armed in
+		// its settle too
+		r.scaleSeen, r.settle = seen, b.now().Add(rollSettle)
+		r.accN, r.accHeld, r.acc = 0, 0, [2]int64{}
+	}
+	cfg := r.cfg
+	t := b.StagedTrigger()
+	cfg.TriggerChannel, cfg.TriggerLevel = t.TriggerChannel, t.TriggerLevel
+	scales := b.streamScales(r.chans)
+	armAt := b.now()
 	actx, cancel := context.WithTimeout(ctx, armTimeout)
-	err := b.mem.Arm(actx, r.cfg)
+	err := b.mem.Arm(actx, cfg)
 	cancel()
 	if err != nil {
 		return hal.StreamBlock{}, err
@@ -161,8 +190,38 @@ func (b *Board) rollLease(ctx context.Context) (hal.StreamBlock, error) {
 		missing := end.Sub(r.lastEnd).Seconds() - float64(n)*hwS
 		gap = max(0, int(math.Round(missing/hwS)))
 	}
+	if armAt.Before(r.settle) || b.panel.scaleGen.Load() != seen || !slices.Equal(scales, b.streamScales(r.chans)) {
+		// captured across a scale change or while the front end settled:
+		// the next chunk's placement holds over it
+		r.rescale(scales)
+		return r.empty(scales), nil
+	}
 	r.lastEnd = end
+	r.rescale(scales)
 	return r.block(gap, raw.b), nil
+}
+
+// rescale takes scales as the newest samples', the held value carried over
+// in volts.
+// TRLC-LINKS: REQ-SDS-010
+func (r *rollState) rescale(scales []sample.Scale) {
+	if r.scales != nil && scales != nil {
+		for k := range min(len(scales), len(r.scales)) {
+			ch := r.chans[k] & 1
+			r.last[ch] = rescaleWord(r.last[ch], r.scales[k], scales[k])
+		}
+	}
+	r.scales = scales
+}
+
+// empty is a block of no samples at scales.
+// TRLC-LINKS: REQ-SDS-010
+func (r *rollState) empty(scales []sample.Scale) hal.StreamBlock {
+	r.formats = r.formats[:0]
+	for range r.chans {
+		r.formats = append(r.formats, q88Format)
+	}
+	return hal.StreamBlock{Payload: hal.PayloadChunks, Formats: r.formats, Scales: scales, First: r.next, SampleS: r.plan.SampleS}
 }
 
 // block is a chunk's words after gap held samples as view samples.
@@ -206,7 +265,7 @@ func (r *rollState) block(gap int, raw []byte) hal.StreamBlock {
 		copy(r.words[k*n:(k+1)*n], r.q[ch])
 		r.formats = append(r.formats, q88Format)
 	}
-	return hal.StreamBlock{Payload: hal.PayloadChunks, Formats: r.formats, Words: r.words, Held: r.held, First: first, SampleS: r.plan.SampleS}
+	return hal.StreamBlock{Payload: hal.PayloadChunks, Formats: r.formats, Words: r.words, Held: r.held, First: first, SampleS: r.plan.SampleS, Scales: r.scales}
 }
 
 // rollStop ends the roll captures: a capture in flight is halted. OWNER.

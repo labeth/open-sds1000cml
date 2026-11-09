@@ -83,6 +83,11 @@ type streamState struct {
 // TRLC-LINKS: REQ-SDS-035
 func (s *streamerFacet) streamOf() *streamState { return &s.stream }
 
+// streaming reports a hal.Streamer stream running: roll captures, the
+// roll stream or a stream of codes. OWNER.
+// TRLC-LINKS: REQ-SDS-035
+func (b *Board) streaming() bool { return b.roll.running || b.peak.on || b.stream.running }
+
 // Kinds is what the board streams: roll captures on any image, and
 // averaged codes of both channels on the stream image (Start loads it).
 // TRLC-LINKS: REQ-SDS-035, REQ-SDS-010
@@ -103,10 +108,13 @@ func (s *streamerFacet) Kinds() []hal.Payload {
 func (s *streamerFacet) Start(spec hal.StreamSpec) error {
 	b := (*Board)(s)
 	st := s.streamOf()
-	if b.roll.running || st.running {
+	if b.streaming() {
 		return hal.Refuse("stream", "a stream is running")
 	}
 	if spec.Payload == hal.PayloadChunks {
+		if b.plan.Mode == hal.RollMode && b.plan.Content.Has(sample.PeakPairs) {
+			return b.peakStart(spec)
+		}
 		if err := b.rollStart(spec); err != nil {
 			return err
 		}
@@ -172,15 +180,22 @@ func (s *streamerFacet) Start(spec hal.StreamSpec) error {
 }
 
 // Lease takes the stream's next words as a block of channel-major Q8.8
-// runs of the channels Start was asked for, with the level crossings the
-// image marked since the last block. It waits for words until ctx ends. A
-// failed drain ends the stream (a loss: Start loads the image again).
-// OWNER on this board (the drain is a bus access).
+// runs of the channels Start was asked for, at the scale the front end
+// stands at, with the level crossings the image marked since the last
+// block; what the front end staged meanwhile is written first, between the
+// stream's words. It waits for words until ctx ends. A failed drain ends
+// the stream (a loss: Start loads the image again). OWNER on this board
+// (the drain is a bus access).
 // TRLC-LINKS: REQ-SDS-035, REQ-SDS-265, REQ-SDS-272
 func (s *streamerFacet) Lease(ctx context.Context) (hal.StreamBlock, error) {
-	if b := (*Board)(s); b.roll.running {
+	b := (*Board)(s)
+	if b.roll.running {
 		return b.rollLease(ctx)
 	}
+	if b.peak.on {
+		return b.peakLease(ctx)
+	}
+	b.streamWrites()
 	st := s.streamOf()
 	st.mu.Lock()
 	defer st.mu.Unlock()
@@ -230,7 +245,7 @@ func (s *streamerFacet) block(first uint64, raw []byte) hal.StreamBlock {
 	}
 	return hal.StreamBlock{
 		Payload: hal.PayloadCodes, Formats: formats, Words: st.words, First: first,
-		Marks: s.readMarks(), SampleS: st.sampleS,
+		Marks: s.readMarks(), SampleS: st.sampleS, Scales: (*Board)(s).streamScales(st.spec.Channels),
 	}
 }
 
@@ -381,7 +396,7 @@ func (s *streamerFacet) Stop() error {
 		}
 		st.pump = nil
 	}
-	st.running = false
+	st.running, b.peak.on = false, false
 	st.markMu.Lock()
 	st.marksOn = false
 	st.markMu.Unlock()
@@ -423,9 +438,19 @@ func (s *streamerFacet) Freeze(uint64) (hal.RecordID, error) {
 	return recordID(m), nil
 }
 
+// TakesCommits reports that the board takes the settings committed while
+// it streams (hal.CommitStreamer): the front end is written between the
+// stream's words and chunks (Lease, Service), each chunk is armed on the
+// trigger staged then, every block states the scale it was captured at,
+// and a roll drops the data captured across a change of scale or in its
+// settle. ANY.
+// TRLC-LINKS: REQ-SDS-010, REQ-SDS-015, REQ-SDS-265
+func (s *streamerFacet) TakesCommits() bool { return true }
+
 var (
-	_ hal.RingRecorder = (*streamerFacet)(nil)
-	_ hal.StreamMarker = (*streamerFacet)(nil)
+	_ hal.RingRecorder   = (*streamerFacet)(nil)
+	_ hal.StreamMarker   = (*streamerFacet)(nil)
+	_ hal.CommitStreamer = (*streamerFacet)(nil)
 )
 
 // sleepCtx waits d, or until ctx ends.

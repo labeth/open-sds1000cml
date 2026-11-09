@@ -93,7 +93,7 @@ func (e *Engine) trigLevelWord() uint16 {
 		lvl = trigLevelUnset
 	}
 	w := uint16(lvl) & iface.TrigLevelLevelMask
-	if e.tuneHwTrig.Load() {
+	if e.tune.HwTrig.Load() {
 		w |= iface.TrigLevelHwSelMask
 	}
 	return w
