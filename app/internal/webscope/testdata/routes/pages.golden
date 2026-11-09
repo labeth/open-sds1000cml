@@ -5,9 +5,9 @@ header Cache-Control: no-cache
 header Content-Length: 73767
 header Content-Security-Policy: default-src 'self'; script-src 'self'; connect-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; object-src 'none'; base-uri 'none'
 header Content-Type: text/html; charset=utf-8
-header Etag: "6632beaf25d7f7bf"
+header Etag: "d2f277bc4ada962f"
 header Vary: Accept-Encoding
-body: 73767 bytes, sha256 8753cbca5ca46e8cac27e3e27db559e6b637c15e6d83ab4b2fa460527464b631
+body: 73767 bytes, sha256 e1126eec2c0a51cde806a8448a7735b6ac93ab0d9d8fb987010cc2f06699e7be
 
 === GET /remote
 status 200
@@ -521,9 +521,9 @@ header Cache-Control: no-cache
 header Content-Length: 73767
 header Content-Security-Policy: default-src 'self'; script-src 'self'; connect-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; object-src 'none'; base-uri 'none'
 header Content-Type: text/html; charset=utf-8
-header Etag: "6632beaf25d7f7bf"
+header Etag: "d2f277bc4ada962f"
 header Vary: Accept-Encoding
-body: 73767 bytes, sha256 8753cbca5ca46e8cac27e3e27db559e6b637c15e6d83ab4b2fa460527464b631
+body: 73767 bytes, sha256 e1126eec2c0a51cde806a8448a7735b6ac93ab0d9d8fb987010cc2f06699e7be
 
 === GET /debug/pprof/
 status 200
