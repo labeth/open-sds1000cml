@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"math"
 	"math/bits"
+	"slices"
 
 	"github.com/labeth/open-dso-core/dsp"
 	"github.com/labeth/open-dso-core/hal"
@@ -28,6 +29,8 @@ func (pl *plannerFacet) Plan(r hal.Request) (hal.Plan, error) {
 	switch {
 	case r.Segments > 1:
 		return hal.Plan{}, hal.Refuse("segmented memory", "the SRAM holds one record")
+	case r.Mode == hal.Stream && slices.ContainsFunc(r.Need, func(f hal.Feature) bool { return f.Name == FeatureSound }):
+		return soundPlan(r), nil
 	case r.Mode == hal.RollMode || r.Mode == hal.Stream:
 		return hal.Plan{}, hal.Refuse("roll and stream plans", "they run on the stream image through the Streamer")
 	case r.Depth < 0:
@@ -67,6 +70,17 @@ func (pl *plannerFacet) Plan(r hal.Request) (hal.Plan, error) {
 		}
 	}
 	return plan, nil
+}
+
+// soundPlan is the audio stream: both channels' averages over 2^soundLog2
+// samples, gap-free on the stream image (Streamer), whatever the timebase.
+// TRLC-LINKS: REQ-SDS-265
+func soundPlan(r hal.Request) hal.Plan {
+	r.Channels = []int{0, 1}
+	return hal.Plan{
+		Request: r, Mode: hal.Stream, SampleS: float64(uint64(1)<<soundLog2) / 500e6, Depth: int(sramcapture.Words), AcqDecim: 1 << soundLog2,
+		ETSFactor: 1, Segments: 1, Content: sample.ContentSetOf(sample.RawDecimated), Note: "the audio stream: averages of 2^13 samples",
+	}
 }
 
 // planConfig is plan p as the capture configuration's plan fields: the

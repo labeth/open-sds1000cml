@@ -4,6 +4,7 @@ package acq
 
 import (
 	"context"
+	"fmt"
 	"slices"
 	"time"
 
@@ -208,4 +209,50 @@ func (i *imagesFacet) Load(_ context.Context, features []string) error {
 		want = imageFeatures[k].image
 	}
 	return b.LoadImage(want)
+}
+
+// loadFresh loads image as the engine's image switch does: the fabric
+// halted, the image configured, its capabilities probed, the panel scan's
+// settings written again and the converters brought up on it. OWNER, LONG.
+// TRLC-LINKS: REQ-SDS-005, REQ-SDS-231
+func (b *Board) loadFresh(image string) error {
+	if b.images == nil {
+		return hal.Refuse("FPGA image", "no image loader is attached")
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), haltTimeout)
+	err := b.mem.Halt(ctx)
+	cancel()
+	if err != nil {
+		return err
+	}
+	if err := b.LoadImage(image); err != nil {
+		return fmt.Errorf("the %s image: %w", imageName(image), err)
+	}
+	b.reprobe()
+	b.StartConverters("loading the "+imageName(image)+" image", b.reloadImage)
+	return nil
+}
+
+// reprobe reads the loaded image's capabilities and writes the panel scan
+// settings again, as after every load.
+// TRLC-LINKS: REQ-SDS-005, REQ-SDS-022
+func (b *Board) reprobe() {
+	b.ProbeImage(b.logf)
+	if err := b.ApplyPanelScan(); err != nil {
+		b.logf("engine: panel scan: %v", err)
+	}
+}
+
+// reloadImage configures the loaded image again (a converter recovery).
+// OWNER, LONG.
+// TRLC-LINKS: REQ-SDS-005, REQ-SDS-231
+func (b *Board) reloadImage() error {
+	if b.images == nil {
+		return errNoReload
+	}
+	if err := b.LoadImage(b.imageLoaded); err != nil {
+		return err
+	}
+	b.reprobe()
+	return nil
 }
