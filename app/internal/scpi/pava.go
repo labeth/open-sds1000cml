@@ -10,7 +10,6 @@ import (
 	core "github.com/labeth/open-dso-core/scpi"
 	"github.com/labeth/open-dso-core/scpi/meas"
 	"github.com/labeth/open-sds1000cml/app/internal/analog"
-	"github.com/labeth/open-sds1000cml/app/internal/engine"
 )
 
 // liveFront is the front end's live probe and coupling, when it offers them:
@@ -117,7 +116,7 @@ func (h *Handler) measure(ch int) *measure.Result {
 			q = nil
 		}
 		from := 0
-		if a, b := engine.MeasureRange(f); b-a < valid { // a roll view's captured stretch
+		if a, b := measure.Range(f); b-a < valid { // a roll view's captured stretch
 			from, valid = a, b
 			if q != nil {
 				q = q[a:b]
@@ -129,7 +128,7 @@ func (h *Handler) measure(ch int) *measure.Result {
 			r = measure.ComputeAcquisition(sig[from:valid], q, vpc, offV*probe, f.SampleS, cpl, f.Cond.Guard)
 		}
 		if r != nil && f.Content == sample.PeakPairs {
-			r = r.WithEnvelopeTiming(sig[:valid], vpc, offV*probe, f.SampleS).WithEdgeDetail(vpc, offV*probe, engine.EdgeWindows(f, ch)...)
+			r = r.WithEnvelopeTiming(sig[:valid], vpc, offV*probe, f.SampleS).WithEdgeDetail(vpc, offV*probe, measure.EdgeWindows(f, ch)...)
 		}
 	})
 	if r != nil && h.inverted(ch) {

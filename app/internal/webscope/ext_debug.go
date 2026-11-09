@@ -14,15 +14,16 @@ import (
 
 // extensions are the SDS1000CML+'s own routes beside the shared API, one
 // hal.Extension a feature: the SRAM decoded capture and the FPGA stacking
-// session where the engine has them, the FPGA panel scan, and the engine's
+// session where the board or the engine has them (the board's decoded
+// streams first: decodedSource), the FPGA panel scan, and the engine's
 // live tuning knobs. Each is board-specific: the decoded capture's
 // configurations, event layout and record are the 18 Mbit SRAM's and the
 // CML images'; the stacking session is the CML's stacking image; the panel
 // scan reads the CML's key chain through its FPGA (the board's, ps); the
 // tuning knobs are the CML engine's drain and settle timings.
 // TRLC-LINKS: REQ-SDS-013, REQ-SDS-022, REQ-SDS-141, REQ-SDS-162
-func (s *Scope) extensions(ps panelScanner) []hal.Extension {
-	routes := s.decodedRoutes()
+func (s *Scope) extensions(ps panelScanner, board hal.Board) []hal.Extension {
+	routes := s.decodedRoutes(board)
 	routes = append(routes, s.fpgaStackRoutes()...)
 	routes = append(routes,
 		webserver.Route{Pattern: "/api/panel/scan", Feature: "panel_scan", Handler: panelScanHandler(ps)},

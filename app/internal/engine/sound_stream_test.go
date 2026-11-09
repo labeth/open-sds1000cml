@@ -171,7 +171,7 @@ func TestSoundLeavesADecodedStream(t *testing.T) {
 		t.Fatalf("streaming %v, fabric writes %v", s.streaming, rb.wrote)
 	}
 	// Without a decoded capture, yielding stops a running stream for real.
-	e.decodedSession = nil
+	e.streams().decodedSession = nil
 	s.streaming = true
 	e.soundYield()
 	if s.streaming || len(rb.wrote) == 0 {

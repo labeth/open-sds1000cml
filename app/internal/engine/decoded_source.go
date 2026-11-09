@@ -1,20 +1,24 @@
-// ENGMODEL-OWNER-UNIT: FU-APP-APP
+// ENGMODEL-OWNER-UNIT: FU-APP-ENGINE
 
-package app
+package engine
 
 import (
 	"context"
 
 	"github.com/labeth/open-dso-core/decodedlines"
 	"github.com/labeth/open-dso-core/streamview"
-	"github.com/labeth/open-sds1000cml/app/internal/engine"
 	"github.com/labeth/open-sds1000cml/app/internal/sramcapture"
 )
 
-// streamSource is the engine's decoded captures as the core's decoded
+// streamSource is the decoded streams' captures as the core's decoded
 // stream reads them: the record identity and its metadata in the stream's
 // terms.
-type streamSource struct{ e *engine.Engine }
+type streamSource struct{ e *DecodedStreams }
+
+// StreamSource is the decoded streams as the core's decoded stream (BUS's
+// Stream view, streamview.Controller) follows them.
+// TRLC-LINKS: REQ-SDS-018
+func (d *DecodedStreams) StreamSource() streamview.Source { return streamSource{d} }
 
 var _ streamview.Source = streamSource{}
 
@@ -29,7 +33,7 @@ func statusOf(m sramcapture.Metadata) streamview.Status {
 
 // BeginDecodedStream starts the engine's decoded stream.
 // TRLC-LINKS: REQ-SDS-018
-func (s streamSource) BeginDecodedStream(ctx context.Context, p engine.SerialParams, trig engine.StreamTrigger, value int) (streamview.ID, error) {
+func (s streamSource) BeginDecodedStream(ctx context.Context, p SerialParams, trig StreamTrigger, value int) (streamview.ID, error) {
 	id, err := s.e.BeginDecodedStream(ctx, p, trig, value)
 	return streamview.ID(id), err
 }

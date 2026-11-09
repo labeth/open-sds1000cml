@@ -330,31 +330,6 @@ func (e *Engine) planSerial(c *sramcapture.Config, serial SerialParams, fallback
 // TRLC-LINKS: REQ-SDS-011
 func (e *Engine) planHysteresis(c *sramcapture.Config) { e.hw().PlanHysteresis(c) }
 
-// decodedIdlePause is the wait between the owner loop's passes while a
-// decoded stream's worker builds its lines: a reader's request waits at most
-// this long.
-const decodedIdlePause = time.Millisecond
-
-// decodedIdle is the owner loop's pass while a decoded capture runs: the
-// events are pumped elsewhere, so it waits on the FIFO service, or a little
-// between passes when the worker builds the lines (a pass with nothing to
-// do spun a whole core).
-// TRLC-LINKS: REQ-SDS-013, REQ-SDS-001
-func (e *Engine) decodedIdle() {
-	if e.decodedError != nil {
-		e.clk.Sleep(20 * time.Millisecond)
-	}
-	if e.decodedDeadline != nil {
-		stage := time.Now()
-		if err := e.decodedDeadline.Pause(); err != nil {
-			e.decodedError = err
-		}
-		e.decodedService.maxPause = max(e.decodedService.maxPause, time.Since(stage))
-	} else if e.decodedLines {
-		e.clk.Sleep(decodedIdlePause)
-	}
-}
-
 // noteBackendsLocked reports what serves the serial trigger, the trigger
 // qualifier and the zones of capture cfg (e.mu held).
 // TRLC-LINKS: REQ-SDS-011, REQ-SDS-013, REQ-SDS-014

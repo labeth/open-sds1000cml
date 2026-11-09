@@ -37,15 +37,15 @@ func TestStreamTriggerPatternsPlan(t *testing.T) {
 func TestStreamLeftForLiveOrStartedAgain(t *testing.T) {
 	e := webSessionEngine(t, false, time.Second)
 	e.clk = core.RealClock()
-	e.adopt = &adoptedRecord{}
+	e.streams().adopt = &adoptedRecord{}
 	e.DiscardDecodedRecord()
-	if e.takeAdopted() != nil {
+	if e.streams().takeAdopted() != nil {
 		t.Fatal("the discarded record still goes to the display")
 	}
 	got := make(chan error, 1)
 	go func() { got <- e.HoldDecodedImage(context.Background()) }()
 	for done := false; !done; {
-		e.serviceDecodedRequests()
+		e.streams().serviceDecodedRequests()
 		select {
 		case err := <-got:
 			if err != nil {
@@ -55,7 +55,7 @@ func TestStreamLeftForLiveOrStartedAgain(t *testing.T) {
 		case <-time.After(time.Millisecond):
 		}
 	}
-	if !e.clk.Now().Before(e.decodedStarting) || e.decodedStarting.After(e.clk.Now().Add(11*time.Second)) {
-		t.Fatalf("image held until %v", e.decodedStarting)
+	if !e.clk.Now().Before(e.streams().decodedStarting) || e.streams().decodedStarting.After(e.clk.Now().Add(11*time.Second)) {
+		t.Fatalf("image held until %v", e.streams().decodedStarting)
 	}
 }

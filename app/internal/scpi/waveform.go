@@ -8,7 +8,7 @@ import (
 	"github.com/labeth/open-dso-core/sample"
 	core "github.com/labeth/open-dso-core/scpi"
 	"github.com/labeth/open-dso-core/scpi/wave"
-	"github.com/labeth/open-sds1000cml/app/internal/engine"
+	"github.com/labeth/open-sds1000cml/app/internal/board/acq"
 )
 
 // waveform implements Cn:WF? DAT2|DESC (spec 11 §4): the byte-exact LeCroy
@@ -65,7 +65,7 @@ func (h *Handler) dat2(ch int, f *sample.Frame) []byte {
 	if !ok {
 		return nil // reject at readout time; never index past the record
 	}
-	if !engine.HalfScale(f) {
+	if !acq.HalfScale(f) {
 		return wave.Signed8(sig, first, step, n)
 	}
 	out := make([]byte, n)

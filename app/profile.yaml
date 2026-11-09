@@ -87,6 +87,10 @@ stage: 2
 # trigger is checked and placed on the calibrated record.
 trigger_index: 2
 
+# Every record is the SRAM's, read in screen windows: the status's band word
+# is "sram" whatever the timebase (the engine's BandKind).
+status_band: sram
+
 # engine/bands.go: the 33-detent ladder (the fast decade uses 25 ns, not
 # 20 ns); native full-rate records up to 1 us/div; roll from 10 ms/div
 # (the engine's RollMinTdiv).

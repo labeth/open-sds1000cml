@@ -319,32 +319,32 @@ func TestClientDecodeMatchesScope(t *testing.T) {
 			// the scope decodes
 			ref := clientTestStream(t, c.proto, c.p, pushN)
 			ref.dec.CutStart(0) // as a session starts (softStreamStart), the page's alike
-			e := &Engine{}
+			e := testEngine(&Engine{}, nil)
 			from := 0
 			for k, to := range cuts {
-				e.feedBitsQuiet(ref, c.raw[4*from:4*to])
+				e.streams().feedBitsQuiet(ref, c.raw[4*from:4*to])
 				if checks[k] && ref.pending() >= ref.pushN {
-					e.softPush(ref)
+					e.streams().softPush(ref)
 				}
 				from = to
 			}
-			e.softPush(ref)
+			e.streams().softPush(ref)
 			ref.emit(ref.dec.Flush(), ref.ord)
 			want[c.name] = ref.events
 			// the page decodes
 			s := clientTestStream(t, c.proto, c.p, pushN)
-			ec := &Engine{}
+			ec := testEngine(&Engine{}, nil)
 			s.client = true
-			ec.ctap.begin(s.softClientInfo(), s.dec.Next())
+			ec.streams().ctap.begin(s.softClientInfo(), s.dec.Next())
 			nc := nodeCase{Name: c.name, Out: filepath.Join(dir, fmt.Sprintf("%d.frames", ci))}
 			seq := uint64(0)
 			from = 0
 			for k, to := range cuts {
-				ec.softClientWords(s, c.raw[4*from:4*to], checks[k])
+				ec.streams().softClientWords(s, c.raw[4*from:4*to], checks[k])
 				from = to
 				if k%7 == 6 || k == len(cuts)-1 {
 					for {
-						cw, release := ec.ctap.read(seq, 1+rng.Intn(20000), 0, nil)
+						cw, release := ec.streams().ctap.read(seq, 1+rng.Intn(20000), 0, nil)
 						var enc []byte
 						for _, c := range cw.Chunks {
 							enc = append(enc, c.Enc...)
@@ -392,7 +392,7 @@ func TestClientDecodeMatchesScope(t *testing.T) {
 			if err := ec.PostClientFrames(body); err != nil {
 				t.Fatalf("%s: %v", nc.Name, err)
 			}
-			ec.softClientFrames(s)
+			ec.streams().softClientFrames(s)
 			if through != s.dec.Next() {
 				t.Errorf("%s: the page decoded through %d, the scope's stream is at %d", nc.Name, through, s.dec.Next())
 			}
@@ -423,8 +423,8 @@ func TestClientDecodeHandover(t *testing.T) {
 		if plan, ok := softGapFreePlanBudget("ws281x", 0, false, 1, core.ClientBitsBudget); !plan.bits || !ok {
 			t.Fatalf("WS281x does not stream gap-free when a page decodes")
 		}
-		e := &Engine{logf: t.Logf}
-		if e.softBudget() != softBitsBudget {
+		e := testEngine(&Engine{logf: t.Logf}, nil)
+		if e.streams().softBudget() != softBitsBudget {
 			t.Fatalf("a budget for a page that never asked")
 		}
 		p := SerialParams{Proto: core.SerLIN, Baud: 19200, Threshold: 90, HaveThr: true}
@@ -434,19 +434,19 @@ func TestClientDecodeHandover(t *testing.T) {
 		for i := range quiet {
 			quiet[i] = 0xFF
 		}
-		e.softIn(s, quiet)
-		if e.softClientMode(s) || s.client {
+		e.streams().softIn(s, quiet)
+		if e.streams().softClientMode(s) || s.client {
 			t.Fatalf("the page decodes without the lease")
 		}
 		e.LeaseClientDecode()
-		if e.softBudget() != core.ClientBitsBudget {
+		if e.streams().softBudget() != core.ClientBitsBudget {
 			t.Fatalf("no budget for a page that holds the lease")
 		}
-		if e.softClientMode(s); !s.client {
+		if e.streams().softClientMode(s); !s.client {
 			t.Fatalf("the page does not take the decode")
 		}
 		at := s.dec.Next()
-		e.softIn(s, quiet)
+		e.streams().softIn(s, quiet)
 		cw, release := e.ReadClientWords(0, 1<<20, 0, nil)
 		release()
 		if !cw.Info.Active || cw.Info.Proto != "lin" || len(cw.Chunks) != 1 || cw.Chunks[0].Index != at || cw.Chunks[0].Words != 4096 {
@@ -464,7 +464,7 @@ func TestClientDecodeHandover(t *testing.T) {
 		if err := e.PostClientFrames(clientFramesBody(s.id.Epoch, at+16*4096, f)); err != nil {
 			t.Fatal(err)
 		}
-		if !e.softClientMode(s) || s.phase != softRecord {
+		if !e.streams().softClientMode(s) || s.phase != softRecord {
 			t.Fatalf("the value in the page's frames does not stop the stream")
 		}
 		var kinds []uint8
@@ -484,14 +484,14 @@ func TestClientDecodeHandover(t *testing.T) {
 		// a page that stops asking hands the decode back
 		s2 := clientTestStream(t, core.SerLIN, p, 1<<12)
 		s2.id.Epoch++
-		e.softClientMode(s2)
+		e.streams().softClientMode(s2)
 		if !s2.client {
 			t.Fatalf("the page does not take the next stream")
 		}
-		e.ctap.mu.Lock()
-		e.ctap.lease = time.Now().Add(-2 * core.ClientLease)
-		e.ctap.mu.Unlock()
-		e.softClientMode(s2)
+		e.streams().ctap.mu.Lock()
+		e.streams().ctap.lease = time.Now().Add(-2 * core.ClientLease)
+		e.streams().ctap.mu.Unlock()
+		e.streams().softClientMode(s2)
 		if s2.client || len(s2.events) != 1 || s2.events[0].Kind != sramcapture.EventLoss {
 			t.Fatalf("the scope does not take the decode back: client %v, events %+v", s2.client, s2.events)
 		}
@@ -503,11 +503,11 @@ func TestClientDecodeHandover(t *testing.T) {
 		s3.id.Epoch += 2
 		s3.overBudget = true
 		e.LeaseClientDecode()
-		e.softClientMode(s3)
-		e.ctap.mu.Lock()
-		e.ctap.lease = time.Now().Add(-2 * core.ClientLease)
-		e.ctap.mu.Unlock()
-		if !e.softClientMode(s3) || s3.phase != softDone || s3.err == nil {
+		e.streams().softClientMode(s3)
+		e.streams().ctap.mu.Lock()
+		e.streams().ctap.lease = time.Now().Add(-2 * core.ClientLease)
+		e.streams().ctap.mu.Unlock()
+		if !e.streams().softClientMode(s3) || s3.phase != softDone || s3.err == nil {
 			t.Fatalf("an over-budget stream goes on without its page: phase %v err %v", s3.phase, s3.err)
 		}
 	})
@@ -585,20 +585,20 @@ func BenchmarkClientFrames(b *testing.B) {
 		}
 		frames = append(frames, f)
 	}
-	e := &Engine{logf: func(string, ...any) {}}
+	e := testEngine(&Engine{logf: func(string, ...any) {}}, nil)
 	s := &softStream{mask: 0xff, ordStep: 1, id: sramcapture.RecordIdentity{Epoch: 5}}
-	e.ctap.begin(ClientStreamInfo{Session: 5, Active: true}, 0)
+	e.streams().ctap.begin(ClientStreamInfo{Session: 5, Active: true}, 0)
 	body := clientFramesBody(5, 1<<30, frames)
 	b.ReportAllocs()
 	for b.Loop() {
 		// a fresh page each time (posted frames are taken once)
-		e.ctap.mu.Lock()
-		e.ctap.havePosted = false
-		e.ctap.mu.Unlock()
+		e.streams().ctap.mu.Lock()
+		e.streams().ctap.havePosted = false
+		e.streams().ctap.mu.Unlock()
 		if err := e.PostClientFrames(body); err != nil {
 			b.Fatal(err)
 		}
-		e.softClientFrames(s)
+		e.streams().softClientFrames(s)
 		s.events, s.evHead = s.events[:0], 0
 	}
 }
@@ -613,12 +613,12 @@ func BenchmarkSoftFeedEdges(b *testing.B) {
 		p := SerialParams{Proto: core.SerSWD, Threshold: 128, HaveThr: true}
 		t := &testing.T{}
 		s := clientTestStream(t, core.SerSWD, p, 1<<18)
-		e := &Engine{logf: func(string, ...any) {}}
+		e := testEngine(&Engine{logf: func(string, ...any) {}}, nil)
 		b.SetBytes(int64(len(raw)))
 		for b.Loop() {
-			e.feedBitsQuiet(s, raw)
+			e.streams().feedBitsQuiet(s, raw)
 			if s.pending() >= s.pushN {
-				e.softPush(s)
+				e.streams().softPush(s)
 			}
 			s.events, s.evHead = s.events[:0], 0
 		}

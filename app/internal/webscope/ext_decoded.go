@@ -11,6 +11,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/labeth/open-dso-core/hal"
 	"github.com/labeth/open-dso-core/webserver"
 	"github.com/labeth/open-sds1000cml/app/internal/sramcapture"
 )
@@ -44,13 +45,29 @@ func decodedIdentity(r *http.Request) (sramcapture.RecordIdentity, error) {
 	return sramcapture.RecordIdentity{Epoch: uint32(epoch), Record: uint32(record)}, nil
 }
 
+// decodedSource is the decoded capture the routes drive: the board's own
+// stream sessions where the board carries them (hal.Session: the decoded
+// streams the core's cycle serves), else the engine's.
 // TRLC-LINKS: REQ-SDS-013
-func (s *Scope) decodedRoutes() []webserver.Route {
+func (s *Scope) decodedSource(board hal.Board) (decodedCaptureSource, bool) {
+	if board != nil {
+		if ss, ok := hal.SessionOf(board); ok {
+			if src, ok := ss.(decodedCaptureSource); ok {
+				return src, true
+			}
+		}
+	}
+	src, ok := s.sc.(decodedCaptureSource)
+	return src, ok
+}
+
+// TRLC-LINKS: REQ-SDS-013
+func (s *Scope) decodedRoutes(board hal.Board) []webserver.Route {
 	var routes []webserver.Route
 	add := func(pattern string, h http.HandlerFunc) {
 		routes = append(routes, webserver.Route{Pattern: pattern, Feature: "decoded_capture", Handler: h})
 	}
-	source, ok := s.sc.(decodedCaptureSource)
+	source, ok := s.decodedSource(board)
 	if !ok {
 		return nil
 	}

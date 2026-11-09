@@ -3,8 +3,8 @@
 package engine
 
 import (
-	"context"
 	"errors"
+	"fmt"
 	"time"
 
 	core "github.com/labeth/open-dso-core/engine"
@@ -122,20 +122,23 @@ func (e *Engine) serviceImage() bool {
 }
 
 // imageLoader is the switcher's load of a protocol image, or of the general
-// image for "".
+// image for "": the image alone (the engine probes, scans and brings the
+// converters up itself after it).
 // TRLC-LINKS: REQ-SDS-013, REQ-SDS-005
 func (e *Engine) imageLoader(name string) func() error {
-	return func() error { return e.loadFeature(acq.FeatureOf(name)) }
+	return func() error { return e.hw().LoadImage(name) }
 }
 
-// loadFeature loads the image with feature f through the board's images.
+// loadFeature loads the image with feature f alone.
 // TRLC-LINKS: REQ-SDS-005
 func (e *Engine) loadFeature(f string) error {
-	im, ok := e.hw().Images()
-	if !ok {
-		return errors.New("no image switcher")
+	switch f {
+	case "general":
+		return e.hw().LoadImage(acq.ImageGeneral)
+	case "stack":
+		return e.hw().LoadImage(acq.ImageStack)
 	}
-	return im.Load(context.Background(), []string{f})
+	return fmt.Errorf("no image has %s", f)
 }
 
 // beatWhile keeps the health beat going for the seconds an image load takes

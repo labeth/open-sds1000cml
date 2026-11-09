@@ -204,16 +204,16 @@ func TestSoftStreamBitsQuietSkipped(t *testing.T) {
 			s.dec.SetLead(lead)
 			s.leadWords = lead/16 + 2
 			s.keepWords = int(quiet/s.sampleS)/16 + s.leadWords + 2
-			e := &Engine{}
+			e := testEngine(&Engine{}, nil)
 			for at := 0; at < len(raw); {
 				n := min(len(raw)-at, 4*(1+(at*7919)%3000))
 				if skip {
-					e.feedBitsQuiet(s, raw[at:at+n])
+					e.streams().feedBitsQuiet(s, raw[at:at+n])
 				} else {
 					s.feedBits(raw[at : at+n])
 				}
 				at += n
-				e.softPush(s)
+				e.streams().softPush(s)
 			}
 			s.emit(s.dec.Flush(), s.ord)
 			return s.events, s

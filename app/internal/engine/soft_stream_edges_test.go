@@ -81,17 +81,17 @@ func softEdgeRun(t *testing.T, proto int, p SerialParams, raw []byte, edges bool
 	s.dec.SetLead(lead)
 	s.leadWords = lead/16 + 2
 	s.keepWords = int(quiet/s.sampleS)/16 + s.leadWords + 2
-	e := &Engine{}
+	e := testEngine(&Engine{}, nil)
 	rng := rand.New(rand.NewSource(int64(len(raw))))
 	for at := 0; at < len(raw); {
 		n := min(len(raw)-at, 4*(1+rng.Intn(3000)))
-		e.feedBitsQuiet(s, raw[at:at+n])
+		e.streams().feedBitsQuiet(s, raw[at:at+n])
 		at += n
 		if s.pending() >= 1<<16 || rng.Intn(4) == 0 {
-			e.softPush(s)
+			e.streams().softPush(s)
 		}
 	}
-	e.softPush(s)
+	e.streams().softPush(s)
 	s.emit(s.dec.Flush(), s.ord)
 	return s.events
 }

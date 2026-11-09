@@ -292,11 +292,13 @@ func TestSoftStreamModes(t *testing.T) {
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
 func TestSoftEventsQueue(t *testing.T) {
 	s := &softStream{id: sramcapture.RecordIdentity{Epoch: softEpochBase | 1, Record: 1}}
-	e := &Engine{soft: s}
+	e := testEngine(&Engine{}, func(d *DecodedStreams) {
+		d.soft = s
+	})
 	dst := make([]sramcapture.DecodedEvent, 4096)
 	next := uint32(0)
 	read := func() int {
-		n, err := e.softRead(s.id, dst)
+		n, err := e.streams().softRead(s.id, dst)
 		if err != nil && n > 0 {
 			t.Fatal(err)
 		}

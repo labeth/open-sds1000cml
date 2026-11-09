@@ -52,8 +52,8 @@ type clientTap struct {
 
 // LeaseClientDecode holds the client decode for clientLease.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
-func (e *Engine) LeaseClientDecode() {
-	t := &e.ctap
+func (d *DecodedStreams) LeaseClientDecode() {
+	t := &d.ctap
 	t.mu.Lock()
 	t.lease = time.Now()
 	t.mu.Unlock()
@@ -364,24 +364,24 @@ func (t *clientTap) take(frames []core.ClientFrame, spans []core.ClientSpan) ([]
 // Enc lie in the ring, pinned until release is called (after they are
 // written to the page).
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
-func (e *Engine) ReadClientWords(seq uint64, limit int, wait time.Duration, dst []ClientChunk) (ClientWords, func()) {
-	e.LeaseClientDecode()
-	return e.ctap.read(seq, limit, wait, dst)
+func (d *DecodedStreams) ReadClientWords(seq uint64, limit int, wait time.Duration, dst []ClientChunk) (ClientWords, func()) {
+	d.LeaseClientDecode()
+	return d.ctap.read(seq, limit, wait, dst)
 }
 
 // PostClientFrames queues a page's decoded frames, its
 // /api/stream/frames.bin body (clientTap.post); b is not kept.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
-func (e *Engine) PostClientFrames(b []byte) error {
-	e.LeaseClientDecode()
-	return e.ctap.post(b)
+func (d *DecodedStreams) PostClientFrames(b []byte) error {
+	d.LeaseClientDecode()
+	return d.ctap.post(b)
 }
 
 // softBudget is the samples a second the digital stream's plan may carry:
 // the scope's own decode's, or all of them when a page decodes.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
-func (e *Engine) softBudget() float64 {
-	if e.ctap.leased(time.Now()) {
+func (d *DecodedStreams) softBudget() float64 {
+	if d.ctap.leased(time.Now()) {
 		return core.ClientBitsBudget
 	}
 	return softBitsBudget
@@ -406,13 +406,13 @@ func (s *softStream) softClientInfo() ClientStreamInfo {
 // or back to the scope, and queues the page's frames as the scope's own.
 // It reports a stop on the value (the stream then ends as softPush ends it).
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
-func (e *Engine) softClientMode(s *softStream) bool {
-	want := s.bits && e.ctap.leased(time.Now())
+func (d *DecodedStreams) softClientMode(s *softStream) bool {
+	want := s.bits && d.ctap.leased(time.Now())
 	switch {
 	case want && !s.client:
 		// What the scope queued is decoded and its whole frames handed out;
 		// a frame still open is the page's to decode from its start.
-		e.softPush(s)
+		d.softPush(s)
 		if s.phase != softStreaming {
 			return true
 		}
@@ -420,12 +420,12 @@ func (e *Engine) softClientMode(s *softStream) bool {
 		s.skipped, s.idleWords, s.haveLvl = 0, 0, false
 		s.dec.Skip(0)
 		s.client = true
-		e.ctap.begin(s.softClientInfo(), s.dec.Next())
-		e.logf("engine: %s stream: a web page decodes it", s.decoder.Name)
+		d.ctap.begin(s.softClientInfo(), s.dec.Next())
+		d.h.logf("engine: %s stream: a web page decodes it", s.decoder.Name)
 	case !want && s.client:
-		e.softClientFrames(s)
+		d.softClientFrames(s)
 		s.client = false
-		e.ctap.end("the page stopped asking")
+		d.ctap.end("the page stopped asking")
 		// The words the page took but did not post frames for are lost,
 		// and the scope's decoding takes up the line where it is.
 		s.dec.Skip(0)
@@ -435,17 +435,17 @@ func (e *Engine) softClientMode(s *softStream) bool {
 			// A plan only a page keeps up with: decoded here it would fall a
 			// ring behind again and again with the CPU the display needs. The
 			// stream ends and says why; started again it streams as captures.
-			e.softStreamStop(s)
+			d.softStreamStop(s)
 			s.err = errors.New("the web page decoding this stream went away; start the stream again to decode it on the scope")
 			s.phase = softDone
-			e.logf("engine: %s stream: %v", s.decoder.Name, s.err)
+			d.h.logf("engine: %s stream: %v", s.decoder.Name, s.err)
 			return true
 		}
-		e.logf("engine: %s stream: the web page stopped; the scope decodes it", s.decoder.Name)
+		d.h.logf("engine: %s stream: the web page stopped; the scope decodes it", s.decoder.Name)
 		return false
 	}
 	if s.client {
-		return e.softClientFrames(s)
+		return d.softClientFrames(s)
 	}
 	return false
 }
@@ -453,8 +453,8 @@ func (e *Engine) softClientMode(s *softStream) bool {
 // softClientFrames queues the page's frames; on the stop value the
 // transcript ends there and the stop is the scope's own (softStopOnValue).
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
-func (e *Engine) softClientFrames(s *softStream) bool {
-	s.cliFrames, s.cliSpans = e.ctap.take(s.cliFrames, s.cliSpans)
+func (d *DecodedStreams) softClientFrames(s *softStream) bool {
+	s.cliFrames, s.cliSpans = d.ctap.take(s.cliFrames, s.cliSpans)
 	for _, f := range s.cliFrames {
 		if f.Loss {
 			// The page lost words (it fell behind by the ring).
@@ -465,8 +465,8 @@ func (e *Engine) softClientFrames(s *softStream) bool {
 		if s.emitClient(f, s.cliSpans[f.From:f.To]) {
 			// As when the scope decodes: the history ring frozen around the
 			// frame, or the symbol trigger's record.
-			e.softStopOnValue(s)
-			e.ctap.end("stopped on the value")
+			d.softStopOnValue(s)
+			d.ctap.end("stopped on the value")
 			return true
 		}
 	}
@@ -511,12 +511,12 @@ func (s *softStream) emitClient(f core.ClientFrame, spans []core.ClientSpan) boo
 // softClientWords hands the page raw's words: the scope's decoder moves on
 // by them without decoding them.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
-func (e *Engine) softClientWords(s *softStream, raw []byte, check bool) {
+func (d *DecodedStreams) softClientWords(s *softStream, raw []byte, check bool) {
 	n := len(raw) / 4
 	if n == 0 {
 		return
 	}
-	e.ctap.append(raw[:4*n], s.dec.Next(), s.clientBreak, check)
+	d.ctap.append(raw[:4*n], s.dec.Next(), s.clientBreak, check)
 	s.clientBreak = false
 	s.dec.Skip(16 * n)
 }

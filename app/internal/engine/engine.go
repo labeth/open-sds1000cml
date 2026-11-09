@@ -218,38 +218,34 @@ type Engine struct {
 	reinitReq        atomic.Int64 // staged FSM re-init level (debug/recovery); serviced at the loop boundary
 
 	// Lock-free control reads by the owner.
-	running         atomic.Bool
-	trigRising      atomic.Bool
-	trigSrc         atomic.Int32
-	stopReq         atomic.Bool
-	acqMode         atomic.Int32
-	avgCount        atomic.Int32
-	precisionLog    atomic.Int32
-	eresLen         atomic.Int32
-	avgGen          atomic.Uint32                    // bumped on acq-mode/depth changes → ring clear
-	singleArmed     atomic.Bool                      // SINGLE: stop after the next triggered frame
-	singleGen       atomic.Uint64                    // bumped per SINGLE press: a capture armed before the press never consumes it
-	forceReq        atomic.Bool                      // FORCE: complete the armed capture once without a trigger
-	decodeView      atomic.Bool                      // the display decodes the frame: send samples, not peak-detect pairs
-	decodeLease     atomic.Int64                     // raw live frames until this time (unix ns; see LeaseDecodeView)
-	rawMu           sync.Mutex                       // guards rawHolders and rawCancel
-	rawHolders      map[string]int64                 // named raw leases: each holder's end (unix ns; LeaseRawFor)
-	rawCancel       func()                           // abandons the live raw read in flight for the leases (nil when none)
-	recallCancel    func()                           // abandons any record read in flight (SOUND starting; nil when none)
-	sampleLease     atomic.Int64                     // evenly sampled live frames until this time (LeaseSampleView)
-	spectrumLease   atomic.Int64                     // live frames for a spectrum until this time (LeaseSpectrumView)
-	displayPaceNs   atomic.Int64                     // the least time a live SRAM capture takes, for the display (SetDisplayPace)
-	searchLease     atomic.Int64                     // whole decimated records for a bus search until this time (LeaseSearchView)
-	busLease        atomic.Int64                     // records sampled every busSampleS for a bus decode until this time (LeaseBusSamples)
-	busSampleS      atomic.Uint64                    // the bus lease's coarsest sample interval (float64 bits)
-	views           [core.ViewSurfaces]core.ViewSlot // view windows at full detail (LeaseViewWindow)
-	adopt           *adoptedRecord                   // a decoded stream's record for the stopped loop to show (guarded by mu)
-	decodedCfg      sramcapture.Config               // the running decoded capture's configuration (acquisition owner)
-	decodedLines    bool                             // the worker builds the stream transcript; no event pumping (owner)
-	decodedStarting time.Time                        // a decoded stream holds its image until its capture begins, at most until then (owner)
-	memDepth        atomic.Int32                     // decimated drain depth (samples): fps↔data tradeoff
-	streamMode      atomic.Bool                      // stitched high-bandwidth streaming decode mode
-	chVdivBits      [2]atomic.Uint64                 // per-channel V/div (float64 bits) for the
+	running       atomic.Bool
+	trigRising    atomic.Bool
+	trigSrc       atomic.Int32
+	stopReq       atomic.Bool
+	acqMode       atomic.Int32
+	avgCount      atomic.Int32
+	precisionLog  atomic.Int32
+	eresLen       atomic.Int32
+	avgGen        atomic.Uint32                    // bumped on acq-mode/depth changes → ring clear
+	singleArmed   atomic.Bool                      // SINGLE: stop after the next triggered frame
+	singleGen     atomic.Uint64                    // bumped per SINGLE press: a capture armed before the press never consumes it
+	forceReq      atomic.Bool                      // FORCE: complete the armed capture once without a trigger
+	decodeView    atomic.Bool                      // the display decodes the frame: send samples, not peak-detect pairs
+	decodeLease   atomic.Int64                     // raw live frames until this time (unix ns; see LeaseDecodeView)
+	rawMu         sync.Mutex                       // guards rawHolders and rawCancel
+	rawHolders    map[string]int64                 // named raw leases: each holder's end (unix ns; LeaseRawFor)
+	rawCancel     func()                           // abandons the live raw read in flight for the leases (nil when none)
+	recallCancel  func()                           // abandons any record read in flight (SOUND starting; nil when none)
+	sampleLease   atomic.Int64                     // evenly sampled live frames until this time (LeaseSampleView)
+	spectrumLease atomic.Int64                     // live frames for a spectrum until this time (LeaseSpectrumView)
+	displayPaceNs atomic.Int64                     // the least time a live SRAM capture takes, for the display (SetDisplayPace)
+	searchLease   atomic.Int64                     // whole decimated records for a bus search until this time (LeaseSearchView)
+	busLease      atomic.Int64                     // records sampled every busSampleS for a bus decode until this time (LeaseBusSamples)
+	busSampleS    atomic.Uint64                    // the bus lease's coarsest sample interval (float64 bits)
+	views         [core.ViewSurfaces]core.ViewSlot // view windows at full detail (LeaseViewWindow)
+	memDepth      atomic.Int32                     // decimated drain depth (samples): fps↔data tradeoff
+	streamMode    atomic.Bool                      // stitched high-bandwidth streaming decode mode
+	chVdivBits    [2]atomic.Uint64                 // per-channel V/div (float64 bits) for the
 	//                              trigger-level → display-code mapping
 	trigZero    [2]atomic.Uint64 // per-channel active trig-cal Zero (float64 bits)
 	trigCPV     [2]atomic.Uint64 // per-channel active trig-cal CPV (float64 bits)
@@ -338,27 +334,13 @@ type Engine struct {
 	sramJobs chan core.OwnerJob
 	images   ImageSwitcher
 
-	decodedRequests           chan core.OwnerJob
-	decodedSession            *sramcapture.DecodedCapture // acquisition-owner fields
-	decodedBuffer             []sramcapture.DecodedEvent
-	decodedHead, decodedCount int
-	decodedScratch            []sramcapture.DecodedEvent
-	decodedSequence           uint32
-	decodedError              error
-	decodedService            decodedServiceStats
-	decodedDeadline           *bus.DecodedDeadline
-	decodedWeb                bool        // the session is a web page's (BeginDecodedCapture), not the scope's stream
-	decodedContact            time.Time   // a client's last call on the session (status, events, record)
-	soft                      *softStream // a software-decoded stream (soft_stream.go)
-	// ctap is the client decode's ring and the page's frames (soft_client.go),
-	// shared by the owner and the web's requests under its own lock.
-	ctap clientTap
+	// ds are the decoded streams (decoded.go) the owner loop steps.
+	ds *DecodedStreams
 	// snd is the audio stream (sound_stream.go), made on first use by a web
 	// request or the panel and read by the acquisition owner: published
 	// atomically.
 	snd       atomic.Pointer[soundState]
 	soundOnce sync.Once
-	softEpoch uint32
 
 	// Owner-private state (no locking needed).
 	acqShadow, trigShadow uint16 // last ACQ_CTRL / TRIG_LEVEL words written (compare-on-change)
@@ -539,8 +521,8 @@ func New(cfg Config) *Engine {
 		prevKind:              start.Kind(),
 		done:                  make(chan struct{}),
 		sramJobs:              make(chan core.OwnerJob, 1),
-		decodedRequests:       make(chan core.OwnerJob, 8),
 	}
+	e.ds = newDecodedStreams(engineHost{e}, e.done)
 	if cfg.Board != nil {
 		e.useBoard(cfg.Board)
 	} else {
@@ -741,6 +723,7 @@ func (e *Engine) Snapshot() Stats {
 	e.mu.Lock()
 	defer e.mu.Unlock()
 	s := e.stats
+	e.streams().fillStats(&s)
 	s.Roll = e.rolling.Load() && s.Running
 	s.RollStream = e.rollStream.Load()
 	s.ViewPending = e.sram != nil && !s.Running && e.viewHeld.Load() && (e.pendSet || e.scaleGen.Load() != e.shownScaleGen.Load())

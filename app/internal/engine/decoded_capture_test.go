@@ -73,24 +73,26 @@ func TestDecodedHeartbeatRequiresSuccessfulHardwarePoll(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	e := &Engine{sram: capture, decodedSession: &sramcapture.DecodedCapture{Identity: sramcapture.RecordIdentity{Epoch: 7, Record: 1}}}
+	e := testEngine(&Engine{sram: capture}, func(d *DecodedStreams) {
+		d.decodedSession = &sramcapture.DecodedCapture{Identity: sramcapture.RecordIdentity{Epoch: 7, Record: 1}}
+	})
 	before := e.Beats()
-	e.pumpDecodedEvents()
+	e.streams().pumpDecodedEvents()
 	if e.Beats() <= before {
 		t.Fatal("active decoded capture did not report liveness")
 	}
 	before = e.Beats()
-	e.pumpDecodedEvents()
+	e.streams().pumpDecodedEvents()
 	if e.Beats() <= before {
 		t.Fatal("idle signal did not report successful hardware polling")
 	}
 	before = e.Beats()
 	b.fail = true
-	e.pumpDecodedEvents()
-	if e.Beats() != before || e.decodedError == nil {
+	e.streams().pumpDecodedEvents()
+	if e.Beats() != before || e.streams().decodedError == nil {
 		t.Fatal("failed bus access reported healthy")
 	}
-	e.pumpDecodedEvents()
+	e.streams().pumpDecodedEvents()
 	if e.Beats() != before {
 		t.Fatal("failed session kept reporting healthy")
 	}
@@ -104,15 +106,18 @@ func TestDecodedTranscriptFailurePreservesHardwareLiveness(t *testing.T) {
 		t.Fatal(err)
 	}
 	failure := errors.New("transcript incomplete")
-	e := &Engine{sram: capture, decodedSession: &sramcapture.DecodedCapture{Identity: sramcapture.RecordIdentity{Epoch: 7, Record: 1}}, decodedError: failure}
+	e := testEngine(&Engine{sram: capture}, func(d *DecodedStreams) {
+		d.decodedSession = &sramcapture.DecodedCapture{Identity: sramcapture.RecordIdentity{Epoch: 7, Record: 1}}
+		d.decodedError = failure
+	})
 	before := e.Beats()
-	e.pumpDecodedEvents()
-	if e.Beats() <= before || b.remaining != 5 || !errors.Is(e.decodedError, failure) {
+	e.streams().pumpDecodedEvents()
+	if e.Beats() <= before || b.remaining != 5 || !errors.Is(e.streams().decodedError, failure) {
 		t.Fatal("failed transcript lost health, consumed data or hid its error")
 	}
 	b.fail = true
 	before = e.Beats()
-	e.pumpDecodedEvents()
+	e.streams().pumpDecodedEvents()
 	if e.Beats() != before {
 		t.Fatal("failed hardware probe reported healthy")
 	}
@@ -128,20 +133,22 @@ func TestDecodedOwnerBufferOverflowIsExplicit(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	e := &Engine{sram: capture, decodedSession: &sramcapture.DecodedCapture{Identity: sramcapture.RecordIdentity{Epoch: 7, Record: 1}}}
+	e := testEngine(&Engine{sram: capture}, func(d *DecodedStreams) {
+		d.decodedSession = &sramcapture.DecodedCapture{Identity: sramcapture.RecordIdentity{Epoch: 7, Record: 1}}
+	})
 	for range decodedBufferLimit + 52 {
-		e.pumpDecodedEvents()
+		e.streams().pumpDecodedEvents()
 	}
-	if e.decodedError == nil || len(e.decodedBuffer) != decodedBufferLimit {
-		t.Fatalf("buffer=%d error=%v", len(e.decodedBuffer), e.decodedError)
+	if e.streams().decodedError == nil || len(e.streams().decodedBuffer) != decodedBufferLimit {
+		t.Fatalf("buffer=%d error=%v", len(e.streams().decodedBuffer), e.streams().decodedError)
 	}
-	for i, event := range e.decodedBuffer {
+	for i, event := range e.streams().decodedBuffer {
 		if event.Sequence != uint32(i) {
 			t.Fatal("reordered event")
 		}
 	}
 	before := b.remaining
-	e.pumpDecodedEvents()
+	e.streams().pumpDecodedEvents()
 	if b.remaining != before {
 		t.Fatal("kept consuming failed transcript")
 	}
@@ -154,19 +161,21 @@ func TestDecodedOwnerSkipsCancelledRequest(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	e := &Engine{sram: capture, decodedRequests: make(chan core.OwnerJob, 1), done: make(chan struct{})}
+	e := testEngine(&Engine{sram: capture, done: make(chan struct{})}, func(d *DecodedStreams) {
+		d.decodedRequests = make(chan core.OwnerJob, 1)
+	})
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	result := make(chan error, 1)
 	called := false
 	go func() {
-		_, err := e.decodedCall(ctx, func() (any, error) { called = true; return nil, nil })
+		_, err := e.streams().decodedCall(ctx, func() (any, error) { called = true; return nil, nil })
 		result <- err
 	}()
-	req := <-e.decodedRequests
+	req := <-e.streams().decodedRequests
 	cancel()
-	e.decodedRequests <- req
-	e.serviceDecodedRequests()
+	e.streams().decodedRequests <- req
+	e.streams().serviceDecodedRequests()
 	if err := <-result; !errors.Is(err, context.Canceled) {
 		t.Fatal(err)
 	}
@@ -182,9 +191,15 @@ func TestDecodedBatchRingWrapAndCancelledReuse(t *testing.T) {
 		t.Fatal(err)
 	}
 	id := sramcapture.RecordIdentity{Epoch: 7, Record: 1}
-	e := &Engine{sram: capture, decodedRequests: make(chan core.OwnerJob, 1), done: make(chan struct{}), decodedSession: &sramcapture.DecodedCapture{Identity: id}, decodedBuffer: make([]sramcapture.DecodedEvent, decodedBufferLimit), decodedHead: decodedBufferLimit - 1, decodedCount: 2}
-	e.decodedBuffer[decodedBufferLimit-1] = sramcapture.DecodedEvent{Sequence: 40, Value: 0xaa}
-	e.decodedBuffer[0] = sramcapture.DecodedEvent{Sequence: 41, Value: 0x55}
+	e := testEngine(&Engine{sram: capture, done: make(chan struct{})}, func(d *DecodedStreams) {
+		d.decodedRequests = make(chan core.OwnerJob, 1)
+		d.decodedSession = &sramcapture.DecodedCapture{Identity: id}
+		d.decodedBuffer = make([]sramcapture.DecodedEvent, decodedBufferLimit)
+		d.decodedHead = decodedBufferLimit - 1
+		d.decodedCount = 2
+	})
+	e.streams().decodedBuffer[decodedBufferLimit-1] = sramcapture.DecodedEvent{Sequence: 40, Value: 0xaa}
+	e.streams().decodedBuffer[0] = sramcapture.DecodedEvent{Sequence: 41, Value: 0x55}
 	dst := make([]sramcapture.DecodedEvent, 2)
 	result := make(chan error, 1)
 	go func() {
@@ -194,22 +209,22 @@ func TestDecodedBatchRingWrapAndCancelledReuse(t *testing.T) {
 		}
 		result <- err
 	}()
-	req := <-e.decodedRequests
-	e.decodedRequests <- req
-	e.serviceDecodedRequests()
+	req := <-e.streams().decodedRequests
+	e.streams().decodedRequests <- req
+	e.streams().serviceDecodedRequests()
 	if err := <-result; err != nil {
 		t.Fatal(err)
 	}
-	if dst[0].Sequence != 40 || dst[1].Sequence != 41 || e.decodedCount != 0 || e.decodedHead != 1 {
-		t.Fatal("ring order or accounting", dst, e.decodedCount, e.decodedHead)
+	if dst[0].Sequence != 40 || dst[1].Sequence != 41 || e.streams().decodedCount != 0 || e.streams().decodedHead != 1 {
+		t.Fatal("ring order or accounting", dst, e.streams().decodedCount, e.streams().decodedHead)
 	}
-	e.decodedBuffer[0].Value = 0
+	e.streams().decodedBuffer[0].Value = 0
 	if dst[1].Value != 0x55 {
 		t.Fatal("batch aliases producer memory")
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	go func() { _, err := e.ReadDecodedBatchInto(ctx, id, dst); result <- err }()
-	req = <-e.decodedRequests
+	req = <-e.streams().decodedRequests
 	cancel()
 	if err := <-result; !errors.Is(err, context.Canceled) {
 		t.Fatal(err)
@@ -257,12 +272,15 @@ func webSessionEngine(t *testing.T, web bool, contact time.Duration) *Engine {
 	if err != nil {
 		t.Fatal(err)
 	}
-	e := &Engine{
-		sram: capture, decodedRequests: make(chan core.OwnerJob, 1), done: make(chan struct{}), logf: t.Logf,
-		decodedSession: &sramcapture.DecodedCapture{Identity: sramcapture.RecordIdentity{Epoch: 7, Record: 1}},
-		decodedWeb:     web, decodedContact: time.Now().Add(-contact),
-	}
-	e.stats.DecodedWeb = web
+	e := testEngine(&Engine{
+		sram: capture, done: make(chan struct{}), logf: t.Logf,
+	}, func(d *DecodedStreams) {
+		d.decodedRequests = make(chan core.OwnerJob, 1)
+		d.decodedSession = &sramcapture.DecodedCapture{Identity: sramcapture.RecordIdentity{Epoch: 7, Record: 1}}
+		d.decodedWeb = web
+		d.decodedContact = time.Now().Add(-contact)
+	})
+	e.streams().stats.DecodedWeb = web
 	e.SetRunning(true)
 	return e
 }
@@ -275,24 +293,24 @@ func webSessionEngine(t *testing.T, web bool, contact time.Duration) *Engine {
 // TRLC-LINKS: REQ-SDS-013
 func TestAbandonedWebDecodedCaptureEnds(t *testing.T) {
 	e := webSessionEngine(t, true, decodedAbandonAfter+time.Second)
-	e.expireDecoded()
-	if e.decodedSession != nil || e.decodedWeb || e.stats.DecodedWeb || e.running.Load() {
-		t.Fatalf("abandoned session kept: session %v web %v running %v", e.decodedSession != nil, e.decodedWeb, e.running.Load())
+	e.streams().expireDecoded()
+	if e.streams().decodedSession != nil || e.streams().decodedWeb || e.streams().stats.DecodedWeb || e.running.Load() {
+		t.Fatalf("abandoned session kept: session %v web %v running %v", e.streams().decodedSession != nil, e.streams().decodedWeb, e.running.Load())
 	}
 	for _, c := range []struct {
 		web     bool
 		contact time.Duration
 	}{{true, 5 * time.Second}, {false, decodedOrphanAfter - 5*time.Second}} {
 		e := webSessionEngine(t, c.web, c.contact)
-		e.expireDecoded()
-		if e.decodedSession == nil {
+		e.streams().expireDecoded()
+		if e.streams().decodedSession == nil {
 			t.Fatalf("web %v, client %s ago: ended", c.web, c.contact)
 		}
 	}
 	e = webSessionEngine(t, false, decodedOrphanAfter+time.Second)
-	e.expireDecoded()
-	if e.decodedSession != nil || !e.running.Load() {
-		t.Fatalf("the scope's stream unread past %s: session kept %v, running %v", decodedOrphanAfter, e.decodedSession != nil, e.running.Load())
+	e.streams().expireDecoded()
+	if e.streams().decodedSession != nil || !e.running.Load() {
+		t.Fatalf("the scope's stream unread past %s: session kept %v, running %v", decodedOrphanAfter, e.streams().decodedSession != nil, e.running.Load())
 	}
 }
 
@@ -312,15 +330,15 @@ func TestScopeKeysEndAWebDecodedCapture(t *testing.T) {
 		}()
 		var ended bool
 		for done := false; !done; {
-			e.serviceDecodedRequests()
+			e.streams().serviceDecodedRequests()
 			select {
 			case ended = <-got:
 				done = true
 			case <-time.After(time.Millisecond):
 			}
 		}
-		if ended != web || (e.decodedSession == nil) != web {
-			t.Fatalf("web %v: ended %v, session left %v", web, ended, e.decodedSession != nil)
+		if ended != web || (e.streams().decodedSession == nil) != web {
+			t.Fatalf("web %v: ended %v, session left %v", web, ended, e.streams().decodedSession != nil)
 		}
 	}
 }
@@ -342,11 +360,11 @@ func TestWebDecodedCaptureLeavesTheScopesStream(t *testing.T) {
 		{false, time.Second, false, false},
 	} {
 		e := webSessionEngine(t, c.sessionWeb, c.contact)
-		if err := e.decodedTaken(c.web); (err != nil) != c.taken {
+		if err := e.streams().decodedTaken(c.web); (err != nil) != c.taken {
 			t.Errorf("session web %v read %s ago, start web %v: %v, want taken %v", c.sessionWeb, c.contact, c.web, err, c.taken)
 		}
 	}
-	if err := (&Engine{}).decodedTaken(true); err != nil {
+	if err := testEngine(&Engine{}, nil).streams().decodedTaken(true); err != nil {
 		t.Errorf("no session: %v", err)
 	}
 }
@@ -356,7 +374,7 @@ func TestWebDecodedCaptureLeavesTheScopesStream(t *testing.T) {
 // TRLC-LINKS: REQ-SDS-013
 func TestRefusedDecodedCaptureLeavesTheSession(t *testing.T) {
 	e := webSessionEngine(t, true, time.Second)
-	before := e.decodedSession
+	before := e.streams().decodedSession
 	got := make(chan error, 1)
 	go func() {
 		_, err := e.BeginDecodedCapture(context.Background(), sramcapture.Config{})
@@ -364,14 +382,26 @@ func TestRefusedDecodedCaptureLeavesTheSession(t *testing.T) {
 	}()
 	var err error
 	for done := false; !done; {
-		e.serviceDecodedRequests()
+		e.streams().serviceDecodedRequests()
 		select {
 		case err = <-got:
 			done = true
 		case <-time.After(time.Millisecond):
 		}
 	}
-	if err == nil || !strings.Contains(err.Error(), "requires a configured hardware decoder") || e.decodedSession != before {
-		t.Fatalf("refused start: err %v, session kept %v", err, e.decodedSession == before)
+	if err == nil || !strings.Contains(err.Error(), "requires a configured hardware decoder") || e.streams().decodedSession != before {
+		t.Fatalf("refused start: err %v, session kept %v", err, e.streams().decodedSession == before)
 	}
+}
+
+// testEngine gives an engine a test builds as a literal its decoded
+// streams (New makes them), set as set says.
+func testEngine(e *Engine, set func(*DecodedStreams)) *Engine {
+	if e.ds == nil {
+		e.ds = newDecodedStreams(engineHost{e}, e.done)
+	}
+	if set != nil {
+		set(e.ds)
+	}
+	return e
 }

@@ -10,11 +10,11 @@ import (
 	"strings"
 	"time"
 
+	coreengine "github.com/labeth/open-dso-core/engine"
 	"github.com/labeth/open-dso-core/sample"
 	core "github.com/labeth/open-dso-core/scpi"
 	"github.com/labeth/open-dso-core/scpi/meas"
 	"github.com/labeth/open-sds1000cml/app/internal/analog"
-	"github.com/labeth/open-sds1000cml/app/internal/engine"
 )
 
 // cmd is a dialect command whose handler needs nothing but the call.
@@ -538,13 +538,13 @@ func (h *Handler) setTRSE(c *core.Call) error {
 func (h *Handler) setACQW(c *core.Call) error {
 	switch strings.Split(c.Arg(), ",")[0] {
 	case "SAMPLING", "SAMPLE":
-		h.sc.SetAcqMode(engine.AcqNormal)
+		h.sc.SetAcqMode(coreengine.AcqNormal)
 	case "PEAK_DETECT", "PEAK":
-		h.sc.SetAcqMode(engine.AcqPeak)
+		h.sc.SetAcqMode(coreengine.AcqPeak)
 	case "AVERAGE", "AVG":
-		h.sc.SetAcqMode(engine.AcqAverage)
+		h.sc.SetAcqMode(coreengine.AcqAverage)
 	case "ERES":
-		h.sc.SetAcqMode(engine.AcqEres)
+		h.sc.SetAcqMode(coreengine.AcqEres)
 	default:
 		return c.Error(core.ErrHeader)
 	}

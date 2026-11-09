@@ -286,12 +286,11 @@ func TestReadWindows(t *testing.T) {
 	}
 }
 
-// Images are loaded by feature.
-// TRLC-LINKS: REQ-SDS-005
+// Images are loaded by feature, each load a fresh one: the fabric halted
+// first, the next Arm a commit arm.
+// TRLC-LINKS: REQ-SDS-005, REQ-SDS-231
 func TestImagesByFeature(t *testing.T) {
-	b, _, _ := newTestBoard()
-	sw := &switcher{}
-	b.SetImages(sw)
+	b, m, sw := newDrumBoard(t)
 	im, ok := b.Images()
 	if !ok {
 		t.Fatal("no images")
@@ -299,8 +298,8 @@ func TestImagesByFeature(t *testing.T) {
 	if err := im.Load(context.Background(), []string{"qualify"}); err != nil || sw.loaded != "qualify" {
 		t.Fatal(err, sw.loaded)
 	}
-	if im.Current().Features[0] != "qualify" {
-		t.Fatal(im.Current())
+	if im.Current().Features[0] != "qualify" || im.Current().Name != "qualify" || m.halted == 0 || !b.stopped {
+		t.Fatal(im.Current(), m.halted, b.stopped)
 	}
 	if _, ok := hal.AsRefusal(im.Load(context.Background(), []string{"no-such-feature"})); !ok {
 		t.Fatal("an unknown feature loaded")
