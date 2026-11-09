@@ -55,10 +55,14 @@ const (
 
 // Project makes the instrument model hold the trigger level in volts at
 // its source's tip, as the comparator's code gives it: at every level
-// written here and at every Reproject.
+// written here and at every Reproject; over the model alone (ModelCodes)
+// also at every change of the model's trigger source.
 // TRLC-LINKS: REQ-SDS-098
 func (l *Levels) Project(m *instrument.Model) {
 	l.m = m
+	if _, alone := l.eng.(*ModelCodes); alone {
+		m.OnTrigSource(l.Reproject) // over the engine its controls re-project (cmlControls)
+	}
 	l.Reproject()
 }
 
@@ -123,6 +127,7 @@ func (l *Levels) TrigLevel(src int) (v float64, ok bool) {
 // TrigLevelIn is TrigLevel in engine state st already read.
 // TRLC-LINKS: REQ-SDS-098
 func (l *Levels) TrigLevelIn(st engine.Stats, src int) (v float64, ok bool) {
+	st = l.codesIn(st)
 	if st.TrigCode == 0 {
 		return 0, false
 	}
@@ -245,6 +250,7 @@ func (l *Levels) OffsetIn(ch int, st engine.Stats) float64 { return l.offsetOf(c
 // included; 0 without a front end.
 // TRLC-LINKS: REQ-SDS-095
 func (l *Levels) OffsetStagedIn(ch int, st engine.Stats) float64 {
+	st = l.codesIn(st)
 	if l.fe == nil {
 		return 0
 	}
@@ -258,6 +264,7 @@ func (l *Levels) OffsetStagedIn(ch int, st engine.Stats) float64 {
 // offsetOf is channel ch's applied offset in st.
 // TRLC-LINKS: REQ-SDS-095
 func (l *Levels) offsetOf(ch int, st engine.Stats) float64 {
+	st = l.codesIn(st)
 	code := st.OffC1
 	if ch == 1 {
 		code = st.OffC2
@@ -273,7 +280,9 @@ func (l *Levels) offsetOf(ch int, st engine.Stats) float64 {
 
 // SaveTrigLevelIn is the package's SaveTrigLevelIn as the UI model's levels.
 // TRLC-LINKS: REQ-SDS-098
-func (l *Levels) SaveTrigLevelIn(st engine.Stats) TrigLevelSaved { return SaveTrigLevelIn(st) }
+func (l *Levels) SaveTrigLevelIn(st engine.Stats) TrigLevelSaved {
+	return SaveTrigLevelIn(l.codesIn(st))
+}
 
 // TrigStepsV is the package's TrigStepsV as the UI model's levels.
 // TRLC-LINKS: REQ-SDS-098
@@ -284,4 +293,59 @@ func (l *Levels) TrigStepsV(n int) float64 { return TrigStepsV(n) }
 // TRLC-LINKS: REQ-SDS-098, REQ-SDS-136
 func (l *Levels) LevelWordV(word int) float64 {
 	return engine.TrigLevelVolts(uint16(min(max(word, 1), 65535)))
+}
+
+// trigCal is a front end that gives the comparator's calibration at the
+// BNC (*analog.FrontEnd): the engine's trigger map converts with it.
+type trigCal interface {
+	TrigCalActive(srcCh int) (zero, cpv float64)
+}
+
+// TrigLevelBNCIn is the comparator's level in engine state st in volts at
+// source src's BNC, converted as the engine's trigger map converts it (the
+// front end's calibration, or the global fit); ok false while it was never
+// set. The display draws the level's marker from it.
+// TRLC-LINKS: REQ-SDS-098, REQ-SDS-168
+func (l *Levels) TrigLevelBNCIn(st engine.Stats, src int) (v float64, ok bool) {
+	st = l.codesIn(st)
+	if st.TrigCode == 0 {
+		return 0, false
+	}
+	zero, cpv := trigZeroFit, trigCPVFit
+	if tc, has := l.fe.(trigCal); has {
+		if z, c := tc.TrigCalActive(src); c > 0 {
+			zero, cpv = z, c
+		}
+	}
+	return (zero - float64(st.TrigCode)) / cpv, true
+}
+
+// LevelCode is the comparator's DAC code for a level of v volts at source
+// src's probe tip, within the DAC's range: the code a level this package
+// projected comes back as exactly. The board stages it from the model's
+// level.
+// TRLC-LINKS: REQ-SDS-098
+func (l *Levels) LevelCode(v float64, src int) uint16 { return clampCode(l.trigCodeOf(v, src)) }
+
+// codesIn is st, a snapshot of the controllers' controls, with the DAC
+// codes the levels keep: over the engine its snapshot carries them; over
+// the instrument model alone (ModelCodes) they are kept beside it.
+// TRLC-LINKS: REQ-SDS-098, REQ-SDS-095
+func (l *Levels) codesIn(st engine.Stats) engine.Stats {
+	if c, ok := l.eng.(*ModelCodes); ok {
+		return c.overlay(st)
+	}
+	return st
+}
+
+// OffsetSet reports that channel ch's offset was set: its DAC code is
+// staged (0 is the inherited boot offset, which a restore must not
+// overwrite with an explicit 0 V).
+// TRLC-LINKS: REQ-SDS-095, REQ-SDS-089
+func (l *Levels) OffsetSet(ch int) bool {
+	st := l.codesIn(l.eng.Snapshot())
+	if ch&1 == 1 {
+		return st.OffC2 != 0
+	}
+	return st.OffC1 != 0
 }
