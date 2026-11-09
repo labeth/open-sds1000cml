@@ -17,7 +17,6 @@ import (
 	"github.com/labeth/open-dso-core/sample"
 	core "github.com/labeth/open-dso-core/scpi"
 	scope "github.com/labeth/open-sds1000cml/app"
-	"github.com/labeth/open-sds1000cml/app/internal/engine"
 )
 
 // Scope is the instrument surface: the instrument's controls and the
@@ -45,7 +44,7 @@ type Levels interface {
 	SetTrigLevel(v float64, src int) float64
 	TrigLevel(src int) (float64, bool)
 	SetOffset(ch int, v float64) float64
-	OffsetIn(ch int, st engine.Stats) float64
+	OffsetIn(ch int, st inst.Stats) float64
 }
 
 // Display is the device display/panel surface (implemented by
@@ -133,7 +132,7 @@ type Handler struct {
 // tdivNow is the instrument's timebase: a pending setting until the engine
 // reports it applied.
 // TRLC-LINKS: REQ-SDS-024
-func (h *Handler) tdivNow(st engine.Stats) float64 {
+func (h *Handler) tdivNow(st inst.Stats) float64 {
 	if h.pendTdiv > 0 && math.Abs(st.TdivS-h.pendTdiv) > h.pendTdiv*1e-6 {
 		return h.pendTdiv
 	}
