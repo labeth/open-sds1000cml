@@ -91,6 +91,14 @@ func (d *DecodedStreams) TakeRecord() bool {
 	return true
 }
 
+// HoldsImage reports the image a decoded stream runs on held for it: a
+// stream starting, or started again soon (HoldDecodedImage), as the
+// engine's owner keeps it.
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-228
+func (d *DecodedStreams) HoldsImage() bool {
+	return d.h.clock().Now().Before(d.decodedStarting)
+}
+
 // Close ends a decoded capture and a software stream still running.
 // TRLC-LINKS: REQ-SDS-013, REQ-SDS-018
 func (d *DecodedStreams) Close() {

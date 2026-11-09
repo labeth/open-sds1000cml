@@ -19,11 +19,29 @@ import (
 // work on the stacking image (StackRecords), the template in the request.
 
 // FPGAStack is a whole stacking session for LONG work the core schedules
-// (a board extension's): the fabric halted, the stacking image loaded,
-// req.Records raw captures of cfg stacked, and the general image always
-// loaded again before it returns. OWNER, LONG.
+// (the UI model's and the web's stacking session, panel.BoardStacker):
+// req.Records raw records of the staged depth (req.RecordWords words when
+// it names them) auto-triggered and stacked, as the engine's session does
+// (StackSession). OWNER, LONG.
 // TRLC-LINKS: REQ-SDS-141
-func (b *Board) FPGAStack(ctx context.Context, cfg sramcapture.Config, req superres.StackRequest) (res superres.StackResult, err error) {
+func (b *Board) FPGAStack(ctx context.Context, req superres.StackRequest) (superres.StackResult, error) {
+	st := b.Staged()
+	// Raw samples at the current depth. Hits come from the stacker's own
+	// level crossings, so records auto-trigger once prehistory exists.
+	cfg := sramcapture.Config{Source: sramcapture.ADC, PreWords: st.PreWords, PostWords: st.PostWords}
+	if w := req.RecordWords; w != 0 {
+		w = min(max(w, 2), sramcapture.Words)
+		cfg.PreWords, cfg.PostWords = w/2, w-w/2
+	}
+	return b.StackSession(ctx, cfg, req)
+}
+
+// StackSession is a whole stacking session of cfg's records: the fabric
+// halted, the stacking image loaded, req.Records raw captures of cfg
+// stacked, and the general image always loaded again before it returns.
+// OWNER, LONG.
+// TRLC-LINKS: REQ-SDS-141
+func (b *Board) StackSession(ctx context.Context, cfg sramcapture.Config, req superres.StackRequest) (res superres.StackResult, err error) {
 	if !b.HasImage(ImageStack) {
 		return res, errors.New("FPGA stacking image not available in this build")
 	}

@@ -4,6 +4,7 @@ package acq
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"slices"
 	"time"
@@ -68,6 +69,9 @@ var imageFeatures = []struct{ image, feature string }{
 	{ImageStream, "stream"},
 	{ImageBits, "bits-stream"},
 }
+
+// errNoLoader is a load without an image loader attached.
+var errNoLoader = errors.New("no image switcher")
 
 // imageReload is what a switch stalls acquisition for: the configuration
 // over CS3 and the converters' restart.
@@ -161,8 +165,12 @@ func (b *Board) loader(image string) func() error {
 // gone afterwards. LONG.
 // TRLC-LINKS: REQ-SDS-005
 func (b *Board) LoadImage(image string) error {
+	if b.images == nil {
+		return errNoLoader
+	}
 	err := b.loader(image)()
-	b.state = hal.Idle
+	b.state, b.stopped = hal.Idle, true // the fabric applies nothing staged before: the next Arm commits
+	b.reloads++
 	if err == nil {
 		b.imageLoaded = image
 	}
@@ -178,7 +186,7 @@ func (i *imagesFacet) Provides() []hal.ImageSet {
 	var out []hal.ImageSet
 	for _, f := range imageFeatures {
 		if b.HasImage(f.image) {
-			out = append(out, hal.ImageSet{Features: []string{f.feature}, Needs: []string{"sram"}, ReloadCost: imageReload})
+			out = append(out, hal.ImageSet{Name: imageName(f.image), Features: []string{f.feature}, Needs: []string{"sram"}, ReloadCost: imageReload})
 		}
 	}
 	return out
@@ -188,27 +196,38 @@ func (i *imagesFacet) Provides() []hal.ImageSet {
 // TRLC-LINKS: REQ-SDS-005
 func (i *imagesFacet) Current() hal.ImageSet {
 	b := (*Board)(i)
-	return hal.ImageSet{Features: []string{FeatureOf(b.imageLoaded)}, Triggers: b.trigCaps(), Needs: []string{"sram"}, ReloadCost: imageReload}
+	return hal.ImageSet{Name: imageName(b.imageLoaded), Features: []string{FeatureOf(b.imageLoaded)}, Triggers: b.trigCaps(), Needs: []string{"sram"}, ReloadCost: imageReload}
 }
 
 // Load loads the image that has every feature asked: each image has one, so
-// one feature (or none: the general image). The loader refuses an image the
-// build lacks.
-// TRLC-LINKS: REQ-SDS-005
+// one feature (or none: the general image), as every load the core asks
+// for is made (loadFresh: the fabric halted, the capabilities probed, the
+// panel scan written again and the converters brought up). The loader
+// refuses an image the build lacks. OWNER, LONG.
+// TRLC-LINKS: REQ-SDS-005, REQ-SDS-231
 func (i *imagesFacet) Load(_ context.Context, features []string) error {
-	b := (*Board)(i)
+	want, err := imageOf(features)
+	if err != nil {
+		return err
+	}
+	return (*Board)(i).loadFresh(want)
+}
+
+// imageOf is the image with the features asked.
+// TRLC-LINKS: REQ-SDS-005
+func imageOf(features []string) (string, error) {
 	want := ImageGeneral
 	switch {
 	case len(features) > 1:
-		return hal.Refuse("FPGA image", "no image has "+features[0]+" and "+features[1]+" together")
+		return "", hal.Refuse("FPGA image", "no image has "+features[0]+" and "+features[1]+" together")
 	case len(features) == 1:
 		k := slices.IndexFunc(imageFeatures, func(f struct{ image, feature string }) bool { return f.feature == features[0] })
 		if k < 0 {
-			return hal.Refuse("FPGA image", "no image has "+features[0])
+			return "", hal.Refuse("FPGA image", "no image has "+features[0])
 		}
 		want = imageFeatures[k].image
 	}
-	return b.LoadImage(want)
+	return want, nil
 }
 
 // loadFresh loads image as the engine's image switch does: the fabric

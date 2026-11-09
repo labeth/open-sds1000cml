@@ -40,6 +40,7 @@ type Board struct {
 
 	images      ImageSwitcher
 	imageLoaded string // the image in use: "" the general one
+	reloads     uint64 // image loads, a converter recovery's among them (CheckConverters)
 
 	// acquisition state, owner only
 	plan       hal.Plan
