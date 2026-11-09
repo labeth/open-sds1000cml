@@ -114,12 +114,14 @@ func (e *Engine) rollActive() bool {
 	return true
 }
 
-// SetRollStream chooses how roll runs. Off (the default), it stitches short
-// captures on whatever image is loaded, so a timebase step into or out of roll
-// is instant. On, roll loads the stream image and is gap-free, at the cost of
-// an image reload (seconds) whenever roll starts or ends.
+// SetRollStream chooses how roll runs: the board's roll-stream preference
+// (acq.Board.SetRollStream), which the core's cycle rolls by as well. Off
+// (the default), it stitches short captures on whatever image is loaded, so
+// a timebase step into or out of roll is instant. On, roll loads the stream
+// image and is gap-free, at the cost of an image reload (seconds) whenever
+// roll starts or ends.
 // TRLC-LINKS: REQ-SDS-010, REQ-SDS-035
-func (e *Engine) SetRollStream(on bool) { e.rollStream.Store(on) }
+func (e *Engine) SetRollStream(on bool) { e.hw().SetRollStream(on) }
 
 // rollView is the scrolling ring: the newest sample last.
 type rollView struct {

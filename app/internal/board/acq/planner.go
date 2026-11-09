@@ -18,7 +18,8 @@ type plannerFacet Board
 
 // Plan is the SRAM record for r: the full record at 2 ns a sample while
 // ten divisions fit, else the smallest decimation that fits them (PlanSRAM),
-// both channels always. A decimated record is filtered to Q8.8 precision
+// both channels always; a roll request is the roll the roll-stream
+// preference chooses (chunks, or the stream image's peak pairs). A decimated record is filtered to Q8.8 precision
 // words (or box averages, or picked samples, on images that do so). The
 // record is always the whole memory, so any depth up to it is served; a
 // deeper one, or a feature of r.Need the record's content or depth cannot
@@ -31,6 +32,8 @@ func (pl *plannerFacet) Plan(r hal.Request) (hal.Plan, error) {
 		return hal.Plan{}, hal.Refuse("segmented memory", "the SRAM holds one record")
 	case r.Mode == hal.Stream && slices.ContainsFunc(r.Need, func(f hal.Feature) bool { return f.Name == FeatureSound }):
 		return soundPlan(r), nil
+	case r.Mode == hal.RollMode && b.mem != nil && b.rollStream.Load() && b.HasImage(ImageStream):
+		return peakRollPlanOf(r), nil
 	case r.Mode == hal.RollMode && b.mem != nil:
 		return rollPlanOf(r), nil
 	case r.Mode == hal.RollMode || r.Mode == hal.Stream:

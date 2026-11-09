@@ -13,22 +13,30 @@ import (
 )
 
 // extensions are the SDS1000CML+'s own routes beside the shared API, one
-// hal.Extension a feature: the SRAM decoded capture and the FPGA stacking
-// session where the board or the engine has them (the board's decoded
-// streams first: decodedSource), the FPGA panel scan, and the engine's
-// live tuning knobs. Each is board-specific: the decoded capture's
-// configurations, event layout and record are the 18 Mbit SRAM's and the
-// CML images'; the stacking session is the CML's stacking image; the panel
-// scan reads the CML's key chain through its FPGA (the board's, ps); the
-// tuning knobs are the CML engine's drain and settle timings.
+// hal.Extension a feature: the SRAM decoded capture where the board or the
+// engine has it (the board's decoded streams first: decodedSource), the
+// FPGA stacking session (stack, the board's session on the core's cycle,
+// else the engine's), the FPGA panel scan, and the live tuning knobs (the
+// board's, else the engine's). Each is board-specific: the decoded
+// capture's configurations, event layout and record are the 18 Mbit SRAM's
+// and the CML images'; the stacking session is the CML's stacking image;
+// the panel scan reads the CML's key chain through its FPGA (the board's,
+// ps); the tuning knobs are the CML fabric's arm, drain and settle timings.
 // TRLC-LINKS: REQ-SDS-013, REQ-SDS-022, REQ-SDS-141, REQ-SDS-162
-func (s *Scope) extensions(ps panelScanner, board hal.Board) []hal.Extension {
+func (s *Scope) extensions(ps panelScanner, board hal.Board, stack fpgaStackSource) []hal.Extension {
 	routes := s.decodedRoutes(board)
-	routes = append(routes, s.fpgaStackRoutes()...)
-	routes = append(routes,
-		webserver.Route{Pattern: "/api/panel/scan", Feature: "panel_scan", Handler: panelScanHandler(ps)},
-		webserver.Route{Pattern: "/api/debug/tune", Feature: "debug_tune", Handler: http.HandlerFunc(s.hTune)},
-	)
+	if stack == nil {
+		stack, _ = s.sc.(fpgaStackSource)
+	}
+	routes = append(routes, s.fpgaStackRoutes(stack)...)
+	routes = append(routes, webserver.Route{Pattern: "/api/panel/scan", Feature: "panel_scan", Handler: panelScanHandler(ps)})
+	tune, ok := board.(tuner)
+	if !ok {
+		tune, ok = s.sc.(tuner)
+	}
+	if ok {
+		routes = append(routes, webserver.Route{Pattern: "/api/debug/tune", Feature: "debug_tune", Handler: tuneHandler(tune)})
+	}
 	return extensionsOf(routes)
 }
 
@@ -59,24 +67,26 @@ func routesOf(xs []hal.Extension) []webserver.Route {
 	return out
 }
 
-// hTune applies the live frame-rate and CPU tuning knobs and
+// tuneHandler applies the live frame-rate and CPU tuning knobs and
 // returns the effective values. GET reports current values; POST {json} sets
-// them. Fields omitted / negative are left unchanged (see engine.Tune).
+// them. Fields omitted / negative are left unchanged (see acq.Tuning.Tune).
 // TRLC-LINKS: REQ-SDS-162
-func (s *Scope) hTune(w http.ResponseWriter, r *http.Request) {
-	cur := s.sc.TuneSnapshot()
-	if r.Method != http.MethodPost {
-		webserver.WriteJSON(w, cur)
-		return
+func tuneHandler(tn tuner) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		cur := tn.TuneSnapshot()
+		if r.Method != http.MethodPost {
+			webserver.WriteJSON(w, cur)
+			return
+		}
+		// Decode onto the current values so any omitted field (bools included) keeps
+		// its present setting; only what the body carries is overridden.
+		t := cur
+		if err := json.NewDecoder(io.LimitReader(r.Body, 4<<10)).Decode(&t); err != nil {
+			webserver.WriteBadJSON(w)
+			return
+		}
+		webserver.WriteJSON(w, tn.Tune(t))
 	}
-	// Decode onto the current values so any omitted field (bools included) keeps
-	// its present setting; only what the body carries is overridden.
-	t := cur
-	if err := json.NewDecoder(io.LimitReader(r.Body, 4<<10)).Decode(&t); err != nil {
-		webserver.WriteBadJSON(w)
-		return
-	}
-	webserver.WriteJSON(w, s.sc.Tune(t))
 }
 
 // panelScanner is the board's front-panel scan (ADR-PANEL-SERIAL-SCAN).

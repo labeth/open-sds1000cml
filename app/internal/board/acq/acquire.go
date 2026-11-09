@@ -220,7 +220,7 @@ func (a *acquirerFacet) Arm() error {
 	}
 	commit := b.stopped || b.stageGen != b.armedGen
 	if b.frontEnd != nil {
-		applied, err := b.frontEnd.write()
+		applied, err := b.writeFrontEnd()
 		if err != nil {
 			return err
 		}

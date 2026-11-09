@@ -4,6 +4,7 @@ package acq
 
 import (
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/labeth/open-sds1000cml/app/internal/bus"
@@ -43,6 +44,11 @@ type panelPort struct {
 	lvlCode  uint16
 	lvlDirty bool
 
+	// scaleGen counts what moves a channel's scale: an offset staged and
+	// written, a relay or gain write (Board.writeFrontEnd). A roll drops
+	// the data captured across one.
+	scaleGen atomic.Uint64
+
 	// lampLag hears how long a lamp word waited for its flush.
 	lampLag func(time.Duration)
 	// writeErr hears a failed write.
@@ -70,6 +76,7 @@ func (p *panelPort) stageOffset(ch int, code uint16) {
 	p.mu.Lock()
 	p.offCode[ch&1], p.offDirty[ch&1] = code, true
 	p.mu.Unlock()
+	p.scaleGen.Add(1)
 }
 
 // stageLevel stages the trigger comparator DAC code.
@@ -120,6 +127,9 @@ func (p *panelPort) flush() (level bool, code uint16) {
 	p.offDirty = [2]bool{}
 	p.mu.Unlock()
 	p.flushLamps()
+	if offDirty[0] || offDirty[1] {
+		p.scaleGen.Add(1)
+	}
 	if offDirty[0] {
 		p.w3(cs3OffC1Lo, off[0]&0xff)
 		p.w3(cs3OffC1Hi, off[0]>>8)

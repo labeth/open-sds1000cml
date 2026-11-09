@@ -3,7 +3,6 @@
 package webscope
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"io"
@@ -57,22 +56,20 @@ func (s *Scope) frameTemplate(cfg engine.FPGAStackRequest, points int, tolerance
 	return superres.BuildFPGATemplate(sig, sampleS, edgeX, float64(cfg.Stack.Level), cfg.Stack.Falling, points, tolerance)
 }
 
-// fpgaStackSource is the engine's FPGA stacking session (ADR-STACKING-IMAGE-SPLIT).
-type fpgaStackSource interface {
-	FPGAStack(context.Context, engine.FPGAStackRequest) (engine.FPGAStackResult, error)
-}
+// fpgaStackSource is an FPGA stacking session (ADR-STACKING-IMAGE-SPLIT):
+// the board's on the core's cycle (WithStacker), or the engine's.
+type fpgaStackSource = FPGAStacker
 
 // POST /api/superres/fpga {"stack":{...},"records":N} switches to the stacking
 // image, stacks N fresh records in the FPGA, restores the general image and
 // returns the stack. Live acquisition pauses for the session.
 // TRLC-LINKS: REQ-SDS-141
-func (s *Scope) fpgaStackRoutes() []webserver.Route {
+func (s *Scope) fpgaStackRoutes(source fpgaStackSource) []webserver.Route {
 	var routes []webserver.Route
 	add := func(pattern string, h http.HandlerFunc) {
 		routes = append(routes, webserver.Route{Pattern: pattern, Feature: "fpga_stack", Handler: h})
 	}
-	source, ok := s.sc.(fpgaStackSource)
-	if !ok {
+	if source == nil {
 		return nil
 	}
 	add("POST /api/superres/fpga", func(w http.ResponseWriter, r *http.Request) {

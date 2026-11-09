@@ -30,11 +30,12 @@ func (p *platformFacet) BringUp(context.Context) (hal.Identity, error) {
 func (p *platformFacet) Handover() hal.Handover { return p.handover }
 
 // Service writes what other goroutines staged: at a commit point with no
-// capture armed the front end's settings staged through FrontEnd().Set and
-// the relay and gain words its own setters left (a detent's change
-// re-stages its offset DAC), then on the panel plane the lamp word,
-// the offset DACs and the trigger level DAC; inside a read (as a Readout
-// yield) the lamp word only.
+// capture armed, or while a stream runs (between its words or chunks, as
+// the scope's own loops write them), the front end's settings staged
+// through FrontEnd().Set and the relay and gain words its own setters left
+// (a detent's change re-stages its offset DAC), then on the panel plane the
+// lamp word, the offset DACs and the trigger level DAC; inside a read (as a
+// Readout yield) the lamp word only.
 // TRLC-LINKS: REQ-SDS-001
 func (p *platformFacet) Service() {
 	b := (*Board)(p)
@@ -42,8 +43,8 @@ func (p *platformFacet) Service() {
 		b.panel.flushLamps()
 		return
 	}
-	if b.state != hal.Armed && b.frontEnd != nil {
-		wrote, err := b.frontEnd.write()
+	if (b.state != hal.Armed || b.streaming()) && b.frontEnd != nil {
+		wrote, err := b.writeFrontEnd()
 		if err != nil && b.panel.writeErr != nil {
 			b.panel.writeErr(fmt.Errorf("front end: %w", err))
 		}

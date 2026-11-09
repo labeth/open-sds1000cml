@@ -92,10 +92,10 @@ func (e *Engine) Run() {
 		e.serviceCommands()
 		e.bumpFrames() // heartbeat advances every iteration, stopped or not
 		if e.armBusy {
-			gc.step(e.tuneGcCtl.Load())
+			gc.step(e.tune.GcCtl.Load())
 		}
 
-		if lvl := e.reinitReq.Swap(0); lvl > 0 {
+		if lvl := e.tune.Reinit.Swap(0); lvl > 0 {
 			e.doReinit(lvl) // staged debug/recovery re-init; loop boundary = no capture in flight
 		}
 
@@ -205,7 +205,7 @@ func (e *Engine) oneFrame(norm bool) { //nolint:gocyclo,funlen // one native-fas
 	// let it keep filling for a bounded extra window before halt (busy-held so the
 	// fill isn't starved). Tunable via fill_extra_us; 0 = off.
 	if nativeFast && e.armBusy {
-		if ex := time.Duration(e.tuneFillExtraUs.Load()) * time.Microsecond; ex > 0 {
+		if ex := time.Duration(e.tune.FillExtraUs.Load()) * time.Microsecond; ex > 0 {
 			spinFor(ex)
 		}
 	}
@@ -238,7 +238,7 @@ func (e *Engine) oneFrame(norm bool) { //nolint:gocyclo,funlen // one native-fas
 	loC1, hiC1, pC1 := core.Ptp(f.Codes8(0)[:cols])
 	rd := realDepthP(f.Codes8(0)[:cols], pC1)
 	e.lastFirstHalf = nativeFast && rd*4 < cols*3 // raw half-record rate (before re-capture)
-	maxRetry := int(e.tuneMaxRetry.Load())
+	maxRetry := int(e.tune.MaxRetry.Load())
 	// Re-capture only when the comparator FIRED and the record still kept a dead
 	// tail — that is the genuine intermittent corruption a retry can fix. An
 	// UNTRIGGERED half-record is the FSM's normal parked state (pre-trigger half
@@ -336,7 +336,7 @@ func (e *Engine) oneFrame(norm bool) { //nolint:gocyclo,funlen // one native-fas
 		return nf
 	}
 	if !nativeFast && !sigPresent { // signalPresent, on the scan above
-		sigPresent = float64(p) >= float64(e.tuneSigK.Load())*noise()
+		sigPresent = float64(p) >= float64(e.tune.SigK.Load())*noise()
 	}
 
 	// Qualifier dispatch (spec 05): PULSE/SLOPE/VIDEO REPLACE the EDGE

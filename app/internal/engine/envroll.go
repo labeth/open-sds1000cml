@@ -130,7 +130,7 @@ func (e *Engine) envFrame(norm bool) {
 	// where triggering is impossible.
 	td := e.trigDispLevel(int(e.trigSrc.Load()))
 	edgeX := -1.0
-	if td >= 0 && core.SignalPresent(disc, float64(e.tuneSigK.Load())) {
+	if td >= 0 && core.SignalPresent(disc, float64(e.tune.SigK.Load())) {
 		edgeX = centerCross(disc, td, e.trigRising.Load())
 	}
 	triggered := edgeX >= 0

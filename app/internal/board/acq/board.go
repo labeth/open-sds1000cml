@@ -15,6 +15,7 @@ package acq
 import (
 	"encoding/json"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/labeth/open-dso-core/hal"
@@ -68,8 +69,11 @@ type Board struct {
 	cond       condState
 	stream     streamState
 	roll       rollState
+	peak       peakState   // the roll stream on the stream image (roll_stream.go)
+	rollStream atomic.Bool // roll streams peak pairs on the stream image (SetRollStream)
 	scan       panelScanState
 	adc        adcHealth
+	tune       Tuning // the live tuning knobs (tuning.go)
 
 	log   func(string, ...any) // nil: the board says nothing
 	clock func() time.Time     // nil: time.Now
@@ -111,6 +115,7 @@ type Config struct {
 func New(cfg Config) *Board {
 	b := &Board{mem: cfg.Memory}
 	b.panel.bus, b.panel.lampLag, b.panel.writeErr = cfg.Panel, cfg.LampLag, cfg.WriteErr
+	b.tune.Defaults(DefaultArmSettle, cfg.Memory != nil, true)
 	return b
 }
 

@@ -338,6 +338,13 @@ func (l *Levels) codesIn(st engine.Stats) engine.Stats {
 	return st
 }
 
+// CodesIn is st, a snapshot of the controllers' controls, with the DAC
+// codes the levels keep (the comparator's and the offsets'): the engine's
+// snapshot as it is, the instrument model's with ModelCodes' codes. The web
+// status reads its codes and the level's volts from it.
+// TRLC-LINKS: REQ-SDS-098, REQ-SDS-095, REQ-SDS-164
+func (l *Levels) CodesIn(st engine.Stats) engine.Stats { return l.codesIn(st) }
+
 // OffsetSet reports that channel ch's offset was set: its DAC code is
 // staged (0 is the inherited boot offset, which a restore must not
 // overwrite with an explicit 0 V).

@@ -313,7 +313,8 @@ func TestRollHeldMarksGaps(t *testing.T) {
 	}
 }
 
-// The board's roll plan is the engine's, at every timebase it rolls at.
+// The board's roll plans, chunked and streamed, are the engine's, at every
+// timebase it rolls at.
 // TRLC-LINKS: REQ-SDS-010
 func TestBoardRollPlanIsTheEngines(t *testing.T) {
 	for _, tdiv := range SupportedTdivs() {
@@ -323,6 +324,10 @@ func TestBoardRollPlanIsTheEngines(t *testing.T) {
 		p, b := planRoll(tdiv), acq.PlanRoll(tdiv)
 		if b != (acq.RollPlan{Log: p.log, SampleS: p.sampleS, Screen: p.screen, Chunk: p.chunk, Group: p.group}) {
 			t.Errorf("%g s/div: the board plans %+v, the engine %+v", tdiv, b, p)
+		}
+		p, k := planRollPeak(tdiv), acq.PlanRollPeak(tdiv)
+		if k != (acq.RollPeakPlan{Log: p.log, SampleS: p.sampleS, Screen: p.screen, Group: p.group}) {
+			t.Errorf("%g s/div: the board streams %+v, the engine %+v", tdiv, k, p)
 		}
 	}
 }
