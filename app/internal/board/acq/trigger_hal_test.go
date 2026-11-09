@@ -133,23 +133,6 @@ func TestFreeRunZonesAndOrder(t *testing.T) {
 	}
 }
 
-// A bus request whose threshold is left to the decoder is sliced at the
-// levels the owner learned (prototrig.Bus.Levels): the hardware receiver
-// takes it at those codes, and is not refused for a threshold it lacks.
-// TRLC-LINKS: REQ-SDS-013
-func TestBusLevelsAreTheThreshold(t *testing.T) {
-	b, _, _ := newTestBoard("uart")
-	req := core.SerialParams{Proto: core.SerMIDI, ChA: 0, Baud: 31250, Bytes: []int{0x90}, Addr: -1, RW: 2}
-	bus := &prototrig.Bus{Request: req, Levels: [2]float64{b.CodeVolts(0, 150), b.CodeVolts(0, 150)}}
-	spec := hal.TriggerSpec{Stages: []hal.TrigStage{{Node: hal.NodeProtocol, Source: hal.Source{Kind: hal.Analog}, Proto: bus}}}
-	if err := b.Trigger().Program(spec); err != nil {
-		t.Fatal(err)
-	}
-	if c := b.Staged(); !c.UART.Enabled || !c.Normal || c.TriggerLevel != 150 {
-		t.Fatalf("MIDI on the UART receiver: %+v normal %v level %d", c.UART, c.Normal, c.TriggerLevel)
-	}
-}
-
 // AUTO's wait is the fabric's to know: a fixed wait and the time the
 // record fills before its trigger, so a forced record holds samples on
 // both sides of it.

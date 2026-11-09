@@ -255,11 +255,9 @@ func (b *Board) busConfig(bus *prototrig.Bus, in *trigInputs, c *sramcapture.Con
 	if !b.trig.caps.Serial() {
 		return hal.Refuse("serial trigger", "this FPGA image has no matcher for any bus")
 	}
-	// the levels are the request's thresholds whatever it named: a
-	// threshold left to the decoder is the one the owner learned
 	p := bus.Request
-	p.Threshold, p.HaveThr = in.scale[p.ChA&1].Word(bus.Levels[0]), true
-	p.ThresholdB, p.HaveThrB = in.scale[p.ChB&1].Word(bus.Levels[1]), true
+	p.Threshold = in.scale[p.ChA&1].Word(bus.Levels[0])
+	p.ThresholdB = in.scale[p.ChB&1].Word(bus.Levels[1])
 	var arinc uint32
 	if len(bus.ARINCSlicer) == 4 {
 		for _, v := range bus.ARINCSlicer {
