@@ -9,6 +9,7 @@
 package webscope
 
 import (
+	"context"
 	"time"
 
 	"github.com/labeth/open-dso-core/hal"
@@ -50,10 +51,20 @@ type Engine interface {
 	AcqLog(n int) ([]engine.AcqSample, float64)
 	CmdLog(n int) []engine.CmdNote
 	NoteCmd(name string, val float64)
+}
 
-	// Live tuning (debug /api/debug/tune) of the frame-rate and CPU knobs.
+// tuner is the live tuning (debug /api/debug/tune) of the frame-rate and
+// CPU knobs: the board's (acq.Board), else the engine's.
+type tuner interface {
 	Tune(engine.TuneVals) engine.TuneVals
 	TuneSnapshot() engine.TuneVals
+}
+
+// codeLevels is levels that keep the DAC codes beside the controls'
+// snapshot (board.Levels.CodesIn): over the instrument model alone the
+// snapshot carries none.
+type codeLevels interface {
+	CodesIn(st engine.Stats) engine.Stats
 }
 
 // Analog is the vertical front-end surface (implemented by
@@ -149,13 +160,32 @@ type Scope struct {
 }
 
 // Option completes the scope's configuration.
-type Option func(*scopeweb.Config)
+type Option func(*options)
+
+// options are the core web scope's configuration and this scope's own
+// sources.
+type options struct {
+	scopeweb.Config
+	stack fpgaStackSource // the stacking session's source; nil: the engine's
+}
 
 // WithBoard makes the board's HAL the source of the capabilities document
 // (WithCaps): its profile, front end and trigger, completed with what this
 // engine serves beyond them.
 // TRLC-LINKS: REQ-SDS-164
-func WithBoard(b hal.Board) Option { return func(c *scopeweb.Config) { c.Board = b } }
+func WithBoard(b hal.Board) Option { return func(o *options) { o.Board = b } }
+
+// WithStacker makes src the FPGA stacking session's source (the stacking
+// route): the board's session as LONG work on the owner of the core's
+// cycle (the HAL scope's engine, panel.BoardStacker); without it the
+// engine's.
+// TRLC-LINKS: REQ-SDS-141
+func WithStacker(src FPGAStacker) Option { return func(o *options) { o.stack = src } }
+
+// FPGAStacker is an FPGA stacking session's source.
+type FPGAStacker interface {
+	FPGAStack(context.Context, engine.FPGAStackRequest) (engine.FPGAStackResult, error)
+}
 
 // capsOfThisScope completes the HAL's projection with what this engine
 // serves: the four trigger types it programs, 25 codes a division, its five
@@ -235,7 +265,7 @@ type extensionHolder interface {
 // TRLC-LINKS: REQ-SDS-161, REQ-SDS-162, REQ-SDS-163, REQ-SDS-164
 func New(sc Engine, fe Analog, lv Levels, panel Panel, screen func() []byte, opts ...Option) *Scope {
 	s := &Scope{sc: sc, fe: fe, lv: lv, panel: panel, screen: screen}
-	cfg := scopeweb.Config{
+	o := options{Config: scopeweb.Config{
 		Frames:   frameSource{s},
 		Version:  buildinfo.String(),
 		Product:  "open-sds1000cml",
@@ -245,13 +275,14 @@ func New(sc Engine, fe Analog, lv Levels, panel Panel, screen func() []byte, opt
 		Controls: controlSetter{s},
 		Scales:   scales{s},
 		Quiet:    sc,
-	}
+	}}
 	if panel != nil {
-		cfg.UI = panel
+		o.UI = panel
 	}
-	for _, o := range opts {
-		o(&cfg)
+	for _, opt := range opts {
+		opt(&o)
 	}
+	cfg := &o.Config
 	// The scope's own routes are its board's extensions where the board
 	// holds them (scopeweb serves Board.Extensions); without a board they
 	// are the scope's routes. The panel scan is the board's, else the
@@ -260,7 +291,7 @@ func New(sc Engine, fe Analog, lv Levels, panel Panel, screen func() []byte, opt
 	if b, ok := cfg.Board.(panelScanner); ok {
 		ps = b
 	}
-	ext := s.extensions(ps, cfg.Board)
+	ext := s.extensions(ps, cfg.Board, o.stack)
 	if h, ok := cfg.Board.(extensionHolder); ok {
 		h.SetExtensions(ext)
 	} else {
@@ -270,7 +301,7 @@ func New(sc Engine, fe Analog, lv Levels, panel Panel, screen func() []byte, opt
 		s.capsOn = true
 		cfg.CapsEdit = s.capsOfThisScope
 	}
-	s.Scope = scopeweb.New(cfg)
+	s.Scope = scopeweb.New(*cfg)
 	return s
 }
 

@@ -70,12 +70,13 @@ type statusReply struct {
 }
 
 // status is the /api/status document: everything the page polls once a
-// second — the engine's stats, the timebase ladder, the trigger level's
-// calibration, each channel's front end, the panel snapshot, the decoded
-// stream and super-res state, and the acquisition checker's logs.
+// second — the engine's stats (with the levels' DAC codes: codesIn), the
+// timebase ladder, the trigger level's calibration, each channel's front
+// end, the panel snapshot, the decoded stream and super-res state, and the
+// acquisition checker's logs.
 // TRLC-LINKS: REQ-SDS-164
 func (s *Scope) status() any {
-	st := s.sc.Snapshot()
+	st := s.codesIn(s.sc.Snapshot())
 	rep := statusReply{
 		Stats:         st,
 		Tdivs:         ladder.tdivs,
@@ -168,6 +169,17 @@ func (s *Scope) status() any {
 		rep.Off2V *= s.fe.ProbeFactor(1)
 	}
 	return rep
+}
+
+// codesIn is st with the comparator's and the offsets' DAC codes the
+// levels keep (over the instrument model alone the controls' snapshot
+// carries none); st as it is over the engine, whose snapshot carries them.
+// TRLC-LINKS: REQ-SDS-164, REQ-SDS-098
+func (s *Scope) codesIn(st engine.Stats) engine.Stats {
+	if cl, ok := s.lv.(codeLevels); ok {
+		return cl.CodesIn(st)
+	}
+	return st
 }
 
 // streamStatus is the decoded stream in /api/status (ADR-PANEL-DECODED-STREAM).
