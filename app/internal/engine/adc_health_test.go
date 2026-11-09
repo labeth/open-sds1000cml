@@ -14,6 +14,12 @@ import (
 	"github.com/labeth/open-sds1000cml/app/internal/board/acq"
 )
 
+// adcSnaps is the snapshots one of the board's converter checks reads.
+const adcSnaps = 64
+
+// adcReloads is the image reloads the board tries after an encode restart.
+const adcReloads = 3
+
 // snapsOf samples a signal at n random instants, as the fabric's snapshots
 // do: core (p, ch) reads sig(t + its sampling phase) plus noise, held cores
 // read their held code.
@@ -41,44 +47,6 @@ func adcSquare(t float64) float64 {
 		return 90
 	}
 	return 160
-}
-
-// A core holding one code under a moving input is stuck; a quiet, flat,
-// clipped or slow input moves no core and finds none.
-// TRLC-LINKS: REQ-SDS-231
-func TestStuckCores(t *testing.T) {
-	sine := func(t float64) float64 { return 128 + 60*math.Sin(2*math.Pi*1e4*t) }
-	for _, c := range []struct {
-		name  string
-		snaps [][10]uint8
-		want  uint16
-	}{
-		{"healthy adcSquare", snapsOf(adcSnaps, 1, .6, adcSquare, nil), 0},
-		{"healthy sine", snapsOf(adcSnaps, 2, .6, sine, nil), 0},
-		// converters E2 and E4: both cores each (bits 2,3 and 6,7)
-		{"stuck pairs", snapsOf(adcSnaps, 3, .6, adcSquare, map[int]uint8{2: 165, 3: 177, 6: 181, 7: 120}), 0b11001100},
-		// one core of a channel whose other cores move
-		{"stuck core", snapsOf(adcSnaps, 4, .6, sine, map[int]uint8{9: 97}), 1 << 9},
-		// four of a channel's five cores held: the one moving is evidence
-		{"one core moving", snapsOf(adcSnaps, 5, .6, adcSquare, map[int]uint8{0: 85, 2: 90, 4: 91, 6: 97}), 0b1010101},
-		{"quiet input", snapsOf(adcSnaps, 6, .7, func(float64) float64 { return 128 }, nil), 0},
-		{"quiet input, one held", snapsOf(adcSnaps, 7, .7, func(float64) float64 { return 128 }, map[int]uint8{4: 128}), 0},
-		{"noise-free flat", snapsOf(adcSnaps, 8, 0, func(float64) float64 { return 131 }, nil), 0},
-		{"clipped high", snapsOf(adcSnaps, 9, .6, func(float64) float64 { return 400 }, nil), 0},
-		{"clipped low, one held", snapsOf(adcSnaps, 10, .6, func(float64) float64 { return -50 }, map[int]uint8{1: 90}), 0},
-		// a sine clipped at both rails still moves every live core
-		{"clipped sine", snapsOf(adcSnaps, 11, .6, func(t float64) float64 { return 128 + 400*math.Sin(2*math.Pi*1e4*t) }, map[int]uint8{5: 255}), 1 << 5},
-		// a slow input: every instant reads the same level
-		{"slow", snapsOf(adcSnaps, 12, 0, func(t float64) float64 { return 100 + t }, nil), 0},
-		{"too few snapshots", snapsOf(adcSnaps/4, 13, .6, adcSquare, map[int]uint8{2: 165}), 0},
-	} {
-		if got := stuckCores(c.snaps); got != c.want {
-			t.Errorf("%s: stuck %010b, want %010b", c.name, got, c.want)
-		}
-	}
-	if got := coreNames(0b11001100 | 1<<9); got != "E2, E4, E5 CH2" {
-		t.Errorf("names %q", got)
-	}
 }
 
 // fakeConverters is the hardware behind a converter check: the cores a
@@ -148,7 +116,7 @@ func newConvEngine(t *testing.T, conv *fakeConverters) (*Engine, *convImages, *[
 	images := &convImages{packetImages: packetImages{b: b}, conv: conv, calls: calls, breakOn: map[string]bool{"fast": true}}
 	e.images = images
 	e.hw().SetImages(images)
-	e.adc.snapshot, e.adc.restart = conv.snapshot, conv.restart
+	e.hw().SetConverterPort(acq.ConverterPort{Snapshot: conv.snapshot, Restart: conv.restart})
 	return e, images, calls
 }
 
@@ -227,13 +195,13 @@ func TestStuckConvertersAreReported(t *testing.T) {
 	// periodic checks: not before they are due, and no recovery until the retry
 	*calls = nil
 	e.checkCoresDue()
-	now = now.Add(adcCheckEvery)
+	now = now.Add(time.Minute) // the board checks every minute
 	e.checkCoresDue()
 	if got := strings.Join(*calls, ","); got != "check" {
 		t.Errorf("periodic: %s", got)
 	}
 	*calls = nil
-	now = now.Add(adcRetryAfter)
+	now = now.Add(5 * time.Minute) // the board retries a failed recovery after five
 	conv.encFrom = conv.restarts + 1
 	e.checkCoresDue()
 	if got := strings.Join(*calls, ","); got != "check,encode,check" {
@@ -248,62 +216,13 @@ func TestStuckConvertersAreReported(t *testing.T) {
 // TRLC-LINKS: REQ-SDS-231
 func TestConverterCheckReadError(t *testing.T) {
 	e, _, _ := newPacketTestEngine(t)
-	e.adc.snapshot = func(context.Context) ([10]uint8, error) { return [10]uint8{}, errors.New("bus") }
-	e.adc.restart = func() error { t.Error("restarted on a read error"); return nil }
+	e.hw().SetConverterPort(acq.ConverterPort{
+		Snapshot: func(context.Context) ([10]uint8, error) { return [10]uint8{}, errors.New("bus") },
+		Restart:  func() error { t.Error("restarted on a read error"); return nil },
+	})
 	e.ensureCores("a test")
 	if st := e.Snapshot(); st.ADCFault != "" {
 		t.Errorf("fault %q", st.ADCFault)
-	}
-}
-
-// A full-rate record shows a held core as every fifth sample at one code;
-// one brings the snapshot check forward, at most one look a second.
-// TRLC-LINKS: REQ-SDS-231
-func TestRecordStuckBringsCheckForward(t *testing.T) {
-	rec := func(held int, quiet bool) ([]uint8, []uint8) {
-		r := rand.New(rand.NewSource(int64(held) + 7))
-		c1, c2 := make([]uint8, 5000), make([]uint8, 5000)
-		for i := range c1 {
-			v := 128 + 50*math.Sin(2*math.Pi*float64(i)/37)
-			if quiet {
-				v = 128
-			}
-			c1[i] = uint8(v + r.NormFloat64())
-			c2[i] = uint8(255 - v + r.NormFloat64())
-			if held >= 0 && i%5 == held {
-				c1[i] = 93
-			}
-		}
-		return c1, c2
-	}
-	if s := recordStuck(rec(-1, false)); s != 0 {
-		t.Errorf("healthy record: %010b", s)
-	}
-	if s := recordStuck(rec(3, false)); s != 1<<6 {
-		t.Errorf("held core 3 of CH1: %010b", s)
-	}
-	if s := recordStuck(rec(3, true)); s != 0 {
-		t.Errorf("quiet record: %010b", s)
-	}
-	if s := recordStuck(make([]uint8, 100), make([]uint8, 100)); s != 0 {
-		t.Errorf("short record: %010b", s)
-	}
-	e, _, _ := newPacketTestEngine(t)
-	now := time.Unix(1000, 0)
-	e.clk.Now = func() time.Time { return now }
-	e.adc.next = now.Add(adcCheckEvery)
-	e.noteRecordCores(rec(-1, false))
-	if !e.adc.next.After(now) {
-		t.Error("a healthy record brought the check forward")
-	}
-	e.noteRecordCores(rec(2, false))
-	if !e.adc.next.After(now) {
-		t.Error("looked again within a second")
-	}
-	now = now.Add(adcFrameEvery)
-	e.noteRecordCores(rec(2, false))
-	if e.adc.next.After(now) {
-		t.Error("a held core did not bring the check forward")
 	}
 }
 
@@ -314,7 +233,7 @@ func TestRecordStuckBringsCheckForward(t *testing.T) {
 func TestConverterCheckEndsWhenEveryCoreMoved(t *testing.T) {
 	conv := &fakeConverters{}
 	e, _, _ := newConvEngine(t, conv)
-	stuck, _, err := e.checkCores()
+	stuck, _, err := e.hw().CheckCores()
 	if err != nil || stuck != 0 {
 		t.Fatalf("live cores: stuck %b err %v", stuck, err)
 	}
@@ -322,7 +241,7 @@ func TestConverterCheckEndsWhenEveryCoreMoved(t *testing.T) {
 		t.Fatalf("live cores read %d snapshots, want a few", conv.n)
 	}
 	conv.n, conv.stuck = 0, map[int]uint8{2: 165}
-	if stuck, _, err = e.checkCores(); err != nil || stuck != 1<<2 {
+	if stuck, _, err = e.hw().CheckCores(); err != nil || stuck != 1<<2 {
 		t.Fatalf("a held core: stuck %b err %v", stuck, err)
 	}
 	if conv.n != adcSnaps {

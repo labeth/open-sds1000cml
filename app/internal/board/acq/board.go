@@ -63,6 +63,11 @@ type Board struct {
 	scratch    readScratch
 	cond       condState
 	stream     streamState
+	scan       panelScanState
+	adc        adcHealth
+
+	log   func(string, ...any) // nil: the board says nothing
+	clock func() time.Time     // nil: time.Now
 
 	diagMu sync.Mutex
 	diag   boardDiag
@@ -76,6 +81,13 @@ type boardDiag struct {
 	Reads    uint64 `json:"reads"`
 	ReadErrs uint64 `json:"read_errors"`
 	Image    string `json:"image"`
+	// The converter checks' findings (adc_health.go) and the panel scan's
+	// dropped reads (panel_scan.go).
+	ADCFault      string  `json:"adc_fault,omitempty"`
+	ADCRecoveries int64   `json:"adc_recoveries,omitempty"`
+	ADCRecovery   string  `json:"adc_recovery,omitempty"`
+	ADCCheckMs    float64 `json:"adc_check_ms,omitempty"`
+	PanelRejects  int     `json:"panel_rejects,omitempty"`
 }
 
 // Config is what the board is built from.
@@ -103,6 +115,28 @@ var _ hal.Board = (*Board)(nil)
 // TRLC-LINKS: REQ-SDS-001
 func (b *Board) SetReporting(lampLag func(time.Duration), writeErr func(error)) {
 	b.panel.lampLag, b.panel.writeErr = lampLag, writeErr
+}
+
+// SetLog attaches where the board's diagnostics go and its clock (nil:
+// time.Now).
+// TRLC-LINKS: REQ-SDS-001
+func (b *Board) SetLog(logf func(string, ...any), now func() time.Time) {
+	b.log, b.clock = logf, now
+}
+
+// TRLC-LINKS: REQ-SDS-001
+func (b *Board) logf(format string, args ...any) {
+	if b.log != nil {
+		b.log(format, args...)
+	}
+}
+
+// TRLC-LINKS: REQ-SDS-001
+func (b *Board) now() time.Time {
+	if b.clock != nil {
+		return b.clock()
+	}
+	return time.Now()
 }
 
 // HasMemory reports whether the SRAM fabric is there.
@@ -252,6 +286,11 @@ func (b *Board) diagJSON() json.RawMessage {
 	d := b.diag
 	b.diagMu.Unlock()
 	d.Image = imageName(b.imageLoaded)
+	h := b.ConverterHealth()
+	d.ADCFault, d.ADCRecoveries, d.ADCRecovery, d.ADCCheckMs = h.Fault, h.Recoveries, h.Recovery, h.CheckMs
+	b.scan.mu.Lock()
+	d.PanelRejects = b.scan.rejects
+	b.scan.mu.Unlock()
 	out, _ := json.Marshal(d)
 	return out
 }
