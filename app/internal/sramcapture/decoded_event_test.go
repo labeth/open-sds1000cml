@@ -18,7 +18,7 @@ func TestDecodedEventWireContract(t *testing.T) {
 	if e.Sample != 0x0102030405060708 || e.Value != 0x7ffff || e.Record != 0 || !e.RecordValid || !e.Valid || e.Channels != 1 {
 		t.Fatalf("lost event identity: %+v", e)
 	}
-	encoded, err := e.MarshalBinary()
+	encoded, err := marshalBinary(e)
 	if err != nil || hex.EncodeToString(encoded) != hex.EncodeToString(b) {
 		t.Fatal("wire encoding differs", err)
 	}
@@ -37,7 +37,7 @@ func TestDecodedEventWireContract(t *testing.T) {
 // TRLC-LINKS: REQ-SDS-013
 func TestDecodedLossAndRetention(t *testing.T) {
 	for _, e := range []DecodedEvent{{Kind: EventLoss, Count: 17}, {Kind: EventRetained, RecordValid: true, Count: 100, Sample: 42}} {
-		b, err := e.MarshalBinary()
+		b, err := marshalBinary(e)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -47,7 +47,7 @@ func TestDecodedLossAndRetention(t *testing.T) {
 		}
 	}
 	for _, e := range []DecodedEvent{{Kind: EventLoss, Valid: true}, {Kind: EventRetained, Count: 100}, {Kind: EventRetained, RecordValid: true}} {
-		if _, err := e.MarshalBinary(); err == nil {
+		if _, err := marshalBinary(e); err == nil {
 			t.Fatalf("accepted invalid metadata: %+v", e)
 		}
 	}

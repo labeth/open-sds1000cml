@@ -7,12 +7,9 @@ import (
 	"time"
 
 	"github.com/labeth/open-dso-core/render"
-	"github.com/labeth/open-dso-core/scopeapp"
-	"github.com/labeth/open-dso-core/uimodel/panel"
 	"github.com/labeth/open-sds1000cml/app/internal/analog"
 	"github.com/labeth/open-sds1000cml/app/internal/engine"
 	"github.com/labeth/open-sds1000cml/app/internal/lcd"
-	"github.com/labeth/open-sds1000cml/app/internal/streamview"
 )
 
 // hud assembles the LCD/SCDP heads-up state from the engine and the front
@@ -54,9 +51,7 @@ func (c *composition) hud() render.HUD {
 	}
 	hudTrigLevel(&hud, c.e, st)
 	if pc := c.pc; pc != nil {
-		if sv := c.sv; sv != nil && pc.StreamMode() {
-			c.hudStreamPage(&hud, pc, sv)
-		}
+		pc.FillStreamHUD(&hud)
 		pc.FillHUD(&hud)
 	}
 	if sh := c.scpi; sh != nil { // display-level INVS: the SCPI shadow is the truth
@@ -110,53 +105,6 @@ func hudTrigLevel(hud *render.HUD, e *engine.Engine, st engine.Stats) {
 		}
 		hud.TrigLvlV = e.TrigVoltsAt(st.TrigCode, st.TrigSource) * max(probe, 1)
 	}
-}
-
-// hudStreamPage fills the stream page: the decoded stream's state and the
-// transcript lines it shows, formatted again only when they can have changed.
-// TRLC-LINKS: REQ-SDS-168
-func (c *composition) hudStreamPage(hud *render.HUD, pc *panel.Controller, sv *streamview.Controller) {
-	v := sv.Snapshot()
-	list, top := pc.StreamList()
-	hud.StreamOn, hud.Stream = true, v
-	hud.StreamList = list || v.State == streamview.Streaming || v.State == streamview.Failed || v.State == streamview.Starting
-	// Formatting the page holds the transcript's lock: redo it only when
-	// what it shows can have changed (4 Hz while streaming).
-	lines := v.Lines
-	if v.State == streamview.Streaming {
-		lines = 0 // the slot paces a streaming page; its line count grows every tick
-	}
-	key := streamPageKey{v.State, hud.StreamList, top, lines, v.TriggerLine, scopeapp.StreamSlot(*hud)}
-	if cached := c.lastStreamPage.Load(); cached != nil && cached.key == key {
-		hud.StreamPage = cached.page
-		return
-	}
-	switch {
-	case v.State == streamview.Streaming:
-		hud.StreamPage = sv.Window(streamview.ListRows, top) // -1 follows the newest
-	case hud.StreamList:
-		hud.StreamPage = sv.Window(streamview.ListRows, top)
-	case v.TriggerLine >= 0: // waveform: a strip of the lines around the trigger
-		hud.StreamPage = sv.Window(6, v.TriggerLine-2)
-	default:
-		hud.StreamPage = sv.Window(6, -1)
-	}
-	c.lastStreamPage.Store(&cachedStreamPage{key, hud.StreamPage})
-}
-
-// streamPageKey is what a cached transcript page depends on.
-type streamPageKey struct {
-	state      streamview.State
-	list       bool
-	top, lines int
-	trig       int
-	slot       int64
-}
-
-// cachedStreamPage is a transcript page with what it was formatted for.
-type cachedStreamPage struct {
-	key  streamPageKey
-	page streamview.Page
 }
 
 // hudZonesMask fills the zone and mask overlays (engine-side test; render

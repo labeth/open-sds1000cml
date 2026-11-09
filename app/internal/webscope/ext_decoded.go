@@ -173,7 +173,7 @@ func (s *Scope) decodedRoutes() []webserver.Route {
 					w.Header().Set("X-Decoded-Error", "event sequence discontinuity")
 					return
 				}
-				e := event.MarshalTo(data[i*sramcapture.DecodedEventBytes : (i+1)*sramcapture.DecodedEventBytes])
+				e := sramcapture.MarshalEvent(event, data[i*sramcapture.DecodedEventBytes:(i+1)*sramcapture.DecodedEventBytes])
 				if e != nil {
 					w.Header().Set("X-Decoded-Error", e.Error())
 					return

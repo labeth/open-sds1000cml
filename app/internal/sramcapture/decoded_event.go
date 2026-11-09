@@ -5,45 +5,34 @@ package sramcapture
 import (
 	"encoding/binary"
 	"errors"
+
+	"github.com/labeth/open-dso-core/decodedlines"
 )
 
 // DecodedEventBytes is the fixed transport record size. This ABI is proposed
 // until the general image advertises its event-stream capability.
 const DecodedEventBytes = 32
 
-// The kinds of decoded event.
+// The kinds of decoded event (the core transcript's).
 const (
-	EventStart uint8 = iota + 1
-	EventData
-	EventEnd
-	EventError
-	EventLoss
-	EventTrigger
-	EventRetained
+	EventStart    = decodedlines.EventStart
+	EventData     = decodedlines.EventData
+	EventEnd      = decodedlines.EventEnd
+	EventError    = decodedlines.EventError
+	EventLoss     = decodedlines.EventLoss
+	EventTrigger  = decodedlines.EventTrigger
+	EventRetained = decodedlines.EventRetained
 )
 
-// DecodedEvent carries acquisition-time facts, never browser column indices.
-// Sample is an absolute sample ordinal within Epoch. Sequence counts all emitted
-// events including loss markers. Record is meaningful only with RecordValid.
-// Value preserves full decoder words (including ARINC's 19-bit data field).
-// For EventLoss, Count is the number of lost events; zero means unknown count.
-// For EventRetained, Sample is the first retained sample and Count its length.
-// Channels is a bit mask: bit 0 C1, bit 1 C2. Protocol uses registry IDs 1..10;
-// zero is reserved for transport-wide loss and retained-record metadata.
-// TRLC-LINKS: REQ-SDS-013
-type DecodedEvent struct {
-	Epoch, Sequence uint32
-	Sample          uint64
-	Record, Value   uint32
-	Count           uint32
-	Protocol, Kind  uint8
-	Channels        uint8
-	Valid           bool
-	RecordValid     bool
-}
+// DecodedEvent carries acquisition-time facts, never browser column indices
+// (the core transcript's event, decodedlines.Event). Protocol uses registry
+// IDs 1..10; zero is reserved for transport-wide loss and retained-record
+// metadata.
+type DecodedEvent = decodedlines.Event
 
+// validateEvent checks a decoded event's header against the transport.
 // TRLC-LINKS: REQ-SDS-013
-func (e *DecodedEvent) validate() error {
+func validateEvent(e *DecodedEvent) error {
 	if e.Kind < EventStart || e.Kind > EventRetained || e.Protocol > 10 || e.Channels > 3 {
 		return errors.New("invalid decoded event header")
 	}
@@ -59,13 +48,14 @@ func (e *DecodedEvent) validate() error {
 	return nil
 }
 
-// MarshalTo encodes into a caller-owned batch without a per-event allocation.
+// MarshalEvent encodes e into a caller-owned batch without a per-event
+// allocation.
 // TRLC-LINKS: REQ-SDS-013
-func (e DecodedEvent) MarshalTo(b []byte) error {
+func MarshalEvent(e DecodedEvent, b []byte) error {
 	if len(b) != DecodedEventBytes {
 		return errors.New("invalid decoded event output size")
 	}
-	if err := e.validate(); err != nil {
+	if err := validateEvent(&e); err != nil {
 		return err
 	}
 	b[0], b[1], b[2], b[3] = 1, e.Kind, e.Protocol, e.Channels
@@ -97,7 +87,7 @@ func ParseDecodedEvent(b []byte) (DecodedEvent, error) {
 		Sample: binary.LittleEndian.Uint64(b[12:20]), Record: binary.LittleEndian.Uint32(b[20:24]),
 		Value: binary.LittleEndian.Uint32(b[24:28]), Count: binary.LittleEndian.Uint32(b[28:32]),
 	}
-	if err := e.validate(); err != nil {
+	if err := validateEvent(&e); err != nil {
 		return DecodedEvent{}, err
 	}
 	return e, nil

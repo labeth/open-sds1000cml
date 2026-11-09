@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/labeth/open-sds1000cml/app/internal/streamview"
+	"github.com/labeth/open-dso-core/streamview"
 )
 
 // streamPanel is a panel streaming its bus: the status's stream and the LCD's

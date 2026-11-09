@@ -28,6 +28,7 @@ import (
 	"github.com/labeth/open-dso-core/hal"
 	"github.com/labeth/open-dso-core/profile"
 	"github.com/labeth/open-dso-core/sample"
+	"github.com/labeth/open-dso-core/streamview"
 	"github.com/labeth/open-dso-core/uimodel/panel"
 	"github.com/labeth/open-dso-core/webserver"
 	"github.com/labeth/open-dso-core/webserver/wire"
@@ -35,7 +36,6 @@ import (
 	"github.com/labeth/open-sds1000cml/app/internal/board/acq"
 	"github.com/labeth/open-sds1000cml/app/internal/engine"
 	"github.com/labeth/open-sds1000cml/app/internal/sramcapture"
-	"github.com/labeth/open-sds1000cml/app/internal/streamview"
 )
 
 // The route goldens: every route of the API answered for fixed scope states,
