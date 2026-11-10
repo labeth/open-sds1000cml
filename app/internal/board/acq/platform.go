@@ -102,7 +102,7 @@ var (
 )
 
 // Diag is the board's counters.
-// TRLC-LINKS: REQ-SDS-001
+// TRLC-LINKS: REQ-SDS-001, REQ-SDS-128
 func (p *platformFacet) Diag() json.RawMessage { return (*Board)(p).diagJSON() }
 
 // StageLamps stages the panel's lamp latch word. ANY.

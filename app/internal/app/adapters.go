@@ -85,7 +85,7 @@ const cmdNotes = 64
 
 // Snapshot is the HAL scope's state with the board's bus errors, the lamp
 // latch's lag and the pictures the display put up.
-// TRLC-LINKS: REQ-SDS-164, REQ-SDS-127
+// TRLC-LINKS: REQ-SDS-164, REQ-SDS-126, REQ-SDS-127
 func (w *webEngine) Snapshot() engine.Stats {
 	st := w.Engine.Snapshot()
 	st.BusErrors = w.board.BusErrors()

@@ -93,7 +93,7 @@ func (b *Board) condition(m sramcapture.Metadata, w hal.Window, ww window, f *sa
 // a full-rate record's interleave calibration. Precision words a
 // calibration writes take the frame's precision storage (a slice of its
 // capacity, empty, stands for none); storage it did not fill is dropped.
-// TRLC-LINKS: REQ-SDS-010, REQ-SDS-012, REQ-SDS-016, REQ-SDS-040
+// TRLC-LINKS: REQ-SDS-010, REQ-SDS-012, REQ-SDS-016, REQ-SDS-037, REQ-SDS-040
 func (b *Board) conditionMain(m sramcapture.Metadata, bucket uint32, f *sample.Frame) {
 	c := &b.cond
 	n := f.Len()

@@ -1816,25 +1816,27 @@ requirements:
     1k and 1M. Nonfinite inputs can reach graphics operations; an infinite tick upper bound does not terminate within
     the bounded characterization. No instrument code repair is included.
 - id: REQ-SDS-126
-  title: Cross-frame uniformity telemetry
-  text: The instrument shall report cross-frame sample dispersion for centred and fixed-position windows.
+  title: Legacy uniformity status compatibility
+  text: The instrument shall retain the existing cross-frame uniformity fields in its status document with
+    neutral values when the active acquisition loop does not calculate them.
   status: implemented
   realizes:
   - CAP-SDS-ACQUISITION
   category: functional
   sourceRefs:
-  - core::FU-DSO-ENGINE
+  - core::FU-DSO-INSTRUMENT
+  - CODE-APP-INTERNAL-APP-ADAPTERS-GO
+  - CODE-APP-INTERNAL-WEBSCOPE-STATUS-GO
   appliesTo:
   - FU-APP-ENGINE
   verificationMethods:
   - inspection
   - test
-  verificationCriteria: Inspect the sixteen-frame, 256-column population-standard-deviation calculation and publication
-    admission. TestUniformityStats checks only an upper bound on centred dispersion for a repeated fake waveform;
-    it does not prove telemetry updates, ring wrap or raw-versus-centred improvement.
-  notes: Source-derived legacy telemetry contract. Endpoint-clamped sample extraction and a negative-anchor fallback
-    to record centre are implementation policies. Fewer than two frames report zero. This is not proof of physical
-    trigger locking or measured noise performance; the original test provides partial evidence only.
+  verificationCriteria: Inspect the shared model snapshot and the web adapter to confirm that the legacy
+    uniformity fields remain in the status schema. Route goldens check the serialized status document.
+  notes: The shared HAL acquisition loop does not collect the retired register-drain engine's sixteen-frame
+    uniformity ring. Its wincol_std, wincol_std_raw and wincol_max fields retain neutral defaults and do not attest measured
+    dispersion, physical trigger locking or noise performance.
 - id: REQ-SDS-127
   title: Acquisition diagnostics and tuning
   text: The instrument shall expose shared-loop snapshots, bounded web command history, board diagnostics
