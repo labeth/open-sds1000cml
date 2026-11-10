@@ -437,3 +437,32 @@ func testStreams(logf func(string, ...any), set func(*DecodedStreams)) *DecodedS
 	}
 	return d
 }
+
+// Out-of-range recalls must fail before allocation or owner/hardware access,
+// including counts that cannot fit a signed 32-bit int on the device.
+// TRLC-LINKS: REQ-SDS-013, REQ-SDS-033
+func TestDecodedRecallRejectsOutOfRange(t *testing.T) {
+	tests := []struct {
+		name          string
+		offset, count uint32
+	}{
+		{"one word over capacity", 0, sramcapture.Words + 1},
+		{"maximum signed 32-bit count", 0, 1<<31 - 1},
+		{"unsigned count above signed range", 0, 1 << 31},
+		{"maximum unsigned count", 0, ^uint32(0)},
+		{"past final word", sramcapture.Words, 1},
+		{"crosses final word", sramcapture.Words - 1, 2},
+		{"offset plus count wraps uint32", ^uint32(0), 1},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			d := testStreams(t.Logf, nil)
+			ctx, cancel := context.WithCancel(t.Context())
+			cancel()
+			data, err := d.RecallDecodedRecord(ctx, sramcapture.RecordIdentity{}, tt.offset, tt.count)
+			if err == nil || err.Error() != "decoded recall exceeds SRAM capacity" || data != nil {
+				t.Fatalf("recall (%d, %d): data %d bytes, error %v", tt.offset, tt.count, len(data), err)
+			}
+		})
+	}
+}

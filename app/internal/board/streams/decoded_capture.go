@@ -398,7 +398,9 @@ func (d *DecodedStreams) DecodedCaptureStatus(ctx context.Context, id sramcaptur
 // A stalled client cannot own the hardware or cause SRAM to be rearmed.
 // TRLC-LINKS: REQ-SDS-013, REQ-SDS-033
 func (d *DecodedStreams) RecallDecodedRecord(ctx context.Context, id sramcapture.RecordIdentity, offset, count uint32) ([]byte, error) {
-	if uint64(offset)+uint64(count) > uint64(sramcapture.Words) {
+	// Bound count explicitly before converting to the device's 32-bit int.
+	// The SRAM limit also bounds the byte allocation to 2 MiB.
+	if count > sramcapture.Words || uint64(offset)+uint64(count) > uint64(sramcapture.Words) {
 		return nil, errors.New("decoded recall exceeds SRAM capacity")
 	}
 	out := make([]byte, int(count)*4)
