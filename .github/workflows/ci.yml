@@ -284,6 +284,7 @@ jobs:
   # inside the app's Go tests.
   rtl-sim:
     runs-on: ubuntu-latest
+    timeout-minutes: 90
     steps:
       - uses: actions/checkout@v4
       # app and ota require open-dso-core from ../../open-dso-core (their go.mod
@@ -314,7 +315,7 @@ jobs:
           cache: false
       - name: Top-level simulations
         working-directory: app
-        run: go test -timeout 30m -run 'TopRTL' ./internal/engine/
+        run: go test -timeout 30m -run 'TopRTL' ./internal/board/acq/ ./internal/board/streams/
       - name: Top-level simulations of the core decoders
         working-directory: ${{ github.workspace }}/../open-dso-core
         env:
