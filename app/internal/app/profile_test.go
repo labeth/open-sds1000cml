@@ -10,8 +10,8 @@ import (
 	"github.com/labeth/open-dso-core/hal"
 	"github.com/labeth/open-dso-core/profile"
 
-	"github.com/labeth/open-sds1000cml/app/internal/engine"
 	"github.com/labeth/open-sds1000cml/app/internal/lcd"
+	engine "github.com/labeth/open-sds1000cml/app/internal/scopeapi"
 	"github.com/labeth/open-sds1000cml/app/internal/sramcapture"
 )
 

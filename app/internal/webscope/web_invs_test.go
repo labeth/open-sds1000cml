@@ -8,7 +8,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/labeth/open-sds1000cml/app/internal/engine"
+	engine "github.com/labeth/open-sds1000cml/app/internal/scopeapi"
 )
 
 // TestStatusInvertSource pins the server half of the display-level INVS

@@ -12,7 +12,7 @@ import (
 	"github.com/labeth/open-dso-core/hal"
 	"github.com/labeth/open-dso-core/webserver"
 	"github.com/labeth/open-sds1000cml/app/internal/analog"
-	"github.com/labeth/open-sds1000cml/app/internal/engine"
+	engine "github.com/labeth/open-sds1000cml/app/internal/scopeapi"
 )
 
 // Settings applies /api/set's controls to the engine and the front end.

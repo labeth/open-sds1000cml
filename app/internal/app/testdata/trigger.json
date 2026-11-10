@@ -1,0 +1,79 @@
+{
+  "edge": {
+    "Type": 0,
+    "Src": 0,
+    "Rising": true,
+    "OK": true,
+    "Level": 0.2996706915477497
+  },
+  "edge again": {
+    "Type": 0,
+    "Src": 0,
+    "Rising": true,
+    "OK": false,
+    "Level": 0
+  },
+  "level stepped on edge": {
+    "Type": 0,
+    "Src": 0,
+    "Rising": true,
+    "OK": true,
+    "Level": 0.305159165751921
+  },
+  "pulse": {
+    "Type": 1,
+    "Src": 1,
+    "Rising": false,
+    "OK": true,
+    "Level": 0.2996706915477497
+  },
+  "pulse after the step": {
+    "Type": 1,
+    "Src": 0,
+    "Rising": true,
+    "OK": true,
+    "Level": 0.305159165751921
+  },
+  "pulse before any change": {
+    "Type": 1,
+    "Src": 0,
+    "Rising": true,
+    "OK": false,
+    "Level": 0
+  },
+  "rising on video": {
+    "Type": 3,
+    "Src": 0,
+    "Rising": true,
+    "OK": true,
+    "Level": 0.2996706915477497
+  },
+  "slope": {
+    "Type": 2,
+    "Src": 1,
+    "Rising": false,
+    "OK": true,
+    "Level": 0.2996706915477497
+  },
+  "source C1 on slope": {
+    "Type": 2,
+    "Src": 0,
+    "Rising": false,
+    "OK": true,
+    "Level": 0.2996706915477497
+  },
+  "source C2, falling, level": {
+    "Type": 0,
+    "Src": 1,
+    "Rising": false,
+    "OK": true,
+    "Level": 0.2996706915477497
+  },
+  "video": {
+    "Type": 3,
+    "Src": 0,
+    "Rising": false,
+    "OK": true,
+    "Level": 0.2996706915477497
+  }
+}

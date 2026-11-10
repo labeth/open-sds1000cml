@@ -15,7 +15,7 @@ import (
 	"github.com/labeth/open-dso-core/sample"
 	"github.com/labeth/open-sds1000cml/app/internal/analog"
 	"github.com/labeth/open-sds1000cml/app/internal/board"
-	"github.com/labeth/open-sds1000cml/app/internal/engine"
+	engine "github.com/labeth/open-sds1000cml/app/internal/scopeapi"
 )
 
 // fakeScope records setter calls and serves a canned frame. Status-visible

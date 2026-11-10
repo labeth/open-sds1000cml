@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	"github.com/labeth/open-dso-core/sample"
-	"github.com/labeth/open-sds1000cml/app/internal/engine"
+	engine "github.com/labeth/open-sds1000cml/app/internal/scopeapi"
 )
 
 // Waveform readout fuzz: the VXI-11 WF? path is network-exposed and does

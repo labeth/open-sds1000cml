@@ -32,12 +32,13 @@ import (
 	"github.com/labeth/open-sds1000cml/app/internal/analog"
 	"github.com/labeth/open-sds1000cml/app/internal/board"
 	"github.com/labeth/open-sds1000cml/app/internal/board/acq"
+	"github.com/labeth/open-sds1000cml/app/internal/board/streams"
 	"github.com/labeth/open-sds1000cml/app/internal/buildinfo"
 	"github.com/labeth/open-sds1000cml/app/internal/bus"
 	"github.com/labeth/open-sds1000cml/app/internal/cal"
-	"github.com/labeth/open-sds1000cml/app/internal/engine"
 	"github.com/labeth/open-sds1000cml/app/internal/lcd"
 	cmlpanel "github.com/labeth/open-sds1000cml/app/internal/panel"
+	engine "github.com/labeth/open-sds1000cml/app/internal/scopeapi"
 	"github.com/labeth/open-sds1000cml/app/internal/scpi"
 	"github.com/labeth/open-sds1000cml/app/internal/settings"
 	"github.com/labeth/open-sds1000cml/app/internal/sramcapture"
@@ -110,10 +111,10 @@ func Run() int {
 type composition struct {
 	bus     *bus.Dev
 	acq     *acq.Board
-	streams *engine.DecodedStreams // the board's own stream sessions
-	fe      *analog.FrontEnd       // nil without SPI to the front end
-	afe     *modelAnalog           // fe as the controllers drive it; nil with fe
-	codes   *board.ModelCodes      // the DAC codes the controllers chose, beside the model
+	streams *streams.DecodedStreams // the board's own stream sessions
+	fe      *analog.FrontEnd        // nil without SPI to the front end
+	afe     *modelAnalog            // fe as the controllers drive it; nil with fe
+	codes   *board.ModelCodes       // the DAC codes the controllers chose, beside the model
 	levels  *board.Levels
 	lcd     *lcd.Display // the panel; its framebuffer once the display loop opened it
 	keyFD   int
@@ -234,7 +235,7 @@ func newBoard(ctx context.Context) (*composition, bool) {
 		settings.Storage{Dir: otaDir, Cal: hal.CalSource{Source: calTab.Source, Valid: true}})
 	// The board's own decoded streams, which the core's cycle serves and
 	// steps (ADR-HAL-BOARD-SESSIONS).
-	c.streams = engine.NewBoardStreams(acqBoard, b, logf)
+	c.streams = streams.NewBoardStreams(acqBoard, b, logf)
 	acqBoard.SetSession(c.streams)
 	// The fabric's start on the general image: its capabilities, the
 	// converters.
@@ -251,7 +252,7 @@ func (c *composition) wireBoard(images acq.ImageSwitcher, cal *acq.InterleaveCal
 	b := c.acq
 	b.SetReporting(func(d time.Duration) { c.ledLag.Store(int64(d)) }, b.NoteBusError)
 	b.SetImages(images)
-	engine.NoteImages(images)
+	streams.NoteImages(images)
 	b.SetInterleaveCalibration(cal)
 	b.SetRawObserver(b.NoteRecordCores)
 	b.SetLog(logf, time.Now)

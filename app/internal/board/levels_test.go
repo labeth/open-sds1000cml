@@ -11,7 +11,7 @@ import (
 	"github.com/labeth/open-dso-core/instrument"
 	settings "github.com/labeth/open-dso-core/settings"
 	"github.com/labeth/open-sds1000cml/app/internal/analog"
-	"github.com/labeth/open-sds1000cml/app/internal/engine"
+	engine "github.com/labeth/open-sds1000cml/app/internal/scopeapi"
 )
 
 // fakeEngine stages DAC codes as the engine does: the level clamped to its

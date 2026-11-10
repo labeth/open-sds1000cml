@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/labeth/open-dso-core/webserver"
-	"github.com/labeth/open-sds1000cml/app/internal/engine"
+	engine "github.com/labeth/open-sds1000cml/app/internal/scopeapi"
 )
 
 // vertScales returns the applied offset volts and volts-per-code (Vdiv/25 —

@@ -5,8 +5,9 @@ package panel
 import (
 	ui "github.com/labeth/open-dso-core/uimodel/panel"
 	"github.com/labeth/open-sds1000cml/app/internal/board/acq"
+	"github.com/labeth/open-sds1000cml/app/internal/board/streams"
 	"github.com/labeth/open-sds1000cml/app/internal/buildinfo"
-	"github.com/labeth/open-sds1000cml/app/internal/engine"
+	engine "github.com/labeth/open-sds1000cml/app/internal/scopeapi"
 	"github.com/labeth/open-sds1000cml/app/internal/sramcapture"
 )
 
@@ -41,7 +42,7 @@ func (Hardware) EnvelopePoints() int { return 2 * sramcapture.EnvelopeBucketsQ8 
 // StreamMode is how the engine streams a protocol at a rate.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
 func (Hardware) StreamMode(proto, baud int, overdrive bool) string {
-	return engine.SoftStreamMode(proto, baud, overdrive)
+	return streams.SoftStreamMode(proto, baud, overdrive)
 }
 
 // Product is the firmware's name, version and build.

@@ -14,7 +14,7 @@ import (
 	"github.com/labeth/open-dso-core/sample"
 	"github.com/labeth/open-dso-core/testenv"
 	"github.com/labeth/open-dso-core/uimodel/panel"
-	"github.com/labeth/open-sds1000cml/app/internal/engine"
+	engine "github.com/labeth/open-sds1000cml/app/internal/scopeapi"
 )
 
 // soundScope is a scope with an audio stream: A4 three cents sharp on C1

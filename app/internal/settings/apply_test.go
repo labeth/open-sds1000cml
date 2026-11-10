@@ -7,38 +7,17 @@ import (
 	"testing"
 	"time"
 
+	"github.com/labeth/open-dso-core/instrument"
 	core "github.com/labeth/open-dso-core/settings"
 	"github.com/labeth/open-dso-core/uimodel/panel"
+	scope "github.com/labeth/open-sds1000cml/app"
 	"github.com/labeth/open-sds1000cml/app/internal/analog"
 	"github.com/labeth/open-sds1000cml/app/internal/board"
-	"github.com/labeth/open-sds1000cml/app/internal/engine"
+	"github.com/labeth/open-sds1000cml/app/internal/board/acq"
 	cmlpanel "github.com/labeth/open-sds1000cml/app/internal/panel"
+	engine "github.com/labeth/open-sds1000cml/app/internal/scopeapi"
 	"github.com/labeth/open-sds1000cml/app/internal/settings"
 )
-
-// nullBus satisfies bus.Bus without any hardware: the engine is constructed
-// (never Run) purely so Apply exercises the REAL staging setters and their
-// clamps, and Snapshot reports what they stored.
-// TRLC-LINKS: REQ-SDS-072
-type nullBus struct{}
-
-// TRLC-LINKS: REQ-SDS-072
-func (nullBus) Read(_ uint8, _ uint16) (uint16, error) { return 0, nil }
-
-// TRLC-LINKS: REQ-SDS-072
-func (nullBus) Write(_ uint8, _, _ uint16) error { return nil }
-
-// TRLC-LINKS: REQ-SDS-072
-func (nullBus) RawWrite(_, _ uint16) error { return nil }
-
-// TRLC-LINKS: REQ-SDS-072
-func (nullBus) BurstInto(_, _ []uint8, _ int) {}
-
-// TRLC-LINKS: REQ-SDS-072
-func (nullBus) PopWords(_ uint16, _ []uint16, _ int) {}
-
-// TRLC-LINKS: REQ-SDS-072
-func (nullBus) FastDrain() bool { return true }
 
 // nullSPI satisfies analog.Transport so the real FrontEnd (with its per-tier
 // offset law, ladder and emit tracking) runs against no hardware.
@@ -51,28 +30,106 @@ func (n *nullSPI) WriteRelay(_ uint32) error { n.relays++; return nil }
 // TRLC-LINKS: REQ-SDS-072
 func (n *nullSPI) WriteGain(_, _ uint8) error { n.gains++; return nil }
 
-// rig builds the production object graph exactly as cmd/app/main.go wires it
-// (engine ← bus stub, front end ← SPI stub with the engine hooks, panel
-// controller on top), without running any goroutine.
-// TRLC-LINKS: REQ-SDS-072
-func rig(tb testing.TB) (*engine.Engine, *analog.FrontEnd, *panel.Controller, *nullSPI) {
+// fixtureAnalog projects the real front end's changes as the app's controls do.
+type fixtureAnalog struct {
+	*analog.FrontEnd
+	m      *instrument.Model
+	levels *board.Levels
+}
+
+func (a *fixtureAnalog) project(ch int) {
+	c := a.Get(ch)
+	_ = a.m.Change(func(s *instrument.State) error { s.Channels[ch] = c; return nil })
+	if a.levels != nil {
+		a.levels.Reproject()
+	}
+}
+
+func (a *fixtureAnalog) SetVdivV(ch int, v float64) error {
+	err := a.FrontEnd.SetVdivV(ch, v)
+	a.project(ch)
+	return err
+}
+func (a *fixtureAnalog) SetProbe(ch int, v float64) { a.FrontEnd.SetProbe(ch, v); a.project(ch) }
+func (a *fixtureAnalog) SetCoupling(ch, v int) error {
+	err := a.FrontEnd.SetCoupling(ch, v)
+	a.project(ch)
+	return err
+}
+
+func (a *fixtureAnalog) SetBWL(ch int, on bool) error {
+	err := a.FrontEnd.SetBWL(ch, on)
+	a.project(ch)
+	return err
+}
+
+func (a *fixtureAnalog) SetOffset(ch int, v float64) uint16 {
+	got := a.FrontEnd.SetOffset(ch, v)
+	a.project(ch)
+	return got
+}
+
+// settingsEngine is the HAL controls with the optional settings capabilities.
+type settingsEngine interface {
+	panel.Engine
+	MemDepth() int
+	SetPrecisionRate(float64) float64
+	SetRollStream(bool)
+	SetBodeMode(bool, int, int)
+	SetSerialParams(engine.SerialParams)
+	SerialConfig() engine.SerialParams
+	SetSerialMode(int)
+}
+type fixtureEngine struct {
+	settingsEngine
+	codes *board.ModelCodes
+	m     *instrument.Model
+}
+
+func (e *fixtureEngine) Snapshot() engine.Stats {
+	st := e.settingsEngine.Snapshot()
+	codes := e.codes.Snapshot()
+	st.TrigCode, st.OffC1, st.OffC2 = codes.TrigCode, codes.OffC1, codes.OffC2
+	return st
+}
+
+func rig(tb testing.TB) (*fixtureEngine, *fixtureAnalog, *panel.Controller, *nullSPI) {
 	tb.Helper()
-	e := engine.New(engine.Config{Bus: nullBus{}, Logf: tb.Logf})
+	m := instrument.New(board.PowerOn(2), nil)
+	m.SetTimebases(engine.SupportedTdivs())
+	codes := board.NewModelCodes(m)
 	spi := &nullSPI{}
-	fe := analog.New(spi, func(time.Duration) {}, nil)
-	fe.OnOffset(e.SetOffsetDAC)
-	fe.OnVdiv(e.SetChannelVdiv)
-	pc := panel.New(e, fe, board.New(e, fe), cmlpanel.Hardware{}, engine.SupportedTdivs(), 500e-6, tb.Logf)
+	fe := &fixtureAnalog{FrontEnd: analog.New(spi, func(time.Duration) {}, nil), m: m}
+	fe.OnOffset(codes.SetOffsetDAC)
+	b := acq.New(acq.Config{})
+	p, err := scope.Profile(scope.Identity())
+	if err != nil {
+		tb.Fatal(err)
+	}
+	b.SetProfile(p)
+	b.SetFrontEnd(fe)
+	ctl, ok := panel.NewHALScope(m, b, "").Engine().(settingsEngine)
+	if !ok {
+		tb.Fatal("HAL controls lack settings capabilities")
+	}
+	e := &fixtureEngine{ctl, codes, m}
+	lv := board.New(codes, fe)
+	lv.Project(m)
+	fe.levels = lv
+	fe.project(0)
+	fe.project(1)
+	pc := panel.New(e, fe, lv, cmlpanel.Hardware{}, engine.SupportedTdivs(), 500e-6, tb.Logf)
 	return e, fe, pc, spi
 }
 
-// ext is the board's settings extension over e and fe (fe may be nil).
-// TRLC-LINKS: REQ-SDS-072
-func ext(e *engine.Engine, fe *analog.FrontEnd) core.Extension {
-	if fe == nil {
-		return board.SettingsExtension{Levels: board.New(e, nil)}
+func ext(e *fixtureEngine, fe *fixtureAnalog) core.Extension {
+	var front board.FrontEnd
+	if fe != nil {
+		front = fe
 	}
-	return board.SettingsExtension{Levels: board.New(e, fe)}
+	lv := board.New(e.codes, front)
+	lv.Project(e.m)
+	return board.SettingsExtension{Levels: lv}
 }
 
 // TRLC-LINKS: REQ-SDS-072
@@ -122,10 +179,10 @@ func TestApplyRestoreCollectFidelity(t *testing.T) {
 	core.Apply(want, e, fe, pc, ext(e, fe), t.Logf)
 	got := core.Collect(e, fe, pc, ext(e, fe))
 
-	// The tdiv is staged for the next frame boundary; without running the
-	// engine the stats keep the pre-restore value. Everything else must
-	// round-trip exactly.
-	got.TdivS, want.TdivS = 0, 0
+	// The model reports the requested timebase immediately.
+	if got.TdivS != want.TdivS {
+		t.Fatalf("timebase: got %g, want %g", got.TdivS, want.TdivS)
+	}
 	// The cursors come back anchored to the signal (an older file's screen
 	// places at the scales restored): their screen places as they were.
 	gd := got.Display

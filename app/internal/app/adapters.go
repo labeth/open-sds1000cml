@@ -13,7 +13,7 @@ import (
 	"github.com/labeth/open-dso-core/scopeapp"
 	"github.com/labeth/open-dso-core/uimodel/panel"
 	"github.com/labeth/open-sds1000cml/app/internal/board/acq"
-	"github.com/labeth/open-sds1000cml/app/internal/engine"
+	engine "github.com/labeth/open-sds1000cml/app/internal/scopeapi"
 )
 
 // scopeSource is the HAL scope's engine (the instrument model's controls

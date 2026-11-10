@@ -26,14 +26,19 @@ GOARCH=386 go test ./...   # the device is 32-bit
 
 | Package | Holds |
 |---|---|
-| `engine` | the board's decoded streams (the session the core's cycle runs), the scope's planning helpers, and the single-owner acquisition engine, which the device main does not run |
-| `bus`, `sramcapture`, `fpgaload`, `iface` | GPMC access and the bus worker (DMA), the SRAM record protocol, FPGA configuration, the fabric's register interface |
-| `analog`, `cal`, `dsp` | the vertical front end, the per-unit calibration, signal conditioning |
-| `decode`, `decodedlines`, `streamview` | the protocol decoders (with the Go models of the FPGA receivers), the stream transcript, the scope-side decoded stream |
-| `measure`, `analysis`, `superres`, `sound` | measurements, the shared workspace analysis, super-resolution, SOUND |
-| `frames`, `lcd`, `panel`, `settings` | the frame fan-out, the LCD renderer, the front-panel controller and workspaces, persisted settings |
-| `web`, `scpi`, `vxi11srv` | the web UI and phone remote (HTML/JS/CSS embedded) with its JSON API, SCPI, the VXI-11 server |
-| `buildinfo`, `testenv` | version stamp, test gating |
+| `board/acq` | the acquisition HAL: planning, SRAM readout, hardware triggers, image switching, roll, stacking, converter health and panel scanning |
+| `board/streams` | FPGA-decoded and software-decoded streams, their history ring and the web client decode tap, served as sessions by the core acquisition loop |
+| `board`, `scopeapi` | board settings and trigger-level conversion; the scope vocabulary and timebase ladder shared by the adapters |
+| `bus`, `sramcapture`, `fpgaload`, `iface` | GPMC access and the bus worker (DMA), the SRAM record protocol, FPGA configuration and the fabric register interface |
+| `analog`, `cal` | the vertical front end and per-unit calibration |
+| `lcd`, `panel`, `settings` | display and front-panel adapters, board-specific persisted settings |
+| `webscope`, `scpi` | board extensions for the shared web server and the CML SCPI dialect |
+| `buildinfo` | version stamp |
+
+The application is a board-support package on `open-dso-core`'s acquisition loop. The core owns
+instrument state, acquisition scheduling, signal processing, decoders, the UI model, rendering,
+web UI and SCPI transport. `internal/app` composes that loop with this board's HAL and adapters;
+there is no separate CML acquisition engine.
 
 `open-dso-core/webclient/e2e/` drives the web UI on a live scope.
 `internal/bus/dcinv/` is the D-cache invalidate kernel module the EDMA drain loads

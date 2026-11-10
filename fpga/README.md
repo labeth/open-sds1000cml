@@ -265,6 +265,6 @@ bytes), which halves an image switch.
 `fpga/sim.sh` runs the self-checking testbenches under `*/sim` and
 `images/*/sim` with iverilog. Testbenches a Go test names (driven by fixtures
 from the app's Go reference models, and the images' top levels) run in the
-app's `go test` instead (internal/decode, internal/engine, internal/superres,
+app's `go test` instead (internal/board/acq, internal/board/streams,
 internal/sramcapture); the top-level simulations (`*TopRTL`) take minutes each
 and run in CI's rtl-sim lane.

@@ -13,7 +13,7 @@ import (
 	"github.com/labeth/open-dso-core/hal"
 	"github.com/labeth/open-dso-core/instrument"
 	"github.com/labeth/open-sds1000cml/app/internal/analog"
-	"github.com/labeth/open-sds1000cml/app/internal/engine"
+	engine "github.com/labeth/open-sds1000cml/app/internal/scopeapi"
 )
 
 // Engine is what the levels need of the engine: the DAC codes it stages at

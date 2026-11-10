@@ -3,6 +3,8 @@
 package app
 
 import (
+	"encoding/json"
+	"os"
 	"testing"
 
 	"github.com/labeth/open-dso-core/instrument"
@@ -14,11 +16,19 @@ import (
 // level change reads back the same in both compositions.
 // TRLC-LINKS: REQ-SDS-011, REQ-SDS-098
 func TestOneTriggerSourceAcrossTypes(t *testing.T) {
-	rigs := [2]setupRig{engineRig(t), modelRig(t)}
+	rigs := []setupRig{modelRig(t)}
 	type readBack struct {
 		Type, Src  int
 		Rising, OK bool
 		Level      float64
+	}
+	raw, err := os.ReadFile("testdata/trigger.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := map[string]readBack{}
+	if err := json.Unmarshal(raw, &want); err != nil {
+		t.Fatal(err)
 	}
 	read := func(r setupRig) readBack {
 		st := r.ctl.Snapshot()
@@ -47,16 +57,21 @@ func TestOneTriggerSourceAcrossTypes(t *testing.T) {
 	}
 	for _, s := range steps {
 		var got [2]readBack
-		for i, r := range rigs {
+		for _, r := range rigs {
 			s.do(r)
-			got[i] = read(r)
+			got[1] = read(r)
+		}
+		var ok bool
+		got[0], ok = want[s.name]
+		if !ok {
+			t.Fatalf("no recorded trigger for %q", s.name)
 		}
 		if got[0] != got[1] {
 			t.Errorf("%s: engine %+v, model %+v", s.name, got[0], got[1])
 		}
 	}
 	// the model keeps the shared values in the running type's own settings
-	st := rigs[1].m.State()
+	st := rigs[0].m.State()
 	if src := st.Trigger.Source().Index; src != 0 || st.Trigger.Type != instrument.TrigPulse {
 		t.Fatalf("the model's running type %v on source %d", st.Trigger.Type, src)
 	}

@@ -80,20 +80,15 @@ architecture:
     tags:
     - source-backed
   - id: FU-APP-ENGINE
-    name: Acquisition and instrument policy
+    name: Acquisition board support
     group: FG-APP
-    prose: 'Single GPMC owner with staged commands, frame arena, trigger qualification, timebase and acquisition
-      policies. Legacy command service runs at boundaries; the ordinary capture wait polls stop and status but
-      does not pump diagnostic callbacks. Callback timeouts do not cancel queued work, and failed register writes
-      are counted without preserving dirty shadows for retry. Capture coherence is a software fill/drain check;
-      tail detection and noise discrimination are content heuristics. On the SRAM engine the FPGA decides every
-      trigger (ADR-SERIAL-HARDWARE-TRIGGER, ADR-HARDWARE-QUALIFIERS): the engine plans the serial matcher, the
-      pulse, slope and video qualifier and the zone trigger from the settings and the levels it learns from the
-      captures, loads the image that has them, and only moves the trigger point onto the event; with no hardware
-      plan nothing triggers and the status says why. Stitched windows expose blackout metadata and are not gapless
-      capture. REQ-SDS-127/128 describe bounded diagnostic history, tuning and recovery telemetry. The SRAM loop
-      measures every capture for Bode, triggered or not. Hardware capability depends on the selected fabric;
-      physical panel scanning is absent on the owned default image.'
+    prose: 'The SDS1000CML+ acquisition HAL and decoded-stream sessions run on the shared core acquisition loop.
+      The core owns scheduling, instrument policy, frame publication and signal processing. The board owns
+      GPMC access, SRAM planning and readout, trigger programming and placement, image switching, converter
+      health, panel scanning, roll and hardware stacking. Hardware qualifiers and serial matchers are planned
+      from instrument settings and learned signal levels; unsupported plans report a refusal. Decoded streams
+      provide FPGA events, software-decoded bits and a history ring through owner-serviced sessions. Scope
+      vocabulary and the timebase ladder are shared by board, panel, settings, web and SCPI adapters.'
     tags:
     - source-backed
   - id: FU-APP-FPGALOAD

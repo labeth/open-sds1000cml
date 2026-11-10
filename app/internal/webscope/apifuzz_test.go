@@ -11,7 +11,7 @@ import (
 	"testing"
 
 	"github.com/labeth/open-dso-core/sample"
-	"github.com/labeth/open-sds1000cml/app/internal/engine"
+	engine "github.com/labeth/open-sds1000cml/app/internal/scopeapi"
 )
 
 // API fuzz: every endpoint is fed malformed, extreme, and hostile inputs.

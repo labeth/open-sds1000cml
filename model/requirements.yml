@@ -14,15 +14,9 @@ requirements:
     of them.'
   category: functional
   sourceRefs:
-  - CODE-APP-INTERNAL-ENGINE-ENGINE-LOOP-GO
-  - CODE-APP-INTERNAL-ENGINE-ENGINE-CMD-GO
-  - CODE-APP-INTERNAL-ENGINE-CHAOS-TEST-GO
-  - CODE-APP-INTERNAL-ENGINE-ENGINE-GO
-  - CODE-APP-INTERNAL-ENGINE-ENGINE-BUS-GO
-  - CODE-APP-INTERNAL-ENGINE-ENGINE-CAPTURE-GO
-  - CODE-APP-INTERNAL-ENGINE-ENGINE-CONTROL-GO
-  - CODE-APP-INTERNAL-ENGINE-ENGINE-TEST-GO
-  - CODE-APP-INTERNAL-ENGINE-ENGINE-TRIGLEVEL-TEST-GO
+  - core::FU-DSO-ENGINE
+  - CODE-APP-INTERNAL-BOARD-ACQ-IMAGES-GO
+  - CODE-APP-INTERNAL-BOARD-ACQ-TRIGGER-HAL-TEST-GO
   appliesTo:
   - FU-APP-ENGINE
   notes: Source-derived contract; source presence is not evidence of a passing hardware qualification.
@@ -62,7 +56,7 @@ requirements:
   - CAP-SDS-SUPERVISED-OPERATION
   category: functional
   sourceRefs:
-  - CODE-APP-INTERNAL-ENGINE-SRAM-GO
+  - CODE-APP-INTERNAL-BOARD-ACQ-READOUT-GO
   - CODE-APP-CMD-APP-MAIN-GO
   - CODE-APP-INTERNAL-APP-RUN-GO
   appliesTo:
@@ -83,10 +77,10 @@ requirements:
   sourceRefs:
   - CODE-APP-CMD-APP-MAIN-GO
   - CODE-APP-INTERNAL-APP-RUN-GO
-  - CODE-APP-INTERNAL-ENGINE-ENGINE-LOOP-GO
+  - core::FU-DSO-ENGINE
   - CODE-APP-INTERNAL-FPGALOAD-FPGALOAD-GO
   - CODE-APP-INTERNAL-FPGALOAD-DEVICE-GO
-  - CODE-APP-INTERNAL-ENGINE-ENGINE-BUS-GO
+  - CODE-APP-INTERNAL-BOARD-ACQ-IMAGES-GO
   appliesTo:
   - FU-APP-APP
   - FU-APP-ENGINE
@@ -125,7 +119,7 @@ requirements:
   - CAP-SDS-ACQUISITION
   category: functional
   sourceRefs:
-  - CODE-APP-INTERNAL-ENGINE-ENGINE-LOOP-GO
+  - core::FU-DSO-ENGINE
   appliesTo:
   - FU-APP-ENGINE
   notes: Source-derived contract; source presence is not evidence of a passing hardware qualification.
@@ -136,19 +130,14 @@ requirements:
     require independently identified device evidence.
 - id: REQ-SDS-007
   title: Frame ownership
-  text: The instrument shall handoff captured frames using the preallocated three-slot arena.
+  text: The instrument shall publish frames through the shared acquisition loop and fan-out without mutating frames retained by consumers.
   status: implemented
   realizes:
   - CAP-SDS-ACQUISITION
   category: functional
   sourceRefs:
-  - CODE-APP-INTERNAL-ENGINE-ENVROLL-GO
-  - CODE-APP-INTERNAL-ENGINE-SRAM-GO
-  - CODE-APP-INTERNAL-ENGINE-ARENA-GO
-  - CODE-APP-INTERNAL-ENGINE-ENGINE-GO
-  - CODE-APP-INTERNAL-ENGINE-ENGINE-CAPTURE-GO
-  - CODE-APP-INTERNAL-ENGINE-ENGINE-LOOP-GO
-  - CODE-APP-INTERNAL-ENGINE-ENGINE-PUBLISH-TEST-GO
+  - core::FU-DSO-ENGINE
+  - CODE-APP-INTERNAL-BOARD-ACQ-READOUT-GO
   appliesTo:
   - FU-APP-ENGINE
   notes: Source-derived contract; source presence is not evidence of a passing hardware qualification.
@@ -165,19 +154,11 @@ requirements:
   - CAP-SDS-ACQUISITION
   category: functional
   sourceRefs:
-  - CODE-APP-INTERNAL-ENGINE-ENVROLL-TEST-GO
-  - CODE-APP-INTERNAL-ENGINE-ENVROLL-GO
-  - CODE-APP-INTERNAL-ENGINE-BANDS-TEST-GO
-  - CODE-APP-INTERNAL-ENGINE-BANDS-GO
-  - CODE-APP-INTERNAL-ENGINE-SRAM-GO
-  - CODE-APP-INTERNAL-ENGINE-ENGINE-LOOP-GO
-  - CODE-APP-INTERNAL-ENGINE-ENGINE-CONTROL-GO
-  - CODE-APP-INTERNAL-ENGINE-CHAOS-TEST-GO
-  - CODE-APP-INTERNAL-ENGINE-ENGINE-GO
-  - CODE-APP-INTERNAL-ENGINE-ENGINE-BUS-GO
-  - CODE-APP-INTERNAL-ENGINE-ENGINE-CAPTURE-GO
-  - CODE-APP-INTERNAL-ENGINE-ENGINE-DEPTH-TEST-GO
-  - CODE-APP-INTERNAL-ENGINE-ENGINE-TEST-GO
+  - core::FU-DSO-ENGINE
+  - CODE-APP-INTERNAL-SCOPEAPI-BANDS-TEST-GO
+  - CODE-APP-INTERNAL-SCOPEAPI-BANDS-GO
+  - CODE-APP-INTERNAL-BOARD-ACQ-READOUT-GO
+  - CODE-APP-INTERNAL-BOARD-ACQ-IMAGES-GO
   appliesTo:
   - FU-APP-ENGINE
   notes: Source-derived contract; source presence is not evidence of a passing hardware qualification.
@@ -194,20 +175,8 @@ requirements:
   - CAP-SDS-ACQUISITION
   category: functional
   sourceRefs:
-  - CODE-APP-INTERNAL-ENGINE-ENVROLL-GO
-  - CODE-APP-INTERNAL-ENGINE-ENGINE-CAPTURE-GO
-  - CODE-APP-INTERNAL-ENGINE-SRAM-GO
-  - CODE-APP-INTERNAL-ENGINE-DEGRADED-TEST-GO
-  - CODE-APP-INTERNAL-ENGINE-DISCERN-GO
-  - CODE-APP-INTERNAL-ENGINE-DISCERN-TEST-GO
-  - CODE-APP-INTERNAL-ENGINE-ENGINE-GO
-  - CODE-APP-INTERNAL-ENGINE-ENGINE-CMD-GO
-  - CODE-APP-INTERNAL-ENGINE-ENGINE-CONTROL-GO
-  - CODE-APP-INTERNAL-ENGINE-ENGINE-DEPTH-TEST-GO
-  - CODE-APP-INTERNAL-ENGINE-ENGINE-LOOP-GO
-  - CODE-APP-INTERNAL-ENGINE-ENGINE-PUBLISH-TEST-GO
-  - CODE-APP-INTERNAL-ENGINE-ENGINE-TEST-GO
-  - CODE-APP-INTERNAL-ENGINE-ARENA-GO
+  - core::FU-DSO-ENGINE
+  - CODE-APP-INTERNAL-BOARD-ACQ-READOUT-GO
   appliesTo:
   - FU-APP-ENGINE
   notes: Source-derived contract; source presence is not evidence of a passing hardware qualification.
@@ -224,21 +193,14 @@ requirements:
   - CAP-SDS-ACQUISITION
   category: functional
   sourceRefs:
-  - CODE-APP-INTERNAL-ENGINE-ENVROLL-TEST-GO
-  - CODE-APP-INTERNAL-ENGINE-ENVROLL-GO
-  - CODE-APP-INTERNAL-ENGINE-BANDS-TEST-GO
-  - CODE-APP-INTERNAL-ENGINE-SRAM-TEST-GO
-  - CODE-APP-INTERNAL-ENGINE-BANDS-GO
-  - CODE-APP-INTERNAL-ENGINE-SRAM-GO
-  - CODE-APP-INTERNAL-ENGINE-ENGINE-BUS-GO
-  - CODE-APP-INTERNAL-ENGINE-ENGINE-CAPTURE-GO
-  - CODE-APP-INTERNAL-ENGINE-ENGINE-CMD-GO
-  - CODE-APP-INTERNAL-ENGINE-ENGINE-CONTROL-GO
-  - CODE-APP-INTERNAL-ENGINE-ENGINE-LOOP-GO
-  - CODE-APP-INTERNAL-ENGINE-ENGINE-TEST-GO
-  - CODE-APP-INTERNAL-ENGINE-SRAM-ENVELOPE-GO
-  - CODE-APP-INTERNAL-ENGINE-SRAM-ENVELOPE-TEST-GO
-  - CODE-APP-INTERNAL-ENGINE-SRAM-LIVE-TEST-GO
+  - core::FU-DSO-ENGINE
+  - CODE-APP-INTERNAL-SCOPEAPI-BANDS-TEST-GO
+  - CODE-APP-INTERNAL-BOARD-ACQ-BOARD-TEST-GO
+  - CODE-APP-INTERNAL-SCOPEAPI-BANDS-GO
+  - CODE-APP-INTERNAL-BOARD-ACQ-READOUT-GO
+  - CODE-APP-INTERNAL-BOARD-ACQ-IMAGES-GO
+  - CODE-APP-INTERNAL-BOARD-ACQ-ENVELOPE-GO
+  - CODE-APP-INTERNAL-BOARD-ACQ-READOUT-SIZED-TEST-GO
   - CODE-APP-INTERNAL-SRAMCAPTURE-ENVELOPE-GO
   appliesTo:
   - FU-APP-ENGINE
@@ -273,18 +235,10 @@ requirements:
   - CAP-SDS-TRIGGER
   category: functional
   sourceRefs:
-  - CODE-APP-INTERNAL-ENGINE-QUALIFY-TEST-GO
-  - CODE-APP-INTERNAL-ENGINE-SRAM-GO
-  - CODE-APP-INTERNAL-ENGINE-DISCERN-GO
-  - CODE-APP-INTERNAL-ENGINE-DISCERN-TEST-GO
-  - CODE-APP-INTERNAL-ENGINE-ENGINE-BUS-GO
-  - CODE-APP-INTERNAL-ENGINE-ENGINE-CAPTURE-GO
-  - CODE-APP-INTERNAL-ENGINE-ENGINE-CONTROL-GO
-  - CODE-APP-INTERNAL-ENGINE-ENGINE-DEPTH-TEST-GO
-  - CODE-APP-INTERNAL-ENGINE-ENGINE-LOOP-GO
-  - CODE-APP-INTERNAL-ENGINE-ENGINE-PUBLISH-TEST-GO
-  - CODE-APP-INTERNAL-ENGINE-ENGINE-TEST-GO
-  - CODE-APP-INTERNAL-ENGINE-ENGINE-TRIGLEVEL-TEST-GO
+  - core::FU-DSO-ENGINE
+  - CODE-APP-INTERNAL-BOARD-ACQ-READOUT-GO
+  - CODE-APP-INTERNAL-BOARD-ACQ-IMAGES-GO
+  - CODE-APP-INTERNAL-BOARD-ACQ-TRIGGER-HAL-TEST-GO
   appliesTo:
   - FU-APP-ENGINE
   notes: Source-derived contract; source presence is not evidence of a passing hardware qualification. SINGLE ends
@@ -307,14 +261,8 @@ requirements:
   - CAP-SDS-ACQUISITION
   category: functional
   sourceRefs:
-  - CODE-APP-INTERNAL-ENGINE-ENVROLL-TEST-GO
-  - CODE-APP-INTERNAL-ENGINE-QUALIFY-TEST-GO
-  - CODE-APP-INTERNAL-ENGINE-SRAM-MATH-TEST-GO
-  - CODE-APP-INTERNAL-ENGINE-SRAM-MATH-GO
-  - CODE-APP-INTERNAL-ENGINE-SRAM-GO
-  - CODE-APP-INTERNAL-ENGINE-ENVROLL-GO
-  - CODE-APP-INTERNAL-ENGINE-ENGINE-CONTROL-GO
-  - CODE-APP-INTERNAL-ENGINE-ENGINE-LOOP-GO
+  - core::FU-DSO-ENGINE
+  - CODE-APP-INTERNAL-BOARD-ACQ-READOUT-GO
   appliesTo:
   - FU-APP-ENGINE
   notes: Source-derived contract; source presence is not evidence of a passing hardware qualification. Average is
@@ -334,11 +282,7 @@ requirements:
   - CAP-SDS-TRIGGER
   category: functional
   sourceRefs:
-  - CODE-APP-INTERNAL-ENGINE-SERIALTRIG-GO
-  - CODE-APP-INTERNAL-ENGINE-SERIALTRIG-TEST-GO
-  - CODE-APP-INTERNAL-ENGINE-SERIALTRIG-EDGE-TEST-GO
-  - CODE-APP-INTERNAL-ENGINE-SERIALTRIG-FUZZ-TEST-GO
-  - CODE-APP-INTERNAL-ENGINE-ENGINE-LOOP-GO
+  - core::FU-DSO-ENGINE
   appliesTo:
   - FU-APP-ENGINE
   notes: Source-derived contract; source presence is not evidence of a passing hardware qualification. A web page's
@@ -361,13 +305,7 @@ requirements:
   - CAP-SDS-TRIGGER
   category: functional
   sourceRefs:
-  - CODE-APP-INTERNAL-ENGINE-ZONEMASK-GO
-  - CODE-APP-INTERNAL-ENGINE-SERIALTRIG-EDGE-TEST-GO
-  - CODE-APP-INTERNAL-ENGINE-ZONEMASK-TEST-GO
-  - CODE-APP-INTERNAL-ENGINE-ZONEMASK-POLICY-TEST-GO
-  - CODE-APP-INTERNAL-ENGINE-ZONEMASK-BREAKER-TEST-GO
-  - CODE-APP-INTERNAL-ENGINE-ZONEMASK-BREAKER2-TEST-GO
-  - CODE-APP-INTERNAL-ENGINE-ENGINE-LOOP-GO
+  - core::FU-DSO-ENGINE
   appliesTo:
   - FU-APP-ENGINE
   - core::FU-DSO-WEBCLIENT
@@ -397,8 +335,8 @@ requirements:
   sourceRefs:
   - CODE-APP-INTERNAL-ANALOG-FRONTEND-GO
   - CODE-APP-INTERNAL-ANALOG-SPI-GO
-  - CODE-APP-INTERNAL-ENGINE-ENGINE-CONTROL-GO
-  - CODE-APP-INTERNAL-ENGINE-ENGINE-TRIGLEVEL-TEST-GO
+  - core::FU-DSO-ENGINE
+  - CODE-APP-INTERNAL-BOARD-ACQ-TRIGGER-HAL-TEST-GO
   appliesTo:
   - FU-APP-ANALOG
   - FU-APP-ENGINE
@@ -419,8 +357,7 @@ requirements:
   - CODE-APP-INTERNAL-BOARD-ACQ-INTERLEAVE-CAL-TEST-GO
   - CODE-APP-INTERNAL-BOARD-ACQ-INTERLEAVE-CAL-GO
   - CODE-APP-INTERNAL-CAL-CAL-GO
-  - CODE-APP-INTERNAL-ENGINE-ENGINE-GO
-  - CODE-APP-INTERNAL-ENGINE-ENGINE-CONTROL-GO
+  - core::FU-DSO-ENGINE
   appliesTo:
   - FU-APP-CAL
   - FU-APP-ENGINE
@@ -442,13 +379,6 @@ requirements:
   appliesTo:
   - core::FU-DSO-DECODE
   - FU-APP-LCD
-  - core::FU-DSO-WEBCLIENT
-  - core::FU-DSO-WEBCLIENT
-  - core::FU-DSO-WEBCLIENT
-  - core::FU-DSO-WEBCLIENT
-  - core::FU-DSO-WEBCLIENT
-  - core::FU-DSO-WEBCLIENT
-  - core::FU-DSO-WEBCLIENT
   - core::FU-DSO-WEBCLIENT
   notes: 'Source-derived contract for ten decoder families: UART, I2C, SPI, Manchester, SENT, CAN/CAN-FD, MIL1553,
     ARINC429, USB LS/FS and FlexRay. All eleven Go implementation files are reviewed. OK is protocol-specific and
@@ -492,18 +422,10 @@ requirements:
   - CAP-SDS-ENHANCED-RESOLUTION
   category: functional
   sourceRefs:
-  - CODE-APP-INTERNAL-ENGINE-ETS-GO
-  - CODE-APP-INTERNAL-ENGINE-ENVROLL-TEST-GO
-  - CODE-APP-INTERNAL-ENGINE-ENVROLL-GO
-  - CODE-APP-INTERNAL-ENGINE-ENGINE-CONTROL-GO
+  - CODE-APP-INTERNAL-BOARD-ACQ-PLANNER-GO
+  - core::FU-DSO-ENGINE
   appliesTo:
   - core::FU-DSO-SUPERRES
-  - core::FU-DSO-WEBCLIENT
-  - core::FU-DSO-WEBCLIENT
-  - core::FU-DSO-WEBCLIENT
-  - core::FU-DSO-WEBCLIENT
-  - core::FU-DSO-WEBCLIENT
-  - core::FU-DSO-WEBCLIENT
   - core::FU-DSO-WEBCLIENT
   notes: 'Source-derived contract; source presence is not evidence of a passing hardware qualification. Browser
     ETS folds samples against a single-bin fundamental phase and derives noise reduction from odd/even half-stack
@@ -561,7 +483,7 @@ requirements:
   - CODE-APP-INTERNAL-LCD-NETADDR-GO
   - CODE-APP-INTERNAL-LCD-NETADDR-TEST-GO
   - CODE-APP-INTERNAL-LCD-GOLDEN-TEST-GO
-  - CODE-APP-INTERNAL-ENGINE-ENGINE-GO
+  - core::FU-DSO-ENGINE
   appliesTo:
   - FU-APP-LCD
   - FU-APP-WEB
@@ -613,9 +535,8 @@ requirements:
   - CAP-SDS-FRONT-PANEL
   category: functional
   sourceRefs:
-  - CODE-APP-INTERNAL-ENGINE-ENGINE-LOOP-GO
-  - CODE-APP-INTERNAL-ENGINE-ENGINE-BUS-GO
-  - CODE-APP-INTERNAL-ENGINE-ENGINE-TEST-GO
+  - core::FU-DSO-ENGINE
+  - CODE-APP-INTERNAL-BOARD-ACQ-IMAGES-GO
   appliesTo:
   - core::FU-DSO-PANEL
   - FU-APP-ENGINE
@@ -695,10 +616,8 @@ requirements:
   sourceRefs:
   - CODE-APP-CMD-APP-MAIN-GO
   - CODE-APP-INTERNAL-APP-RUN-GO
-  - CODE-APP-INTERNAL-ENGINE-ENGINE-BUS-GO
-  - CODE-APP-INTERNAL-ENGINE-ENGINE-LOOP-GO
-  - CODE-APP-INTERNAL-ENGINE-ENGINE-TEST-GO
-  - CODE-APP-INTERNAL-ENGINE-HEALTH-BEAT-TEST-GO
+  - CODE-APP-INTERNAL-BOARD-ACQ-IMAGES-GO
+  - core::FU-DSO-ENGINE
   appliesTo:
   - FU-APP-APP
   - FU-OTA-AGENT
@@ -877,7 +796,7 @@ requirements:
   category: functional
   sourceRefs:
   - CODE-APP-INTERNAL-SRAMCAPTURE-STREAM-GO
-  - CODE-APP-INTERNAL-ENGINE-SRAM-ROLL-GO
+  - CODE-APP-INTERNAL-BOARD-ACQ-ROLL-GO
   - CODE-FPGA-IMAGES-STREAM-STREAM-DRUM-V
   - CODE-FPGA-IMAGES-STREAM-STREAM-BANKS-V
   - CODE-FPGA-IMAGES-STREAM-SIM-TB-STREAM-DRUM-V
@@ -900,9 +819,9 @@ requirements:
   - CAP-SDS-ENHANCED-RESOLUTION
   category: functional
   sourceRefs:
-  - CODE-APP-INTERNAL-ENGINE-SRAM-TEST-GO
-  - CODE-APP-INTERNAL-ENGINE-SRAM-GO
-  - CODE-APP-INTERNAL-ENGINE-ENGINE-CONTROL-GO
+  - CODE-APP-INTERNAL-BOARD-ACQ-BOARD-TEST-GO
+  - CODE-APP-INTERNAL-BOARD-ACQ-READOUT-GO
+  - core::FU-DSO-ENGINE
   appliesTo:
   - FU-APP-ENGINE
   notes: Source-derived contract; source presence is not evidence of a passing hardware qualification. The general
@@ -921,7 +840,7 @@ requirements:
   - CAP-SDS-ENHANCED-RESOLUTION
   category: functional
   sourceRefs:
-  - CODE-APP-INTERNAL-ENGINE-SRAM-GO
+  - CODE-APP-INTERNAL-BOARD-ACQ-READOUT-GO
   appliesTo:
   - core::FU-DSO-DSP
   notes: The 63-tap symmetric Q22 FIR retains the first and last 31 samples unchanged, rounds and saturates the
@@ -982,8 +901,8 @@ requirements:
   - CAP-SDS-ENHANCED-RESOLUTION
   category: functional
   sourceRefs:
-  - CODE-APP-INTERNAL-ENGINE-SRAM-TEST-GO
-  - CODE-APP-INTERNAL-ENGINE-SRAM-GO
+  - CODE-APP-INTERNAL-BOARD-ACQ-BOARD-TEST-GO
+  - CODE-APP-INTERNAL-BOARD-ACQ-READOUT-GO
   - CODE-FPGA-IMAGES-GENERAL-PRECISION-V
   - CODE-FPGA-IMAGES-GENERAL-PRECISION-TAIL-V
   - CODE-FPGA-IMAGES-GENERAL-SIM-TB-INTEGRATOR-V
@@ -1161,7 +1080,7 @@ requirements:
   - CAP-SDS-SIGNAL-ANALYSIS
   category: functional
   sourceRefs:
-  - CODE-APP-INTERNAL-ENGINE-BODE-GO
+  - core::FU-DSO-ENGINE
   appliesTo:
   - FU-APP-ENGINE
   verificationMethods:
@@ -1190,7 +1109,6 @@ requirements:
   category: functional
   appliesTo:
   - core::FU-DSO-WEBCLIENT
-  - core::FU-DSO-WEBCLIENT
   verificationMethods:
   - inspection
   - test
@@ -1206,7 +1124,6 @@ requirements:
   category: functional
   appliesTo:
   - FU-APP-LCD
-  - core::FU-DSO-WEBCLIENT
   - core::FU-DSO-WEBCLIENT
   verificationMethods:
   - inspection
@@ -1276,7 +1193,6 @@ requirements:
   sourceRefs:
   - CODE-APP-INTERNAL-LCD-GOLDEN-TEST-GO
   appliesTo:
-  - core::FU-DSO-WEBCLIENT
   - core::FU-DSO-WEBCLIENT
   - FU-APP-LCD
   - FU-APP-WEB
@@ -1881,7 +1797,6 @@ requirements:
   category: functional
   appliesTo:
   - core::FU-DSO-WEBCLIENT
-  - core::FU-DSO-WEBCLIENT
   verificationMethods:
   - inspection
   - test
@@ -1908,9 +1823,7 @@ requirements:
   - CAP-SDS-ACQUISITION
   category: functional
   sourceRefs:
-  - CODE-APP-INTERNAL-ENGINE-ENVROLL-GO
-  - CODE-APP-INTERNAL-ENGINE-QUALIFY-TEST-GO
-  - CODE-APP-INTERNAL-ENGINE-ENGINE-LOOP-GO
+  - core::FU-DSO-ENGINE
   appliesTo:
   - FU-APP-ENGINE
   verificationMethods:
@@ -1923,50 +1836,56 @@ requirements:
     to record centre are implementation policies. Fewer than two frames report zero. This is not proof of physical
     trigger locking or measured noise performance; the original test provides partial evidence only.
 - id: REQ-SDS-127
-  title: Engine diagnostics and tuning
-  text: The instrument shall expose engine snapshots, acquisition and command history, owner-serviced diagnostics
-    and device-clock tuning controls.
+  title: Acquisition diagnostics and tuning
+  text: The instrument shall expose shared-loop snapshots, bounded web command history, board diagnostics
+    and the board's tuning document through the existing API.
   status: implemented
   realizes:
   - CAP-SDS-ACQUISITION
   category: functional
   sourceRefs:
-  - CODE-APP-INTERNAL-ENGINE-ENGINE-GO
-  - CODE-APP-INTERNAL-ENGINE-ENGINE-BUS-GO
+  - core::FU-DSO-ENGINE
+  - CODE-APP-INTERNAL-APP-ADAPTERS-GO
+  - CODE-APP-INTERNAL-BOARD-ACQ-TUNING-GO
+  - CODE-APP-INTERNAL-WEBSCOPE-EXT-DEBUG-GO
+  - CODE-APP-INTERNAL-WEBSCOPE-EXT-BOARD-TEST-GO
   appliesTo:
   - FU-APP-ENGINE
   verificationMethods:
   - inspection
   - test
-  verificationCriteria: Inspect snapshot/ring bounds, tuning predicates and diagnostic queue/timeout behavior. Direct
-    ring, tuning, callback panic and timeout tests remain absent from this reviewed batch.
-  notes: Diagnostic timeouts do not cancel queued work. Tuning is ignored under the fake clock. Snapshot FPS is
-    capped by the64 stored timestamps. Source presence is not passing behavioral qualification.
+  verificationCriteria: Inspect the shared model's frame counts, publication-rate window and stage timings,
+    the adapter's bounded command ring and empty acquisition history, and the board's tuning predicates.
+    TestExtensionSourcesOverTheBoard checks that tuning GET and POST use the board's document; route goldens check the API replies.
+  notes: The adapter retains 64 web commands and the status returns at most 16. SRAM acquisition returns an empty
+    acquisition log and zero half-rate. Tuning values remain readable and writable when live, but the SRAM
+    capture path does not consume the legacy register-capture timing knobs. Source presence is not hardware qualification.
 - id: REQ-SDS-128
-  title: Engine capture recovery telemetry
-  text: The instrument shall count dead and degraded captures, periodically reprogram the legacy capture engine
-    and report wedge or stuck-suspect state under the implemented evidence conditions.
+  title: Board capture and recovery telemetry
+  text: The instrument shall report board acquisition and read-error counters, converter health and recovery
+    findings through diagnostics while retaining the existing status schema.
   status: implemented
   realizes:
   - CAP-SDS-ACQUISITION
   category: functional
   sourceRefs:
-  - CODE-APP-INTERNAL-ENGINE-DEGRADED-TEST-GO
-  - CODE-APP-INTERNAL-ENGINE-DISCERN-GO
-  - CODE-APP-INTERNAL-ENGINE-ENGINE-BUS-GO
-  - CODE-APP-INTERNAL-ENGINE-ENGINE-CAPTURE-GO
-  - CODE-APP-INTERNAL-ENGINE-ENGINE-LOOP-GO
-  - CODE-APP-INTERNAL-ENGINE-ENGINE-WEDGE-TEST-GO
+  - core::FU-DSO-ENGINE
+  - CODE-APP-INTERNAL-BOARD-ACQ-BOARD-GO
+  - CODE-APP-INTERNAL-BOARD-ACQ-PLATFORM-GO
+  - CODE-APP-INTERNAL-BOARD-ACQ-ACQUIRE-GO
+  - CODE-APP-INTERNAL-BOARD-ACQ-READOUT-GO
+  - CODE-APP-INTERNAL-BOARD-ACQ-ADC-HEALTH-GO
   appliesTo:
   - FU-APP-ENGINE
   verificationMethods:
   - inspection
   - test
-  verificationCriteria: Run the frozen-fill/CONF_DONE and degraded-tail fake-bus tests; inspect ten-observation
-    reprogramming, fifty-observation wedge checks and forty-capture degraded threshold. Physical recovery remains
-    unqualified.
-  notes: Certain hold-path evidence differs from ambiguous flat drains, which additionally require CONF_DONE low.
-    Dead-run reset does not clear Wedged. Sample-content heuristics do not prove physical corruption.
+  verificationCriteria: Inspect the board's arm, force, halt, read and read-error counters and the converter
+    health checks' fault and recovery reporting. Run board conformance and converter-health tests.
+    Physical recovery requires identified hardware evidence.
+  notes: The SRAM path does not run the retired register-drain engine's dead-tail heuristics or periodic
+    reprogramming thresholds. Its legacy dead_runs, wedged, degraded and stuck_suspect status fields retain
+    their neutral defaults; they do not attest capture corruption or recovery.
 - id: REQ-SDS-129
   title: GPMC register and checked-pop access
   text: The instrument shall encode inherited-descriptor register transactions, guard normal writes and expose checked
@@ -2550,8 +2469,6 @@ requirements:
   category: functional
   appliesTo:
   - core::FU-DSO-WEBCLIENT
-  - core::FU-DSO-WEBCLIENT
-  - core::FU-DSO-WEBCLIENT
   verificationMethods:
   - inspection
   - test
@@ -2591,7 +2508,6 @@ requirements:
   - CAP-SDS-WEB-UI
   category: functional
   appliesTo:
-  - core::FU-DSO-WEBCLIENT
   - core::FU-DSO-WEBCLIENT
   - FU-WEB-APP-CONTROLS
   verificationMethods:
@@ -3410,7 +3326,6 @@ requirements:
   - FU-APP-SRAMCAPTURE
   - FU-APP-WEB
   - core::FU-DSO-WEBCLIENT
-  - core::FU-DSO-WEBCLIENT
   - FU-WEB-REMOTE
   verificationMethods:
   - test
@@ -3433,7 +3348,6 @@ requirements:
   - FU-APP-PANEL
   - FU-APP-LCD
   - core::FU-DSO-WEBCLIENT
-  - core::FU-DSO-WEBCLIENT
   verificationMethods:
   - test
   verificationCriteria: A 1 V sine on 0.5 V DC reads 707 mV RMS, 0.5 V DC, 2 Vpp and a 3.01 dB crest; the dBu, dBV and
@@ -3451,7 +3365,6 @@ requirements:
   - core::FU-DSO-SOUND
   - FU-APP-PANEL
   - FU-APP-LCD
-  - core::FU-DSO-WEBCLIENT
   - core::FU-DSO-WEBCLIENT
   - FU-WEB-REMOTE
   verificationMethods:
@@ -3492,7 +3405,6 @@ requirements:
   - core::FU-DSO-SOUND
   - FU-APP-PANEL
   - core::FU-DSO-WEBCLIENT
-  - core::FU-DSO-WEBCLIENT
   verificationMethods:
   - test
   verificationCriteria: A 30 % 5 Hz tremolo reads within 1 % and 0.05 Hz; a +-20 cent 6 Hz vibrato on a square within
@@ -3511,7 +3423,6 @@ requirements:
   - FU-APP-PANEL
   - FU-APP-LCD
   - core::FU-DSO-WEBCLIENT
-  - core::FU-DSO-WEBCLIENT
   verificationMethods:
   - test
   verificationCriteria: A 1 V RMS tone with H2 at -40 dB and H3 at -30 dB reads 0 dBV, -40 and -30 dB, THD 3.32 % and
@@ -3529,7 +3440,6 @@ requirements:
   appliesTo:
   - core::FU-DSO-SOUND
   - FU-APP-PANEL
-  - core::FU-DSO-WEBCLIENT
   - core::FU-DSO-WEBCLIENT
   verificationMethods:
   - test
@@ -3587,7 +3497,6 @@ requirements:
   appliesTo:
   - FU-APP-WEB
   - core::FU-DSO-WEBCLIENT
-  - core::FU-DSO-WEBCLIENT
   - FU-WEB-REMOTE
   - FU-APP-PANEL
   verificationMethods:
@@ -3615,7 +3524,6 @@ requirements:
   - FU-APP-LCD
   - FU-APP-WEB
   - core::FU-DSO-SOUND
-  - core::FU-DSO-WEBCLIENT
   - core::FU-DSO-WEBCLIENT
   - FU-WEB-REMOTE
   verificationMethods:
@@ -3655,7 +3563,6 @@ requirements:
   - FU-APP-PANEL
   - FU-APP-WEB
   - core::FU-DSO-WEBCLIENT
-  - core::FU-DSO-WEBCLIENT
   - FU-WEB-REMOTE
   verificationMethods:
   - test
@@ -3678,8 +3585,6 @@ requirements:
   category: functional
   appliesTo:
   - core::FU-DSO-WEBCLIENT
-  - core::FU-DSO-WEBCLIENT
-  - core::FU-DSO-WEBCLIENT
   verificationMethods:
   - test
   verificationCriteria: visual.test.cjs reads MIDI and DMX512 waveforms, the scope's PS/2, IR NEC, Wiegand, caliper
@@ -3696,7 +3601,6 @@ requirements:
   - CAP-SDS-BUS-ANALYSIS
   category: functional
   appliesTo:
-  - core::FU-DSO-WEBCLIENT
   - core::FU-DSO-WEBCLIENT
   verificationMethods:
   - test
@@ -3715,7 +3619,6 @@ requirements:
   category: functional
   appliesTo:
   - FU-APP-WEB
-  - core::FU-DSO-WEBCLIENT
   - core::FU-DSO-WEBCLIENT
   verificationMethods:
   - test

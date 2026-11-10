@@ -3,13 +3,15 @@
 package app
 
 import (
+	"encoding/json"
+	"os"
 	"reflect"
 	"testing"
 
 	"github.com/labeth/open-dso-core/engine/fanout"
 	"github.com/labeth/open-dso-core/render"
 	"github.com/labeth/open-dso-core/uimodel/panel"
-	"github.com/labeth/open-sds1000cml/app/internal/engine"
+	engine "github.com/labeth/open-sds1000cml/app/internal/scopeapi"
 	"github.com/labeth/open-sds1000cml/app/internal/scpi"
 )
 
@@ -26,12 +28,18 @@ func hudFieldsDiffer(a, b render.HUD) []string {
 	return out
 }
 
-// The core's HUD over the instrument model alone (HALScope's controls,
-// the codes kept beside the model) is the HUD over the device's engine in
-// the states both compositions are set to alike.
+// The HUD over the HAL controls and model retains the recorded states.
 // TRLC-LINKS: REQ-SDS-168
 func TestCoreHUDOverTheModel(t *testing.T) {
-	rigs := [2]setupRig{engineRig(t), modelRig(t)}
+	rigs := []setupRig{modelRig(t)}
+	raw, err := os.ReadFile("testdata/hud.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := map[string]render.HUD{}
+	if err := json.Unmarshal(raw, &want); err != nil {
+		t.Fatal(err)
+	}
 	for _, r := range rigs {
 		r.pc.SetInverter(panel.Inverter2(scpi.New(scopeSource{r.ctl, fanout.NewFrames()}, r.afe, r.levels, r.pc, nil, t.Logf)))
 	}
@@ -72,9 +80,14 @@ func TestCoreHUDOverTheModel(t *testing.T) {
 	}
 	for _, s := range steps {
 		var huds [2]render.HUD
-		for i, r := range rigs {
+		for _, r := range rigs {
 			s.do(r)
-			huds[i] = r.pc.HUD(2)
+			huds[1] = r.pc.HUD(2)
+		}
+		var ok bool
+		huds[0], ok = want[s.name]
+		if !ok {
+			t.Fatalf("no recorded HUD for %q", s.name)
 		}
 		if d := hudFieldsDiffer(huds[0], huds[1]); len(d) > 0 {
 			t.Errorf("%s: over the model the HUD differs in %v", s.name, d)

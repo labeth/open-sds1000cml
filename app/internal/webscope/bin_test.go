@@ -13,7 +13,7 @@ import (
 
 	"github.com/labeth/open-dso-core/sample"
 	"github.com/labeth/open-dso-core/webserver/wire"
-	"github.com/labeth/open-sds1000cml/app/internal/engine"
+	engine "github.com/labeth/open-sds1000cml/app/internal/scopeapi"
 )
 
 // getBin fetches /api/frame.bin and returns the decoded header + raw payload.

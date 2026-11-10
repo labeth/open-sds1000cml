@@ -1,0 +1,1672 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-ENGINE
+
+package streams
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"math"
+	"math/bits"
+	"slices"
+	"time"
+
+	"github.com/labeth/open-dso-core/decode"
+	"github.com/labeth/open-dso-core/decodedlines"
+	core "github.com/labeth/open-dso-core/engine"
+	"github.com/labeth/open-sds1000cml/app/internal/board/acq"
+	"github.com/labeth/open-sds1000cml/app/internal/bus"
+	"github.com/labeth/open-sds1000cml/app/internal/sramcapture"
+)
+
+// The decoded stream of the protocols on the qualify image's symbol trigger
+// (ADR-STREAM-SOFT-DECODE): that image has no decoded event transport, so
+// the stream is decoded in software from samples, in one of two modes.
+//
+//   - Gap-free: the stream image's continuous peak-detect stream (every word
+//     reaches the host, ADR-STREAM-IMAGE) is decoded as it arrives
+//     (decode.StreamDecoder), where its finest lossless bucket (2^9 samples,
+//     1.024 us) keeps three and a half buckets in the protocol's shortest
+//     feature. The stream image has no symbol trigger, so a stop on a value
+//     ends the transcript at the frame software read it in. The record shown
+//     is the bits image's history ring stopped there (soft_ring.go,
+//     ADR-STREAM-RING: for a decoded stream software may be the trigger)
+//     when the stream's plan allows one; else the FPGA's: the qualify
+//     image's symbol trigger armed on the value, the next time it comes.
+//   - Captures: the faster buses are decoded from back-to-back full-rate
+//     (or lightly decimated) records on the qualify image, each armed with
+//     the symbol trigger - the frame start, or the stop value - and forced
+//     when it does not fire; what lies between records is not seen, and the
+//     stream says what share of the signal time it read. A stop on a value is
+//     a record the symbol trigger fired on.
+//
+// A stop on a decode error is refused: the symbol trigger matches no error
+// token, and the FPGA decides every trigger.
+
+// softEpochBase marks the record identities of software-decoded streams.
+const softEpochBase = 0xC0000000
+
+// softPhase is where a software-decoded stream stands.
+type softPhase int
+
+const (
+	softStreaming  softPhase = iota // decoding the stream or the records
+	softRecord                      // transcript ended on the value: arming the record
+	softRecordWait                  // waiting for the symbol trigger's record
+	softDone                        // ended: the record is ready, or err says why not
+)
+
+// softRecordWaitMax bounds the wait for the value to come again for the
+// record after a gap-free stream read it.
+const softRecordWaitMax = 10 * time.Second
+
+// softCaptureWords is the words of a record in the captures mode: a shorter
+// record reads sooner but the share of signal time read is the readout's
+// (about the same whatever the length).
+const softCaptureWords = 16384
+
+// softStream is a software-decoded stream's state, on the acquisition owner.
+type softStream struct {
+	id      sramcapture.RecordIdentity
+	p       SerialParams
+	proto   string
+	decoder SerialDecoder
+	trig    StreamTrigger
+	byHand  bool // asked to stop on an error, which the symbol trigger cannot match
+	value   int
+	mask    int
+	gapFree bool
+	quiet   float64
+	phase   softPhase
+	err     error
+	start   time.Time
+
+	dec     *decode.StreamDecoder
+	sampleS float64
+	// ordinal is the 2 ns sample ordinal of the stream's sample i (gap-free)
+	// or of a record's sample i (captures).
+	ordBase, ordStep float64
+
+	events []sramcapture.DecodedEvent
+	evHead int // the next event to read: events[evHead:] are queued
+	seq    uint32
+
+	// Line B's slicing level, learned from the stream when the request has
+	// none (a window of idle line B has no level of its own).
+	bLo, bHi uint8
+	bSeen    bool
+
+	// Gap-free stream session.
+	log    uint8
+	period int  // the digital stream's period in raw words
+	bits   bool // the digital stream's words (ADR-STREAM-BITS), not peak words
+	// The digital stream's quiet line: past keepWords words of it (Close
+	// and the decoder's lead) the words are left out and the decoder skips
+	// them, so a quiet bus costs no decoding; leadWords of it come back
+	// before the next edge.
+	idleWords, skipped   int
+	keepWords, leadWords int
+	lvl                  [2]uint16 // each line's last word: 0 or 0xFFFF when quiet
+	haveLvl              bool
+	streaming            bool
+	pump                 streamPumper // the bus worker's pump while it drains the banks; nil otherwise
+	peek                 streamPeeker // reads the words in the shared ring; nil when they are copied out
+	release              int          // ring bytes read in place, given back at the next peek
+	deadline             *bus.DecodedDeadline
+	expected             uint64
+	raw                  []byte
+	pendA                []uint8
+	pendB                []uint8
+	pushN                int
+	last                 [2]uint16
+	haveLast             bool
+	losses               int
+
+	// The digital stream's lines queued and decoded as their edges
+	// (decode.EdgeLine), for a decoder with an edge entry: its decode
+	// costs what the bus's edges do, not its samples.
+	edges          bool
+	pendEA, pendEB decode.EdgeLine
+
+	// The stream decoder's sizes in samples, as made (a page decodes with
+	// the same: soft_client.go).
+	closeN, maxN, leadN int
+	// subframes: the decoder's "rw" spans open frames too (decode
+	// StreamDecoder.SetSubframes): S/PDIF's frames run without a pause and
+	// only every 192nd opens with a start, so its M and W subframes are
+	// frames of their own; a page decoding for the scope does the same.
+	subframes bool
+	// Client decode (soft_client.go): a web page decodes the words.
+	client      bool
+	clientBreak bool               // words were lost since the last chunk the page was handed
+	overBudget  bool               // the plan carries more than the scope decodes: only a page keeps up
+	cliFrames   []core.ClientFrame // the page's frames taken from the ring (soft_client.go)
+	cliSpans    []core.ClientSpan
+
+	// Captures mode.
+	capCfg    sramcapture.Config
+	armed     bool
+	armAt     time.Time
+	forced    bool
+	symCount  int
+	capWait   time.Duration
+	read      time.Duration // signal time read
+	nextOrd   uint64
+	stopUnit  int    // the stop value's unit in its frame
+	noStop    bool   // emit: the value read does not stop (the FPGA did not fire)
+	valueRead bool   // emit: the value was read
+	missed    int    // records in a row whose decode read the value the FPGA did not fire on
+	stopFirst uint64 // the stop frame's first and last sample ordinals
+	stopLast  uint64
+
+	// The history ring (soft_ring.go): the stream runs on chip beside the
+	// ring; sessBase is the decoder's index of this stream session's first
+	// sample, where the ring's stamp counts from.
+	ring     bool
+	ringLog  uint8
+	ringCfg  sramcapture.Config
+	ringErr  error
+	ringWhy  string // why a value stop has no ring
+	sessBase uint64
+	sessAt   time.Time // when this stream session started
+
+	// The record shown at the stop.
+	recCfg  sramcapture.Config
+	recMeta sramcapture.Metadata
+	recOK   bool
+	recDue  time.Time
+}
+
+// softValueMisses is how many records in a row may hold the stop value
+// the symbol trigger did not fire on before a captures stream gives up.
+const softValueMisses = 8
+
+// softOneWire is the decode package's name of 1-Wire, whose overdrive
+// speed the stream plans apart.
+const softOneWire = core.SoftOneWire
+
+// softProtoNames are the decode package's names of the symbol protocols.
+var softProtoNames = core.SoftStreamNames()
+
+// softProtoName is softProtoNames[proto] from a table by id built once.
+var softProtoName = core.SoftStreamName
+
+// SoftStreamMode says how the scope streams proto at bit rate baud (the
+// decoder settings'): "gap-free" from the continuous stream, "captures" of
+// back-to-back records, "" when it streams through the FPGA's decoded events.
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
+func SoftStreamMode(proto, baud int, overdrive bool) string {
+	name, ok := softProtoName(proto)
+	if !ok {
+		return ""
+	}
+	if _, ok := softGapFreePlan(name, baud, overdrive, softLines(proto)); ok {
+		return "gap-free"
+	}
+	return "captures"
+}
+
+// softBitsBudget is the most samples a second (all lines) the device
+// decodes from the digital stream beside its display: two lines at 1.95 M
+// (PDI, cJTAG) kept up with busy buses on the bench, one or two at 7.8 M
+// (WS281x, SWD, MDIO) fell a ring behind in about two seconds. A faster plan
+// streams as captures.
+const softBitsBudget = 4e6
+
+// softLines is the lines a protocol's stream decodes: a clocked bus's two.
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
+func softLines(proto int) int {
+	if core.ClockedTwoLine(proto) {
+		return 2
+	}
+	return 1
+}
+
+// softPlan is a gap-free stream's plan: the peak stream's decimation (a
+// bucket of 2^log samples), or the digital stream's period in raw words.
+type softPlan struct {
+	log    int // the arm's decimation: the peak words' bucket, or about the digital words' span
+	period int // the digital stream's period in raw words (bits)
+	bits   bool
+}
+
+// softGapFreePlan is the gap-free stream's plan for a protocol: with the
+// digital stream image, a line without a carrier is sliced in the FPGA
+// (ADR-STREAM-BITS) at any period the CPU budget and the bus allow
+// (decode.StreamBitsPlan), so faster buses stream gap-free and slower ones
+// at a coarser period; else the peak stream's decimation. ok false when it
+// needs the captures.
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
+func softGapFreePlan(name string, baud int, overdrive bool, lines int) (softPlan, bool) {
+	return softGapFreePlanBudget(name, baud, overdrive, lines, softBitsBudget)
+}
+
+// softGapFreePlanBudget is softGapFreePlan for a decode that keeps up with
+// budget samples a second (a web page's: soft_client.go).
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
+func softGapFreePlanBudget(name string, baud int, overdrive bool, lines int, budget float64) (softPlan, bool) {
+	if p, ok := softBitsPlan(name, baud, overdrive, budget/float64(lines)); ok {
+		return p, true
+	}
+	log, ok := softGapFreeLog(name, baud, overdrive)
+	return softPlan{log: log}, ok
+}
+
+// softBitsPlan is the digital stream's plan for a decode that keeps up with
+// budget samples a second a line, ok false when the build or the protocol
+// has none.
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
+func softBitsPlan(name string, baud int, overdrive bool, budget float64) (softPlan, bool) {
+	if !bitsImage.Load() || !decode.StreamBitsLine(name) {
+		return softPlan{}, false
+	}
+	feature, _, _, known := decode.StreamTiming(name, float64(baud))
+	if !known {
+		return softPlan{}, false
+	}
+	if name == softOneWire && overdrive {
+		feature /= 10
+	}
+	period, ok := decode.StreamBitsPlan(feature, budget)
+	if !ok {
+		return softPlan{}, false
+	}
+	return softPlan{log: softBitsLog(period), period: period, bits: true}, true
+}
+
+// softBitsLog is the decimation armed with a digital period of period raw
+// words: the power of two nearest above a word's span (sixteen periods of
+// two samples a raw word), within the stream's 8..20. The fabric streams
+// the period; the decimation only has to be one a stream takes.
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
+func softBitsLog(period int) int {
+	return min(max(bits.Len(uint(32*period-1)), 8), decode.StreamMaxLog)
+}
+
+// wordRate is the words a second the plan's stream asks of the bus.
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-240, REQ-SDS-035
+func (p softPlan) wordRate() float64 {
+	if p.bits {
+		return decode.StreamBitsWordRate(p.period)
+	}
+	return 500e6 / float64(uint64(1)<<p.log)
+}
+
+// pace is the plan's stream pace for sramcapture: the digital period; the
+// peak stream keeps its decimation's bucket.
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-240, REQ-SDS-035
+func (p softPlan) pace() sramcapture.StreamPace {
+	if p.bits {
+		return sramcapture.StreamPace{Words: uint32(p.period)} //nolint:gosec // G115: a stream period of a few words
+	}
+	return sramcapture.StreamPace{}
+}
+
+// setTiming sets the gap-free stream's sample time and 2 ns ordinal step
+// for plan p: a peak word's bucket gives two samples a line, so a sample
+// is half a bucket; a digital period one sample. Both steps are whole
+// ordinals, so a sample's ordinal is exact at any period.
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
+func (s *softStream) setTiming(p softPlan) {
+	s.log, s.period = uint8(p.log), p.period //nolint:gosec // G115: a decimation log2 of at most 20
+	if p.bits {
+		s.sampleS = decode.StreamBitsPeriod(p.period)
+		s.ordStep = float64(2 * p.period)
+		return
+	}
+	s.sampleS = float64(uint64(1)<<p.log) * 2e-9 / 2
+	s.ordStep = float64(uint64(1) << (p.log - 1))
+}
+
+// softGapFreeLog is the gap-free stream's decimation for a protocol, ok
+// false when it needs the captures.
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
+func softGapFreeLog(name string, baud int, overdrive bool) (int, bool) {
+	feature, _, _, ok := decode.StreamTiming(name, float64(baud))
+	if !ok {
+		return 0, false
+	}
+	if name == softOneWire && overdrive {
+		feature /= 10 // overdrive's slots are a tenth as long
+	}
+	return decode.StreamBucketLog(feature)
+}
+
+// softCaptureLog is the captures mode's record decimation: the coarsest
+// that keeps eight samples in the protocol's shortest feature (0: full rate).
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
+func softCaptureLog(feature float64) uint8 {
+	log := uint8(0)
+	for l := uint8(4); l <= 12; l++ {
+		if float64(uint64(1)<<l)*2e-9*8 > feature {
+			break
+		}
+		log = l
+	}
+	return log
+}
+
+// beginSoftStream starts a software-decoded stream of a symbol protocol.
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
+func (d *DecodedStreams) beginSoftStream(ctx context.Context, p SerialParams, trig StreamTrigger, value int) (sramcapture.RecordIdentity, error) {
+	name, _ := softProtoName(p.Proto)
+	dec, ok := core.LookupSerialDecoder(p.Proto)
+	if name == "" || !ok {
+		return sramcapture.RecordIdentity{}, fmt.Errorf("no software stream for protocol %d", p.Proto)
+	}
+	// The FPGA's symbol trigger matches no decode error: an On-error stream
+	// (the setting's default) runs until stopped by hand and says so. Refused,
+	// every symbol bus's Stream view failed from Default setup.
+	onError := trig == StreamOnError
+	if onError {
+		trig = StreamManual
+	}
+	if !p.HaveThr {
+		return sramcapture.RecordIdentity{}, fmt.Errorf("%s streams need the decode's threshold", dec.Name)
+	}
+	feature, longest, quiet, _ := decode.StreamTiming(name, float64(p.Baud))
+	if name == softOneWire && p.Overdrive {
+		feature, longest, quiet = feature/10, longest/10, quiet/10
+	}
+	plan, gapFree := softGapFreePlanBudget(name, p.Baud, p.Overdrive, softLines(p.Proto), d.softBudget())
+	bits := plan.bits
+	if !gapFree && trig == StreamOnValue {
+		// Captures stop on a record the symbol trigger fired on; the value
+		// must be one it matches wherever it comes.
+		q := p
+		q.Bytes, q.Pattern = nil, []PatternElem{{Kind: core.PatternData, Value: value & core.UnitMask(p), Mask: core.UnitMask(p)}}
+		if !acq.PlanHardwareSymbol(&q).Enabled {
+			return sramcapture.RecordIdentity{}, fmt.Errorf("%s streams as captures, and the FPGA's symbol trigger matches %X only at a fixed place in a frame: stop it by hand", dec.Name, value&core.UnitMask(p))
+		}
+	}
+	s := &softStream{
+		p: p, proto: name, decoder: dec, trig: trig, value: value & core.UnitMask(p), mask: core.UnitMask(p),
+		gapFree: gapFree, quiet: quiet, bits: bits, byHand: onError, ring: bits && trig == StreamOnValue, subframes: name == "spdif",
+	}
+	if bits {
+		s.overBudget = float64(softLines(p.Proto))/decode.StreamBitsPeriod(plan.period) > softBitsBudget
+	}
+	v, err := d.decodedCall(ctx, func() (any, error) {
+		d.decodedStarting = time.Time{}
+		if d.decodedSession != nil || d.soft != nil {
+			return nil, errors.New("a decoded stream is already running")
+		}
+		want := acq.ImageQualify
+		if bits {
+			want = acq.ImageBits
+		} else if gapFree {
+			want = acq.ImageStream
+		}
+		if !d.h.hasImages() || !d.h.hasImage(want) {
+			return nil, fmt.Errorf("this build has no %s FPGA image to stream %s", want, dec.Name)
+		}
+		d.h.soundYield()
+		if err := d.h.memory().Halt(ctx); err != nil {
+			return nil, err
+		}
+		if d.h.protocolImage() != want {
+			d.h.loadImage(want)
+			if d.h.protocolImage() != want {
+				return nil, fmt.Errorf("the %s FPGA image did not load", want)
+			}
+		}
+		if s.ring && !d.h.memory().StreamRingSupported() {
+			s.ring, s.ringWhy = false, "the bits image has no history ring"
+		}
+		d.h.setRunning(false) // streaming is not RUN
+		d.softEpoch++
+		s.id = sramcapture.RecordIdentity{Epoch: softEpochBase | d.softEpoch&0x3fffffff, Record: 1}
+		s.start = d.h.clock().Now()
+		if gapFree {
+			s.setTiming(plan)
+			// Decode a fifth of a second at a time, or twice Close (each decode
+			// reads the open window again, so short pushes cost it over and
+			// over), but at least once a second: a DCF77 minute's Close is 32 s.
+			s.pushN = min(int(math.Max(0.2, math.Min(1, 2*quiet))/s.sampleS), softPushMax)
+			if s.ring {
+				// A drain step runs up to 100 ms before it decodes.
+				n, why, ok := softRingPlanRate(plan.wordRate(), feature, longest, quiet, float64(s.pushN)*s.sampleS+0.1)
+				s.ring, s.ringLog, s.ringWhy = ok, uint8(n), why //nolint:gosec // G115: a decimation log2 of at most 20
+			}
+			s.newDecoder(int(quiet/s.sampleS), int((longest+quiet)/s.sampleS))
+			lead := int(decode.StreamLead(name, float64(p.Baud)) / s.sampleS)
+			s.setLead(lead)
+			s.leadWords = lead/16 + 2
+			s.keepWords = int(quiet/s.sampleS)/16 + s.leadWords + 2
+			// The stream starts on the loop's next step (softDrain), after
+			// the loop has ended a roll stream that may hold the banks.
+		} else {
+			s.capWait = 20 * time.Millisecond
+		}
+		d.soft = s
+		mode := s.modeText(0)
+		d.mu.Lock()
+		d.stats.DecodedStreamMode = mode
+		d.mu.Unlock()
+		d.h.logf("engine: %s stream: %s", dec.Name, mode)
+		if bits && trig == StreamOnValue && !s.ring {
+			d.h.logf("engine: %s stream: no history ring (%s): the stop's record is the symbol trigger's", dec.Name, s.ringWhy)
+		}
+		return s.id, nil
+	})
+	return core.OwnerResult[sramcapture.RecordIdentity](v, err)
+}
+
+// decodeFunc is the registry decoder at the stream's sample time and the
+// request's settings, with line B's learned level.
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
+func (s *softStream) decodeFunc() func(a, b []uint8) decode.Result {
+	return func(a, b []uint8) decode.Result {
+		p := s.p
+		if !p.HaveThrB && s.bSeen && int(s.bHi)-int(s.bLo) >= 24 {
+			p.ThresholdB, p.HaveThrB = (float64(s.bLo)+float64(s.bHi))/2, true
+		}
+		return s.decoder.Decode(a, b, s.sampleS, p)
+	}
+}
+
+// newDecoder makes the gap-free stream's decoder (Close and Max in
+// samples): over the edges for a digital stream whose decoder reads its
+// lines through their edges, over the samples otherwise.
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
+func (s *softStream) newDecoder(closeN, maxN int) {
+	s.closeN, s.maxN = closeN, maxN
+	s.edges = s.bits && s.decoder.Edges != nil
+	if s.edges {
+		s.dec = decode.NewEdgeStreamDecoder(s.edgeDecodeFunc(), closeN, maxN)
+	} else {
+		s.dec = decode.NewStreamDecoder(s.decodeFunc(), closeN, maxN)
+	}
+	s.dec.SetSubframes(s.subframes)
+}
+
+// setLead keeps n samples before a frame's start in the decoder's window.
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
+func (s *softStream) setLead(n int) {
+	s.leadN = n
+	s.dec.SetLead(n)
+}
+
+// edgeDecodeFunc is decodeFunc over the digital stream's edges.
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
+func (s *softStream) edgeDecodeFunc() func(a, b *decode.EdgeLine) decode.Result {
+	return func(a, b *decode.EdgeLine) decode.Result {
+		p := s.p
+		if !p.HaveThrB && s.bSeen && int(s.bHi)-int(s.bLo) >= 24 {
+			p.ThresholdB, p.HaveThrB = (float64(s.bLo)+float64(s.bHi))/2, true
+		}
+		return s.decoder.Edges(a, b, s.sampleS, p)
+	}
+}
+
+// pending is the samples a line queued for the decoder.
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
+func (s *softStream) pending() int {
+	if s.edges {
+		return s.pendEA.N
+	}
+	return len(s.pendA)
+}
+
+// modeText is the stream's mode for the displays.
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
+func (s *softStream) modeText(elapsed time.Duration) string {
+	t := ""
+	switch {
+	case s.gapFree && s.bits && s.client:
+		t = fmt.Sprintf("gap-free, browser decode of the %.3g us digital stream", s.sampleS*1e6)
+	case s.gapFree && s.bits:
+		t = fmt.Sprintf("gap-free, software decode of the %.3g us digital stream", s.sampleS*1e6)
+	case s.gapFree:
+		t = fmt.Sprintf("gap-free, software decode of the %.3g us stream", s.sampleS*2e6)
+	case elapsed <= 0:
+		t = "captures, not gap-free"
+	default:
+		t = fmt.Sprintf("captures, not gap-free: %.2g %% of the signal time read", 100*s.read.Seconds()/elapsed.Seconds())
+	}
+	if s.byHand {
+		t += "; stops by hand (the FPGA matches no decode error here)"
+	}
+	if s.ring {
+		t += fmt.Sprintf("; the stop shows the %.2g s analog history", softRingSpan(int(s.ringLog)))
+	}
+	return t
+}
+
+// softStreamStart starts the stream image's continuous peak stream.
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-240, REQ-SDS-035
+func (d *DecodedStreams) softStreamStart(s *softStream) error {
+	image := acq.ImageStream
+	if s.bits {
+		image = acq.ImageBits
+	}
+	if err := d.h.freshStreamImage(image); err != nil {
+		return err
+	}
+	plan := softPlan{log: int(s.log), period: s.period, bits: s.bits}
+	if r := plan.wordRate(); r > decode.StreamBusWords {
+		return fmt.Errorf("a stream of %.3g M words a second is past the bus's %.3g M", r/1e6, decode.StreamBusWords/1e6)
+	}
+	ch := uint8(s.p.ChA & 1)
+	cfg := sramcapture.Config{
+		Source: sramcapture.ADC, DecimationLog2: s.log, PreWords: sramcapture.Words - 17, PostWords: 17,
+		TriggerChannel: ch, TriggerLevel: uint8(math.Round(s.p.Threshold)),
+	}
+	if s.bits {
+		d.planBitsLevels(s, &cfg)
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+	pump := func() error {
+		if _, ok := d.h.bus().(streamPumper); ok {
+			pump, err := d.h.ownStreamPump()
+			if err != nil {
+				return err
+			}
+			s.pump = pump
+			s.peek, _ = d.h.bus().(streamPeeker)
+			s.release = 0
+		}
+		return nil
+	}
+	if s.ring {
+		// The on-chip stream's slack is 33 ms at the most a ring plan
+		// streams: the worker's pump is running before the stream starts (it
+		// waits for it), so the first words do not wait for its set-up.
+		if err := pump(); err != nil {
+			return err
+		}
+	}
+	err := s.startFabric(cfg, func(c sramcapture.Config) error { return d.h.memory().StartStreamRing(ctx, c, s.log, plan.pace()) },
+		func(c sramcapture.Config) error { return d.h.memory().StartStream(ctx, c, true, true, plan.pace()) }, d.h.logf)
+	if err != nil {
+		if s.pump != nil {
+			_, _ = s.pump.SetIsolatedStreamPump(false)
+			s.pump = nil
+		}
+		return err
+	}
+	pending := len(s.pendA)
+	if s.edges {
+		pending = s.pendEA.N
+	}
+	s.sessBase, s.sessAt = s.dec.Next()+uint64(pending), d.h.clock().Now()
+	s.streaming, s.expected, s.haveLast = true, 0, false
+	// The session's first words come from wherever the line is: a frame
+	// they cut is no frame of the transcript.
+	s.dec.CutStart(s.sessBase)
+	if s.pump == nil {
+		if err := pump(); err != nil {
+			d.softStreamStop(s)
+			return err
+		}
+	}
+	if dev, ok := d.h.bus().(*bus.Dev); ok && s.pump == nil && s.deadline == nil {
+		if d, err := dev.StartDecodedDeadline(); err == nil {
+			s.deadline = d
+		}
+	}
+	return nil
+}
+
+// softStreamStop ends the stream session, if one runs.
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-240, REQ-SDS-035
+func (d *DecodedStreams) softStreamStop(s *softStream) {
+	if !s.streaming {
+		return
+	}
+	if s.pump != nil {
+		if _, err := s.pump.SetIsolatedStreamPump(false); err != nil {
+			d.h.busErr(err)
+		}
+		s.pump = nil
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	if err := d.h.memory().StopStream(ctx); err != nil {
+		d.h.busErr(err)
+	}
+	cancel()
+	if s.deadline != nil {
+		_ = s.deadline.Close()
+		s.deadline = nil
+	}
+	s.streaming = false
+}
+
+// softStep runs the stream one step on the acquisition owner.
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
+func (d *DecodedStreams) softStep() {
+	s := d.soft
+	switch s.phase {
+	case softStreaming:
+		if s.gapFree {
+			d.softDrain(s)
+		} else {
+			d.softCapture(s)
+		}
+		d.mu.Lock()
+		d.stats.DecodedStreamMode = s.modeText(d.h.clock().Now().Sub(s.start))
+		d.mu.Unlock()
+	case softRecord:
+		d.softArmRecord(s)
+	case softRecordWait:
+		d.softWaitRecord(s)
+	case softDone:
+		if s.deadline != nil {
+			_ = s.deadline.Pause()
+		} else {
+			d.h.clock().Sleep(20 * time.Millisecond)
+		}
+	}
+}
+
+// softDrain moves the stream's words into the decoder for one step.
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-240, REQ-SDS-035
+func (d *DecodedStreams) softDrain(s *softStream) {
+	if !s.streaming {
+		if err := d.softStreamStart(s); err != nil {
+			d.h.busErr(err)
+			d.h.sleepBeating(100 * time.Millisecond)
+			return
+		}
+	}
+	if d.softClientMode(s) {
+		return
+	}
+	raw := s.raw[:0]
+	w := byteSink{dst: &raw}
+	fed := false
+	// A stop read in a feed ends the stream there: no drain after it.
+	for end := d.h.clock().Now().Add(100 * time.Millisecond); d.h.clock().Now().Before(end) && !d.h.stopping() && s.phase == softStreaming; {
+		if s.pump != nil && s.peek != nil {
+			more, ok := d.softPeekStep(s)
+			fed = fed || ok
+			if !more {
+				break
+			}
+			continue
+		}
+		if s.pump != nil {
+			var more bool
+			if raw, more = d.softReadStep(s, raw); !more {
+				break
+			}
+			continue
+		}
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+		block, err := d.h.memory().DrainStream(ctx, s.expected, &w)
+		cancel()
+		if errors.Is(err, sramcapture.ErrNoStreamBlock) {
+			break
+		}
+		if err != nil {
+			d.softLoss(s, err)
+			break
+		}
+		s.expected = block.FirstWord + uint64(block.Words)
+	}
+	if len(raw) > 0 {
+		d.softIn(s, raw)
+	}
+	s.raw = raw[:0]
+	if s.pending() >= s.pushN {
+		d.softPush(s)
+	} else if len(raw) == 0 && !fed {
+		if s.deadline != nil {
+			_ = s.deadline.Pause()
+		} else {
+			d.h.clock().Sleep(5 * time.Millisecond)
+		}
+	}
+}
+
+// softPeekStep decodes the next piece of the worker's ring where its DMA put
+// it; the piece goes back to the worker at the next peek. fed reports words
+// decoded; more is false when the drain step ends.
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-240, REQ-SDS-035
+func (d *DecodedStreams) softPeekStep(s *softStream) (more, fed bool) {
+	first, a, b, err := s.peek.PeekIsolatedStream(s.release)
+	s.release = 0
+	if errors.Is(err, bus.ErrNoSharedRing) {
+		s.peek = nil
+		return true, false
+	}
+	// A piece at a time: a reader behind by the ring's 8 MB would
+	// otherwise unpack all of it at once (sixteen samples a digital
+	// word a line).
+	a = a[:min(len(a), softReadBytes)]
+	b = b[:min(len(b), softReadBytes-len(a))]
+	n := len(a) + len(b)
+	if err == nil && n > 0 && first != s.expected {
+		err = fmt.Errorf("stream ordinal %d, want %d", first, s.expected)
+	}
+	if err != nil {
+		d.softLoss(s, err)
+		return false, false
+	}
+	if n == 0 {
+		return false, false
+	}
+	if s.client {
+		// One push check for both pieces, as the scope's own decode.
+		d.softClientWords(s, a, len(b) == 0)
+		d.softClientWords(s, b, true)
+	} else {
+		d.softFeed(s, a)
+		if len(b) > 0 {
+			d.softFeed(s, b)
+		}
+	}
+	s.release = n
+	s.expected += uint64(n / 4)
+	if s.pending() >= s.pushN {
+		d.softPush(s)
+	}
+	return s.phase == softStreaming, true
+}
+
+// softReadStep reads the worker's next words onto the end of raw, with no
+// copy between; a digital stream's are fed as read. more is false when the
+// drain step ends.
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-240, REQ-SDS-035
+func (d *DecodedStreams) softReadStep(s *softStream, raw []byte) (out []byte, more bool) {
+	at := len(raw)
+	raw = slices.Grow(raw, softReadBytes)[:at+softReadBytes]
+	first, n, _, err := s.pump.ReadIsolatedStream(raw[at:])
+	raw = raw[:at+n]
+	if err == nil && n > 0 && first != s.expected {
+		err = fmt.Errorf("stream ordinal %d, want %d", first, s.expected)
+	}
+	if err != nil {
+		d.softLoss(s, err)
+		return raw, false
+	}
+	if n == 0 {
+		return raw, false
+	}
+	s.expected += uint64(n / 4) //nolint:gosec // G115: n is a read's non-negative byte count
+	if !s.bits {
+		return raw, true
+	}
+	// Fed as read: a digital word is sixteen samples a line.
+	d.softIn(s, raw)
+	raw = raw[:0]
+	if s.pending() >= s.pushN {
+		d.softPush(s)
+	}
+	return raw, s.phase == softStreaming
+}
+
+// byteSink appends what DrainStream writes.
+type byteSink struct{ dst *[]byte }
+
+// Write appends b; it never fails.
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
+func (w byteSink) Write(b []byte) (int, error) {
+	*w.dst = append(*w.dst, b...)
+	return len(b), nil
+}
+
+// softLoss records words the stream lost: the transcript says so, the
+// decoder starts afresh after them, and a new stream starts on the next step.
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
+func (d *DecodedStreams) softLoss(s *softStream, err error) {
+	s.losses++
+	d.h.logf("engine: software stream lost words after %d: %v", s.expected, err)
+	d.h.noteStreamLoss(s.expected)
+	d.softPush(s) // what arrived before the loss
+	s.dec.Skip(0)
+	s.haveLast = false
+	s.idleWords, s.skipped, s.haveLvl = 0, 0, false
+	s.addEvent(sramcapture.DecodedEvent{Kind: sramcapture.EventLoss, Sample: s.ord(s.dec.Next()), Count: 1})
+	s.clientBreak = true
+	d.softStreamStop(s)
+	if s.ring {
+		// The on-chip stream has 50 ms of slack, the SRAM drum's a second:
+		// a stream that lost words with the ring goes on without it.
+		s.ring, s.ringWhy = false, "the on-chip stream lost words"
+		d.h.logf("engine: %s stream: %s; on without the history ring", s.decoder.Name, s.ringWhy)
+	}
+}
+
+// ord is stream sample i's 2 ns ordinal. The gap-free stream's step is a
+// power of two from the zeroth sample, and the ordinal then the sample
+// shifted, the very value the float operations give: on the device
+// converting a 64-bit integer to a float and back is a library call each.
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
+func (s *softStream) ord(i uint64) uint64 {
+	if b := math.Float64bits(s.ordStep); math.Float64bits(s.ordBase) == 0 && b&(1<<52-1) == 0 &&
+		b>>52 >= 1023 && b>>52 <= 1023+10 && i < 1<<52 {
+		return i << (b>>52 - 1023) // a step of 2^0 to 2^10
+	}
+	return uint64(s.ordBase + float64(i)*s.ordStep)
+}
+
+// softIn takes the stream's words: to the page that decodes them, or to
+// the scope's decoder.
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
+func (d *DecodedStreams) softIn(s *softStream, raw []byte) {
+	if s.client {
+		d.softClientWords(s, raw, true)
+		return
+	}
+	d.softFeed(s, raw)
+}
+
+// softFeed queues the stream's words as samples: digital words or peak
+// words.
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
+func (d *DecodedStreams) softFeed(s *softStream, raw []byte) {
+	if s.bits {
+		d.feedBitsQuiet(s, raw)
+	} else {
+		s.feedPeak(raw, d.h.calibration())
+	}
+}
+
+// feedBitsQuiet queues digital words, leaving out a quiet line's words past
+// keepWords: by then every frame before them is whole (Close) and the
+// decoder holds its lead, so the decoder skips them; when the line moves
+// again the queued samples are decoded, the stream skips the words left out
+// but the last leadWords, which come back as the constant line they were.
+// Only words equal to the line's level are left out, so the frames and
+// their sample indices are the ones every word gives.
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
+func (d *DecodedStreams) feedBitsQuiet(s *softStream, raw []byte) {
+	ch := s.p.ChA & 1
+	two := core.ClockedTwoLine(s.p.Proto)
+	n := len(raw) / 4
+	from := 0 // the first word not yet queued or left out
+	for i := range n {
+		w := raw[4*i : 4*i+4 : 4*i+4]
+		a := uint16(w[2*ch]) | uint16(w[2*ch+1])<<8
+		b := uint16(w[2-2*ch]) | uint16(w[3-2*ch])<<8
+		if !two {
+			b = 0
+		}
+		quiet := s.haveLvl && a == s.lvl[0] && b == s.lvl[1] && (a == 0 || a == 0xFFFF) && (b == 0 || b == 0xFFFF)
+		switch {
+		case quiet:
+			if s.idleWords++; s.idleWords > s.keepWords {
+				s.feedBits(raw[4*from : 4*i])
+				from = i + 1
+				s.skipped++
+			}
+		case s.skipped > 0:
+			s.feedBits(raw[4*from : 4*i])
+			from = i
+			d.softPush(s)
+			if s.phase != softStreaming {
+				return
+			}
+			lead := min(s.skipped, s.leadWords)
+			s.dec.Skip(16 * (s.skipped - lead))
+			s.queueLevel(16*lead, two)
+			s.skipped, s.idleWords = 0, 0
+		default:
+			s.idleWords = 0
+		}
+		s.lvl = [2]uint16{a, b}
+		s.haveLvl = true
+	}
+	s.feedBits(raw[4*from:])
+}
+
+// queueLevel queues n samples of each line's quiet level (s.lvl), line B
+// when two.
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
+func (s *softStream) queueLevel(n int, two bool) {
+	if s.edges {
+		s.pendEA.AppendLevel(uint8(s.lvl[0]&1), n)
+		if two {
+			s.pendEB.AppendLevel(uint8(s.lvl[1]&1), n)
+		}
+		return
+	}
+	s.pendA = appendLevel(s.pendA, s.lvl[0], n)
+	if two {
+		s.pendB = appendLevel(s.pendB, s.lvl[1], n)
+	}
+}
+
+// appendLevel appends n samples of a quiet line's level (its word, 0 or
+// 0xFFFF) to dst.
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
+func appendLevel(dst []uint8, word uint16, n int) []uint8 {
+	v := uint8(0)
+	if word != 0 {
+		v = 255
+	}
+	at := len(dst)
+	dst = slices.Grow(dst, n)[:at+n]
+	for i := range dst[at:] {
+		dst[at+i] = v
+	}
+	return dst
+}
+
+// feedPeak turns peak words ({max2,max1,min2,min1}) into two samples per
+// bucket per line - the converter offsets removed as for the envelope, each
+// pair ordered to continue from the sample before it (orderEnvelope) - and
+// queues them for the decoder.
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-240, REQ-SDS-010
+func (s *softStream) feedPeak(raw []byte, cal *InterleaveCalibration) {
+	n := len(raw) / 4
+	lines := 1
+	if core.ClockedTwoLine(s.p.Proto) {
+		lines = 2
+	}
+	// One pass a line, appending to the queued samples: at 2^9 the stream
+	// brings about a million words a second to a single core.
+	for k := range lines {
+		ch := s.p.ChA & 1
+		dst := &s.pendA
+		if k == 1 {
+			ch, dst = 1-ch, &s.pendB
+		}
+		var off [2]int
+		if cal != nil {
+			off = cal.EnvelopeOffsets(ch)
+		}
+		// Each extreme is a byte: its debiased Q8.8 value and that value
+		// rounded come from a table, not from per-word arithmetic; one entry
+		// holds both (the value shifted up a byte, the rounded code in the
+		// low byte), so the loop loads one table a line's extreme.
+		var t [2][256]int32
+		for k := range 2 {
+			for b := range 256 {
+				x := b << 8
+				if cal != nil {
+					x = acq.DebiasQ(x, off[k])
+				}
+				t[k][b] = int32(x)<<8 | int32(core.RoundQ8(uint16(x)))
+			}
+		}
+		at := len(*dst)
+		out := slices.Grow(*dst, 2*n)[:at+2*n]
+		prev := int32(s.last[ch])
+		if !s.haveLast && n > 0 {
+			prev = (t[0][raw[ch]]>>8 + t[1][raw[2+ch]]>>8) / 2
+		}
+		prev = peakPairs(out[at:], raw, ch, prev, &t)
+		s.last[ch] = uint16(prev) //nolint:gosec // G115: a Q8.8 code
+		*dst = out
+		if k == 1 {
+			s.learnB(out[at:])
+		}
+	}
+	s.haveLast = s.haveLast || n > 0
+}
+
+// planBitsLevels sets the digital stream's slicing (ADR-STREAM-BITS): CH1
+// at the trigger level, CH2 at the second line's, each line at its own
+// threshold, the band spanning both channels' converter offsets (the slicer
+// reads the raw interleaved codes, as the edge trigger does).
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
+func (d *DecodedStreams) planBitsLevels(s *softStream, cfg *sramcapture.Config) {
+	a, b := uint8(math.Round(min(max(s.p.Threshold, 0), 255))), acq.SecondLevel(s.p)
+	cfg.TriggerLevel, cfg.SecondLevel, cfg.SliceLines = a, b, true
+	if s.p.ChA&1 == 1 {
+		cfg.TriggerLevel, cfg.SecondLevel = b, a
+	}
+	band := uint8(0)
+	for ch := range uint8(2) {
+		c := *cfg
+		c.TriggerChannel = ch
+		d.h.planHysteresis(&c)
+		band = max(band, c.TriggerHysteresis)
+	}
+	cfg.TriggerHysteresis = band
+}
+
+// feedBits queues the digital stream's words as samples, 0 or 255, line A
+// from its channel and a clocked bus's line B from the other.
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
+func (s *softStream) feedBits(raw []byte) {
+	ch := s.p.ChA & 1
+	if s.edges {
+		s.pendEA.AppendWords(raw, ch)
+		if core.ClockedTwoLine(s.p.Proto) {
+			s.pendEB.AppendWords(raw, 1-ch)
+			s.learnBWords(raw, 1-ch)
+		}
+		s.haveLast = s.haveLast || len(raw) >= 4
+		return
+	}
+	s.pendA = core.UnpackBits(s.pendA, raw, ch)
+	if core.ClockedTwoLine(s.p.Proto) {
+		at := len(s.pendB)
+		s.pendB = core.UnpackBits(s.pendB, raw, 1-ch)
+		s.learnB(s.pendB[at:])
+	}
+	s.haveLast = s.haveLast || len(raw) >= 4
+}
+
+// peakPairs writes each peak word's two samples of line ch (raw's words,
+// o two samples a word) ordered to continue from the sample before (prev's
+// Q8.8 value, returned for the last), t the lines' tables (Q8.8 value << 8 |
+// code). Out of line, so its few values stay in registers on the device; and
+// branch-free: which extreme lies nearer the sample before is the converter
+// noise's coin on a level, and a mispredicted branch a word cost more than
+// the rest of the word.
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-240, REQ-SDS-010
+//
+//go:noinline
+func peakPairs(o []uint8, raw []byte, ch int, prev int32, t *[2][256]int32) int32 {
+	t0, t1 := &t[0], &t[1]
+	c := ch & 1
+	n := min(len(raw)/4, len(o)/2)
+	for i := range n {
+		w := raw[4*i : 4*i+4 : 4*i+4]
+		el, eh := t0[w[c]], t1[w[2+c]]
+		dl, dh := el>>8-prev, eh>>8-prev
+		sl, sh := dl>>31, dh>>31
+		// m is all ones when the high extreme lies nearer (|dh| < |dl|): the
+		// pair then runs high, low.
+		m := ((dh ^ sh) - sh - (dl ^ sl) + sl) >> 31
+		first, second := eh&m|el&^m, el&m|eh&^m
+		p := o[2*i : 2*i+2 : 2*i+2]
+		p[0], p[1] = uint8(first&0xff), uint8(second&0xff)
+		prev = second >> 8
+	}
+	return prev
+}
+
+// learnB follows line B's extremes for its slicing level.
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
+func (s *softStream) learnB(b []uint8) {
+	if len(b) == 0 {
+		return
+	}
+	if !s.bSeen {
+		s.bLo, s.bHi, s.bSeen = b[0], b[0], true
+	}
+	lo, hi := s.bLo, s.bHi
+	for _, v := range b {
+		lo, hi = min(lo, v), max(hi, v)
+	}
+	s.bLo, s.bHi = lo, hi
+}
+
+// learnBWords is learnB over digital words' line ch: its samples are 0
+// where a word's bit is clear and 255 where set.
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
+func (s *softStream) learnBWords(raw []byte, ch int) {
+	o := 2 * (ch & 1)
+	if len(raw) < 4 {
+		return
+	}
+	if !s.bSeen {
+		v := 255 * (raw[o] & 1)
+		s.bLo, s.bHi, s.bSeen = v, v, true
+	}
+	for i := 0; i+4 <= len(raw) && (s.bLo != 0 || s.bHi != 255); i += 4 {
+		w := uint16(raw[i+o]) | uint16(raw[i+o+1])<<8
+		if w != 0xffff {
+			s.bLo = 0
+		}
+		if w != 0 {
+			s.bHi = 255
+		}
+	}
+}
+
+// softPush decodes the queued samples and queues the frames they complete;
+// on the stop value the transcript ends there and the record is armed.
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
+func (d *DecodedStreams) softPush(s *softStream) {
+	if s.phase != softStreaming {
+		return // the transcript ended on the stop frame
+	}
+	if s.edges {
+		d.softPushEdges(s)
+		return
+	}
+	if len(s.pendA) == 0 {
+		return
+	}
+	var b []uint8
+	if len(s.pendB) == len(s.pendA) {
+		b = s.pendB
+	}
+	a := s.pendA
+	s.pendA, s.pendB = s.pendA[:0], s.pendB[:0]
+	for len(a) > 0 {
+		n := min(len(a), softPushMax)
+		var bn []uint8
+		if b != nil {
+			bn, b = b[:n], b[n:]
+		}
+		frames := s.dec.Push(a[:n], bn)
+		a = a[n:]
+		if s.emit(frames, s.ord) {
+			d.softStopOnValue(s)
+			return
+		}
+	}
+}
+
+// softPushEdges is softPush of the queued edges, in the same pieces.
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
+func (d *DecodedStreams) softPushEdges(s *softStream) {
+	n := s.pendEA.N
+	if n == 0 {
+		return
+	}
+	var b *decode.EdgeLine
+	if s.pendEB.N == n {
+		b = &s.pendEB
+	}
+	defer func() { s.pendEA.Reset(); s.pendEB.Reset() }()
+	for at := 0; at < n; {
+		to := min(n, at+softPushMax)
+		frames := s.dec.PushEdges(&s.pendEA, b, at, to)
+		at = to
+		if s.emit(frames, s.ord) {
+			d.softStopOnValue(s)
+			return
+		}
+	}
+}
+
+// softStopOnValue ends the stream on the frame holding the stop value: the
+// history ring stopped there, or the symbol trigger's record of the value
+// coming again.
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
+func (d *DecodedStreams) softStopOnValue(s *softStream) {
+	if s.ring && s.streaming {
+		d.softRingStop(s)
+		return
+	}
+	d.softStreamStop(s)
+	s.phase = softRecord
+}
+
+// softPushMax bounds the samples a line one decode takes: a decode's working
+// memory (each line's sliced levels and edges) grows with its window, and a
+// fifth of a second of the digital stream at 64 ns is three million samples
+// a line, more than the device's 128 MB holds through one decode.
+const softPushMax = 1 << 18
+
+// emit queues frames as decoded events (ord maps their sample indices) up
+// to the frame holding the stop value; it reports that frame.
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
+func (s *softStream) emit(frames []decode.StreamFrame, ord func(uint64) uint64) bool {
+	for _, f := range frames {
+		s.addEvent(sramcapture.DecodedEvent{Kind: sramcapture.EventStart, Sample: ord(f.I0), Value: decodedlines.StartNoteCode(frameStart(f))})
+		hit, unit := false, 0
+		for _, sp := range f.Spans {
+			switch sp.Kind {
+			case core.SpanData:
+				v := sp.Val & s.mask
+				s.addEvent(sramcapture.DecodedEvent{Kind: sramcapture.EventData, Sample: ord(sp.I0), Value: uint32(v), Valid: true}) //nolint:gosec // G115: v is masked to the unit width
+				if !hit && s.trig == StreamOnValue && v == s.value {
+					s.valueRead = true
+					if !s.noStop {
+						hit, s.stopUnit = true, unit
+					}
+				}
+				unit++
+			case core.SpanFrameError, core.SpanParityError, core.SpanGap:
+				s.addEvent(sramcapture.DecodedEvent{Kind: sramcapture.EventError, Sample: ord(sp.I0)})
+			}
+		}
+		s.addEvent(sramcapture.DecodedEvent{Kind: sramcapture.EventEnd, Sample: ord(f.I1)})
+		if hit {
+			// The frame's line starts at its named start or, unnamed (PS/2,
+			// Wiegand), at its first unit: the trigger mark goes on that line.
+			s.stopFirst, s.stopLast = ord(f.I0), ord(f.I1)
+			if decodedlines.StartNoteCode(frameStart(f)) == 0 {
+				for _, sp := range f.Spans {
+					if sp.Kind == core.SpanData || sp.Kind == core.SpanFrameError || sp.Kind == core.SpanParityError || sp.Kind == core.SpanGap {
+						s.stopFirst = ord(sp.I0)
+						break
+					}
+				}
+			}
+			s.addEvent(sramcapture.DecodedEvent{Kind: sramcapture.EventTrigger, Sample: ord(f.I0)})
+			return true
+		}
+	}
+	return false
+}
+
+// frameStart is a frame's start-of-frame text ("" none).
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
+func frameStart(f decode.StreamFrame) string {
+	if len(f.Spans) > 0 && f.Spans[0].Kind == core.SpanSOF {
+		return f.Spans[0].Text
+	}
+	return ""
+}
+
+// softReadBytes is one read of the worker's stream words (a worker packet).
+const softReadBytes = 65536
+
+// softEventsMax bounds the queued events, as the FPGA's decoded events are
+// (decodedBufferLimit, 5 MiB): a reader that stops reading ends the
+// transcript rather than the memory.
+const softEventsMax = decodedBufferLimit
+
+// addEvent queues one event.
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
+func (s *softStream) addEvent(ev sramcapture.DecodedEvent) {
+	if len(s.events)-s.evHead >= softEventsMax {
+		if s.err == nil {
+			s.err = errors.New("decoded host buffer overflow; transcript incomplete")
+		}
+		return
+	}
+	if s.evHead > 0 && s.evHead >= len(s.events)/2 {
+		// The read half moves out once: reads move only a head, not the
+		// whole queue behind it each time.
+		s.events = s.events[:copy(s.events, s.events[s.evHead:])]
+		s.evHead = 0
+	}
+	ev.Epoch, ev.Sequence = s.id.Epoch, s.seq
+	s.seq++
+	s.events = append(s.events, ev)
+}
+
+// valuePattern is the stop value as the symbol trigger matches it: at any
+// unit (at < 0), or as unit at of a frame - the buses whose units differ in
+// width or meaning (an IR code's address and command, Wiegand's facility
+// and card) match a unit only at its place after the frame's start.
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
+func (s *softStream) valuePattern(at int) []PatternElem {
+	if at < 0 {
+		return []PatternElem{{Kind: core.PatternData, Value: s.value, Mask: s.mask}}
+	}
+	pat := []PatternElem{{Kind: core.PatternStart}}
+	for range at {
+		pat = append(pat, PatternElem{Kind: core.PatternData})
+	}
+	pat = append(pat, PatternElem{Kind: core.PatternData, Value: s.value, Mask: s.mask})
+	// The unit at that place may be narrower than the transcript's (an IR
+	// address of 5 bits): the mask its width takes, the widest that plans.
+	for w := bitsLen(s.mask); w > 0 && s.value>>w == 0; w-- {
+		pat[len(pat)-1].Mask = 1<<w - 1
+		if s.symbolPlans(pat) {
+			break
+		}
+	}
+	return pat
+}
+
+// stopPattern is the symbol trigger's request for the value a gap-free
+// stream stopped on: the value at any unit, else where the transcript read
+// it - and always there on a bus whose request reads its units at their
+// places in one frame (an IR code's address and command), where a value
+// alone asks the first unit. Not a Morse letter's place, which a run of
+// letters of other lengths moves.
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-240, REQ-SDS-260
+func (s *softStream) stopPattern() []PatternElem {
+	pat := s.valuePattern(-1)
+	spec, ok := acq.SymbolSpec(s.p)
+	if (ok && spec.OneFrame || !s.symbolPlans(pat)) && s.proto != "morse" {
+		pat = s.valuePattern(s.stopUnit)
+	}
+	return pat
+}
+
+// bitsLen is the bits of a mask of low ones.
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
+func bitsLen(mask int) int {
+	n := 0
+	for ; mask > 0; mask >>= 1 {
+		n++
+	}
+	return n
+}
+
+// symbolPlans reports a pattern the symbol trigger takes for the stream's
+// bus.
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
+func (s *softStream) symbolPlans(pat []PatternElem) bool {
+	p := s.p
+	p.Bytes, p.Pattern = nil, pat
+	return acq.PlanHardwareSymbol(&p).Enabled
+}
+
+// softRecordConfig is a record of words at decimation log on the symbol
+// trigger, armed on pattern (nil: a frame start), as a hardware stream's
+// record is.
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
+func (d *DecodedStreams) softRecordConfig(s *softStream, words uint32, log uint8, pattern []PatternElem) sramcapture.Config {
+	c := sramcapture.Config{Source: sramcapture.ADC, DecimationLog2: log, PreWords: words / 2, PostWords: words - words/2, Normal: true}
+	p := s.p
+	p.Bytes, p.Pattern = nil, pattern
+	d.h.planSerial(&c, p, false)
+	d.h.planHysteresis(&c)
+	return c
+}
+
+// softArmRecord loads the qualify image and arms the symbol trigger on the
+// stop value for the record shown.
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
+func (d *DecodedStreams) softArmRecord(s *softStream) {
+	s.phase = softDone
+	if !d.h.hasImage(acq.ImageQualify) {
+		s.err = errors.New("no qualify FPGA image for the record")
+		return
+	}
+	if d.h.protocolImage() != acq.ImageQualify {
+		if d.h.loadImage(acq.ImageQualify); d.h.protocolImage() != acq.ImageQualify {
+			s.err = errors.New("the qualify FPGA image did not load for the record")
+			return
+		}
+	}
+	words := sramcapture.SamplesPerChannel / 2
+	c := d.softRecordConfig(s, words, 0, s.stopPattern())
+	if !c.Symbol.Enabled {
+		s.err = fmt.Errorf("the FPGA's symbol trigger cannot match %X where it came (unit %d of its frame, past its 64-bit window or among units of other lengths): no record", s.value, s.stopUnit+1)
+		return
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	err := d.h.memory().Arm(ctx, c)
+	cancel()
+	if err != nil {
+		s.err = err
+		return
+	}
+	s.recCfg, s.recDue, s.phase = c, d.h.clock().Now().Add(softRecordWaitMax), softRecordWait
+}
+
+// softWaitRecord waits for the symbol trigger's record.
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
+func (d *DecodedStreams) softWaitRecord(s *softStream) {
+	m, err := d.h.memory().Status()
+	switch {
+	case err != nil:
+		s.err, s.phase = err, softDone
+	case m.Frozen && m.Ready:
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+		err = d.h.memory().Halt(ctx)
+		cancel()
+		s.recMeta, s.recOK, s.err, s.phase = m, err == nil, err, softDone
+	case d.h.clock().Now().After(s.recDue):
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+		_ = d.h.memory().Halt(ctx)
+		cancel()
+		s.err = fmt.Errorf("%X did not come again within %v for the FPGA's record", s.value, softRecordWaitMax)
+		s.phase = softDone
+	default:
+		d.h.clock().Sleep(2 * time.Millisecond)
+	}
+}
+
+// softArmCapture arms the captures mode's next record.
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
+func (d *DecodedStreams) softArmCapture(s *softStream, feature, longest float64) {
+	log := softCaptureLog(feature)
+	words := uint32(softCaptureWords)
+	if log == 0 {
+		words *= 4 // full rate: a record holds a few of the fast frames
+	}
+	// A frame is handed out once Close follows it, and the first only after
+	// a quiet Close: a record holds eight, so most of its frames come out.
+	wordS := float64(uint64(1)<<log) * 2e-9
+	if log == 0 {
+		wordS = 4e-9
+	}
+	need := 8 * s.quiet
+	if decode.StreamEdgeFramed(s.proto) {
+		need = max(need, 2*longest) // its first longest frame is dropped unless after a quiet line
+	}
+	words = uint32(min(float64(sramcapture.Words), max(float64(words), math.Ceil(need/wordS))))
+	var pat []PatternElem
+	if s.trig == StreamOnValue {
+		pat = s.valuePattern(-1)
+	}
+	c := d.softRecordConfig(s, words, log, pat)
+	s.symCount = d.h.symbolCount(&c)
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	err := d.h.memory().Arm(ctx, c)
+	cancel()
+	if err != nil {
+		d.h.busErr(err)
+		d.h.sleepBeating(100 * time.Millisecond)
+		return
+	}
+	s.capCfg, s.armed, s.forced, s.armAt = c, true, false, d.h.clock().Now()
+}
+
+// softCapture runs the captures mode one step: arm a record on the symbol
+// trigger, force it when the trigger does not fire, read and decode it.
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
+func (d *DecodedStreams) softCapture(s *softStream) {
+	feature, longest, _, _ := decode.StreamTiming(s.proto, float64(s.p.Baud))
+	if s.proto == softOneWire && s.p.Overdrive {
+		feature /= 10
+	}
+	if !s.armed {
+		d.softArmCapture(s, feature, longest)
+		return
+	}
+	m, err := d.h.memory().Status()
+	if err != nil || m.DataFault {
+		s.armed = false
+		if err != nil {
+			d.h.busErr(err)
+		}
+		return
+	}
+	if !m.Frozen || !m.Ready {
+		// Fill the record's history first, then give the trigger a moment.
+		fill := time.Duration(float64(s.capCfg.PreWords) * float64(uint64(1)<<s.capCfg.DecimationLog2) * 4e-9 * float64(time.Second))
+		if s.capCfg.DecimationLog2 != 0 {
+			fill /= 2 // a decimated word is one sample
+		}
+		if !s.forced && d.h.clock().Now().Sub(s.armAt) >= fill+s.capWait {
+			ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+			err = d.h.memory().Force(ctx)
+			cancel()
+			s.forced = true
+			if err != nil {
+				d.h.busErr(err)
+				s.armed = false
+			}
+			return
+		}
+		d.h.clock().Sleep(time.Millisecond)
+		return
+	}
+	end := d.h.clock().Now()
+	s.armed = false
+	hit := s.trig == StreamOnValue && s.symCount >= 0 && d.h.symbolCount(&s.capCfg) != s.symCount
+	n := int(m.Length) * int(m.SamplesPerWord)
+	if n == 0 || !(m.SampleRateHz > 0) {
+		return
+	}
+	f := acq.RecordFrame(n)
+	if m.FractionBits == 8 {
+		f.Traces[0].Precision, f.Traces[1].Precision = make([]uint16, n), make([]uint16, n)
+	}
+	writer := acq.FrameWriter{F: f, M: m}
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	err = d.h.memory().RecallReadsOf(ctx, m, sramcapture.RecordRead{Offset: 0, Count: m.Length, Dst: &writer})
+	cancel()
+	if err != nil || writer.N != n {
+		if err != nil {
+			d.h.busErr(err)
+		}
+		return
+	}
+	span := float64(n) / m.SampleRateHz
+	s.read += time.Duration(span * float64(time.Second))
+	a, b := f.Codes8(0), f.Codes8(1)
+	if s.p.ChA&1 == 1 {
+		a, b = f.Codes8(1), f.Codes8(0)
+	}
+	if !core.ClockedTwoLine(s.p.Proto) {
+		b = nil
+	} else {
+		s.learnB(b)
+	}
+	// The record ended about when it was seen frozen: place it there on the
+	// stream's clock, after the last one.
+	first := uint64(math.Max(0, end.Sub(s.start).Seconds()-span) / 2e-9)
+	first = max(first, s.nextOrd)
+	s.sampleS = 1 / m.SampleRateHz
+	s.ordBase, s.ordStep = float64(first), s.sampleS/2e-9
+	s.nextOrd = s.ord(uint64(n)) + 1 //nolint:gosec // G115: n is a sample count
+	cutN := 0
+	if decode.StreamEdgeFramed(s.proto) {
+		cutN = int(longest / s.sampleS)
+	}
+	record := decode.StreamRecord
+	if decode.StreamRecordAfterIdle(s.proto) {
+		record = decode.StreamRecordFromIdle
+	}
+	frames := record(a, b, s.decodeFunc(), int(s.quiet/s.sampleS), int(decode.StreamRecordHead(s.proto, feature, longest)/s.sampleS), cutN, s.proto == "spdif")
+	s.noStop, s.valueRead = !hit, false
+	stop := s.emit(frames, s.ord)
+	s.noStop = false
+	if s.valueRead && !hit {
+		// The decode read the value in a record the symbol trigger did not
+		// fire on: before it was armed, now and then; in every record, a
+		// value the trigger cannot read where it comes (the last byte of
+		// a Miller frame).
+		if s.missed++; s.missed >= softValueMisses {
+			s.err = fmt.Errorf("the FPGA's symbol trigger did not fire on %X, which the decode read in %d records in a row: no record", s.value, s.missed)
+			s.phase = softDone
+			return
+		}
+	} else if hit {
+		s.missed = 0
+	}
+	if hit {
+		if !stop { // the FPGA matched where the decode did not read the value
+			at := s.ord(uint64(m.TriggerIndex) * uint64(m.SamplesPerWord))
+			s.stopFirst, s.stopLast = at, at
+			s.addEvent(sramcapture.DecodedEvent{Kind: sramcapture.EventTrigger, Sample: at})
+		}
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+		_ = d.h.memory().Halt(ctx)
+		cancel()
+		s.recCfg, s.recMeta, s.recOK, s.phase = s.capCfg, m, true, softDone
+	}
+}
+
+// softFor reports whether id names the running software stream.
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
+func (d *DecodedStreams) softFor(id sramcapture.RecordIdentity) bool {
+	return id.Epoch&softEpochBase == softEpochBase
+}
+
+// softIdentity checks id against the running software stream.
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
+func (d *DecodedStreams) softIdentity(id sramcapture.RecordIdentity) error {
+	if d.soft == nil || d.soft.id != id {
+		return errors.New("decoded capture identity is no longer active")
+	}
+	return nil
+}
+
+// softRead copies queued events into dst.
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
+func (d *DecodedStreams) softRead(id sramcapture.RecordIdentity, dst []sramcapture.DecodedEvent) (int, error) {
+	if err := d.softIdentity(id); err != nil {
+		return 0, err
+	}
+	s := d.soft
+	n := copy(dst, s.events[s.evHead:])
+	if s.evHead += n; s.evHead == len(s.events) {
+		s.events, s.evHead = s.events[:0], 0
+	}
+	if n == 0 && s.err != nil && s.phase != softDone {
+		return 0, s.err
+	}
+	return n, nil
+}
+
+// softStatus is the stream's status for the stream view: triggered once
+// the record is ready (its span the stop frame's), the reason when none
+// will be.
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
+func (d *DecodedStreams) softStatus(id sramcapture.RecordIdentity) (sramcapture.Metadata, error) {
+	if err := d.softIdentity(id); err != nil {
+		return sramcapture.Metadata{}, err
+	}
+	s := d.soft
+	if s.phase != softDone {
+		return sramcapture.Metadata{}, nil
+	}
+	if !s.recOK {
+		if s.err == nil {
+			s.err = errors.New("no record")
+		}
+		return sramcapture.Metadata{}, s.err
+	}
+	return sramcapture.Metadata{
+		Triggered: true, Frozen: true, Ready: true, HasSampleTimeline: true,
+		SampleFirst: s.stopFirst, SampleLast: s.stopLast,
+	}, nil
+}
+
+// softFreeze ends the stream's acquisition; a record the symbol trigger
+// took goes to the display.
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
+func (d *DecodedStreams) softFreeze(ctx context.Context, id sramcapture.RecordIdentity) (sramcapture.Metadata, bool, error) {
+	if err := d.softIdentity(id); err != nil {
+		return sramcapture.Metadata{}, false, err
+	}
+	s := d.soft
+	if s.gapFree && s.phase == softStreaming {
+		d.softPush(s)
+		if s.client {
+			d.softClientFrames(s)
+		}
+	}
+	if s.client {
+		s.client = false
+		d.ctap.end("the stream stopped")
+	}
+	d.softStreamStop(s)
+	if s.phase != softDone || !s.recOK {
+		if err := d.h.memory().Halt(ctx); err != nil {
+			return sramcapture.Metadata{}, false, err
+		}
+		if s.phase != softDone {
+			s.phase = softDone
+		}
+		return sramcapture.Metadata{}, false, nil
+	}
+	d.h.logf("software stream end: record words=%d trigger_index=%d", s.recMeta.Length, s.recMeta.TriggerIndex)
+	d.mu.Lock()
+	d.adopt = &adoptedRecord{m: s.recMeta, cfg: s.recCfg}
+	d.mu.Unlock()
+	return sramcapture.Metadata{
+		Triggered: true, Frozen: true, Ready: true, HasSampleTimeline: true,
+		SampleFirst: s.stopFirst, SampleLast: s.stopLast,
+	}, true, nil
+}
+
+// softEnd tears the stream down; acquisition stays stopped until RUN.
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
+func (d *DecodedStreams) softEnd(ctx context.Context, id sramcapture.RecordIdentity) error {
+	if err := d.softIdentity(id); err != nil {
+		return err
+	}
+	s := d.soft
+	d.softStreamStop(s)
+	if s.client {
+		s.client = false
+		d.ctap.end("the stream ended")
+	}
+	err := d.h.memory().Halt(ctx)
+	d.soft = nil
+	d.h.logf("engine: software stream ended: %s, %d losses", s.modeText(d.h.clock().Now().Sub(s.start)), s.losses)
+	d.h.setRunning(false)
+	return err
+}
+
+// DecodedStreamMode says how the decoded stream runs, for the displays:
+// gap-free from the FPGA's decoded events or software decode of the
+// continuous stream, or captures with the share of signal time read.
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
+func (d *DecodedStreams) DecodedStreamMode() string {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	return d.stats.DecodedStreamMode
+}

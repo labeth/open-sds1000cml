@@ -3,12 +3,13 @@
 package scpi
 
 import (
+	"encoding/json"
 	"fmt"
+	"os"
 	"strings"
 	"testing"
 	"time"
 
-	"github.com/labeth/open-dso-core/hal"
 	inst "github.com/labeth/open-dso-core/instrument"
 	"github.com/labeth/open-dso-core/sample"
 	"github.com/labeth/open-dso-core/uimodel/panel"
@@ -16,30 +17,8 @@ import (
 	"github.com/labeth/open-sds1000cml/app/internal/analog"
 	"github.com/labeth/open-sds1000cml/app/internal/board"
 	"github.com/labeth/open-sds1000cml/app/internal/board/acq"
-	"github.com/labeth/open-sds1000cml/app/internal/engine"
+	engine "github.com/labeth/open-sds1000cml/app/internal/scopeapi"
 )
-
-// nullBus is a bus without hardware: the engine is built (never run) so
-// its staging setters and snapshot answer.
-type nullBus struct{}
-
-// TRLC-LINKS: REQ-SDS-024
-func (nullBus) Read(_ uint8, _ uint16) (uint16, error) { return 0, nil }
-
-// TRLC-LINKS: REQ-SDS-024
-func (nullBus) Write(_ uint8, _, _ uint16) error { return nil }
-
-// TRLC-LINKS: REQ-SDS-024
-func (nullBus) RawWrite(_, _ uint16) error { return nil }
-
-// TRLC-LINKS: REQ-SDS-024
-func (nullBus) BurstInto(_, _ []uint8, _ int) {}
-
-// TRLC-LINKS: REQ-SDS-024
-func (nullBus) PopWords(_ uint16, _ []uint16, _ int) {}
-
-// TRLC-LINKS: REQ-SDS-024
-func (nullBus) FastDrain() bool { return true }
 
 // nullSPI is the front end's SPI without hardware.
 type nullSPI struct{}
@@ -58,28 +37,6 @@ type framed struct {
 
 // TRLC-LINKS: REQ-SDS-024
 func (s framed) WithFrame(fn func(*sample.Frame)) { fn(asPublished(s.f)) }
-
-// modelState is the power-on state both compositions start from.
-func modelState() inst.State {
-	return inst.State{Channels: make([]hal.Channel, 2), Running: true, Sweep: hal.Auto}
-}
-
-// engineHandler is the dialect over the CML engine, as the device runs it:
-// the engine's controls (writing the model and staging for the owner), the
-// front end hooked to the engine and the levels over the engine.
-func engineHandler(tb testing.TB) *Handler {
-	tb.Helper()
-	m := inst.New(modelState(), nil)
-	e := engine.New(engine.Config{Bus: nullBus{}, Logf: tb.Logf, Instrument: m})
-	fe := analog.New(nullSPI{}, func(time.Duration) {}, nil)
-	fe.OnOffset(e.SetOffsetDAC)
-	fe.OnOffsetV(e.SetChannelOffsetV)
-	fe.OnVdiv(e.SetChannelVdiv)
-	ctl := e.Controls()
-	lv := board.New(ctl, fe)
-	lv.Project(m)
-	return dualParts(tb, framed{ctl, goldenScope().frame}, fe, lv)
-}
 
 // modelHandler is the dialect over the instrument model alone, as the
 // core's HAL cycle runs the scope: HALScope's controls over the board, the
@@ -132,10 +89,22 @@ var modelDiffers = map[string]string{
 // sees do not change when the scope runs the core's cycle.
 // TRLC-LINKS: REQ-SDS-024
 func TestDialectOverTheModel(t *testing.T) {
-	he, hm := engineHandler(t), modelHandler(t)
+	hm := modelHandler(t)
+	raw, err := os.ReadFile("testdata/dialect.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := map[string][]byte{}
+	if err := json.Unmarshal(raw, &want); err != nil {
+		t.Fatal(err)
+	}
 	var diffs []string
-	for _, l := range goldenLines {
-		ge, gm := he.HandleLine([]byte(l+"\n")), hm.HandleLine([]byte(l+"\n"))
+	for i, l := range goldenLines {
+		ge, ok := want[fmt.Sprintf("%03d", i)]
+		if !ok {
+			t.Fatalf("no recorded reply for command %d %q", i, l)
+		}
+		gm := hm.HandleLine([]byte(l + "\n"))
 		if string(ge) == string(gm) {
 			continue
 		}

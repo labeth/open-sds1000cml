@@ -13,7 +13,7 @@ import (
 
 	"github.com/labeth/open-dso-core/sample"
 	"github.com/labeth/open-sds1000cml/app/internal/board"
-	"github.com/labeth/open-sds1000cml/app/internal/engine"
+	engine "github.com/labeth/open-sds1000cml/app/internal/scopeapi"
 )
 
 var updateGolden = flag.Bool("update", false, "rewrite testdata/replies.golden")

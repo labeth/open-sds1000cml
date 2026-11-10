@@ -9,7 +9,7 @@ import (
 	"github.com/labeth/open-dso-core/instrument"
 	"github.com/labeth/open-dso-core/webserver"
 	"github.com/labeth/open-sds1000cml/app/internal/board"
-	"github.com/labeth/open-sds1000cml/app/internal/engine"
+	engine "github.com/labeth/open-sds1000cml/app/internal/scopeapi"
 )
 
 // Over the instrument model alone the controls' snapshot carries no DAC

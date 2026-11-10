@@ -20,11 +20,11 @@ import (
 	"github.com/labeth/open-dso-core/webserver"
 	"github.com/labeth/open-dso-core/webserver/wire"
 	"github.com/labeth/open-sds1000cml/app/internal/buildinfo"
-	"github.com/labeth/open-sds1000cml/app/internal/engine"
+	engine "github.com/labeth/open-sds1000cml/app/internal/scopeapi"
 )
 
 // Engine is the engine surface the web server needs (the setters come from
-// *engine.Engine; WithFrame comes from the frames.Fanout — the arena's
+// the HAL scope; WithFrame comes from the frames.Fanout — the cycle's
 // single-consumer read slot belongs to the fan-out, and every other reader
 // works on its snapshot under the fan-out lock).
 // TRLC-LINKS: REQ-SDS-161, REQ-SDS-162, REQ-SDS-163, REQ-SDS-164

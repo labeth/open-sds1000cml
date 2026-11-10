@@ -11,7 +11,7 @@ import (
 	"testing"
 
 	"github.com/labeth/open-dso-core/sample"
-	"github.com/labeth/open-sds1000cml/app/internal/engine"
+	engine "github.com/labeth/open-sds1000cml/app/internal/scopeapi"
 )
 
 // benchServer serves a 5000-sample frame with its Q8.8 record.

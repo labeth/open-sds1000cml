@@ -528,7 +528,7 @@ behavioural specifications the implementation was written from are in [`specs/`]
 
 | Path | What it is |
 |---|---|
-| [`app/`](app/README.md) | The scope application (Go, ARMv7): acquisition engine, triggers, decoders, LCD, front panel, web UI, SCPI/VXI-11. Embeds the nine FPGA images. |
+| [`app/`](app/README.md) | The board-support package and application (Go, ARMv7): acquisition HAL, LCD and panel adapters, web and SCPI extensions on the shared open-dso-core loop. Embeds the nine FPGA images. |
 | [`fpga/`](fpga/README.md) | The FPGA images (Verilog, Cyclone IV EP4CE10): what is common, what each image adds, the shipping bitstreams and the build. |
 | [`ota/`](ota/README.md) | The on-device agent and `otactl`: install, launch, health, A/B slots, USB stick builder. |
 | `tools/deploy.sh` | Build the app and install it on a scope over the network. |

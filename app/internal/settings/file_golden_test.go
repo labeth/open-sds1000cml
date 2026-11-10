@@ -10,7 +10,7 @@ import (
 	"testing"
 
 	core "github.com/labeth/open-dso-core/settings"
-	"github.com/labeth/open-sds1000cml/app/internal/engine"
+	engine "github.com/labeth/open-sds1000cml/app/internal/scopeapi"
 	"github.com/labeth/open-sds1000cml/app/internal/settings"
 )
 

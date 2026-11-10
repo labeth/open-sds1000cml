@@ -1092,7 +1092,7 @@ behavior:
     to: FU-APP-ENGINE
   - type: depends_on
     from: FU-APP-ENGINE
-    to: CODE-APP-INTERNAL-ENGINE-ARENA-GO
+    to: core::FU-DSO-ENGINE
     description: Primary implementation or support artifact; does not imply hardware qualification.
   - type: contains
     from: FG-APP

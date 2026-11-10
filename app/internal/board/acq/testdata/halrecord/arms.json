@@ -1,0 +1,1559 @@
+[
+  {
+    "Name": "auto-live",
+    "Caps": [
+      "envelope",
+      "panel",
+      "box"
+    ],
+    "Arms": [
+      {
+        "Plan": {
+          "Request": {
+            "Channels": [
+              0,
+              1
+            ],
+            "TimePerDivS": 0.0005,
+            "PretrigFrac": 0.5
+          },
+          "SampleS": 3.2e-08,
+          "Depth": 524288,
+          "AcqDecim": 16,
+          "ETSFactor": 1,
+          "Segments": 1,
+          "WinSamples": 156250
+        },
+        "Trigger": {
+          "Stages": [
+            {
+              "Node": "edge",
+              "Source": {
+                "Kind": "analog"
+              },
+              "Levels": {
+                "Slope": "rising"
+              }
+            }
+          ]
+        },
+        "Want": {
+          "decimation_log2": 4,
+          "pre_words": 262144,
+          "post_words": 262144,
+          "normal": true,
+          "trigger_level": 128,
+          "trigger_hysteresis": 4
+        }
+      }
+    ]
+  },
+  {
+    "Name": "auto-untriggered",
+    "Caps": [
+      "envelope",
+      "panel",
+      "box"
+    ],
+    "Arms": [
+      {
+        "Plan": {
+          "Request": {
+            "Channels": [
+              0,
+              1
+            ],
+            "TimePerDivS": 0.0005,
+            "PretrigFrac": 0.5
+          },
+          "SampleS": 3.2e-08,
+          "Depth": 524288,
+          "AcqDecim": 16,
+          "ETSFactor": 1,
+          "Segments": 1,
+          "WinSamples": 156250
+        },
+        "Trigger": {
+          "Stages": [
+            {
+              "Node": "edge",
+              "Source": {
+                "Kind": "analog"
+              },
+              "Levels": {
+                "Slope": "rising"
+              }
+            }
+          ]
+        },
+        "Want": {
+          "decimation_log2": 4,
+          "pre_words": 262144,
+          "post_words": 262144,
+          "normal": true,
+          "trigger_level": 128,
+          "trigger_hysteresis": 4
+        }
+      }
+    ]
+  },
+  {
+    "Name": "average",
+    "Caps": [
+      "envelope",
+      "panel",
+      "box"
+    ],
+    "Arms": [
+      {
+        "Plan": {
+          "Request": {
+            "Channels": [
+              0,
+              1
+            ],
+            "TimePerDivS": 0.0005,
+            "PretrigFrac": 0.5
+          },
+          "SampleS": 3.2e-08,
+          "Depth": 524288,
+          "AcqDecim": 16,
+          "ETSFactor": 1,
+          "Segments": 1,
+          "WinSamples": 156250
+        },
+        "Trigger": {
+          "Stages": [
+            {
+              "Node": "edge",
+              "Source": {
+                "Kind": "analog"
+              },
+              "Levels": {
+                "Slope": "rising"
+              }
+            }
+          ]
+        },
+        "Want": {
+          "decimation_log2": 4,
+          "pre_words": 262144,
+          "post_words": 262144,
+          "normal": true,
+          "trigger_level": 128,
+          "trigger_hysteresis": 4
+        }
+      },
+      {
+        "Plan": {
+          "Request": {
+            "Channels": [
+              0,
+              1
+            ],
+            "TimePerDivS": 0.0005,
+            "Mode": 2,
+            "PretrigFrac": 0.5
+          },
+          "Mode": 2,
+          "SampleS": 1.024e-06,
+          "Depth": 19532,
+          "AcqDecim": 512,
+          "ETSFactor": 1,
+          "Segments": 1,
+          "WinSamples": 4883
+        },
+        "Trigger": {
+          "Stages": [
+            {
+              "Node": "edge",
+              "Source": {
+                "Kind": "analog"
+              },
+              "Levels": {
+                "Slope": "rising"
+              }
+            }
+          ]
+        },
+        "Want": {
+          "decimation_log2": 9,
+          "pre_words": 9766,
+          "post_words": 9766,
+          "normal": true,
+          "trigger_level": 128,
+          "trigger_hysteresis": 4
+        }
+      }
+    ]
+  },
+  {
+    "Name": "bode",
+    "Caps": [
+      "envelope",
+      "panel",
+      "box"
+    ],
+    "Arms": [
+      {
+        "Plan": {
+          "Request": {
+            "Channels": [
+              0,
+              1
+            ],
+            "TimePerDivS": 0.0005,
+            "PretrigFrac": 0.5
+          },
+          "SampleS": 3.2e-08,
+          "Depth": 524288,
+          "AcqDecim": 16,
+          "ETSFactor": 1,
+          "Segments": 1,
+          "WinSamples": 156250
+        },
+        "Trigger": {
+          "Stages": [
+            {
+              "Node": "edge",
+              "Source": {
+                "Kind": "analog"
+              },
+              "Levels": {
+                "Slope": "rising"
+              }
+            }
+          ]
+        },
+        "Want": {
+          "decimation_log2": 4,
+          "pre_words": 262144,
+          "post_words": 262144,
+          "normal": true,
+          "trigger_level": 128,
+          "trigger_hysteresis": 4
+        }
+      }
+    ]
+  },
+  {
+    "Name": "eres",
+    "Caps": [
+      "envelope",
+      "panel",
+      "box"
+    ],
+    "Arms": [
+      {
+        "Plan": {
+          "Request": {
+            "Channels": [
+              0,
+              1
+            ],
+            "TimePerDivS": 0.0005,
+            "PretrigFrac": 0.5
+          },
+          "SampleS": 3.2e-08,
+          "Depth": 524288,
+          "AcqDecim": 16,
+          "ETSFactor": 1,
+          "Segments": 1,
+          "WinSamples": 156250
+        },
+        "Trigger": {
+          "Stages": [
+            {
+              "Node": "edge",
+              "Source": {
+                "Kind": "analog"
+              },
+              "Levels": {
+                "Slope": "rising"
+              }
+            }
+          ]
+        },
+        "Want": {
+          "decimation_log2": 4,
+          "pre_words": 262144,
+          "post_words": 262144,
+          "normal": true,
+          "trigger_level": 128,
+          "trigger_hysteresis": 4
+        }
+      },
+      {
+        "Plan": {
+          "Request": {
+            "Channels": [
+              0,
+              1
+            ],
+            "TimePerDivS": 0.0005,
+            "Mode": 3,
+            "PretrigFrac": 0.5
+          },
+          "Mode": 3,
+          "SampleS": 1.024e-06,
+          "Depth": 19532,
+          "AcqDecim": 512,
+          "ETSFactor": 1,
+          "Segments": 1,
+          "WinSamples": 4883
+        },
+        "Trigger": {
+          "Stages": [
+            {
+              "Node": "edge",
+              "Source": {
+                "Kind": "analog"
+              },
+              "Levels": {
+                "Slope": "rising"
+              }
+            }
+          ]
+        },
+        "Want": {
+          "decimation_log2": 9,
+          "pre_words": 9766,
+          "post_words": 9766,
+          "normal": true,
+          "trigger_level": 128,
+          "trigger_hysteresis": 4
+        }
+      }
+    ]
+  },
+  {
+    "Name": "fast-timebase",
+    "Caps": [
+      "envelope",
+      "panel",
+      "box"
+    ],
+    "Arms": [
+      {
+        "Plan": {
+          "Request": {
+            "Channels": [
+              0,
+              1
+            ],
+            "TimePerDivS": 0.0005,
+            "PretrigFrac": 0.5
+          },
+          "SampleS": 3.2e-08,
+          "Depth": 524288,
+          "AcqDecim": 16,
+          "ETSFactor": 1,
+          "Segments": 1,
+          "WinSamples": 156250
+        },
+        "Trigger": {
+          "Stages": [
+            {
+              "Node": "edge",
+              "Source": {
+                "Kind": "analog"
+              },
+              "Levels": {
+                "Slope": "rising"
+              }
+            }
+          ]
+        },
+        "Want": {
+          "decimation_log2": 4,
+          "pre_words": 262144,
+          "post_words": 262144,
+          "normal": true,
+          "trigger_level": 128,
+          "trigger_hysteresis": 4
+        }
+      },
+      {
+        "Plan": {
+          "Request": {
+            "Channels": [
+              0,
+              1
+            ],
+            "TimePerDivS": 1e-06,
+            "PretrigFrac": 0.5
+          },
+          "SampleS": 2e-09,
+          "Depth": 1048576,
+          "AcqDecim": 1,
+          "ETSFactor": 1,
+          "Segments": 1,
+          "WinSamples": 5000
+        },
+        "Trigger": {
+          "Stages": [
+            {
+              "Node": "edge",
+              "Source": {
+                "Kind": "analog"
+              },
+              "Levels": {
+                "Slope": "rising"
+              }
+            }
+          ]
+        },
+        "Want": {
+          "pre_words": 262144,
+          "post_words": 262144,
+          "normal": true,
+          "trigger_level": 128,
+          "trigger_hysteresis": 4
+        }
+      }
+    ]
+  },
+  {
+    "Name": "force-key",
+    "Caps": [
+      "envelope",
+      "panel",
+      "box"
+    ],
+    "Arms": [
+      {
+        "Plan": {
+          "Request": {
+            "Channels": [
+              0,
+              1
+            ],
+            "TimePerDivS": 0.0005,
+            "PretrigFrac": 0.5
+          },
+          "SampleS": 3.2e-08,
+          "Depth": 524288,
+          "AcqDecim": 16,
+          "ETSFactor": 1,
+          "Segments": 1,
+          "WinSamples": 156250
+        },
+        "Trigger": {
+          "Stages": [
+            {
+              "Node": "edge",
+              "Source": {
+                "Kind": "analog"
+              },
+              "Levels": {
+                "Slope": "rising"
+              }
+            }
+          ]
+        },
+        "Want": {
+          "decimation_log2": 4,
+          "pre_words": 262144,
+          "post_words": 262144,
+          "normal": true,
+          "trigger_level": 128,
+          "trigger_hysteresis": 4
+        }
+      },
+      {
+        "Plan": {
+          "Request": {
+            "Channels": [
+              0,
+              1
+            ],
+            "TimePerDivS": 0.0005,
+            "PretrigFrac": 0.5
+          },
+          "SampleS": 3.2e-08,
+          "Depth": 524288,
+          "AcqDecim": 16,
+          "ETSFactor": 1,
+          "Segments": 1,
+          "WinSamples": 156250
+        },
+        "Trigger": {
+          "Stages": [
+            {
+              "Node": "edge",
+              "Source": {
+                "Kind": "analog"
+              },
+              "Levels": {
+                "Slope": "rising"
+              }
+            }
+          ],
+          "Sweep": 1
+        },
+        "Want": {
+          "decimation_log2": 4,
+          "pre_words": 262144,
+          "post_words": 262144,
+          "normal": true,
+          "trigger_level": 128,
+          "trigger_hysteresis": 4
+        }
+      }
+    ]
+  },
+  {
+    "Name": "lamps-and-dacs",
+    "Caps": [
+      "envelope",
+      "panel",
+      "box"
+    ],
+    "Arms": [
+      {
+        "Plan": {
+          "Request": {
+            "Channels": [
+              0,
+              1
+            ],
+            "TimePerDivS": 0.0005,
+            "PretrigFrac": 0.5
+          },
+          "SampleS": 3.2e-08,
+          "Depth": 524288,
+          "AcqDecim": 16,
+          "ETSFactor": 1,
+          "Segments": 1,
+          "WinSamples": 156250
+        },
+        "Trigger": {
+          "Stages": [
+            {
+              "Node": "edge",
+              "Source": {
+                "Kind": "analog"
+              },
+              "Levels": {
+                "Slope": "rising"
+              }
+            }
+          ]
+        },
+        "Want": {
+          "decimation_log2": 4,
+          "pre_words": 262144,
+          "post_words": 262144,
+          "normal": true,
+          "trigger_level": 128,
+          "trigger_hysteresis": 4
+        }
+      },
+      {
+        "Plan": {
+          "Request": {
+            "Channels": [
+              0,
+              1
+            ],
+            "TimePerDivS": 0.0005,
+            "PretrigFrac": 0.5
+          },
+          "SampleS": 3.2e-08,
+          "Depth": 524288,
+          "AcqDecim": 16,
+          "ETSFactor": 1,
+          "Segments": 1,
+          "WinSamples": 156250
+        },
+        "Trigger": {
+          "Stages": [
+            {
+              "Node": "edge",
+              "Source": {
+                "Kind": "analog"
+              },
+              "Levels": {
+                "High": 5.08,
+                "Slope": "rising"
+              }
+            }
+          ]
+        },
+        "Want": {
+          "decimation_log2": 4,
+          "pre_words": 262144,
+          "post_words": 262144,
+          "normal": true,
+          "trigger_level": 255,
+          "trigger_hysteresis": 4
+        }
+      }
+    ]
+  },
+  {
+    "Name": "mask",
+    "Caps": [
+      "envelope",
+      "panel",
+      "box"
+    ],
+    "Arms": [
+      {
+        "Plan": {
+          "Request": {
+            "Channels": [
+              0,
+              1
+            ],
+            "TimePerDivS": 0.0005,
+            "PretrigFrac": 0.5
+          },
+          "SampleS": 3.2e-08,
+          "Depth": 524288,
+          "AcqDecim": 16,
+          "ETSFactor": 1,
+          "Segments": 1,
+          "WinSamples": 156250
+        },
+        "Trigger": {
+          "Stages": [
+            {
+              "Node": "edge",
+              "Source": {
+                "Kind": "analog"
+              },
+              "Levels": {
+                "Slope": "rising"
+              }
+            }
+          ]
+        },
+        "Want": {
+          "decimation_log2": 4,
+          "pre_words": 262144,
+          "post_words": 262144,
+          "normal": true,
+          "trigger_level": 128,
+          "trigger_hysteresis": 4
+        }
+      }
+    ]
+  },
+  {
+    "Name": "normal-waits",
+    "Caps": [
+      "envelope",
+      "panel",
+      "box"
+    ],
+    "Arms": [
+      {
+        "Plan": {
+          "Request": {
+            "Channels": [
+              0,
+              1
+            ],
+            "TimePerDivS": 0.0005,
+            "PretrigFrac": 0.5
+          },
+          "SampleS": 3.2e-08,
+          "Depth": 524288,
+          "AcqDecim": 16,
+          "ETSFactor": 1,
+          "Segments": 1,
+          "WinSamples": 156250
+        },
+        "Trigger": {
+          "Stages": [
+            {
+              "Node": "edge",
+              "Source": {
+                "Kind": "analog"
+              },
+              "Levels": {
+                "Slope": "rising"
+              }
+            }
+          ]
+        },
+        "Want": {
+          "decimation_log2": 4,
+          "pre_words": 262144,
+          "post_words": 262144,
+          "normal": true,
+          "trigger_level": 128,
+          "trigger_hysteresis": 4
+        }
+      },
+      {
+        "Plan": {
+          "Request": {
+            "Channels": [
+              0,
+              1
+            ],
+            "TimePerDivS": 0.0005,
+            "PretrigFrac": 0.5
+          },
+          "SampleS": 3.2e-08,
+          "Depth": 524288,
+          "AcqDecim": 16,
+          "ETSFactor": 1,
+          "Segments": 1,
+          "WinSamples": 156250
+        },
+        "Trigger": {
+          "Stages": [
+            {
+              "Node": "edge",
+              "Source": {
+                "Kind": "analog"
+              },
+              "Levels": {
+                "Slope": "rising"
+              }
+            }
+          ],
+          "Sweep": 1
+        },
+        "Want": {
+          "decimation_log2": 4,
+          "pre_words": 262144,
+          "post_words": 262144,
+          "normal": true,
+          "trigger_level": 128,
+          "trigger_hysteresis": 4
+        }
+      }
+    ]
+  },
+  {
+    "Name": "precision",
+    "Caps": [
+      "envelope",
+      "panel",
+      "box"
+    ],
+    "Arms": [
+      {
+        "Plan": {
+          "Request": {
+            "Channels": [
+              0,
+              1
+            ],
+            "TimePerDivS": 0.0005,
+            "PretrigFrac": 0.5
+          },
+          "SampleS": 3.2e-08,
+          "Depth": 524288,
+          "AcqDecim": 16,
+          "ETSFactor": 1,
+          "Segments": 1,
+          "WinSamples": 156250
+        },
+        "Trigger": {
+          "Stages": [
+            {
+              "Node": "edge",
+              "Source": {
+                "Kind": "analog"
+              },
+              "Levels": {
+                "Slope": "rising"
+              }
+            }
+          ]
+        },
+        "Want": {
+          "decimation_log2": 4,
+          "pre_words": 262144,
+          "post_words": 262144,
+          "normal": true,
+          "trigger_level": 128,
+          "trigger_hysteresis": 4
+        }
+      },
+      {
+        "Plan": {
+          "Request": {
+            "Channels": [
+              0,
+              1
+            ],
+            "TimePerDivS": 0.001,
+            "Mode": 3,
+            "PretrigFrac": 0.5
+          },
+          "Mode": 3,
+          "SampleS": 2.048e-06,
+          "Depth": 19532,
+          "AcqDecim": 1024,
+          "ETSFactor": 1,
+          "Segments": 1,
+          "WinSamples": 4883
+        },
+        "Trigger": {
+          "Stages": [
+            {
+              "Node": "edge",
+              "Source": {
+                "Kind": "analog"
+              },
+              "Levels": {
+                "Slope": "rising"
+              }
+            }
+          ]
+        },
+        "Want": {
+          "decimation_log2": 10,
+          "pre_words": 9766,
+          "post_words": 9766,
+          "normal": true,
+          "trigger_level": 128,
+          "trigger_hysteresis": 4
+        }
+      }
+    ]
+  },
+  {
+    "Name": "pulse-qualifier",
+    "Caps": [
+      "envelope",
+      "panel",
+      "box",
+      "qualifier"
+    ],
+    "Arms": [
+      {
+        "Plan": {
+          "Request": {
+            "Channels": [
+              0,
+              1
+            ],
+            "TimePerDivS": 0.0005,
+            "PretrigFrac": 0.5
+          },
+          "SampleS": 3.2e-08,
+          "Depth": 524288,
+          "AcqDecim": 16,
+          "ETSFactor": 1,
+          "Segments": 1,
+          "WinSamples": 156250
+        },
+        "Trigger": {
+          "Stages": [
+            {
+              "Node": "edge",
+              "Source": {
+                "Kind": "analog"
+              },
+              "Levels": {
+                "Slope": "rising"
+              }
+            }
+          ]
+        },
+        "Want": {
+          "decimation_log2": 4,
+          "pre_words": 262144,
+          "post_words": 262144,
+          "normal": true,
+          "trigger_level": 128,
+          "trigger_hysteresis": 4
+        }
+      },
+      {
+        "Plan": {
+          "Request": {
+            "Channels": [
+              0,
+              1
+            ],
+            "TimePerDivS": 0.0005,
+            "PretrigFrac": 0.5
+          },
+          "SampleS": 3.2e-08,
+          "Depth": 524288,
+          "AcqDecim": 16,
+          "ETSFactor": 1,
+          "Segments": 1,
+          "WinSamples": 156250
+        },
+        "Trigger": {
+          "Stages": [
+            {
+              "Node": "edge",
+              "Source": {
+                "Kind": "analog"
+              },
+              "Levels": {
+                "Slope": "rising"
+              }
+            }
+          ],
+          "FreeRun": true
+        },
+        "Want": {
+          "decimation_log2": 4,
+          "pre_words": 262144,
+          "post_words": 262144,
+          "trigger_level": 128,
+          "trigger_hysteresis": 4
+        }
+      },
+      {
+        "Plan": {
+          "Request": {
+            "Channels": [
+              0,
+              1
+            ],
+            "TimePerDivS": 0.0005,
+            "PretrigFrac": 0.5
+          },
+          "SampleS": 3.2e-08,
+          "Depth": 524288,
+          "AcqDecim": 16,
+          "ETSFactor": 1,
+          "Segments": 1,
+          "WinSamples": 156250
+        },
+        "Trigger": {
+          "Stages": [
+            {
+              "Node": "pulse",
+              "Source": {
+                "Kind": "analog"
+              },
+              "Levels": {
+                "Slope": "rising"
+              },
+              "Qual": {
+                "Op": "inside",
+                "MinS": 1e-06,
+                "MaxS": 5e-06
+              }
+            }
+          ]
+        },
+        "Want": {
+          "qualifier": {
+            "enabled": true,
+            "cond": 3,
+            "min_ticks": 249,
+            "max_ticks": 1249,
+            "prescale": 1
+          },
+          "decimation_log2": 4,
+          "pre_words": 262144,
+          "post_words": 262144,
+          "normal": true,
+          "trigger_level": 128,
+          "trigger_hysteresis": 4
+        }
+      }
+    ]
+  },
+  {
+    "Name": "raw-lease",
+    "Caps": [
+      "envelope",
+      "panel",
+      "box"
+    ],
+    "Arms": [
+      {
+        "Plan": {
+          "Request": {
+            "Channels": [
+              0,
+              1
+            ],
+            "TimePerDivS": 0.0005,
+            "PretrigFrac": 0.5
+          },
+          "SampleS": 3.2e-08,
+          "Depth": 524288,
+          "AcqDecim": 16,
+          "ETSFactor": 1,
+          "Segments": 1,
+          "WinSamples": 156250
+        },
+        "Trigger": {
+          "Stages": [
+            {
+              "Node": "edge",
+              "Source": {
+                "Kind": "analog"
+              },
+              "Levels": {
+                "Slope": "rising"
+              }
+            }
+          ]
+        },
+        "Want": {
+          "decimation_log2": 4,
+          "pre_words": 262144,
+          "post_words": 262144,
+          "normal": true,
+          "trigger_level": 128,
+          "trigger_hysteresis": 4
+        }
+      }
+    ]
+  },
+  {
+    "Name": "single",
+    "Caps": [
+      "envelope",
+      "panel",
+      "box"
+    ],
+    "Arms": [
+      {
+        "Plan": {
+          "Request": {
+            "Channels": [
+              0,
+              1
+            ],
+            "TimePerDivS": 0.0005,
+            "PretrigFrac": 0.5
+          },
+          "SampleS": 3.2e-08,
+          "Depth": 524288,
+          "AcqDecim": 16,
+          "ETSFactor": 1,
+          "Segments": 1,
+          "WinSamples": 156250
+        },
+        "Trigger": {
+          "Stages": [
+            {
+              "Node": "edge",
+              "Source": {
+                "Kind": "analog"
+              },
+              "Levels": {
+                "Slope": "rising"
+              }
+            }
+          ]
+        },
+        "Want": {
+          "decimation_log2": 4,
+          "pre_words": 262144,
+          "post_words": 262144,
+          "normal": true,
+          "trigger_level": 128,
+          "trigger_hysteresis": 4
+        }
+      },
+      {
+        "Plan": {
+          "Request": {
+            "Channels": [
+              0,
+              1
+            ],
+            "TimePerDivS": 0.0005,
+            "PretrigFrac": 0.5
+          },
+          "SampleS": 3.2e-08,
+          "Depth": 524288,
+          "AcqDecim": 16,
+          "ETSFactor": 1,
+          "Segments": 1,
+          "WinSamples": 156250
+        },
+        "Trigger": {
+          "Stages": [
+            {
+              "Node": "edge",
+              "Source": {
+                "Kind": "analog"
+              },
+              "Levels": {
+                "Slope": "rising"
+              }
+            }
+          ],
+          "Sweep": 1
+        },
+        "Want": {
+          "decimation_log2": 4,
+          "pre_words": 262144,
+          "post_words": 262144,
+          "normal": true,
+          "trigger_level": 128,
+          "trigger_hysteresis": 4
+        }
+      }
+    ]
+  },
+  {
+    "Name": "slow-decimated",
+    "Caps": [
+      "envelope",
+      "panel",
+      "box"
+    ],
+    "Arms": [
+      {
+        "Plan": {
+          "Request": {
+            "Channels": [
+              0,
+              1
+            ],
+            "TimePerDivS": 0.0005,
+            "PretrigFrac": 0.5
+          },
+          "SampleS": 3.2e-08,
+          "Depth": 524288,
+          "AcqDecim": 16,
+          "ETSFactor": 1,
+          "Segments": 1,
+          "WinSamples": 156250
+        },
+        "Trigger": {
+          "Stages": [
+            {
+              "Node": "edge",
+              "Source": {
+                "Kind": "analog"
+              },
+              "Levels": {
+                "Slope": "rising"
+              }
+            }
+          ]
+        },
+        "Want": {
+          "decimation_log2": 4,
+          "pre_words": 262144,
+          "post_words": 262144,
+          "normal": true,
+          "trigger_level": 128,
+          "trigger_hysteresis": 4
+        }
+      },
+      {
+        "Plan": {
+          "Request": {
+            "Channels": [
+              0,
+              1
+            ],
+            "TimePerDivS": 0.005,
+            "PretrigFrac": 0.5
+          },
+          "SampleS": 1.28e-07,
+          "Depth": 524288,
+          "AcqDecim": 64,
+          "ETSFactor": 1,
+          "Segments": 1,
+          "WinSamples": 390625
+        },
+        "Trigger": {
+          "Stages": [
+            {
+              "Node": "edge",
+              "Source": {
+                "Kind": "analog"
+              },
+              "Levels": {
+                "Slope": "rising"
+              }
+            }
+          ]
+        },
+        "Want": {
+          "decimation_log2": 6,
+          "pre_words": 262144,
+          "post_words": 262144,
+          "normal": true,
+          "trigger_level": 128,
+          "trigger_hysteresis": 4
+        }
+      }
+    ]
+  },
+  {
+    "Name": "stop-replay",
+    "Caps": [
+      "envelope",
+      "panel",
+      "box"
+    ],
+    "Arms": [
+      {
+        "Plan": {
+          "Request": {
+            "Channels": [
+              0,
+              1
+            ],
+            "TimePerDivS": 0.0005,
+            "PretrigFrac": 0.5
+          },
+          "SampleS": 3.2e-08,
+          "Depth": 524288,
+          "AcqDecim": 16,
+          "ETSFactor": 1,
+          "Segments": 1,
+          "WinSamples": 156250
+        },
+        "Trigger": {
+          "Stages": [
+            {
+              "Node": "edge",
+              "Source": {
+                "Kind": "analog"
+              },
+              "Levels": {
+                "Slope": "rising"
+              }
+            }
+          ]
+        },
+        "Want": {
+          "decimation_log2": 4,
+          "pre_words": 262144,
+          "post_words": 262144,
+          "normal": true,
+          "trigger_level": 128,
+          "trigger_hysteresis": 4
+        }
+      }
+    ]
+  },
+  {
+    "Name": "uart-trigger",
+    "Caps": [
+      "envelope",
+      "panel",
+      "box",
+      "uart",
+      "sample-uart",
+      "sequence"
+    ],
+    "Arms": [
+      {
+        "Plan": {
+          "Request": {
+            "Channels": [
+              0,
+              1
+            ],
+            "TimePerDivS": 0.0005,
+            "PretrigFrac": 0.5
+          },
+          "SampleS": 3.2e-08,
+          "Depth": 524288,
+          "AcqDecim": 16,
+          "ETSFactor": 1,
+          "Segments": 1,
+          "WinSamples": 156250
+        },
+        "Trigger": {
+          "Stages": [
+            {
+              "Node": "edge",
+              "Source": {
+                "Kind": "analog"
+              },
+              "Levels": {
+                "Slope": "rising"
+              }
+            }
+          ]
+        },
+        "Want": {
+          "decimation_log2": 4,
+          "pre_words": 262144,
+          "post_words": 262144,
+          "normal": true,
+          "trigger_level": 128,
+          "trigger_hysteresis": 4
+        }
+      },
+      {
+        "Plan": {
+          "Request": {
+            "Channels": [
+              0,
+              1
+            ],
+            "TimePerDivS": 0.0005,
+            "PretrigFrac": 0.5,
+            "PretrigRoom": 2713
+          },
+          "SampleS": 3.2e-08,
+          "Depth": 524288,
+          "AcqDecim": 16,
+          "ETSFactor": 1,
+          "Segments": 1,
+          "WinSamples": 156250
+        },
+        "Trigger": {
+          "Stages": [
+            {
+              "Node": "protocol",
+              "Source": {
+                "Kind": "analog"
+              },
+              "Levels": {
+                "Slope": "rising"
+              },
+              "Proto": {
+                "Request": {
+                  "proto": 1,
+                  "baud": 115200,
+                  "bits": 8,
+                  "threshold": 128,
+                  "haveThr": true,
+                  "addr": -1,
+                  "rw": 2,
+                  "bytes": [
+                    85
+                  ]
+                },
+                "Levels": [
+                  0,
+                  -5.12
+                ]
+              }
+            }
+          ]
+        },
+        "Want": {
+          "uart": {
+            "enabled": true,
+            "pattern": 85,
+            "length": 1,
+            "period16": 138889,
+            "bits": 8,
+            "resync": true
+          },
+          "decimation_log2": 4,
+          "pre_words": 264857,
+          "post_words": 259431,
+          "normal": true,
+          "trigger_level": 128,
+          "trigger_hysteresis": 4
+        }
+      }
+    ]
+  },
+  {
+    "Name": "view-window",
+    "Caps": [
+      "envelope",
+      "panel",
+      "box"
+    ],
+    "Arms": [
+      {
+        "Plan": {
+          "Request": {
+            "Channels": [
+              0,
+              1
+            ],
+            "TimePerDivS": 0.0005,
+            "PretrigFrac": 0.5
+          },
+          "SampleS": 3.2e-08,
+          "Depth": 524288,
+          "AcqDecim": 16,
+          "ETSFactor": 1,
+          "Segments": 1,
+          "WinSamples": 156250
+        },
+        "Trigger": {
+          "Stages": [
+            {
+              "Node": "edge",
+              "Source": {
+                "Kind": "analog"
+              },
+              "Levels": {
+                "Slope": "rising"
+              }
+            }
+          ]
+        },
+        "Want": {
+          "decimation_log2": 4,
+          "pre_words": 262144,
+          "post_words": 262144,
+          "normal": true,
+          "trigger_level": 128,
+          "trigger_hysteresis": 4
+        }
+      },
+      {
+        "Plan": {
+          "Request": {
+            "Channels": [
+              0,
+              1
+            ],
+            "TimePerDivS": 0.001,
+            "PretrigFrac": 0.5
+          },
+          "SampleS": 3.2e-08,
+          "Depth": 524288,
+          "AcqDecim": 16,
+          "ETSFactor": 1,
+          "Segments": 1,
+          "WinSamples": 312500
+        },
+        "Trigger": {
+          "Stages": [
+            {
+              "Node": "edge",
+              "Source": {
+                "Kind": "analog"
+              },
+              "Levels": {
+                "Slope": "rising"
+              }
+            }
+          ]
+        },
+        "Want": {
+          "decimation_log2": 4,
+          "pre_words": 262144,
+          "post_words": 262144,
+          "normal": true,
+          "trigger_level": 128,
+          "trigger_hysteresis": 4
+        }
+      }
+    ]
+  },
+  {
+    "Name": "zones",
+    "Caps": [
+      "envelope",
+      "panel",
+      "box",
+      "qualifier"
+    ],
+    "Arms": [
+      {
+        "Plan": {
+          "Request": {
+            "Channels": [
+              0,
+              1
+            ],
+            "TimePerDivS": 0.0005,
+            "PretrigFrac": 0.5
+          },
+          "SampleS": 3.2e-08,
+          "Depth": 524288,
+          "AcqDecim": 16,
+          "ETSFactor": 1,
+          "Segments": 1,
+          "WinSamples": 156250
+        },
+        "Trigger": {
+          "Stages": [
+            {
+              "Node": "edge",
+              "Source": {
+                "Kind": "analog"
+              },
+              "Levels": {
+                "Slope": "rising"
+              }
+            }
+          ]
+        },
+        "Want": {
+          "decimation_log2": 4,
+          "pre_words": 262144,
+          "post_words": 262144,
+          "normal": true,
+          "trigger_level": 128,
+          "trigger_hysteresis": 4
+        }
+      },
+      {
+        "Plan": {
+          "Request": {
+            "Channels": [
+              0,
+              1
+            ],
+            "TimePerDivS": 0.0005,
+            "PretrigFrac": 0.5
+          },
+          "SampleS": 3.2e-08,
+          "Depth": 524288,
+          "AcqDecim": 16,
+          "ETSFactor": 1,
+          "Segments": 1,
+          "WinSamples": 156250
+        },
+        "Trigger": {
+          "Stages": [
+            {
+              "Node": "edge",
+              "Source": {
+                "Kind": "analog"
+              },
+              "Levels": {
+                "Slope": "rising"
+              },
+              "Zones": [
+                {
+                  "Source": {
+                    "Kind": "analog"
+                  },
+                  "FromS": -1e-06,
+                  "ToS": 1e-06,
+                  "Low": -1.12,
+                  "High": 0.88
+                }
+              ]
+            }
+          ]
+        },
+        "Want": {
+          "zones": {
+            "zones": [
+              {
+                "enabled": true,
+                "lo": 100,
+                "hi": 150,
+                "start": -125,
+                "end": 125
+              },
+              {},
+              {},
+              {}
+            ],
+            "wait": 126,
+            "bucket_clock": 1
+          },
+          "decimation_log2": 4,
+          "pre_words": 262188,
+          "post_words": 262100,
+          "normal": true,
+          "trigger_level": 128,
+          "trigger_hysteresis": 4
+        }
+      }
+    ]
+  }
+]

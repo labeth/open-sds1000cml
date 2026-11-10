@@ -21,8 +21,8 @@ import (
 	"github.com/labeth/open-dso-core/uimodel/panel"
 	"github.com/labeth/open-dso-core/webserver/wire"
 	"github.com/labeth/open-sds1000cml/app/internal/board"
-	"github.com/labeth/open-sds1000cml/app/internal/engine"
 	cmlpanel "github.com/labeth/open-sds1000cml/app/internal/panel"
+	engine "github.com/labeth/open-sds1000cml/app/internal/scopeapi"
 )
 
 // ownerScope is a scope with an audio stream behind the real panel: the

@@ -4,21 +4,15 @@ package settings_test
 
 import (
 	"testing"
-	"time"
 
 	"github.com/labeth/open-dso-core/analysis"
 	"github.com/labeth/open-dso-core/framecalc"
 	core "github.com/labeth/open-dso-core/settings"
-	"github.com/labeth/open-dso-core/uimodel/panel"
-	"github.com/labeth/open-sds1000cml/app/internal/analog"
-	"github.com/labeth/open-sds1000cml/app/internal/board"
-	"github.com/labeth/open-sds1000cml/app/internal/engine"
-	cmlpanel "github.com/labeth/open-sds1000cml/app/internal/panel"
 )
 
 // FuzzParseAndApply hammers the loader with hostile bytes: Parse must never
 // panic, and anything it does accept must Apply cleanly through the real
-// owners (engine staging setters, front-end offset law, controller clamps) —
+// owners (HAL controls, front-end offset law, controller clamps) —
 // a malformed settings file must NEVER be able to take the boot down.
 // TRLC-LINKS: REQ-SDS-072
 func FuzzParseAndApply(f *testing.F) {
@@ -35,14 +29,9 @@ func FuzzParseAndApply(f *testing.F) {
 	f.Add([]byte(`{"version":1,"decode":{"proto":37,"layer":"no-such","layer_addr":-9,"layer_dir":99,"stream_trig":-4,"stream_value":-1},"sound":{"set":true,"a4":-1e308,"ch":-3,"ref":"x","range":"loud","page":-7,"cycles":3,"ab_in":9,"gate":-9,"gate_v":1e308,"pre_s":-5,"post_s":1e308}}`))
 	f.Add([]byte(`{"version":1,"decode":{"proto":52,"frame_bits":9999,"layer":"usb_request"},"acq":{"roll_stream":true},"sound":{"set":true,"page":2147483647,"cycles":-2147483648}}`))
 
-	// One shared rig: engine/front-end/controller state pollution across runs
-	// is irrelevant for panic-hunting, and rebuilding the arena per input
-	// would dominate the fuzz loop.
-	e := engine.New(engine.Config{Bus: nullBus{}, Logf: func(string, ...any) {}})
-	fe := analog.New(&nullSPI{}, func(time.Duration) {}, nil)
-	fe.OnOffset(e.SetOffsetDAC)
-	fe.OnVdiv(e.SetChannelVdiv)
-	pc := panel.New(e, fe, board.New(e, fe), cmlpanel.Hardware{}, engine.SupportedTdivs(), 500e-6, func(string, ...any) {})
+	// One shared HAL/front-end/controller rig: state pollution across runs
+	// is irrelevant for panic-hunting.
+	e, fe, pc, _ := rig(f)
 
 	f.Fuzz(func(t *testing.T, raw []byte) {
 		s, err := core.Parse(raw)

@@ -11,7 +11,7 @@ import (
 
 	"github.com/labeth/open-dso-core/sample"
 	"github.com/labeth/open-dso-core/testenv"
-	"github.com/labeth/open-sds1000cml/app/internal/engine"
+	engine "github.com/labeth/open-sds1000cml/app/internal/scopeapi"
 )
 
 // TestSuperresBrowser drives superres_browser.mjs against a fakeScope whose

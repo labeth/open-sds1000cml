@@ -1,0 +1,2290 @@
+{
+  "C2 at 10x, 0.5 V/div, offset, source C2": {
+    "Ch": [
+      {
+        "VdivV": 1,
+        "Zoom": 1,
+        "Probe": 1,
+        "Cpl": 0,
+        "Inv": false,
+        "OffV": 0,
+        "Show": true
+      },
+      {
+        "VdivV": 0.5,
+        "Zoom": 1,
+        "Probe": 10,
+        "Cpl": 0,
+        "Inv": false,
+        "OffV": 0.3,
+        "Show": true
+      },
+      {
+        "VdivV": 0,
+        "Zoom": 0,
+        "Probe": 0,
+        "Cpl": 0,
+        "Inv": false,
+        "OffV": 0,
+        "Show": false
+      },
+      {
+        "VdivV": 0,
+        "Zoom": 0,
+        "Probe": 0,
+        "Cpl": 0,
+        "Inv": false,
+        "OffV": 0,
+        "Show": false
+      }
+    ],
+    "NumChans": 2,
+    "TdivS": 0.0005,
+    "TrigSrc": 1,
+    "TrigRising": true,
+    "TrigLvlDiv": 1.3991218441273325,
+    "TrigLvlV": 3.9956092206366627,
+    "TrigType": 0,
+    "TrigQual": {
+      "video_std": 0,
+      "video_line": 0,
+      "video_neg": true,
+      "pulse_lvl": 0.5,
+      "pulse_min_ns": 0,
+      "pulse_max_ns": 0,
+      "pulse_cond": 0,
+      "slope_lo": 0.2,
+      "slope_hi": 0.8,
+      "slope_min_ns": 0,
+      "slope_max_ns": 0,
+      "slope_cond": 0
+    },
+    "SerialArmed": false,
+    "SerialMatch": "",
+    "ZoneTrig": false,
+    "Waiting": false,
+    "WaitS": 0,
+    "StreamOn": false,
+    "Stream": {
+      "State": 0,
+      "Label": "",
+      "Lines": 0,
+      "Events": 0,
+      "Units": 0,
+      "Lost": 0,
+      "Errors": 0,
+      "UnitsPerSecond": 0,
+      "Elapsed": 0,
+      "Err": "",
+      "Note": "",
+      "RecordAvailable": false,
+      "TriggerLine": 0,
+      "Mode": ""
+    },
+    "StreamList": false,
+    "StreamPage": {
+      "Lines": null,
+      "Top": 0,
+      "Total": 0,
+      "TriggerLine": 0,
+      "Header": ""
+    },
+    "Running": true,
+    "Norm": false,
+    "RecordS": 0,
+    "Single": false,
+    "Trigd": false,
+    "SampleS": 0,
+    "TrigPosFrac": 0.5,
+    "ChanExplicit": true,
+    "ShowMeas": false,
+    "MeasItems": null,
+    "ViewMode": 0,
+    "MathMode": 0,
+    "MathCh": [
+      0,
+      1
+    ],
+    "XYCh": [
+      0,
+      1
+    ],
+    "FFTSrc": 0,
+    "AutosetBusy": false,
+    "AutosetMsg": "",
+    "Notice": "",
+    "Remote": "",
+    "Match": {
+      "Open": false,
+      "Set": "",
+      "Keys": null,
+      "Row": 0,
+      "Col": 0,
+      "Toks": null,
+      "Cur": 0,
+      "Typing": false,
+      "Proto": "",
+      "Msg": ""
+    },
+    "Busy": "",
+    "BusyPct": 0,
+    "BusyPhase": 0,
+    "ViewPending": false,
+    "Roll": false,
+    "Zoom": 1,
+    "ZoomOff": 0,
+    "Persist": false,
+    "DecProto": 0,
+    "DecBaud": 115200,
+    "DecChA": 0,
+    "DecChB": 1,
+    "DecCPOL": false,
+    "DecCPHA": false,
+    "DecLSB": false,
+    "DecParity": "",
+    "DecInverted": false,
+    "DecDelayNs": 0,
+    "DecFormat": 0,
+    "Ref": [
+      [
+        null,
+        null,
+        null,
+        null
+      ],
+      [
+        null,
+        null,
+        null,
+        null
+      ]
+    ],
+    "RefVdiv": [
+      [
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0
+      ]
+    ],
+    "RefOff": [
+      [
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0
+      ]
+    ],
+    "RefProbe": [
+      [
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0
+      ]
+    ],
+    "RefShow": [
+      false,
+      false
+    ],
+    "CurOn": false,
+    "CurType": 0,
+    "CurSel": 0,
+    "CurX": [
+      0.35,
+      0.65
+    ],
+    "CurY": [
+      0.35,
+      0.65
+    ],
+    "URL": "",
+    "UI": {
+      "WS": 0,
+      "Layout": {
+        "MenuW": 30,
+        "PlotTop": 0,
+        "HideTraces": false,
+        "HideBottom": false,
+        "HideMeas": false,
+        "HideViewCaptions": false,
+        "Sheet": false,
+        "Touch": false
+      },
+      "Rail": true,
+      "RailNote": null,
+      "Notice": "",
+      "Keys": null,
+      "Sheet": null,
+      "Picker": null,
+      "Scope": {
+        "AdjustTag": "",
+        "Hot": false
+      },
+      "Bus": null,
+      "Eye": null,
+      "Visual": null,
+      "Spec": null,
+      "Meas": null,
+      "Cmp": null,
+      "Sound": null,
+      "Bar": null,
+      "Box": null
+    },
+    "SRActive": false,
+    "SRFocus": 0,
+    "SRStatus": "",
+    "SRBits": 0,
+    "SRMean": null,
+    "SRMean2": null,
+    "SRAlign": 0,
+    "SRSampleS": 0,
+    "SRk": 32,
+    "SRGateLo": 0,
+    "SRGateHi": 0,
+    "SRN": 0,
+    "SRWinLo": 0,
+    "SRWinHi": 0,
+    "SRPeriod": 0,
+    "ZoneMode": 0,
+    "Zones": null,
+    "MaskMode": 0,
+    "MaskLo": null,
+    "MaskHi": null,
+    "MaskWin": 0,
+    "MaskPass": 0,
+    "MaskFail": 0,
+    "MaskSkip": 0,
+    "MaskStopped": false,
+    "MaskMsg": "",
+    "ZoneSkip": 0,
+    "MaskTdivS": 0,
+    "MaskSampleS": 0,
+    "BodeFreq": null,
+    "BodeGain": null,
+    "BodePhase": null,
+    "BodeRef": 0,
+    "BodeDut": 0,
+    "Spect": null
+  },
+  "NORMAL slope trigger": {
+    "Ch": [
+      {
+        "VdivV": 0.002,
+        "Zoom": 5,
+        "Probe": 1,
+        "Cpl": 1,
+        "Inv": false,
+        "OffV": 0,
+        "Show": true
+      },
+      {
+        "VdivV": 0.5,
+        "Zoom": 1,
+        "Probe": 10,
+        "Cpl": 0,
+        "Inv": false,
+        "OffV": 0.3,
+        "Show": true
+      },
+      {
+        "VdivV": 0,
+        "Zoom": 0,
+        "Probe": 0,
+        "Cpl": 0,
+        "Inv": false,
+        "OffV": 0,
+        "Show": false
+      },
+      {
+        "VdivV": 0,
+        "Zoom": 0,
+        "Probe": 0,
+        "Cpl": 0,
+        "Inv": false,
+        "OffV": 0,
+        "Show": false
+      }
+    ],
+    "NumChans": 2,
+    "TdivS": 0.0005,
+    "TrigSrc": 1,
+    "TrigRising": true,
+    "TrigLvlDiv": 1.3727771679473106,
+    "TrigLvlV": 3.8638858397365534,
+    "TrigType": 2,
+    "TrigQual": {
+      "video_std": 0,
+      "video_line": 0,
+      "video_neg": true,
+      "pulse_lvl": 0.5,
+      "pulse_min_ns": 0,
+      "pulse_max_ns": 0,
+      "pulse_cond": 0,
+      "slope_lo": 0.2,
+      "slope_hi": 0.8,
+      "slope_min_ns": 0,
+      "slope_max_ns": 0,
+      "slope_cond": 0
+    },
+    "SerialArmed": false,
+    "SerialMatch": "",
+    "ZoneTrig": false,
+    "Waiting": false,
+    "WaitS": 0,
+    "StreamOn": false,
+    "Stream": {
+      "State": 0,
+      "Label": "",
+      "Lines": 0,
+      "Events": 0,
+      "Units": 0,
+      "Lost": 0,
+      "Errors": 0,
+      "UnitsPerSecond": 0,
+      "Elapsed": 0,
+      "Err": "",
+      "Note": "",
+      "RecordAvailable": false,
+      "TriggerLine": 0,
+      "Mode": ""
+    },
+    "StreamList": false,
+    "StreamPage": {
+      "Lines": null,
+      "Top": 0,
+      "Total": 0,
+      "TriggerLine": 0,
+      "Header": ""
+    },
+    "Running": true,
+    "Norm": true,
+    "RecordS": 0,
+    "Single": false,
+    "Trigd": false,
+    "SampleS": 0,
+    "TrigPosFrac": 0.5,
+    "ChanExplicit": true,
+    "ShowMeas": false,
+    "MeasItems": null,
+    "ViewMode": 0,
+    "MathMode": 0,
+    "MathCh": [
+      0,
+      1
+    ],
+    "XYCh": [
+      0,
+      1
+    ],
+    "FFTSrc": 0,
+    "AutosetBusy": false,
+    "AutosetMsg": "",
+    "Notice": "",
+    "Remote": "",
+    "Match": {
+      "Open": false,
+      "Set": "",
+      "Keys": null,
+      "Row": 0,
+      "Col": 0,
+      "Toks": null,
+      "Cur": 0,
+      "Typing": false,
+      "Proto": "",
+      "Msg": ""
+    },
+    "Busy": "",
+    "BusyPct": 0,
+    "BusyPhase": 0,
+    "ViewPending": false,
+    "Roll": false,
+    "Zoom": 1,
+    "ZoomOff": 0,
+    "Persist": false,
+    "DecProto": 0,
+    "DecBaud": 115200,
+    "DecChA": 0,
+    "DecChB": 1,
+    "DecCPOL": false,
+    "DecCPHA": false,
+    "DecLSB": false,
+    "DecParity": "",
+    "DecInverted": false,
+    "DecDelayNs": 0,
+    "DecFormat": 0,
+    "Ref": [
+      [
+        null,
+        null,
+        null,
+        null
+      ],
+      [
+        null,
+        null,
+        null,
+        null
+      ]
+    ],
+    "RefVdiv": [
+      [
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0
+      ]
+    ],
+    "RefOff": [
+      [
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0
+      ]
+    ],
+    "RefProbe": [
+      [
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0
+      ]
+    ],
+    "RefShow": [
+      false,
+      false
+    ],
+    "CurOn": false,
+    "CurType": 0,
+    "CurSel": 0,
+    "CurX": [
+      0.35,
+      0.65
+    ],
+    "CurY": [
+      -74.50000000000001,
+      75.50000000000001
+    ],
+    "URL": "",
+    "UI": {
+      "WS": 0,
+      "Layout": {
+        "MenuW": 30,
+        "PlotTop": 0,
+        "HideTraces": false,
+        "HideBottom": false,
+        "HideMeas": false,
+        "HideViewCaptions": false,
+        "Sheet": false,
+        "Touch": false
+      },
+      "Rail": true,
+      "RailNote": null,
+      "Notice": "",
+      "Keys": null,
+      "Sheet": null,
+      "Picker": null,
+      "Scope": {
+        "AdjustTag": "",
+        "Hot": false
+      },
+      "Bus": null,
+      "Eye": null,
+      "Visual": null,
+      "Spec": null,
+      "Meas": null,
+      "Cmp": null,
+      "Sound": null,
+      "Bar": null,
+      "Box": null
+    },
+    "SRActive": false,
+    "SRFocus": 0,
+    "SRStatus": "",
+    "SRBits": 0,
+    "SRMean": null,
+    "SRMean2": null,
+    "SRAlign": 0,
+    "SRSampleS": 0,
+    "SRk": 32,
+    "SRGateLo": 0,
+    "SRGateHi": 0,
+    "SRN": 0,
+    "SRWinLo": 0,
+    "SRWinHi": 0,
+    "SRPeriod": 0,
+    "ZoneMode": 0,
+    "Zones": null,
+    "MaskMode": 0,
+    "MaskLo": null,
+    "MaskHi": null,
+    "MaskWin": 0,
+    "MaskPass": 0,
+    "MaskFail": 0,
+    "MaskSkip": 0,
+    "MaskStopped": false,
+    "MaskMsg": "",
+    "ZoneSkip": 0,
+    "MaskTdivS": 0,
+    "MaskSampleS": 0,
+    "BodeFreq": null,
+    "BodeGain": null,
+    "BodePhase": null,
+    "BodeRef": 0,
+    "BodeDut": 0,
+    "Spect": null
+  },
+  "level set": {
+    "Ch": [
+      {
+        "VdivV": 1,
+        "Zoom": 1,
+        "Probe": 1,
+        "Cpl": 0,
+        "Inv": false,
+        "OffV": 0,
+        "Show": true
+      },
+      {
+        "VdivV": 1,
+        "Zoom": 1,
+        "Probe": 1,
+        "Cpl": 0,
+        "Inv": false,
+        "OffV": 0,
+        "Show": true
+      },
+      {
+        "VdivV": 0,
+        "Zoom": 0,
+        "Probe": 0,
+        "Cpl": 0,
+        "Inv": false,
+        "OffV": 0,
+        "Show": false
+      },
+      {
+        "VdivV": 0,
+        "Zoom": 0,
+        "Probe": 0,
+        "Cpl": 0,
+        "Inv": false,
+        "OffV": 0,
+        "Show": false
+      }
+    ],
+    "NumChans": 2,
+    "TdivS": 0.0005,
+    "TrigSrc": 0,
+    "TrigRising": true,
+    "TrigLvlDiv": 0.3995609220636663,
+    "TrigLvlV": 0.3995609220636663,
+    "TrigType": 0,
+    "TrigQual": {
+      "video_std": 0,
+      "video_line": 0,
+      "video_neg": true,
+      "pulse_lvl": 0.5,
+      "pulse_min_ns": 0,
+      "pulse_max_ns": 0,
+      "pulse_cond": 0,
+      "slope_lo": 0.2,
+      "slope_hi": 0.8,
+      "slope_min_ns": 0,
+      "slope_max_ns": 0,
+      "slope_cond": 0
+    },
+    "SerialArmed": false,
+    "SerialMatch": "",
+    "ZoneTrig": false,
+    "Waiting": false,
+    "WaitS": 0,
+    "StreamOn": false,
+    "Stream": {
+      "State": 0,
+      "Label": "",
+      "Lines": 0,
+      "Events": 0,
+      "Units": 0,
+      "Lost": 0,
+      "Errors": 0,
+      "UnitsPerSecond": 0,
+      "Elapsed": 0,
+      "Err": "",
+      "Note": "",
+      "RecordAvailable": false,
+      "TriggerLine": 0,
+      "Mode": ""
+    },
+    "StreamList": false,
+    "StreamPage": {
+      "Lines": null,
+      "Top": 0,
+      "Total": 0,
+      "TriggerLine": 0,
+      "Header": ""
+    },
+    "Running": true,
+    "Norm": false,
+    "RecordS": 0,
+    "Single": false,
+    "Trigd": false,
+    "SampleS": 0,
+    "TrigPosFrac": 0.5,
+    "ChanExplicit": true,
+    "ShowMeas": false,
+    "MeasItems": null,
+    "ViewMode": 0,
+    "MathMode": 0,
+    "MathCh": [
+      0,
+      1
+    ],
+    "XYCh": [
+      0,
+      1
+    ],
+    "FFTSrc": 0,
+    "AutosetBusy": false,
+    "AutosetMsg": "",
+    "Notice": "",
+    "Remote": "",
+    "Match": {
+      "Open": false,
+      "Set": "",
+      "Keys": null,
+      "Row": 0,
+      "Col": 0,
+      "Toks": null,
+      "Cur": 0,
+      "Typing": false,
+      "Proto": "",
+      "Msg": ""
+    },
+    "Busy": "",
+    "BusyPct": 0,
+    "BusyPhase": 0,
+    "ViewPending": false,
+    "Roll": false,
+    "Zoom": 1,
+    "ZoomOff": 0,
+    "Persist": false,
+    "DecProto": 0,
+    "DecBaud": 115200,
+    "DecChA": 0,
+    "DecChB": 1,
+    "DecCPOL": false,
+    "DecCPHA": false,
+    "DecLSB": false,
+    "DecParity": "",
+    "DecInverted": false,
+    "DecDelayNs": 0,
+    "DecFormat": 0,
+    "Ref": [
+      [
+        null,
+        null,
+        null,
+        null
+      ],
+      [
+        null,
+        null,
+        null,
+        null
+      ]
+    ],
+    "RefVdiv": [
+      [
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0
+      ]
+    ],
+    "RefOff": [
+      [
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0
+      ]
+    ],
+    "RefProbe": [
+      [
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0
+      ]
+    ],
+    "RefShow": [
+      false,
+      false
+    ],
+    "CurOn": false,
+    "CurType": 0,
+    "CurSel": 0,
+    "CurX": [
+      0.35,
+      0.65
+    ],
+    "CurY": [
+      0.35,
+      0.65
+    ],
+    "URL": "",
+    "UI": {
+      "WS": 0,
+      "Layout": {
+        "MenuW": 30,
+        "PlotTop": 0,
+        "HideTraces": false,
+        "HideBottom": false,
+        "HideMeas": false,
+        "HideViewCaptions": false,
+        "Sheet": false,
+        "Touch": false
+      },
+      "Rail": true,
+      "RailNote": null,
+      "Notice": "",
+      "Keys": null,
+      "Sheet": null,
+      "Picker": null,
+      "Scope": {
+        "AdjustTag": "",
+        "Hot": false
+      },
+      "Bus": null,
+      "Eye": null,
+      "Visual": null,
+      "Spec": null,
+      "Meas": null,
+      "Cmp": null,
+      "Sound": null,
+      "Bar": null,
+      "Box": null
+    },
+    "SRActive": false,
+    "SRFocus": 0,
+    "SRStatus": "",
+    "SRBits": 0,
+    "SRMean": null,
+    "SRMean2": null,
+    "SRAlign": 0,
+    "SRSampleS": 0,
+    "SRk": 32,
+    "SRGateLo": 0,
+    "SRGateHi": 0,
+    "SRN": 0,
+    "SRWinLo": 0,
+    "SRWinHi": 0,
+    "SRPeriod": 0,
+    "ZoneMode": 0,
+    "Zones": null,
+    "MaskMode": 0,
+    "MaskLo": null,
+    "MaskHi": null,
+    "MaskWin": 0,
+    "MaskPass": 0,
+    "MaskFail": 0,
+    "MaskSkip": 0,
+    "MaskStopped": false,
+    "MaskMsg": "",
+    "ZoneSkip": 0,
+    "MaskTdivS": 0,
+    "MaskSampleS": 0,
+    "BodeFreq": null,
+    "BodeGain": null,
+    "BodePhase": null,
+    "BodeRef": 0,
+    "BodeDut": 0,
+    "Spect": null
+  },
+  "level stepped": {
+    "Ch": [
+      {
+        "VdivV": 0.002,
+        "Zoom": 5,
+        "Probe": 1,
+        "Cpl": 1,
+        "Inv": false,
+        "OffV": 0,
+        "Show": true
+      },
+      {
+        "VdivV": 0.5,
+        "Zoom": 1,
+        "Probe": 10,
+        "Cpl": 0,
+        "Inv": false,
+        "OffV": 0.3,
+        "Show": true
+      },
+      {
+        "VdivV": 0,
+        "Zoom": 0,
+        "Probe": 0,
+        "Cpl": 0,
+        "Inv": false,
+        "OffV": 0,
+        "Show": false
+      },
+      {
+        "VdivV": 0,
+        "Zoom": 0,
+        "Probe": 0,
+        "Cpl": 0,
+        "Inv": false,
+        "OffV": 0,
+        "Show": false
+      }
+    ],
+    "NumChans": 2,
+    "TdivS": 0.0005,
+    "TrigSrc": 1,
+    "TrigRising": true,
+    "TrigLvlDiv": 1.3727771679473106,
+    "TrigLvlV": 3.8638858397365534,
+    "TrigType": 0,
+    "TrigQual": {
+      "video_std": 0,
+      "video_line": 0,
+      "video_neg": true,
+      "pulse_lvl": 0.5,
+      "pulse_min_ns": 0,
+      "pulse_max_ns": 0,
+      "pulse_cond": 0,
+      "slope_lo": 0.2,
+      "slope_hi": 0.8,
+      "slope_min_ns": 0,
+      "slope_max_ns": 0,
+      "slope_cond": 0
+    },
+    "SerialArmed": false,
+    "SerialMatch": "",
+    "ZoneTrig": false,
+    "Waiting": false,
+    "WaitS": 0,
+    "StreamOn": false,
+    "Stream": {
+      "State": 0,
+      "Label": "",
+      "Lines": 0,
+      "Events": 0,
+      "Units": 0,
+      "Lost": 0,
+      "Errors": 0,
+      "UnitsPerSecond": 0,
+      "Elapsed": 0,
+      "Err": "",
+      "Note": "",
+      "RecordAvailable": false,
+      "TriggerLine": 0,
+      "Mode": ""
+    },
+    "StreamList": false,
+    "StreamPage": {
+      "Lines": null,
+      "Top": 0,
+      "Total": 0,
+      "TriggerLine": 0,
+      "Header": ""
+    },
+    "Running": true,
+    "Norm": false,
+    "RecordS": 0,
+    "Single": false,
+    "Trigd": false,
+    "SampleS": 0,
+    "TrigPosFrac": 0.5,
+    "ChanExplicit": true,
+    "ShowMeas": false,
+    "MeasItems": null,
+    "ViewMode": 0,
+    "MathMode": 0,
+    "MathCh": [
+      0,
+      1
+    ],
+    "XYCh": [
+      0,
+      1
+    ],
+    "FFTSrc": 0,
+    "AutosetBusy": false,
+    "AutosetMsg": "",
+    "Notice": "",
+    "Remote": "",
+    "Match": {
+      "Open": false,
+      "Set": "",
+      "Keys": null,
+      "Row": 0,
+      "Col": 0,
+      "Toks": null,
+      "Cur": 0,
+      "Typing": false,
+      "Proto": "",
+      "Msg": ""
+    },
+    "Busy": "",
+    "BusyPct": 0,
+    "BusyPhase": 0,
+    "ViewPending": false,
+    "Roll": false,
+    "Zoom": 1,
+    "ZoomOff": 0,
+    "Persist": false,
+    "DecProto": 0,
+    "DecBaud": 115200,
+    "DecChA": 0,
+    "DecChB": 1,
+    "DecCPOL": false,
+    "DecCPHA": false,
+    "DecLSB": false,
+    "DecParity": "",
+    "DecInverted": false,
+    "DecDelayNs": 0,
+    "DecFormat": 0,
+    "Ref": [
+      [
+        null,
+        null,
+        null,
+        null
+      ],
+      [
+        null,
+        null,
+        null,
+        null
+      ]
+    ],
+    "RefVdiv": [
+      [
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0
+      ]
+    ],
+    "RefOff": [
+      [
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0
+      ]
+    ],
+    "RefProbe": [
+      [
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0
+      ]
+    ],
+    "RefShow": [
+      false,
+      false
+    ],
+    "CurOn": false,
+    "CurType": 0,
+    "CurSel": 0,
+    "CurX": [
+      0.35,
+      0.65
+    ],
+    "CurY": [
+      -74.50000000000001,
+      75.50000000000001
+    ],
+    "URL": "",
+    "UI": {
+      "WS": 0,
+      "Layout": {
+        "MenuW": 30,
+        "PlotTop": 0,
+        "HideTraces": false,
+        "HideBottom": false,
+        "HideMeas": false,
+        "HideViewCaptions": false,
+        "Sheet": false,
+        "Touch": false
+      },
+      "Rail": true,
+      "RailNote": null,
+      "Notice": "",
+      "Keys": null,
+      "Sheet": null,
+      "Picker": null,
+      "Scope": {
+        "AdjustTag": "",
+        "Hot": false
+      },
+      "Bus": null,
+      "Eye": null,
+      "Visual": null,
+      "Spec": null,
+      "Meas": null,
+      "Cmp": null,
+      "Sound": null,
+      "Bar": null,
+      "Box": null
+    },
+    "SRActive": false,
+    "SRFocus": 0,
+    "SRStatus": "",
+    "SRBits": 0,
+    "SRMean": null,
+    "SRMean2": null,
+    "SRAlign": 0,
+    "SRSampleS": 0,
+    "SRk": 32,
+    "SRGateLo": 0,
+    "SRGateHi": 0,
+    "SRN": 0,
+    "SRWinLo": 0,
+    "SRWinHi": 0,
+    "SRPeriod": 0,
+    "ZoneMode": 0,
+    "Zones": null,
+    "MaskMode": 0,
+    "MaskLo": null,
+    "MaskHi": null,
+    "MaskWin": 0,
+    "MaskPass": 0,
+    "MaskFail": 0,
+    "MaskSkip": 0,
+    "MaskStopped": false,
+    "MaskMsg": "",
+    "ZoneSkip": 0,
+    "MaskTdivS": 0,
+    "MaskSampleS": 0,
+    "BodeFreq": null,
+    "BodeGain": null,
+    "BodePhase": null,
+    "BodeRef": 0,
+    "BodeDut": 0,
+    "Spect": null
+  },
+  "power-on": {
+    "Ch": [
+      {
+        "VdivV": 1,
+        "Zoom": 1,
+        "Probe": 1,
+        "Cpl": 0,
+        "Inv": false,
+        "OffV": 0,
+        "Show": true
+      },
+      {
+        "VdivV": 1,
+        "Zoom": 1,
+        "Probe": 1,
+        "Cpl": 0,
+        "Inv": false,
+        "OffV": 0,
+        "Show": true
+      },
+      {
+        "VdivV": 0,
+        "Zoom": 0,
+        "Probe": 0,
+        "Cpl": 0,
+        "Inv": false,
+        "OffV": 0,
+        "Show": false
+      },
+      {
+        "VdivV": 0,
+        "Zoom": 0,
+        "Probe": 0,
+        "Cpl": 0,
+        "Inv": false,
+        "OffV": 0,
+        "Show": false
+      }
+    ],
+    "NumChans": 2,
+    "TdivS": 0.0005,
+    "TrigSrc": 0,
+    "TrigRising": true,
+    "TrigLvlDiv": 0,
+    "TrigLvlV": 0,
+    "TrigType": 0,
+    "TrigQual": {
+      "video_std": 0,
+      "video_line": 0,
+      "video_neg": true,
+      "pulse_lvl": 0.5,
+      "pulse_min_ns": 0,
+      "pulse_max_ns": 0,
+      "pulse_cond": 0,
+      "slope_lo": 0.2,
+      "slope_hi": 0.8,
+      "slope_min_ns": 0,
+      "slope_max_ns": 0,
+      "slope_cond": 0
+    },
+    "SerialArmed": false,
+    "SerialMatch": "",
+    "ZoneTrig": false,
+    "Waiting": false,
+    "WaitS": 0,
+    "StreamOn": false,
+    "Stream": {
+      "State": 0,
+      "Label": "",
+      "Lines": 0,
+      "Events": 0,
+      "Units": 0,
+      "Lost": 0,
+      "Errors": 0,
+      "UnitsPerSecond": 0,
+      "Elapsed": 0,
+      "Err": "",
+      "Note": "",
+      "RecordAvailable": false,
+      "TriggerLine": 0,
+      "Mode": ""
+    },
+    "StreamList": false,
+    "StreamPage": {
+      "Lines": null,
+      "Top": 0,
+      "Total": 0,
+      "TriggerLine": 0,
+      "Header": ""
+    },
+    "Running": true,
+    "Norm": false,
+    "RecordS": 0,
+    "Single": false,
+    "Trigd": false,
+    "SampleS": 0,
+    "TrigPosFrac": 0.5,
+    "ChanExplicit": true,
+    "ShowMeas": false,
+    "MeasItems": null,
+    "ViewMode": 0,
+    "MathMode": 0,
+    "MathCh": [
+      0,
+      1
+    ],
+    "XYCh": [
+      0,
+      1
+    ],
+    "FFTSrc": 0,
+    "AutosetBusy": false,
+    "AutosetMsg": "",
+    "Notice": "",
+    "Remote": "",
+    "Match": {
+      "Open": false,
+      "Set": "",
+      "Keys": null,
+      "Row": 0,
+      "Col": 0,
+      "Toks": null,
+      "Cur": 0,
+      "Typing": false,
+      "Proto": "",
+      "Msg": ""
+    },
+    "Busy": "",
+    "BusyPct": 0,
+    "BusyPhase": 0,
+    "ViewPending": false,
+    "Roll": false,
+    "Zoom": 1,
+    "ZoomOff": 0,
+    "Persist": false,
+    "DecProto": 0,
+    "DecBaud": 115200,
+    "DecChA": 0,
+    "DecChB": 1,
+    "DecCPOL": false,
+    "DecCPHA": false,
+    "DecLSB": false,
+    "DecParity": "",
+    "DecInverted": false,
+    "DecDelayNs": 0,
+    "DecFormat": 0,
+    "Ref": [
+      [
+        null,
+        null,
+        null,
+        null
+      ],
+      [
+        null,
+        null,
+        null,
+        null
+      ]
+    ],
+    "RefVdiv": [
+      [
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0
+      ]
+    ],
+    "RefOff": [
+      [
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0
+      ]
+    ],
+    "RefProbe": [
+      [
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0
+      ]
+    ],
+    "RefShow": [
+      false,
+      false
+    ],
+    "CurOn": false,
+    "CurType": 0,
+    "CurSel": 0,
+    "CurX": [
+      0.35,
+      0.65
+    ],
+    "CurY": [
+      0.35,
+      0.65
+    ],
+    "URL": "",
+    "UI": {
+      "WS": 0,
+      "Layout": {
+        "MenuW": 30,
+        "PlotTop": 0,
+        "HideTraces": false,
+        "HideBottom": false,
+        "HideMeas": false,
+        "HideViewCaptions": false,
+        "Sheet": false,
+        "Touch": false
+      },
+      "Rail": true,
+      "RailNote": null,
+      "Notice": "",
+      "Keys": null,
+      "Sheet": null,
+      "Picker": null,
+      "Scope": {
+        "AdjustTag": "",
+        "Hot": false
+      },
+      "Bus": null,
+      "Eye": null,
+      "Visual": null,
+      "Spec": null,
+      "Meas": null,
+      "Cmp": null,
+      "Sound": null,
+      "Bar": null,
+      "Box": null
+    },
+    "SRActive": false,
+    "SRFocus": 0,
+    "SRStatus": "",
+    "SRBits": 0,
+    "SRMean": null,
+    "SRMean2": null,
+    "SRAlign": 0,
+    "SRSampleS": 0,
+    "SRk": 32,
+    "SRGateLo": 0,
+    "SRGateHi": 0,
+    "SRN": 0,
+    "SRWinLo": 0,
+    "SRWinHi": 0,
+    "SRPeriod": 0,
+    "ZoneMode": 0,
+    "Zones": null,
+    "MaskMode": 0,
+    "MaskLo": null,
+    "MaskHi": null,
+    "MaskWin": 0,
+    "MaskPass": 0,
+    "MaskFail": 0,
+    "MaskSkip": 0,
+    "MaskStopped": false,
+    "MaskMsg": "",
+    "ZoneSkip": 0,
+    "MaskTdivS": 0,
+    "MaskSampleS": 0,
+    "BodeFreq": null,
+    "BodeGain": null,
+    "BodePhase": null,
+    "BodeRef": 0,
+    "BodeDut": 0,
+    "Spect": null
+  },
+  "serial trigger armed": {
+    "Ch": [
+      {
+        "VdivV": 0.002,
+        "Zoom": 5,
+        "Probe": 1,
+        "Cpl": 1,
+        "Inv": false,
+        "OffV": 0,
+        "Show": true
+      },
+      {
+        "VdivV": 0.5,
+        "Zoom": 1,
+        "Probe": 10,
+        "Cpl": 0,
+        "Inv": false,
+        "OffV": 0.3,
+        "Show": true
+      },
+      {
+        "VdivV": 0,
+        "Zoom": 0,
+        "Probe": 0,
+        "Cpl": 0,
+        "Inv": false,
+        "OffV": 0,
+        "Show": false
+      },
+      {
+        "VdivV": 0,
+        "Zoom": 0,
+        "Probe": 0,
+        "Cpl": 0,
+        "Inv": false,
+        "OffV": 0,
+        "Show": false
+      }
+    ],
+    "NumChans": 2,
+    "TdivS": 0.0005,
+    "TrigSrc": 1,
+    "TrigRising": true,
+    "TrigLvlDiv": 1.3727771679473106,
+    "TrigLvlV": 3.8638858397365534,
+    "TrigType": 2,
+    "TrigQual": {
+      "video_std": 0,
+      "video_line": 0,
+      "video_neg": true,
+      "pulse_lvl": 0.5,
+      "pulse_min_ns": 0,
+      "pulse_max_ns": 0,
+      "pulse_cond": 0,
+      "slope_lo": 0.2,
+      "slope_hi": 0.8,
+      "slope_min_ns": 0,
+      "slope_max_ns": 0,
+      "slope_cond": 0
+    },
+    "SerialArmed": true,
+    "SerialMatch": "A5",
+    "ZoneTrig": false,
+    "Waiting": false,
+    "WaitS": 0,
+    "StreamOn": false,
+    "Stream": {
+      "State": 0,
+      "Label": "",
+      "Lines": 0,
+      "Events": 0,
+      "Units": 0,
+      "Lost": 0,
+      "Errors": 0,
+      "UnitsPerSecond": 0,
+      "Elapsed": 0,
+      "Err": "",
+      "Note": "",
+      "RecordAvailable": false,
+      "TriggerLine": 0,
+      "Mode": ""
+    },
+    "StreamList": false,
+    "StreamPage": {
+      "Lines": null,
+      "Top": 0,
+      "Total": 0,
+      "TriggerLine": 0,
+      "Header": ""
+    },
+    "Running": true,
+    "Norm": true,
+    "RecordS": 0,
+    "Single": false,
+    "Trigd": false,
+    "SampleS": 0,
+    "TrigPosFrac": 0.5,
+    "ChanExplicit": true,
+    "ShowMeas": false,
+    "MeasItems": null,
+    "ViewMode": 0,
+    "MathMode": 0,
+    "MathCh": [
+      0,
+      1
+    ],
+    "XYCh": [
+      0,
+      1
+    ],
+    "FFTSrc": 0,
+    "AutosetBusy": false,
+    "AutosetMsg": "",
+    "Notice": "",
+    "Remote": "",
+    "Match": {
+      "Open": false,
+      "Set": "",
+      "Keys": null,
+      "Row": 0,
+      "Col": 0,
+      "Toks": null,
+      "Cur": 0,
+      "Typing": false,
+      "Proto": "",
+      "Msg": ""
+    },
+    "Busy": "",
+    "BusyPct": 0,
+    "BusyPhase": 0,
+    "ViewPending": false,
+    "Roll": false,
+    "Zoom": 1,
+    "ZoomOff": 0,
+    "Persist": false,
+    "DecProto": 0,
+    "DecBaud": 115200,
+    "DecChA": 0,
+    "DecChB": 1,
+    "DecCPOL": false,
+    "DecCPHA": false,
+    "DecLSB": false,
+    "DecParity": "",
+    "DecInverted": false,
+    "DecDelayNs": 0,
+    "DecFormat": 0,
+    "Ref": [
+      [
+        null,
+        null,
+        null,
+        null
+      ],
+      [
+        null,
+        null,
+        null,
+        null
+      ]
+    ],
+    "RefVdiv": [
+      [
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0
+      ]
+    ],
+    "RefOff": [
+      [
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0
+      ]
+    ],
+    "RefProbe": [
+      [
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0
+      ]
+    ],
+    "RefShow": [
+      false,
+      false
+    ],
+    "CurOn": false,
+    "CurType": 0,
+    "CurSel": 0,
+    "CurX": [
+      0.35,
+      0.65
+    ],
+    "CurY": [
+      -74.50000000000001,
+      75.50000000000001
+    ],
+    "URL": "",
+    "UI": {
+      "WS": 0,
+      "Layout": {
+        "MenuW": 30,
+        "PlotTop": 0,
+        "HideTraces": false,
+        "HideBottom": false,
+        "HideMeas": false,
+        "HideViewCaptions": false,
+        "Sheet": false,
+        "Touch": false
+      },
+      "Rail": true,
+      "RailNote": null,
+      "Notice": "",
+      "Keys": null,
+      "Sheet": null,
+      "Picker": null,
+      "Scope": {
+        "AdjustTag": "",
+        "Hot": false
+      },
+      "Bus": null,
+      "Eye": null,
+      "Visual": null,
+      "Spec": null,
+      "Meas": null,
+      "Cmp": null,
+      "Sound": null,
+      "Bar": null,
+      "Box": null
+    },
+    "SRActive": false,
+    "SRFocus": 0,
+    "SRStatus": "",
+    "SRBits": 0,
+    "SRMean": null,
+    "SRMean2": null,
+    "SRAlign": 0,
+    "SRSampleS": 0,
+    "SRk": 32,
+    "SRGateLo": 0,
+    "SRGateHi": 0,
+    "SRN": 0,
+    "SRWinLo": 0,
+    "SRWinHi": 0,
+    "SRPeriod": 0,
+    "ZoneMode": 0,
+    "Zones": null,
+    "MaskMode": 0,
+    "MaskLo": null,
+    "MaskHi": null,
+    "MaskWin": 0,
+    "MaskPass": 0,
+    "MaskFail": 0,
+    "MaskSkip": 0,
+    "MaskStopped": false,
+    "MaskMsg": "",
+    "ZoneSkip": 0,
+    "MaskTdivS": 0,
+    "MaskSampleS": 0,
+    "BodeFreq": null,
+    "BodeGain": null,
+    "BodePhase": null,
+    "BodeRef": 0,
+    "BodeDut": 0,
+    "Spect": null
+  },
+  "stopped": {
+    "Ch": [
+      {
+        "VdivV": 0.002,
+        "Zoom": 5,
+        "Probe": 1,
+        "Cpl": 1,
+        "Inv": false,
+        "OffV": 0,
+        "Show": true
+      },
+      {
+        "VdivV": 0.5,
+        "Zoom": 1,
+        "Probe": 10,
+        "Cpl": 0,
+        "Inv": false,
+        "OffV": 0.3,
+        "Show": true
+      },
+      {
+        "VdivV": 0,
+        "Zoom": 0,
+        "Probe": 0,
+        "Cpl": 0,
+        "Inv": false,
+        "OffV": 0,
+        "Show": false
+      },
+      {
+        "VdivV": 0,
+        "Zoom": 0,
+        "Probe": 0,
+        "Cpl": 0,
+        "Inv": false,
+        "OffV": 0,
+        "Show": false
+      }
+    ],
+    "NumChans": 2,
+    "TdivS": 0.0005,
+    "TrigSrc": 1,
+    "TrigRising": true,
+    "TrigLvlDiv": 1.3727771679473106,
+    "TrigLvlV": 3.8638858397365534,
+    "TrigType": 2,
+    "TrigQual": {
+      "video_std": 0,
+      "video_line": 0,
+      "video_neg": true,
+      "pulse_lvl": 0.5,
+      "pulse_min_ns": 0,
+      "pulse_max_ns": 0,
+      "pulse_cond": 0,
+      "slope_lo": 0.2,
+      "slope_hi": 0.8,
+      "slope_min_ns": 0,
+      "slope_max_ns": 0,
+      "slope_cond": 0
+    },
+    "SerialArmed": true,
+    "SerialMatch": "A5",
+    "ZoneTrig": false,
+    "Waiting": false,
+    "WaitS": 0,
+    "StreamOn": false,
+    "Stream": {
+      "State": 0,
+      "Label": "",
+      "Lines": 0,
+      "Events": 0,
+      "Units": 0,
+      "Lost": 0,
+      "Errors": 0,
+      "UnitsPerSecond": 0,
+      "Elapsed": 0,
+      "Err": "",
+      "Note": "",
+      "RecordAvailable": false,
+      "TriggerLine": 0,
+      "Mode": ""
+    },
+    "StreamList": false,
+    "StreamPage": {
+      "Lines": null,
+      "Top": 0,
+      "Total": 0,
+      "TriggerLine": 0,
+      "Header": ""
+    },
+    "Running": false,
+    "Norm": true,
+    "RecordS": 0,
+    "Single": false,
+    "Trigd": false,
+    "SampleS": 0,
+    "TrigPosFrac": 0.5,
+    "ChanExplicit": true,
+    "ShowMeas": false,
+    "MeasItems": null,
+    "ViewMode": 0,
+    "MathMode": 0,
+    "MathCh": [
+      0,
+      1
+    ],
+    "XYCh": [
+      0,
+      1
+    ],
+    "FFTSrc": 0,
+    "AutosetBusy": false,
+    "AutosetMsg": "",
+    "Notice": "",
+    "Remote": "",
+    "Match": {
+      "Open": false,
+      "Set": "",
+      "Keys": null,
+      "Row": 0,
+      "Col": 0,
+      "Toks": null,
+      "Cur": 0,
+      "Typing": false,
+      "Proto": "",
+      "Msg": ""
+    },
+    "Busy": "",
+    "BusyPct": 0,
+    "BusyPhase": 0,
+    "ViewPending": false,
+    "Roll": false,
+    "Zoom": 1,
+    "ZoomOff": 0,
+    "Persist": false,
+    "DecProto": 0,
+    "DecBaud": 115200,
+    "DecChA": 0,
+    "DecChB": 1,
+    "DecCPOL": false,
+    "DecCPHA": false,
+    "DecLSB": false,
+    "DecParity": "",
+    "DecInverted": false,
+    "DecDelayNs": 0,
+    "DecFormat": 0,
+    "Ref": [
+      [
+        null,
+        null,
+        null,
+        null
+      ],
+      [
+        null,
+        null,
+        null,
+        null
+      ]
+    ],
+    "RefVdiv": [
+      [
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0
+      ]
+    ],
+    "RefOff": [
+      [
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0
+      ]
+    ],
+    "RefProbe": [
+      [
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0
+      ]
+    ],
+    "RefShow": [
+      false,
+      false
+    ],
+    "CurOn": false,
+    "CurType": 0,
+    "CurSel": 0,
+    "CurX": [
+      0.35,
+      0.65
+    ],
+    "CurY": [
+      -74.50000000000001,
+      75.50000000000001
+    ],
+    "URL": "",
+    "UI": {
+      "WS": 0,
+      "Layout": {
+        "MenuW": 30,
+        "PlotTop": 0,
+        "HideTraces": false,
+        "HideBottom": false,
+        "HideMeas": false,
+        "HideViewCaptions": false,
+        "Sheet": false,
+        "Touch": false
+      },
+      "Rail": true,
+      "RailNote": null,
+      "Notice": "",
+      "Keys": null,
+      "Sheet": null,
+      "Picker": null,
+      "Scope": {
+        "AdjustTag": "",
+        "Hot": false
+      },
+      "Bus": null,
+      "Eye": null,
+      "Visual": null,
+      "Spec": null,
+      "Meas": null,
+      "Cmp": null,
+      "Sound": null,
+      "Bar": null,
+      "Box": null
+    },
+    "SRActive": false,
+    "SRFocus": 0,
+    "SRStatus": "",
+    "SRBits": 0,
+    "SRMean": null,
+    "SRMean2": null,
+    "SRAlign": 0,
+    "SRSampleS": 0,
+    "SRk": 32,
+    "SRGateLo": 0,
+    "SRGateHi": 0,
+    "SRN": 0,
+    "SRWinLo": 0,
+    "SRWinHi": 0,
+    "SRPeriod": 0,
+    "ZoneMode": 0,
+    "Zones": null,
+    "MaskMode": 0,
+    "MaskLo": null,
+    "MaskHi": null,
+    "MaskWin": 0,
+    "MaskPass": 0,
+    "MaskFail": 0,
+    "MaskSkip": 0,
+    "MaskStopped": false,
+    "MaskMsg": "",
+    "ZoneSkip": 0,
+    "MaskTdivS": 0,
+    "MaskSampleS": 0,
+    "BodeFreq": null,
+    "BodeGain": null,
+    "BodePhase": null,
+    "BodeRef": 0,
+    "BodeDut": 0,
+    "Spect": null
+  },
+  "zoomed detent, AC": {
+    "Ch": [
+      {
+        "VdivV": 0.002,
+        "Zoom": 5,
+        "Probe": 1,
+        "Cpl": 1,
+        "Inv": false,
+        "OffV": 0,
+        "Show": true
+      },
+      {
+        "VdivV": 0.5,
+        "Zoom": 1,
+        "Probe": 10,
+        "Cpl": 0,
+        "Inv": false,
+        "OffV": 0.3,
+        "Show": true
+      },
+      {
+        "VdivV": 0,
+        "Zoom": 0,
+        "Probe": 0,
+        "Cpl": 0,
+        "Inv": false,
+        "OffV": 0,
+        "Show": false
+      },
+      {
+        "VdivV": 0,
+        "Zoom": 0,
+        "Probe": 0,
+        "Cpl": 0,
+        "Inv": false,
+        "OffV": 0,
+        "Show": false
+      }
+    ],
+    "NumChans": 2,
+    "TdivS": 0.0005,
+    "TrigSrc": 1,
+    "TrigRising": true,
+    "TrigLvlDiv": 1.3991218441273325,
+    "TrigLvlV": 3.9956092206366627,
+    "TrigType": 0,
+    "TrigQual": {
+      "video_std": 0,
+      "video_line": 0,
+      "video_neg": true,
+      "pulse_lvl": 0.5,
+      "pulse_min_ns": 0,
+      "pulse_max_ns": 0,
+      "pulse_cond": 0,
+      "slope_lo": 0.2,
+      "slope_hi": 0.8,
+      "slope_min_ns": 0,
+      "slope_max_ns": 0,
+      "slope_cond": 0
+    },
+    "SerialArmed": false,
+    "SerialMatch": "",
+    "ZoneTrig": false,
+    "Waiting": false,
+    "WaitS": 0,
+    "StreamOn": false,
+    "Stream": {
+      "State": 0,
+      "Label": "",
+      "Lines": 0,
+      "Events": 0,
+      "Units": 0,
+      "Lost": 0,
+      "Errors": 0,
+      "UnitsPerSecond": 0,
+      "Elapsed": 0,
+      "Err": "",
+      "Note": "",
+      "RecordAvailable": false,
+      "TriggerLine": 0,
+      "Mode": ""
+    },
+    "StreamList": false,
+    "StreamPage": {
+      "Lines": null,
+      "Top": 0,
+      "Total": 0,
+      "TriggerLine": 0,
+      "Header": ""
+    },
+    "Running": true,
+    "Norm": false,
+    "RecordS": 0,
+    "Single": false,
+    "Trigd": false,
+    "SampleS": 0,
+    "TrigPosFrac": 0.5,
+    "ChanExplicit": true,
+    "ShowMeas": false,
+    "MeasItems": null,
+    "ViewMode": 0,
+    "MathMode": 0,
+    "MathCh": [
+      0,
+      1
+    ],
+    "XYCh": [
+      0,
+      1
+    ],
+    "FFTSrc": 0,
+    "AutosetBusy": false,
+    "AutosetMsg": "",
+    "Notice": "",
+    "Remote": "",
+    "Match": {
+      "Open": false,
+      "Set": "",
+      "Keys": null,
+      "Row": 0,
+      "Col": 0,
+      "Toks": null,
+      "Cur": 0,
+      "Typing": false,
+      "Proto": "",
+      "Msg": ""
+    },
+    "Busy": "",
+    "BusyPct": 0,
+    "BusyPhase": 0,
+    "ViewPending": false,
+    "Roll": false,
+    "Zoom": 1,
+    "ZoomOff": 0,
+    "Persist": false,
+    "DecProto": 0,
+    "DecBaud": 115200,
+    "DecChA": 0,
+    "DecChB": 1,
+    "DecCPOL": false,
+    "DecCPHA": false,
+    "DecLSB": false,
+    "DecParity": "",
+    "DecInverted": false,
+    "DecDelayNs": 0,
+    "DecFormat": 0,
+    "Ref": [
+      [
+        null,
+        null,
+        null,
+        null
+      ],
+      [
+        null,
+        null,
+        null,
+        null
+      ]
+    ],
+    "RefVdiv": [
+      [
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0
+      ]
+    ],
+    "RefOff": [
+      [
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0
+      ]
+    ],
+    "RefProbe": [
+      [
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0
+      ]
+    ],
+    "RefShow": [
+      false,
+      false
+    ],
+    "CurOn": false,
+    "CurType": 0,
+    "CurSel": 0,
+    "CurX": [
+      0.35,
+      0.65
+    ],
+    "CurY": [
+      -74.50000000000001,
+      75.50000000000001
+    ],
+    "URL": "",
+    "UI": {
+      "WS": 0,
+      "Layout": {
+        "MenuW": 30,
+        "PlotTop": 0,
+        "HideTraces": false,
+        "HideBottom": false,
+        "HideMeas": false,
+        "HideViewCaptions": false,
+        "Sheet": false,
+        "Touch": false
+      },
+      "Rail": true,
+      "RailNote": null,
+      "Notice": "",
+      "Keys": null,
+      "Sheet": null,
+      "Picker": null,
+      "Scope": {
+        "AdjustTag": "",
+        "Hot": false
+      },
+      "Bus": null,
+      "Eye": null,
+      "Visual": null,
+      "Spec": null,
+      "Meas": null,
+      "Cmp": null,
+      "Sound": null,
+      "Bar": null,
+      "Box": null
+    },
+    "SRActive": false,
+    "SRFocus": 0,
+    "SRStatus": "",
+    "SRBits": 0,
+    "SRMean": null,
+    "SRMean2": null,
+    "SRAlign": 0,
+    "SRSampleS": 0,
+    "SRk": 32,
+    "SRGateLo": 0,
+    "SRGateHi": 0,
+    "SRN": 0,
+    "SRWinLo": 0,
+    "SRWinHi": 0,
+    "SRPeriod": 0,
+    "ZoneMode": 0,
+    "Zones": null,
+    "MaskMode": 0,
+    "MaskLo": null,
+    "MaskHi": null,
+    "MaskWin": 0,
+    "MaskPass": 0,
+    "MaskFail": 0,
+    "MaskSkip": 0,
+    "MaskStopped": false,
+    "MaskMsg": "",
+    "ZoneSkip": 0,
+    "MaskTdivS": 0,
+    "MaskSampleS": 0,
+    "BodeFreq": null,
+    "BodeGain": null,
+    "BodePhase": null,
+    "BodeRef": 0,
+    "BodeDut": 0,
+    "Spect": null
+  }
+}

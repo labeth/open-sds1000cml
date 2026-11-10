@@ -6,7 +6,7 @@ import (
 	"sync"
 
 	"github.com/labeth/open-dso-core/instrument"
-	"github.com/labeth/open-sds1000cml/app/internal/engine"
+	engine "github.com/labeth/open-sds1000cml/app/internal/scopeapi"
 )
 
 // ModelCodes is the levels' engine over the instrument model alone: the

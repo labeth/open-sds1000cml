@@ -1844,7 +1844,7 @@ decisions:
     work. The general image with the scan is seed 5, 9927 logic elements, +0.091 ns.'
   - Rejected on the bench, J2 as the clock with F2 as the load, every polarity, with and without a J1 pull-up; J1 read
     constant low.
-  - Knob transitions per detent (1) and direction (counting up is clockwise) are set in app/internal/engine/panel_scan.go
+  - Knob transitions per detent (1) and direction (counting up is clockwise) are set in app/internal/board/acq/panel_scan.go
     and are not yet confirmed knob by knob.
   - All four acquisition images carry the block (general seed 1, packet seed 6, line-code seed 7,
     stacking seed 11; see ADR-SAMPLE-POLARITY).
@@ -1902,7 +1902,7 @@ decisions:
     work. The general image with the scan is seed 5, 9927 logic elements, +0.091 ns.'
   - Rejected on the bench, J2 as the clock with F2 as the load, every polarity, with and without a J1 pull-up; J1 read
     constant low.
-  - Knob transitions per detent (1) and direction (counting up is clockwise) are set in app/internal/engine/panel_scan.go
+  - Knob transitions per detent (1) and direction (counting up is clockwise) are set in app/internal/board/acq/panel_scan.go
     and are not yet confirmed knob by knob.
   - All four acquisition images carry the block (general seed 1, packet seed 6, line-code seed 7,
     stacking seed 11; see ADR-SAMPLE-POLARITY).

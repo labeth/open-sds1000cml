@@ -13,8 +13,8 @@ import (
 	"github.com/labeth/open-dso-core/instrument"
 	"github.com/labeth/open-dso-core/uimodel/panel"
 	"github.com/labeth/open-sds1000cml/app/internal/board"
-	"github.com/labeth/open-sds1000cml/app/internal/engine"
 	cmlpanel "github.com/labeth/open-sds1000cml/app/internal/panel"
+	engine "github.com/labeth/open-sds1000cml/app/internal/scopeapi"
 )
 
 // panelScope is the web test's engine fake as both the server's scope and

@@ -9,7 +9,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/labeth/open-sds1000cml/app/internal/engine"
+	engine "github.com/labeth/open-sds1000cml/app/internal/scopeapi"
 )
 
 // These are ALWAYS-RUN pure-Go guardrails for the UI/UX refactor. They must NOT

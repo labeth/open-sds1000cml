@@ -10,7 +10,7 @@ import (
 
 	"github.com/labeth/open-dso-core/sample"
 	"github.com/labeth/open-dso-core/testenv"
-	"github.com/labeth/open-sds1000cml/app/internal/engine"
+	engine "github.com/labeth/open-sds1000cml/app/internal/scopeapi"
 )
 
 // TestINVSBrowser drives invs_browser.mjs over the REAL ui.html + WebGL draw
