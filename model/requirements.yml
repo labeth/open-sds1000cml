@@ -3393,7 +3393,13 @@ requirements:
   verificationCriteria: Synthetic envelopes (gated and found, tone and CV, percussive) read their attack within 5 ms,
     sustain within 3 %, decay and release within a few milliseconds; a gate-armed capture on the gate's marks reads
     its envelope; on the device the generator's envelope times are read.
-  notes: The capture starts only on a mark the FPGA put in the stream; software places it on the crossing.
+  sourceRefs:
+  - CODE-APP-INTERNAL-BOARD-ACQ-STREAM-GO
+  - core::FU-DSO-ENGINE
+  - core::FU-DSO-SOUND
+  notes: The board programs the FPGA gate or level crossing marks and delivers them with the streamed samples
+    through HAL blocks. The shared core takes the marked capture and performs envelope and ADSR analysis.
+    The capture starts only on a mark the FPGA put in the stream; software places it on the crossing.
 - id: REQ-SDS-269
   title: Modulation
   text: The instrument shall read a tone's tremolo depth, rate and shape, its vibrato deviation in cents and Hz, rate

@@ -104,7 +104,7 @@ func (s *streamerFacet) Kinds() []hal.Payload {
 // samples arrive at the staged decimation. The drum streams C1 and C2
 // together; spec.Channels picks which the blocks carry. OWNER, LONG when
 // the image loads.
-// TRLC-LINKS: REQ-SDS-035, REQ-SDS-265
+// TRLC-LINKS: REQ-SDS-035, REQ-SDS-265, REQ-SDS-268
 func (s *streamerFacet) Start(spec hal.StreamSpec) error {
 	b := (*Board)(s)
 	st := s.streamOf()
@@ -287,7 +287,7 @@ func (s *streamerFacet) nextWords() ([]byte, error) {
 // SetMarks asks the image to mark crossings of a level on a channel; a
 // running stream takes it at its next block (the level, channel and
 // directions latch while the drum runs). ANY.
-// TRLC-LINKS: REQ-SDS-272
+// TRLC-LINKS: REQ-SDS-268, REQ-SDS-272
 func (s *streamerFacet) SetMarks(m hal.MarkSpec) error {
 	if m.Channel < 0 || m.Channel > 1 {
 		return hal.Refuse("stream marks", "the image marks crossings on C1 or C2")
@@ -342,7 +342,7 @@ func (s *streamerFacet) applyMarks() {
 
 // readMarks is the image's newest marks since the last read: a rise and a
 // fall counter and the stream word each newest one fell in.
-// TRLC-LINKS: REQ-SDS-272
+// TRLC-LINKS: REQ-SDS-268, REQ-SDS-272
 func (s *streamerFacet) readMarks() []hal.Mark {
 	b := (*Board)(s)
 	st := s.streamOf()

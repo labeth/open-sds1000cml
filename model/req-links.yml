@@ -149,10 +149,3 @@ reqLinks:
   status: claimed
   rationale: The display loop that keeps SOUND's view on the repaint signature moved to the core (scopeapp); this
     scope runs it.
-- id: LNK-SDS-268-CORE
-  parent: REQ-SDS-268
-  child: core::CAP-DSO-SOUND
-  pinned:
-    version: v0.1.0
-  status: claimed
-  rationale: The shared HAL sound stream and takes supply the envelope capture; the core sound analysis reads ADSR for tone and CV signals.
