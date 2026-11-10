@@ -19,16 +19,17 @@ import (
 // not expected.
 type fakeMem struct {
 	Memory
-	armed    []sramcapture.Config
-	polls    int
-	freezeAt int
-	meta     sramcapture.Metadata
-	reads    [][]sramcapture.RecordRead
-	recalls  []string
-	hook     func(done, total int)
-	caps     map[string]bool
-	halted   int
-	forced   int
+	armed     []sramcapture.Config
+	polls     int
+	freezeAt  int
+	meta      sramcapture.Metadata
+	reads     [][]sramcapture.RecordRead
+	recalls   []string
+	hook      func(done, total int)
+	caps      map[string]bool
+	halted    int
+	forced    int
+	envelopes int // bucketed (envelope) reads
 }
 
 func (m *fakeMem) Arm(_ context.Context, c sramcapture.Config) error {

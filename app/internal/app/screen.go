@@ -7,9 +7,7 @@ import (
 	"time"
 
 	"github.com/labeth/open-dso-core/render"
-	"github.com/labeth/open-dso-core/sample"
 	"github.com/labeth/open-dso-core/scopeapp"
-	"github.com/labeth/open-sds1000cml/app/internal/engine"
 	"github.com/labeth/open-sds1000cml/app/internal/lcd"
 )
 
@@ -56,24 +54,45 @@ func (s *lcdScreen) PresentRows(y0, y1 int) { s.fb.PresentRows(s.back, y0, y1) }
 // TRLC-LINKS: REQ-SDS-168, REQ-SDS-221
 func (s *lcdScreen) SetLight(on bool) error { return lcd.SetBacklight(on) }
 
-// viewLease asks the engine for the zoomed part of the live envelope at
-// full detail (the frame's view window) while the LCD's Y-T is zoomed in.
+// lcdEngine is what the display loop asks of the acquisition on this
+// unit: the render tick from the board's tuning knob (as the engine's),
+// the cycle's pace and quiet lock (the display shares the one core with
+// arm-settle and drain), and the count of pictures put up (the status's
+// lcd_frames).
+type lcdEngine struct{ c *composition }
+
+var _ scopeapp.DisplayEngine = lcdEngine{}
+
+// RenderPeriod is the display's tick: the board's render knob.
+// TRLC-LINKS: REQ-SDS-021, REQ-SDS-127
+func (e lcdEngine) RenderPeriod() time.Duration {
+	return time.Duration(max(e.c.acq.Tuning().RenderMs.Load(), 1)) * time.Millisecond
+}
+
+// SetDisplayPace asks each capture to take at least d.
 // TRLC-LINKS: REQ-SDS-021
-func (c *composition) viewLease(f *sample.Frame, hud *render.HUD) {
-	if a, b, ok := scopeViewLease(*hud, f); ok {
-		c.e.LeaseViewWindow(engine.ViewScope, a, b, render.PlotColumns(lcd.Screen, hud.UI.Layout), time.Second)
+func (e lcdEngine) SetDisplayPace(d time.Duration) {
+	if q := e.c.quiet; q != nil {
+		q.SetDisplayPace(d)
 	}
 }
 
-// scopeViewLease is the stretch of live envelope frame f the LCD's zoom
-// shows, in screen widths from the trigger, while zoomed in Y-T (X-Y draws no
-// zoomed stretch, and its reads cost frames).
+// QuietRLock holds off the cycle's load-sensitive windows while a picture
+// is drawn.
 // TRLC-LINKS: REQ-SDS-021
-func scopeViewLease(hud render.HUD, f *sample.Frame) (a, b float64, ok bool) {
-	if hud.Zoom <= 1 || hud.ViewMode != 0 || f == nil || f.Content != sample.PeakPairs || f.WinPoints <= 0 || f.Len() <= 0 {
-		return 0, 0, false
+func (e lcdEngine) QuietRLock() {
+	if q := e.c.quiet; q != nil {
+		q.QuietRLock()
 	}
-	c := hud.ZoomOff * float64(f.Len()) / float64(min(f.WinPoints, f.Len()))
-	h := 0.5 / float64(hud.Zoom)
-	return c - h, c + h, true
 }
+
+// TRLC-LINKS: REQ-SDS-021
+func (e lcdEngine) QuietRUnlock() {
+	if q := e.c.quiet; q != nil {
+		q.QuietRUnlock()
+	}
+}
+
+// NoteLCDFrame counts a picture put up.
+// TRLC-LINKS: REQ-SDS-021, REQ-SDS-127
+func (e lcdEngine) NoteLCDFrame() { e.c.lcdFrames.Add(1) }

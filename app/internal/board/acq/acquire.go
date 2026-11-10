@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/labeth/open-dso-core/hal"
+	"github.com/labeth/open-dso-core/sample"
 	"github.com/labeth/open-sds1000cml/app/internal/sramcapture"
 )
 
@@ -218,6 +219,7 @@ func (a *acquirerFacet) Arm() error {
 	if b.mem == nil {
 		return hal.Refuse("acquisition", "no SRAM capture fabric")
 	}
+	b.followACLevel()
 	commit := b.stopped || b.stageGen != b.armedGen
 	if b.frontEnd != nil {
 		applied, err := b.writeFrontEnd()
@@ -276,7 +278,9 @@ func (a *acquirerFacet) Wait(ctx context.Context, timeout time.Duration) (hal.St
 				return hal.Status{Triggered: m.Triggered}, ErrDataFault
 			}
 			b.state = hal.Ready
-			b.recStatus = hal.Status{Triggered: m.Triggered, Forced: b.forced && !m.Triggered, Done: true, Coherent: true, Record: recordID(m)}
+			// a forced record is no trigger, whatever the fabric's flag says
+			// after the force (the owner forces only an untriggered capture)
+			b.recStatus = hal.Status{Triggered: m.Triggered && !b.forced, Forced: b.forced, Done: true, Coherent: true, Record: recordID(m)}
 			return b.recStatus, nil
 		}
 		if err := ctx.Err(); err != nil {
@@ -287,6 +291,23 @@ func (a *acquirerFacet) Wait(ctx context.Context, timeout time.Duration) (hal.St
 		}
 		time.Sleep(min(2*time.Millisecond, time.Until(deadline)))
 	}
+}
+
+// autoWaitBase is how long AUTO waits for a trigger beyond the time the
+// record takes to fill before its trigger.
+const autoWaitBase = 100 * time.Millisecond
+
+var _ hal.AutoWaiter = (*acquirerFacet)(nil)
+
+// AutoWait is how long a capture of the staged plan waits in AUTO before
+// the owner forces it: the fabric triggers only on its trigger, so AUTO's
+// free run is the owner's forced trigger. It waits autoWaitBase and the
+// time the record takes to fill before its trigger, so a forced record
+// holds samples on both sides. OWNER.
+// TRLC-LINKS: REQ-SDS-009, REQ-SDS-011
+func (a *acquirerFacet) AutoWait() time.Duration {
+	p := (*Board)(a).planned
+	return autoWaitBase + time.Duration(float64(p.pre)*float64(p.perWord)*p.sampleS*float64(time.Second))
 }
 
 // Force forces the waiting capture's trigger. OWNER.
@@ -345,7 +366,30 @@ func (b *Board) ReleaseCapture() {
 func (b *Board) FrontEndPending() bool { return b.frontEnd != nil && b.frontEnd.pendingWrite() }
 
 // SetRecord makes m the record Readout reads: a record the board did not
-// halt itself (a decoded stream's adopted capture, a stopped record read
-// again).
+// halt itself (a stopped record read again).
 // TRLC-LINKS: REQ-SDS-008
 func (b *Board) SetRecord(m sramcapture.Metadata) { b.rec = m; b.state = hal.Ready }
+
+// AdoptRecord makes m, captured with configuration cfg by a decoded stream
+// outside the owner's plans, the record Readout reads, read as the
+// engine's stopped loop read an adopted record: a full-rate record at 2 ns,
+// a decimated one (a software stream's capture) at its own rate and
+// decimation, its screen at the timebase now, triggered on an edge. OWNER.
+// TRLC-LINKS: REQ-SDS-008, REQ-SDS-013
+func (b *Board) AdoptRecord(m sramcapture.Metadata, cfg sramcapture.Config) {
+	p := SRAMPlan{Samples: int(m.Length) * 2, SampleS: 2e-9}
+	if m.SampleRateHz > 0 && m.SamplesPerWord > 0 {
+		p = SRAMPlan{Log: cfg.DecimationLog2, Samples: int(m.Length) * int(m.SamplesPerWord), SampleS: 1 / m.SampleRateHz}
+	}
+	plan := b.plan
+	p = RetainedSRAMPlan(p, plan.Request.TimePerDivS)
+	plan.SampleS, plan.Depth, plan.AcqDecim, plan.WinSamples = p.SampleS, p.Samples, 1<<p.Log, p.Screen
+	plan.Content = sample.ContentSetOf(sample.RawFullRate, sample.PeakPairs)
+	if p.Log != 0 {
+		plan.Content = sample.ContentSetOf(sample.RawDecimated, sample.PeakPairs)
+	}
+	b.rec, b.state = m, hal.Ready
+	b.armedPlan, b.armedFree, b.armedNode, b.armedNorm = plan, false, hal.NodeEdge, true
+	b.armedPlace, b.cond.armedPick = triggerPlace{}, cfg.Pick
+	b.recStatus = hal.Status{Triggered: m.Triggered, Done: true, Coherent: true, Record: recordID(m)}
+}

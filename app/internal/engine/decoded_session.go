@@ -46,7 +46,21 @@ func (d *DecodedStreams) Serve() {
 	if d.h.memory() == nil {
 		return
 	}
-	d.serviceDecodedRequests()
+	// The service figures of a decoded capture, as the engine's commit
+	// point takes them: its requests here, the board's panel service
+	// (which the cycle runs after this) by the board's own timing.
+	b := d.h.board()
+	if d.decodedSession != nil {
+		stage := time.Now()
+		d.serviceDecodedRequests()
+		if d.decodedSession != nil {
+			d.decodedService.maxRequests = max(d.decodedService.maxRequests, time.Since(stage))
+			d.decodedService.maxControl = max(d.decodedService.maxControl, b.ServiceMax())
+		}
+	} else {
+		d.serviceDecodedRequests()
+	}
+	b.TimeService(d.decodedSession != nil)
 	d.pumpDecodedEvents()
 	d.expireDecoded()
 	if d.Active() {
@@ -86,7 +100,7 @@ func (d *DecodedStreams) TakeRecord() bool {
 	if a == nil {
 		return false
 	}
-	d.h.board().SetRecord(a.m)
+	d.h.board().AdoptRecord(a.m, a.cfg)
 	d.h.logf("engine: showing the decoded stream's record (%d words, trigger word %d)", a.m.Length, a.m.TriggerIndex)
 	return true
 }
@@ -142,12 +156,11 @@ type boardHost struct {
 	log func(string, ...any)
 	clk Clock
 
-	mu        sync.Mutex
-	owner     hal.SessionHost // the cycle, once attached
-	done      chan struct{}
-	closed    bool
-	reload    bool // a stream lost words before its first: its image loads again first
-	busErrors int
+	mu     sync.Mutex
+	owner  hal.SessionHost // the cycle, once attached
+	done   chan struct{}
+	closed bool
+	reload bool // a stream lost words before its first: its image loads again first
 }
 
 var _ decodedHost = (*boardHost)(nil)
@@ -254,21 +267,32 @@ func (h *boardHost) noteStreamLoss(expected uint64) {
 	}
 }
 
-// busErr counts and logs a bus error, the first few and every hundredth.
+// busErr counts and logs a bus error on the board, the first few and every
+// hundredth (the status's bus_errors).
 // TRLC-LINKS: REQ-SDS-001
-func (h *boardHost) busErr(err error) {
-	h.busErrors++
-	if n := h.busErrors; n <= 5 || n%100 == 0 {
-		h.log("engine: bus error #%d: %v", n, err)
+func (h *boardHost) busErr(err error) { h.b.NoteBusError(err) }
+
+// sleepBeating sleeps d in slices of at most 500 ms, beating the cycle's
+// heartbeat after each, as the engine's sleepBeating does; a closed
+// session stops it early.
+// TRLC-LINKS: REQ-SDS-001, REQ-SDS-025
+func (h *boardHost) sleepBeating(d time.Duration) {
+	for d > 0 && !h.stopping() {
+		s := min(d, 500*time.Millisecond)
+		h.clk.Sleep(s)
+		h.beat()
+		d -= s
 	}
 }
 
-// TRLC-LINKS: REQ-SDS-001
-func (h *boardHost) sleepBeating(d time.Duration) { h.clk.Sleep(d) }
-
-// beat has no beat of its own: the cycle's health follows its frames.
-// TRLC-LINKS: REQ-SDS-001
-func (h *boardHost) beat() {}
+// beat advances the cycle's heartbeat after a step of a session's work
+// (a decoded capture's successful read).
+// TRLC-LINKS: REQ-SDS-001, REQ-SDS-025
+func (h *boardHost) beat() {
+	if b, ok := h.host().(interface{ Beat() }); ok {
+		b.Beat()
+	}
+}
 
 // TRLC-LINKS: REQ-SDS-001
 func (h *boardHost) stopping() bool {
@@ -299,10 +323,10 @@ func (h *boardHost) symbolCount(cfg *sramcapture.Config) int {
 	return int(st.Matches & 0xffff)
 }
 
-// arincAux is none: the ARINC 429 levels the engine learns from its records
-// are not the board's.
+// arincAux is ARINC 429's slicer the cycle learned from the records, as
+// the board's bus trigger programmed it last (0: none yet).
 // TRLC-LINKS: REQ-SDS-013
-func (h *boardHost) arincAux() uint32 { return 0 }
+func (h *boardHost) arincAux() uint32 { return h.b.ARINCAux() }
 
 // ownStreamPump is the bus worker's stream-bank pump, when it took the
 // stream.

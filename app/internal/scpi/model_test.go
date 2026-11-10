@@ -94,6 +94,8 @@ func modelHandler(tb testing.TB) *Handler {
 	fe.OnOffset(codes.SetOffsetDAC)
 	lv := board.New(codes, fe)
 	lv.Project(m)
+	m.OnTrigType(board.ShareTrigger) // one comparator for every type, as the device composes it
+	m.OnTrigSlope(board.KeepSlope)
 	prof, err := scope.Profile(scope.Identity())
 	if err != nil {
 		tb.Fatal(err)

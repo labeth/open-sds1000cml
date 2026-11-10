@@ -26,9 +26,23 @@ func (m rampMem) RecallForward(_ context.Context, offset, count uint32, dst io.W
 	return int64(n), err
 }
 
+// RecallReadsOf reads each window, a bucketed one as the fabric's
+// envelope: a word a bucket of each channel's minimum and maximum.
 func (m rampMem) RecallReadsOf(ctx context.Context, _ sramcapture.Metadata, reads ...sramcapture.RecordRead) error {
 	for _, r := range reads {
-		if _, err := m.RecallForward(ctx, r.Offset, r.Count, r.Dst); err != nil {
+		if r.Bucket == 0 {
+			if _, err := m.RecallForward(ctx, r.Offset, r.Count, r.Dst); err != nil {
+				return err
+			}
+			continue
+		}
+		m.envelopes++
+		b := make([]byte, 4*r.Count)
+		for i := range r.Count {
+			first, last := 2*(r.Offset+i*r.Bucket), 2*(r.Offset+(i+1)*r.Bucket)-1 // a ramp: its extremes
+			b[4*i], b[4*i+1], b[4*i+2], b[4*i+3] = byte(first), byte(first+100), byte(last), byte(last+100)
+		}
+		if _, err := r.Dst.Write(b); err != nil {
 			return err
 		}
 	}
@@ -92,6 +106,16 @@ func TestBoardSizedWindows(t *testing.T) {
 	}
 	if c := f.Traces[0].Codes8[:4]; c[0] != byte(trig&255) || c[1] != byte(trig+3) || c[2] != byte(trig+4) || c[3] != byte(trig+7) {
 		t.Fatalf("peak pairs %v", c)
+	}
+	if m.envelopes == 0 {
+		t.Fatal("a window of whole buckets was reduced on the host, not by the fabric")
+	}
+	f, err = read(hal.Window{Role: hal.Zoom, StartSample: 0, Span: 12, Points: 2, Want: sample.PeakPairs})
+	if err != nil || f.Content != sample.PeakPairs || f.Len() != 4 {
+		t.Fatalf("two peak pairs of odd buckets: %+v %v", f, err)
+	}
+	if c := f.Traces[0].Codes8[:4]; c[0] != byte(trig&255) || c[1] != byte(trig+5) || c[2] != byte(trig+6) || c[3] != byte(trig+11) {
+		t.Fatalf("peak pairs of odd buckets %v", c)
 	}
 	if _, err := read(hal.Window{Role: hal.Main, Want: sample.RawDecimated}); err == nil {
 		t.Fatal("decimated samples of a full-rate record read")

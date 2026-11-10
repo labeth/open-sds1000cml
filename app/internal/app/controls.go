@@ -7,32 +7,14 @@ import (
 	"github.com/labeth/open-dso-core/instrument"
 	"github.com/labeth/open-sds1000cml/app/internal/analog"
 	"github.com/labeth/open-sds1000cml/app/internal/board"
-	"github.com/labeth/open-sds1000cml/app/internal/engine"
 )
-
-// cmlControls is what every controller (the UI model, SCPI, the web, the
-// settings file) drives the scope through: the engine's controls, which
-// write the instrument model and stage for the engine's owner, with the
-// trigger level's volts kept in the model when the source changes (the
-// comparator's code stays where it is).
-type cmlControls struct {
-	engine.Controls
-	levels *board.Levels
-}
-
-// SetTrigSource stages the trigger channel and re-projects the level onto
-// it.
-// TRLC-LINKS: REQ-SDS-011, REQ-SDS-098
-func (c cmlControls) SetTrigSource(ch int) {
-	c.Controls.SetTrigSource(ch)
-	c.levels.Reproject()
-}
 
 // modelAnalog is the analog front end as the controllers drive it: its
 // setters are the front end's (its shadows answer at once, its relays and
 // gains are written on the owner with nothing armed), and each writes the
 // channel's setting, as the front end applies it, into the instrument
-// model, with the trigger level's volts on the new range.
+// model, with the trigger level's volts on the new range. The model is
+// attached once the core's application built it (composition.attach).
 type modelAnalog struct {
 	*analog.FrontEnd
 	m      *instrument.Model
@@ -42,7 +24,7 @@ type modelAnalog struct {
 // project puts channel ch's setting into the model.
 // TRLC-LINKS: REQ-SDS-015
 func (a *modelAnalog) project(ch int) {
-	if ch < 0 || ch > 1 {
+	if ch < 0 || ch > 1 || a.m == nil { // no model yet: attach projects both
 		return
 	}
 	c := a.Get(ch)

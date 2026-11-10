@@ -3,7 +3,9 @@
 package acq
 
 import (
+	"context"
 	"testing"
+	"time"
 
 	core "github.com/labeth/open-dso-core/engine"
 	"github.com/labeth/open-dso-core/hal"
@@ -128,5 +130,64 @@ func TestFreeRunZonesAndOrder(t *testing.T) {
 	plan.Request.PretrigRoom = 100
 	if err := d.Configure(plan); err != nil || d.Config().PreWords != c.PreWords+100 {
 		t.Fatalf("room before the trigger: %v %d", err, d.Config().PreWords)
+	}
+}
+
+// AUTO's wait is the fabric's to know: a fixed wait and the time the
+// record fills before its trigger, so a forced record holds samples on
+// both sides of it.
+// TRLC-LINKS: REQ-SDS-009
+func TestAutoWaitCoversThePretrigger(t *testing.T) {
+	b, _, _ := newTestBoard()
+	for _, tdiv := range []float64{1e-6, 1e-3, 50e-3} {
+		plan, err := b.Planner().Plan(hal.Request{Channels: []int{0, 1}, TimePerDivS: tdiv, PretrigFrac: .5})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := b.Acquirer().Configure(plan); err != nil {
+			t.Fatal(err)
+		}
+		aw, ok := b.Acquirer().(hal.AutoWaiter)
+		if !ok {
+			t.Fatal("the board's acquirer leaves AUTO to the hardware")
+		}
+		pre := time.Duration(float64(plan.Depth) / 2 * plan.SampleS * float64(time.Second))
+		if got := aw.AutoWait(); got < autoWaitBase+pre*9/10 || got > autoWaitBase+pre*11/10+time.Microsecond {
+			t.Fatalf("%v/div: AUTO waits %v, the pretrigger fills in %v", tdiv, got, pre)
+		}
+	}
+}
+
+// A forced record is a forced one, never a trigger, though the fabric
+// flags its forced trigger as one; a record the fabric triggered is.
+// TRLC-LINKS: REQ-SDS-009, REQ-SDS-011
+func TestForcedRecordIsNoTrigger(t *testing.T) {
+	for _, force := range []bool{true, false} {
+		b, m, _ := newTestBoard()
+		m.freezeAt = 1
+		plan, err := b.Planner().Plan(hal.Request{Channels: []int{0, 1}, TimePerDivS: 1e-6})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := b.Acquirer().Configure(plan); err != nil {
+			t.Fatal(err)
+		}
+		if err := b.Acquirer().Arm(); err != nil {
+			t.Fatal(err)
+		}
+		if force {
+			if err := b.Acquirer().Force(); err != nil {
+				t.Fatal(err)
+			}
+		}
+		m.meta.Frozen, m.meta.Ready, m.meta.Triggered = true, true, true
+		m.meta.Length, m.meta.SamplesPerWord = 8192, 2
+		st, err := b.Acquirer().Wait(context.Background(), 0)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if st.Triggered == force || st.Forced != force {
+			t.Fatalf("forced %v: status %+v", force, st)
+		}
 	}
 }

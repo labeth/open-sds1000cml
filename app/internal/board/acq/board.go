@@ -74,6 +74,16 @@ type Board struct {
 	scan       panelScanState
 	adc        adcHealth
 	tune       Tuning // the live tuning knobs (tuning.go)
+	acMean     acMean // the channels' means an AC-coupled channel's codes are read from (trigger_ac.go)
+
+	beatFn    func()                        // the owner's heartbeat (SetBeat); nil: none
+	levelDAC  func() (code uint16, ok bool) // the comparator DAC's code from the controllers' level (SetLevelDAC)
+	dacCode   uint16                        // the comparator code staged last
+	dacStaged bool                          // dacCode was staged
+	arincAux  atomic.Uint32                 // ARINC 429's slicer codes the last bus trigger programmed
+	busErrors atomic.Uint64                 // bus errors counted (NoteBusError)
+	timeSvc   atomic.Bool                   // Service times itself (TimeService)
+	svcMax    atomic.Int64                  // the longest Service timed, ns
 
 	log   func(string, ...any) // nil: the board says nothing
 	clock func() time.Time     // nil: time.Now

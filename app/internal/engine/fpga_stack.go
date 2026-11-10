@@ -32,6 +32,13 @@ type (
 func (e *Engine) SetImageSwitcher(s ImageSwitcher) {
 	e.images = s
 	e.hw().SetImages(s)
+	NoteImages(s)
+}
+
+// NoteImages tells the decoded streams' planning (SoftStreamMode) whether
+// the build has the digital stream image: the board's image loader s.
+// TRLC-LINKS: REQ-SDS-005, REQ-SDS-018
+func NoteImages(s ImageSwitcher) {
 	b, ok := s.(BitsImages)
 	bitsImage.Store(ok && b.HasBits())
 }

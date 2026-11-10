@@ -6,6 +6,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"time"
 
 	"github.com/labeth/open-dso-core/hal"
 )
@@ -39,6 +40,10 @@ func (p *platformFacet) Handover() hal.Handover { return p.handover }
 // TRLC-LINKS: REQ-SDS-001
 func (p *platformFacet) Service() {
 	b := (*Board)(p)
+	if b.timeSvc.Load() {
+		t0 := time.Now()
+		defer func() { b.noteServiceTime(time.Since(t0)) }()
+	}
 	if b.reading {
 		b.panel.flushLamps()
 		return
@@ -126,3 +131,94 @@ func (b *Board) FlushLamps() { b.panel.flushLamps() }
 // while the owner holds no bus access of its own.
 // TRLC-LINKS: REQ-SDS-001
 func (b *Board) FlushLampsLocked() { b.mem.Locked(b.panel.flushLamps) }
+
+// StartFabric is the fabric's start, the owner's first step on the image
+// the composition loaded: its capabilities probed and the converters
+// brought up on it, as after every image load. OWNER, LONG.
+// TRLC-LINKS: REQ-SDS-001, REQ-SDS-231
+func (b *Board) StartFabric() {
+	if b.mem == nil {
+		return
+	}
+	b.imageLoaded = ImageGeneral
+	b.ProbeImage(b.logf)
+	b.StartConverters("the start", b.reloadImage)
+}
+
+// SetLevelDAC attaches the trigger comparator DAC's code as the
+// controllers' level gives it (the levels' code for the instrument
+// model's level; ok false while the level was never set: the boot
+// comparator stays). Program stages it on the panel plane when it moves.
+// TRLC-LINKS: REQ-SDS-011, REQ-SDS-098
+func (b *Board) SetLevelDAC(fn func() (code uint16, ok bool)) { b.levelDAC = fn }
+
+// stageLevelDAC stages the comparator DAC's code when it moved: the first
+// code always, then on change. OWNER.
+// TRLC-LINKS: REQ-SDS-011, REQ-SDS-098
+func (b *Board) stageLevelDAC() {
+	if b.levelDAC == nil {
+		return
+	}
+	code, ok := b.levelDAC()
+	if !ok || code == 0 || b.dacStaged && code == b.dacCode {
+		return
+	}
+	b.dacCode, b.dacStaged = code, true
+	b.StageLevelDAC(code)
+}
+
+// NoteBusError counts a bus error and logs the first few and every
+// hundredth, as the engine counted its own. ANY.
+// TRLC-LINKS: REQ-SDS-001
+func (b *Board) NoteBusError(err error) {
+	if n := b.busErrors.Add(1); n <= 5 || n%100 == 0 {
+		b.logf("engine: bus error #%d: %v", n, err)
+	}
+}
+
+// BusErrors is the bus errors counted (NoteBusError). ANY.
+// TRLC-LINKS: REQ-SDS-001
+func (b *Board) BusErrors() uint64 { return b.busErrors.Load() }
+
+// ARINCAux is ARINC 429's slicer as codes, the four levels the last bus
+// trigger programmed (0: none learned yet), for a decoded stream's
+// receiver. ANY.
+// TRLC-LINKS: REQ-SDS-013
+func (b *Board) ARINCAux() uint32 { return b.arincAux.Load() }
+
+// SetBeat takes the owner's heartbeat, which the board's LONG work beats
+// between its steps (hal.BeatBoard): an image load, a converter recovery,
+// a stacking session, a stream's start on its own image. OWNER, once.
+// TRLC-LINKS: REQ-SDS-025
+func (b *Board) SetBeat(beat func()) { b.beatFn = beat }
+
+// beat beats the owner's heartbeat after a step of LONG work. OWNER.
+// TRLC-LINKS: REQ-SDS-025
+func (b *Board) beat() {
+	if b.beatFn != nil {
+		b.beatFn()
+	}
+}
+
+var _ hal.BeatBoard = (*Board)(nil)
+
+// TimeService has Service time itself while on (a decoded capture's
+// service figures); off forgets the longest. ANY.
+// TRLC-LINKS: REQ-SDS-127
+func (b *Board) TimeService(on bool) {
+	if b.timeSvc.Swap(on) && !on {
+		b.svcMax.Store(0)
+	}
+}
+
+// noteServiceTime keeps the longest Service while timed. OWNER.
+// TRLC-LINKS: REQ-SDS-127
+func (b *Board) noteServiceTime(d time.Duration) {
+	if int64(d) > b.svcMax.Load() {
+		b.svcMax.Store(int64(d))
+	}
+}
+
+// ServiceMax is the longest Service since TimeService(true). ANY.
+// TRLC-LINKS: REQ-SDS-127
+func (b *Board) ServiceMax() time.Duration { return time.Duration(b.svcMax.Load()) }

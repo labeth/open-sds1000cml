@@ -62,6 +62,7 @@ type triggerFacet Board
 // TRLC-LINKS: REQ-SDS-011, REQ-SDS-013, REQ-SDS-014
 func (t *triggerFacet) Program(s hal.TriggerSpec) error {
 	b := (*Board)(t)
+	b.stageLevelDAC()
 	in := b.trigInputs()
 	if b.trig.kept.matches(&s, &in) {
 		return nil // staged from the same spec and inputs: the same trigger
@@ -89,6 +90,9 @@ func (ts *trigState) stagedPart() *trigPart { return &ts.parts[ts.cur] }
 func (b *Board) levelScale(ch int) sample.Scale {
 	if b.frontEnd != nil {
 		if fe := b.frontEnd.pending(ch & 1); fe.VoltsDiv > 0 {
+			if s, ok := b.acScale(ch, fe); ok {
+				return s // an AC-coupled channel's codes from its mean (trigger_ac.go)
+			}
 			return sample.Scale{Zero: sample.Mid8, PerCode: fe.VoltsDiv / CodesPerDiv, OffsetV: fe.OffsetV}
 		}
 	}
@@ -261,6 +265,9 @@ func (b *Board) busConfig(bus *prototrig.Bus, in *trigInputs, c *sramcapture.Con
 		}
 	}
 	c.Normal = false
+	if arinc != 0 {
+		b.arincAux.Store(arinc)
+	}
 	b.PlanSerial(c, p, false, arinc)
 	if !c.Normal && !free {
 		return hal.Refuse("serial trigger", "no receiver of this FPGA image takes the request")
@@ -486,6 +493,13 @@ func (t *triggerFacet) Events(dst []hal.Event) (int, error) {
 	b.trig.pending = b.trig.pending[n:]
 	return n, err
 }
+
+var _ hal.MatchEndTrigger = (*triggerFacet)(nil)
+
+// FiresAtMatchEnd is true: the fabric's receivers fire once the match's
+// last unit is in, and the owner places the trigger at its start.
+// TRLC-LINKS: REQ-SDS-013
+func (t *triggerFacet) FiresAtMatchEnd() bool { return true }
 
 // Matches is the symbol trigger's match counter.
 // TRLC-LINKS: REQ-SDS-011

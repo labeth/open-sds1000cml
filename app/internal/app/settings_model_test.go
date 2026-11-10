@@ -71,6 +71,23 @@ func (r setupRig) apply(s settings.Settings, logf func(string, ...any)) {
 	core.Apply(s, r.ctl, r.afe, r.pc, r.x, logf)
 }
 
+// cmlControls are the engine's controls as the engine's composition
+// drove them (1.2): staging for the engine's owner over the instrument
+// model, the level's volts re-projected when the source changes. The
+// compositions over the model alone are compared with it.
+type cmlControls struct {
+	engine.Controls
+	levels *board.Levels
+}
+
+// SetTrigSource stages the trigger channel and re-projects the level onto
+// it.
+// TRLC-LINKS: REQ-SDS-011, REQ-SDS-098
+func (c cmlControls) SetTrigSource(ch int) {
+	c.Controls.SetTrigSource(ch)
+	c.levels.Reproject()
+}
+
 // projected is fe projected into model m with the levels over eng.
 // TRLC-LINKS: REQ-SDS-089
 func projected(m *instrument.Model, fe *analog.FrontEnd, eng board.Engine) (*modelAnalog, *board.Levels) {
@@ -110,22 +127,39 @@ func engineRig(tb testing.TB) setupRig {
 // TRLC-LINKS: REQ-SDS-089
 func modelRig(tb testing.TB) setupRig {
 	tb.Helper()
+	c := deviceComposition(tb)
 	m := instrument.New(board.PowerOn(2), nil)
 	m.SetTimebases(engine.SupportedTdivs())
-	codes := board.NewModelCodes(m)
-	fe := analog.New(nullSPI{}, func(time.Duration) {}, nil)
-	fe.OnOffset(codes.SetOffsetDAC)
-	afe, levels := projected(m, fe, codes)
+	c.attach(m)
+	ctl := panel.NewHALScope(m, c.acq, "").Engine()
+	pc := panel.New(ctl, c.afe, c.levels, cmlpanel.Hardware{}, engine.SupportedTdivs(), uiStartTdiv, tb.Logf)
+	return setupRig{m: m, ctl: ctl, afe: c.afe, levels: c.levels, pc: pc, x: board.SettingsExtension{Levels: c.levels}}
+}
+
+// deviceComposition is the device's composition as newBoard builds it,
+// over a board without a fabric and a front end without SPI: the codes
+// kept for the model, the front end staging its offsets through them, the
+// levels over both, the profile. attach gives it its model.
+// TRLC-LINKS: REQ-SDS-089
+func deviceComposition(tb testing.TB) *composition {
+	tb.Helper()
+	b := acq.New(acq.Config{})
+	c := &composition{acq: b, codes: board.NewModelCodes(nil)}
+	c.fe = analog.New(nullSPI{}, func(time.Duration) {}, nil)
+	c.fe.OnOffset(func(ch int, code uint16) {
+		c.codes.SetOffsetDAC(ch, code)
+		b.StageOffsetDAC(ch, code)
+	})
+	c.afe = &modelAnalog{FrontEnd: c.fe}
+	c.levels = board.New(c.codes, c.afe)
 	prof, err := scope.Profile(scope.Identity())
 	if err != nil {
 		tb.Fatal(err)
 	}
-	b := acq.New(acq.Config{})
 	b.SetProfile(prof)
-	b.SetFrontEnd(fe)
-	ctl := panel.NewHALScope(m, b, "").Engine()
-	pc := panel.New(ctl, afe, levels, cmlpanel.Hardware{}, engine.SupportedTdivs(), uiStartTdiv, tb.Logf)
-	return setupRig{m: m, ctl: ctl, afe: afe, levels: levels, pc: pc, x: board.SettingsExtension{Levels: levels}}
+	b.SetFrontEnd(c.fe)
+	b.SetLevelGrid(c.levels.TrigLevelGrid)
+	return c
 }
 
 // goldenSettings is the settings file's golden (the settings package's).

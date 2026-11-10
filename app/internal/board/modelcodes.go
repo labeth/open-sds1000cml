@@ -25,9 +25,15 @@ type ModelCodes struct {
 
 var _ Engine = (*ModelCodes)(nil)
 
-// NewModelCodes keeps the codes beside m.
+// NewModelCodes keeps the codes beside m; nil: a model attached later
+// (Attach), before the first Snapshot.
 // TRLC-LINKS: REQ-SDS-098, REQ-SDS-095
 func NewModelCodes(m *instrument.Model) *ModelCodes { return &ModelCodes{m: m} }
+
+// Attach keeps the codes beside m from now on: the composition stages the
+// front end's offset codes before the instrument model exists.
+// TRLC-LINKS: REQ-SDS-098, REQ-SDS-095
+func (c *ModelCodes) Attach(m *instrument.Model) { c.m = m }
 
 // Snapshot is the model's state with the codes kept.
 // TRLC-LINKS: REQ-SDS-098, REQ-SDS-095
